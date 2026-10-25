@@ -22,6 +22,7 @@
 #include "phibrowser-win/client/phi_agent_space_manager.h"
 #include "phibrowser-win/client/phi_chromium_sync.h"
 #include "phibrowser-win/client/phi_sync_key_service.h"
+#include "phibrowser-win/client/phi_import_window.h"
 #include "phibrowser-win/client/phi_sync_setup_window.h"
 #include "phibrowser-win/client/phi_control_server.h"
 #include "phibrowser-win/client/phi_client_analytics.h"
@@ -86,6 +87,7 @@ class PhiCoordinator : public SidebarHost,
                        public PhiSessionRestore::Host,
                        public PhiProfileService::Host,
                        public PhiSyncSetupWindow::Host,
+                       public PhiImportWindow::Host,
                        public PhiSurfaceCoordinator::Host,
                        public PhiAgentSpaceManager::Host,
                        public PhiFolio::Host {
@@ -189,8 +191,10 @@ class PhiCoordinator : public SidebarHost,
   // The Mac's first_time_action: `action` succeeded — captured the FIRST
   // time only, per user data directory (PhiFirstTimeActions).
   void NoteFirstTimeAction(const char* action);
-  void NoteImportPrompted() override;
-  void NoteImportStarted() override;
+  void RequestBrowserImport() override;
+  // PhiImportWindow::Host — the Mac's BrowserDataImporter.startImportData.
+  bool StartBrowserImport(const PhiImportRequest& request) override;
+  bool BrowserImportRunning() const override;
   // The framework delegate itself: the client's ONE entry point from the
   // browser, handed to the framework by PhiClientCreateDelegate.
   PhiFrameworkDispatcher& framework_dispatcher() {
@@ -1025,8 +1029,28 @@ class PhiCoordinator : public SidebarHost,
   // declared after them so they are destroyed first.
   PhiPreferences preferences_{[this] { ScheduleSave(StoreDomain::kSettings); }};
   PhiFirstTimeActions first_time_actions_;
-  // GetTickCount64 when the running Chrome import began; 0 when none is.
-  uint64_t import_started_tick_ = 0;
+  // The running browser-data import (StartBrowserImport): its request, the
+  // source being imported (sources[next - 1]) and what failed so far. The
+  // framework completes one source at a time; RunNextImport starts the
+  // next, FinishImportRun lands the bookmarks once the last is in.
+  struct ImportRun {
+    PhiImportRequest request;
+    size_t next = 0;
+    std::optional<PhiImportSource> awaiting;
+    std::vector<PhiImportSource> failed;
+    std::string error_code;
+    uint64_t started_tick = 0;
+    bool chromium_bookmarks = false;  // Some source stages bookmarks.
+    // Inside a StartBrowserImport / StartFileImport call: a refusal the
+    // framework reports synchronously lands in `early_result` instead of
+    // re-entering RunNextImport.
+    bool dispatching = false;
+    std::optional<bool> early_result;
+  };
+  std::optional<ImportRun> import_run_;
+  void RunNextImport();
+  void NoteImportSourceDone(PhiImportSource source, bool success);
+  void FinishImportRun();
   std::unique_ptr<PhiSpaceManager> space_manager_;
   std::unique_ptr<PhiUrlRouter> url_router_;
   // The menu-bar accelerators (lane 1 §1.2 cluster 17): the WH_KEYBOARD

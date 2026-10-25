@@ -564,6 +564,9 @@ class PhiControlDispatcher : public PhiControlDelegate {
   PhiVerbResult VerbSyncSetupOpen(const PhiVerbContext& ctx);
   PhiVerbResult VerbSyncSetupStatus(const PhiVerbContext& ctx);
   PhiVerbResult VerbSyncSetupDrive(const PhiVerbContext& ctx);
+  PhiVerbResult VerbImportOpen(const PhiVerbContext& ctx);
+  PhiVerbResult VerbImportStatus(const PhiVerbContext& ctx);
+  PhiVerbResult VerbImportDrive(const PhiVerbContext& ctx);
   // Records a finished key operation for agentSpace.sync.status.
   void FinishKeyOp(int seq, keys::KeyStatus status, base::DictValue result);
   // phi_verbs_credentials.cc: the vault.

@@ -233,16 +233,25 @@ base::DictValue PhiFeatureEntryProperties(const char* button,
 // presentation settings, which this client does not have.
 base::DictValue PhiNotificationCardActionProperties(const char* action);
 
-// The browser-data import, the Mac's BrowserImportAnalytics. This client
-// imports from Google Chrome only, so the sources are always ["chrome"].
+// The browser-data import, the Mac's BrowserImportAnalytics. Sources are
+// the import window's keys ("chrome", "edge", "brave", "arc", "file"),
+// sorted and unique as the Mac sends them; types are the normalised words
+// ("bookmarks", "cookies", "extensions", "history"), sorted.
 // "import_viewed" carries the entry point ("menu"); "import_types_selected"
-// the normalised data types the run takes; "import_started" the sources;
-// "import_finished" the aggregate outcome, the failed sources, the wall
-// time and — on failure — a low-cardinality error code.
+// is sent once per source with the types the run takes from it (none for
+// the file); "import_started" the sources; "import_finished" the aggregate
+// outcome, the failed sources, the wall time and — when something failed —
+// a low-cardinality error code (no_window, file_unreadable,
+// source_import_failed, bookmark_persistence_failed).
 base::DictValue PhiImportViewedProperties();
-base::DictValue PhiImportTypesSelectedProperties();
-base::DictValue PhiImportStartedProperties();
-base::DictValue PhiImportFinishedProperties(bool success, int duration_seconds);
+base::DictValue PhiImportTypesSelectedProperties(
+    const std::string& source,
+    std::vector<std::string> types);
+base::DictValue PhiImportStartedProperties(std::vector<std::string> sources);
+base::DictValue PhiImportFinishedProperties(std::vector<std::string> sources,
+                                            std::vector<std::string> failed,
+                                            int duration_seconds,
+                                            const std::string& error_code);
 
 // "first_time_action": the Mac's FirstTimeActionTracker — an eligible
 // product action's FIRST success on this installation, with the seconds

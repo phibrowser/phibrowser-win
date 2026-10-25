@@ -2258,19 +2258,321 @@ void PhiCoordinator::NoteFirstTimeAction(const char* action) {
   }
 }
 
-void PhiCoordinator::NoteImportPrompted() {
-  CaptureAnalytics(kAnalyticsModuleImport, kEventImportViewed,
-                   PhiImportViewedProperties());
+void PhiCoordinator::RequestBrowserImport() {
+  PhiShellWindow* focused = FocusedUserController();
+  HWND owner = focused ? focused->shell_hwnd() : nullptr;
+  std::string profile_id, space_id;
+  if (!focused || !framework_ ||
+      !OwnerForSlot(focused->slot(), &profile_id, &space_id)) {
+    return;
+  }
+  if (focused->ShowsIncognito() || model::IsIncognitoSpaceId(space_id)) {
+    // The Mac's unavailableInIncognito alert: an off-the-record profile
+    // keeps nothing an import would bring.
+    PhiAlert(owner,
+             PhiStr("app.importBrowserData.unavailableInIncognito.title"),
+             PhiStr("app.importBrowserData.unavailableInIncognito.message"),
+             {{PhiStr("app.importBrowserData.unavailableInIncognito."
+                      "dismissButton"),
+               PhiAlertRole::kPrimary}},
+             0, 0);
+    return;
+  }
+  PhiImportTarget target;
+  target.profile_id = profile_id;
+  target.space_id = space_id;
+  target.window_id = ResolveBrowser(focused->slot()).value;
+  // "Space (Profile)" — the Mac's formatImportTargetLabel.
+  const model::Space* space = FindSpaceIn(space_manager_->spaces(), space_id);
+  std::wstring label =
+      space ? base::UTF8ToWide(space->name)
+            : std::wstring(PhiStr(
+                  "oobe.importBrowserData.target.currentSpaceFallback"));
+  const std::string profile_name = ProfileDisplayName(profile_id);
+  if (!profile_name.empty()) {
+    label += L" (" + base::UTF8ToWide(profile_name) + L")";
+  }
+  target.label = std::move(label);
+  if (!PhiImportWindow::Current()) {
+    CaptureAnalytics(kAnalyticsModuleImport, kEventImportViewed,
+                     PhiImportViewedProperties());
+  }
+  PhiImportWindow::Open(this, target, owner);
 }
 
-void PhiCoordinator::NoteImportStarted() {
-  // The Mac captures the selection as the user commits it and the start
-  // as the importer accepts the run; this client's one confirm is both.
-  CaptureAnalytics(kAnalyticsModuleImport, kEventImportTypesSelected,
-                   PhiImportTypesSelectedProperties());
+bool PhiCoordinator::StartBrowserImport(const PhiImportRequest& request) {
+  // Reentrancy gate: a second start while a run is unresolved would
+  // overwrite the source the framework's completion is matched against.
+  if (import_run_ || request.sources.empty() || !framework_) {
+    return false;
+  }
+  ImportRun run;
+  run.request = request;
+  run.started_tick = ::GetTickCount64();
+  std::vector<std::string> sources;
+  // The Mac sends the selections in source-name order.
+  std::vector<PhiImportSource> by_name = request.sources;
+  std::sort(by_name.begin(), by_name.end(),
+            [](PhiImportSource a, PhiImportSource b) {
+              return std::string_view(PhiImportSourceKey(a)) <
+                     PhiImportSourceKey(b);
+            });
+  for (PhiImportSource source : by_name) {
+    sources.push_back(PhiImportSourceKey(source));
+    std::vector<std::string> types;
+    auto it = request.types.find(source);
+    if (it != request.types.end()) {
+      for (PhiImportDataType type : it->second) {
+        types.push_back(PhiImportDataTypeAnalytics(type));
+        // Arc's bookmarks come from its sidebar, not from Chromium.
+        if (type == PhiImportDataType::kBookmarks &&
+            source != PhiImportSource::kArc) {
+          run.chromium_bookmarks = true;
+        }
+      }
+    }
+    if (source == PhiImportSource::kFile) {
+      run.chromium_bookmarks = true;  // The file's bookmarks are staged too.
+    }
+    CaptureAnalytics(kAnalyticsModuleImport, kEventImportTypesSelected,
+                     PhiImportTypesSelectedProperties(
+                         PhiImportSourceKey(source), std::move(types)));
+  }
   CaptureAnalytics(kAnalyticsModuleImport, kEventImportStarted,
-                   PhiImportStartedProperties());
-  import_started_tick_ = ::GetTickCount64();
+                   PhiImportStartedProperties(sources));
+  // Validate the file before anything destructive: a path gone since it
+  // was picked drops the file source as failed, not silently.
+  if (std::find(run.request.sources.begin(), run.request.sources.end(),
+                PhiImportSource::kFile) != run.request.sources.end()) {
+    const DWORD attributes =
+        ::GetFileAttributesW(run.request.file_path.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES ||
+        (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+      std::erase(run.request.sources, PhiImportSource::kFile);
+      run.failed.push_back(PhiImportSource::kFile);
+      run.error_code = "file_unreadable";
+    }
+  }
+  LOG(INFO) << "[Import] start: " << run.request.sources.size()
+            << " source(s) into space " << request.target.space_id
+            << " window " << request.target.window_id;
+  // The Chromium bookmark model is the staging area: empty it so only this
+  // run's bookmarks are copied out afterwards.
+  if (run.chromium_bookmarks) {
+    framework_->RemoveAllBookmarks(request.target.window_id);
+  }
+  import_run_ = std::move(run);
+  RunNextImport();
+  return true;
+}
+
+bool PhiCoordinator::BrowserImportRunning() const {
+  return import_run_.has_value();
+}
+
+void PhiCoordinator::RunNextImport() {
+  while (import_run_ && import_run_->next < import_run_->request.sources.size()) {
+    ImportRun& run = *import_run_;
+    const PhiImportSource source = run.request.sources[run.next++];
+    const int64_t window = run.request.target.window_id;
+    std::wstring status;
+    if (source == PhiImportSource::kFile) {
+      status = PhiStr("oobe.importBrowserData.progress.importingFile");
+    } else {
+      status = PhiStrF("oobe.importBrowserData.progress.importingBrowser",
+                       {PhiImportSourceName(source)});
+    }
+    if (PhiImportWindow* window_ui = PhiImportWindow::Current()) {
+      window_ui->SetStatus(status);
+    }
+    bool started = false;
+    std::string types;
+    std::string profile;
+    if (source != PhiImportSource::kFile) {
+      // For Arc the bookmarks are its sidebar's: only the rest goes to
+      // Chromium.
+      auto it = run.request.types.find(source);
+      if (it != run.request.types.end()) {
+        for (PhiImportDataType type : it->second) {
+          if (source == PhiImportSource::kArc &&
+              type == PhiImportDataType::kBookmarks) {
+            continue;
+          }
+          types += (types.empty() ? "" : ",") +
+                   std::string(PhiImportDataTypeWire(type));
+        }
+      }
+      if (source == PhiImportSource::kArc) {
+        if (types.empty()) {
+          continue;  // Bookmarks only: nothing for Chromium to do.
+        }
+        if (!run.request.arc_space ||
+            !run.request.arc_space->profile_directory) {
+          // An unreadable Space profile imports its bookmarks only and never
+          // falls back to Default's data; say so rather than skip silently.
+          LOG(WARNING) << "[Import] Arc data skipped: the Space's profile is "
+                          "unresolved";
+          run.failed.push_back(source);
+          if (run.error_code.empty()) {
+            run.error_code = "source_import_failed";
+          }
+          continue;
+        }
+        profile = *run.request.arc_space->profile_directory;
+      } else {
+        auto p = run.request.profiles.find(source);
+        if (p != run.request.profiles.end()) {
+          profile = p->second;
+        }
+      }
+    }
+    // The framework may refuse at once and say so from inside the call: the
+    // source is awaited before it is dispatched.
+    run.awaiting = source;
+    run.early_result.reset();
+    run.dispatching = true;
+    started = source == PhiImportSource::kFile
+                  ? framework_->StartFileImport(
+                        window, base::WideToUTF8(run.request.file_path).c_str())
+                  : framework_->StartBrowserImport(
+                        window, PhiImportSourceKey(source), profile.c_str(),
+                        types.c_str());
+    run.dispatching = false;
+    if (started && run.early_result) {
+      run.awaiting.reset();
+      LOG(INFO) << "[Import] " << PhiImportSourceKey(source)
+                << (*run.early_result ? " finished" : " failed")
+                << " at once";
+      if (!*run.early_result) {
+        run.failed.push_back(source);
+        if (run.error_code.empty()) {
+          run.error_code = "source_import_failed";
+        }
+      }
+      continue;
+    }
+    if (!started) {
+      run.awaiting.reset();
+      LOG(WARNING) << "[Import] " << PhiImportSourceKey(source)
+                   << " was not accepted";
+      run.failed.push_back(source);
+      if (run.error_code.empty()) {
+        run.error_code = "source_import_failed";
+      }
+      continue;
+    }
+    return;  // OnImportCompleted continues.
+  }
+  if (import_run_) {
+    FinishImportRun();
+  }
+}
+
+void PhiCoordinator::NoteImportSourceDone(PhiImportSource source,
+                                          bool success) {
+  ImportRun& run = *import_run_;
+  run.awaiting.reset();
+  LOG(INFO) << "[Import] " << PhiImportSourceKey(source)
+            << (success ? " finished" : " failed");
+  if (!success) {
+    run.failed.push_back(source);
+    if (run.error_code.empty()) {
+      run.error_code = "source_import_failed";
+    }
+  }
+  RunNextImport();
+}
+
+void PhiCoordinator::FinishImportRun() {
+  ImportRun run = std::move(*import_run_);
+  const PhiImportTarget& target = run.request.target;
+  // The Space may have gone while the sources ran (the Mac's
+  // importTargetSpaceIsWritable backstop): nothing lands then.
+  const bool space_alive =
+      FindSpaceIn(space_manager_->spaces(), target.space_id) != nullptr;
+  int landed = 0;
+  bool persisted = true;
+  if (run.chromium_bookmarks) {
+    std::optional<base::Value> tree = base::JSONReader::Read(
+        framework_->AllBookmarksJson(target.window_id), base::JSON_PARSE_RFC);
+    const int written =
+        space_alive && tree && tree->is_list()
+            ? PhiLandChromiumBookmarks(tab_store_, target.profile_id,
+                                       target.space_id, tree->GetList())
+            : -1;
+    if (written < 0) {
+      persisted = false;
+      for (PhiImportSource source : run.request.sources) {
+        if (source != PhiImportSource::kArc) {
+          run.failed.push_back(source);
+        }
+      }
+    } else {
+      landed += written;
+    }
+  }
+  const std::string arc_title =
+      base::WideToUTF8(PhiStr("localData.bookmarks.importedFromArcFolderTitle"));
+  const auto arc_types = run.request.types.find(PhiImportSource::kArc);
+  if (run.request.arc_space && arc_types != run.request.types.end() &&
+      std::find(arc_types->second.begin(), arc_types->second.end(),
+                PhiImportDataType::kBookmarks) != arc_types->second.end()) {
+    if (space_alive) {
+      landed += PhiLandArcSpace(tab_store_, target.profile_id, target.space_id,
+                                *run.request.arc_space, arc_title);
+    } else {
+      persisted = false;
+      run.failed.push_back(PhiImportSource::kArc);
+    }
+  }
+  if (space_alive) {
+    PhiReorderImportedFolders(tab_store_, target.profile_id, target.space_id,
+                              arc_title);
+  }
+  std::sort(run.failed.begin(), run.failed.end());
+  run.failed.erase(std::unique(run.failed.begin(), run.failed.end()),
+                   run.failed.end());
+  if (!persisted && run.error_code.empty()) {
+    run.error_code = "bookmark_persistence_failed";
+  }
+  LOG(INFO) << "[Import] done: " << landed << " bookmark(s) landed, "
+            << run.failed.size() << " source(s) failed";
+
+  std::vector<std::string> sources, failed;
+  for (PhiImportSource source : run.request.sources) {
+    sources.push_back(PhiImportSourceKey(source));
+  }
+  for (PhiImportSource source : run.failed) {
+    sources.push_back(PhiImportSourceKey(source));  // file_unreadable's file
+    failed.push_back(PhiImportSourceKey(source));
+  }
+  CaptureAnalytics(
+      kAnalyticsModuleImport, kEventImportFinished,
+      PhiImportFinishedProperties(
+          std::move(sources), std::move(failed),
+          static_cast<int>((::GetTickCount64() - run.started_tick) / 1000),
+          run.failed.empty() ? std::string() : run.error_code));
+  if (run.failed.empty()) {
+    NoteFirstTimeAction(kFirstTimeActionImportFinished);
+  }
+  import_run_.reset();
+  registry_.InvalidateAll();
+  NotifySettingsObservers(PhiSettingsChange::kProfiles);
+  if (PhiImportWindow* window = PhiImportWindow::Current()) {
+    window->Finish(run.failed);
+  } else if (!run.failed.empty()) {
+    // The window was closed mid-run; the failure still gets said.
+    std::wstring names;
+    for (PhiImportSource source : run.failed) {
+      names += (names.empty() ? L"" : L", ") +
+               std::wstring(PhiImportSourceName(source));
+    }
+    PhiShellWindow* focused = FocusedUserController();
+    PhiNotice(focused ? focused->shell_hwnd() : nullptr, PhiStr("app.import"),
+              PhiStrF("oobe.importBrowserData.progress.completedWithErrors",
+                      {names})
+                  .c_str());
+  }
 }
 
 void PhiCoordinator::NoteAppActivation(bool active) {
@@ -5361,88 +5663,21 @@ void PhiCoordinator::OnOmniboxResults(int64_t window_id, const char* json) {
 }
 
 void PhiCoordinator::OnImportCompleted(const char* source, bool success) {
-  PhiShellWindow* focused = FocusedUserController();
-  HWND owner = focused ? focused->shell_hwnd() : nullptr;
-  // The Mac's import_finished: the aggregate outcome and the wall time
-  // since the run was accepted; the first success is a first-time action.
-  const uint64_t started = import_started_tick_;
-  import_started_tick_ = 0;
-  CaptureAnalytics(
-      kAnalyticsModuleImport, kEventImportFinished,
-      PhiImportFinishedProperties(
-          success,
-          started ? static_cast<int>((::GetTickCount64() - started) / 1000)
-                  : 0));
-  if (success) {
-    NoteFirstTimeAction(kFirstTimeActionImportFinished);
-  }
-  if (!success) {
-    PhiNotice(owner, L"Import",
-              L"The import did not finish. Close Google Chrome and try "
-              L"again.");
+  // One source of the running import finished (the Mac matches its
+  // continuation by browser type the same way).
+  const std::optional<PhiImportSource> done =
+      PhiImportSourceFromKey(source ? source : "");
+  if (!import_run_ || !import_run_->awaiting || !done ||
+      *done != *import_run_->awaiting) {
+    LOG(WARNING) << "[Import] completion for " << (source ? source : "?")
+                 << " matches no running import; dropped";
     return;
   }
-  // History/cookies/passwords landed in the profile directly; bookmarks
-  // landed in the CHROMIUM model, which the Phi sidebar never shows — copy
-  // them into the client store under one folder (the Mac's
-  // saveChromiumBookmarksToLocalStore step).
-  int copied = 0;
-  std::string profile_id, space_id;
-  if (focused && framework_ &&
-      OwnerForSlot(focused->slot(), &profile_id, &space_id)) {
-    std::optional<base::Value> tree = base::JSONReader::Read(
-        framework_->AllBookmarksJson(ResolveBrowser(focused->slot()).value),
-        base::JSON_PARSE_RFC);
-    if (tree && tree->is_list() && !tree->GetList().empty()) {
-      // The Mac tags a browser import's rows with their origin
-      // (TabSource.chromium = 1, importedBrowserSourceValue); it travels on
-      // the wire as the bookmark's `source`.
-      const store::Source chrome = store::Source::kChromium;
-      const std::string root = tab_store_.AddBookmark(
-          profile_id, space_id, std::string(), "Imported from Chrome",
-          std::string(), /*folder=*/true, std::string(), 0, 0, chrome);
-      const auto copy = [&](const auto& self, const base::ListValue& nodes,
-                            const std::string& parent) -> void {
-        for (const base::Value& v : nodes) {
-          const base::DictValue* d = v.GetIfDict();
-          if (!d) {
-            continue;
-          }
-          const std::string* title = d->FindString("title");
-          const std::string* url = d->FindString("url");
-          if (d->FindBool("folder").value_or(false)) {
-            const base::ListValue* children = d->FindList("children");
-            if (!children || children->empty()) {
-              continue;  // The permanent nodes arrive empty when unused.
-            }
-            const std::string guid = tab_store_.AddBookmark(
-                profile_id, space_id, parent,
-                title && !title->empty() ? *title : "Folder", std::string(),
-                /*folder=*/true, std::string(), 0, 0, chrome);
-            self(self, *children, guid);
-          } else if (url && !url->empty()) {
-            tab_store_.AddBookmark(profile_id, space_id, parent,
-                                   title && !title->empty() ? *title : *url,
-                                   *url, /*folder=*/false, std::string(), 0,
-                                   0, chrome);
-            ++copied;
-          }
-        }
-      };
-      copy(copy, tree->GetList(), root);
-      if (copied == 0) {
-        tab_store_.Remove(root);  // Nothing under it — no empty shell.
-      }
-    }
+  if (import_run_->dispatching) {
+    import_run_->early_result = success;  // RunNextImport takes it from here.
+    return;
   }
-  registry_.InvalidateAll();
-  NotifySettingsObservers(PhiSettingsChange::kProfiles);
-  std::wstring message = L"Import finished.";
-  if (copied > 0) {
-    message += L" " + std::to_wstring(copied) +
-               L" bookmarks were added to \"Imported from Chrome\".";
-  }
-  PhiNotice(owner, L"Import", message.c_str());
+  NoteImportSourceDone(*done, success);
 }
 
 void PhiCoordinator::OnPlaceholderModeChanged(int64_t window_id,

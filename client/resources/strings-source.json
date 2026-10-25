@@ -602,6 +602,18 @@
     "zh-Hant": "匯入"
    }
   },
+  "app.importBrowserData.unavailableInIncognito.dismissButton": {
+   "comment": "importWindow — used at phi_coordinator.cc",
+   "en": "OK"
+  },
+  "app.importBrowserData.unavailableInIncognito.message": {
+   "comment": "importWindow — used at phi_coordinator.cc",
+   "en": "Browser data can't be imported into Incognito. Switch to a regular Space or window, then try again."
+  },
+  "app.importBrowserData.unavailableInIncognito.title": {
+   "comment": "importWindow — used at phi_coordinator.cc",
+   "en": "Can't Import Browser Data"
+  },
   "app.importFinished": {
    "comment": "app — used at phi_coordinator.cc:6408",
    "en": "Import finished.",
@@ -4268,6 +4280,10 @@
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): Spaces list, a row's reorder grip (accessible name, followed by the Space name)",
    "en": "Drag to reorder Space"
   },
+  "localData.bookmarks.importedFromArcFolderTitle": {
+   "comment": "importWindow — the Arc landing folder, used at phi_coordinator.cc",
+   "en": "Imported From Arc"
+  },
   "localData.bookmarks.importedFromGuestFolderTitle": {
    "comment": "bookmarks — Container created when Guest bookmarks are moved into a signed-in account (phi_coordinator.cc)",
    "en": "Imported from Guest"
@@ -4695,48 +4711,6 @@
     "nl": "Geschiedenis, bladwijzers, cookies en wachtwoorden uit je ",
     "zh-Hans": "将从以下位置导入历史记录、书签、Cookie 和密码：",
     "zh-Hant": "將從以下位置匯入瀏覽記錄、書籤、Cookie 與密碼："
-   }
-  },
-  "menuBar.importChromeFailedBody": {
-   "comment": "Import failure alert - body shown when Chrome could not be found",
-   "en": "The import could not start. Is Google Chrome installed?",
-   "translations": {
-    "de": "Der Import konnte nicht gestartet werden. Ist Google Chrome installiert?",
-    "es": "No se pudo iniciar la importación. ¿Está instalado Google Chrome?",
-    "fr": "L’importation n’a pas pu démarrer. Google Chrome est-il installé ?",
-    "ja": "インポートを開始できませんでした。Google Chrome はインストールされていますか?",
-    "ko": "가져오기를 시작할 수 없습니다. Google Chrome이 설치되어 있나요?",
-    "nl": "Het importeren kon niet worden gestart. Is Google Chrome geïnstalleerd?",
-    "zh-Hans": "无法开始导入。是否已安装 Google Chrome？",
-    "zh-Hant": "無法開始匯入。是否已安裝 Google Chrome？"
-   }
-  },
-  "menuBar.importChromePromptBody": {
-   "comment": "Import from Google Chrome confirmation - body listing what is imported",
-   "en": "History, bookmarks, cookies and passwords from your Google Chrome profile will be imported into Phi. This may take a moment.",
-   "translations": {
-    "de": "Verlauf, Lesezeichen, Cookies und Passwörter aus deinem Google Chrome-Profil werden in Phi importiert. Das kann einen Moment dauern.",
-    "es": "El historial, los marcadores, las cookies y las contraseñas de tu perfil de Google Chrome se importarán a Phi. Esto puede tardar un momento.",
-    "fr": "L’historique, les favoris, les cookies et les mots de passe de ton profil Google Chrome seront importés dans Phi. Cela peut prendre un moment.",
-    "ja": "Google Chrome プロファイルの履歴、ブックマーク、Cookie、パスワードが Phi にインポートされます。少し時間がかかることがあります。",
-    "ko": "Google Chrome 프로필의 기록, 북마크, 쿠키 및 비밀번호를 Phi로 가져옵니다. 잠시 시간이 걸릴 수 있습니다.",
-    "nl": "Geschiedenis, bladwijzers, cookies en wachtwoorden uit je Google Chrome-profiel worden geïmporteerd in Phi. Dit kan even duren.",
-    "zh-Hans": "你的 Google Chrome 个人资料中的历史记录、书签、Cookie 和密码将导入 Phi。这可能需要一点时间。",
-    "zh-Hant": "你的 Google Chrome 設定檔中的瀏覽記錄、書籤、Cookie 與密碼將匯入 Phi。這可能需要一點時間。"
-   }
-  },
-  "menuBar.importFromGoogleChrome": {
-   "comment": "menuBar — used at phi_menu_bar.cc:1162",
-   "en": "Import from Google Chrome",
-   "translations": {
-    "de": "Aus Google Chrome importieren",
-    "es": "Importar desde Google Chrome",
-    "fr": "Importer depuis Google Chrome",
-    "ja": "Google Chrome からインポート",
-    "ko": "Google Chrome에서 가져오기",
-    "nl": "Importeren uit Google Chrome",
-    "zh-Hans": "从 Google Chrome 导入",
-    "zh-Hant": "從 Google Chrome 匯入"
    }
   },
   "menuBar.inspectElements": {
@@ -5370,6 +5344,122 @@
   "oobe.guestPrivacy.title": {
    "comment": "onboarding — Mac key (translations by key)",
    "en": "Before we begin"
+  },
+  "oobe.importBrowserData.arc.untitledSpaceName": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Untitled Space"
+  },
+  "oobe.importBrowserData.doneButton": {
+   "comment": "importWindow — used at phi_import_window.cc — closes the window after a failed import",
+   "en": "Done"
+  },
+  "oobe.importBrowserData.filePicker.emptySelectionPlaceholder": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "No file selected"
+  },
+  "oobe.importBrowserData.importButton": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Choose File…"
+  },
+  "oobe.importBrowserData.initialTitle": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Browser data"
+  },
+  "oobe.importBrowserData.progress.completedWithErrors": {
+   "comment": "importWindow — used at phi_import_window.cc, phi_coordinator.cc",
+   "en": "Import completed with errors. Failed to import from: {0}"
+  },
+  "oobe.importBrowserData.progress.importingBrowser": {
+   "comment": "importWindow — used at phi_coordinator.cc — {0} is the browser (Chrome, Edge, Brave, Arc); the Mac's importingChrome generalised",
+   "en": "Importing {0} data...",
+   "translations": {
+    "de": "{0}-Daten werden importiert…",
+    "es": "Importando los datos de {0}…",
+    "fr": "Importation des données {0}…",
+    "ja": "{0}のデータを読み込んでいます…",
+    "ko": "{0} 데이터 가져오는 중…",
+    "nl": "{0}-gegevens worden geïmporteerd…",
+    "zh-Hans": "正在导入 {0} 数据…",
+    "zh-Hant": "正在匯入 {0} 資料…"
+   }
+  },
+  "oobe.importBrowserData.progress.importingFile": {
+   "comment": "importWindow — used at phi_coordinator.cc",
+   "en": "Importing data from file..."
+  },
+  "oobe.importBrowserData.source.arcOption": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "From Arc"
+  },
+  "oobe.importBrowserData.source.braveOption": {
+   "comment": "importWindow — used at phi_import_window.cc (Windows-only row; the Mac's chromeOption with the browser swapped)",
+   "en": "From Brave",
+   "translations": {
+    "de": "Aus Brave",
+    "es": "Desde Brave",
+    "fr": "Depuis Brave",
+    "ja": "Braveから",
+    "ko": "Brave에서",
+    "nl": "Uit Brave",
+    "zh-Hans": "从 Brave 导入",
+    "zh-Hant": "從 Brave"
+   }
+  },
+  "oobe.importBrowserData.source.chromeOption": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "From Chrome"
+  },
+  "oobe.importBrowserData.source.edgeOption": {
+   "comment": "importWindow — used at phi_import_window.cc (Windows-only row; the Mac's chromeOption with the browser swapped)",
+   "en": "From Edge",
+   "translations": {
+    "de": "Aus Edge",
+    "es": "Desde Edge",
+    "fr": "Depuis Edge",
+    "ja": "Edgeから",
+    "ko": "Edge에서",
+    "nl": "Uit Edge",
+    "zh-Hans": "从 Edge 导入",
+    "zh-Hant": "從 Edge"
+   }
+  },
+  "oobe.importBrowserData.source.fileOption": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "From a file"
+  },
+  "oobe.importBrowserData.target.currentSpaceFallback": {
+   "comment": "importWindow — used at phi_coordinator.cc",
+   "en": "Current Space"
+  },
+  "oobe.importBrowserData.windows.closeReminder": {
+   "comment": "importWindow — used at phi_import_window.cc — {0} is the browser; Windows keeps a running browser's history and cookies locked (the Mac's Safari reminder, for every source)",
+   "en": "Please close {0} before importing its data.",
+   "translations": {
+    "de": "Beende {0}, bevor du seine Daten importierst.",
+    "es": "Cierra {0} antes de importar sus datos.",
+    "fr": "Quittez {0} avant d'importer ses données.",
+    "ja": "{0}のデータをインポートする前に、{0}を終了してください。",
+    "ko": "{0} 데이터를 가져오기 전에 {0}를 종료해 주세요.",
+    "nl": "Stop {0} voordat je de gegevens ervan importeert.",
+    "zh-Hans": "请先退出 {0}，然后再导入其数据。",
+    "zh-Hant": "請先結束 {0}，再匯入它的資料。"
+   }
+  },
+  "oobe.importDataType.bookmarksToggle": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Bookmarks"
+  },
+  "oobe.importDataType.browsingHistoryToggle": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Browsing history"
+  },
+  "oobe.importDataType.cookiesToggle": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Cookies"
+  },
+  "oobe.importDataType.extensionsToggle": {
+   "comment": "importWindow — used at phi_import_window.cc",
+   "en": "Extensions"
   },
   "oobe.layoutSelection.balancedOption": {
    "comment": "menuBar — used at phi_menu_bar.cc:354",

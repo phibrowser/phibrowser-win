@@ -58,7 +58,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Uninstall Phi | Help row, removes Phi + Sentinel data | NSIS uninstaller with delete-data checkbox | ✅ | Different entry point (Windows Apps & features), same outcome. |
 | Time Machine backups (policy snapshots + restore) | Help ▸ Time Machine Backups, `docs/time-machine.md` | none | 🔧 | Decided 2026-10-19: implement. A version-keyed snapshot of the user-data folder taken by policy before an update, with a restore entry point (Help ▸ Backups) that also reinstalls the matching build. Needs a Windows twin of `TimeMachineRollbackPolicy.json`. |
 | Export / Import User Data (zip) | Help ▸ Manage User Data | disabled placeholders | 🔧 | `user-data-parity.md` S6 lists it as missing. |
-| Import from another browser | Chrome / Safari / Arc / Dia / file | Google Chrome only | ◐ | Edge is the obvious Windows addition; Safari/Arc(Mac)/Dia are Mac-only sources. |
+| Import from another browser | Chrome / Safari / Arc / Dia / file | Chrome / Edge / Brave / Arc for Windows / file | ✅ | `browser-import-port.md` (2026-10-23). Safari and Dia are Mac-only; Edge and Brave are the Windows additions. Cookies are offered only for a source without an app-bound key (current Chrome and Edge seal cookies and passwords as `v20`, which no other app can read). Stays open naming the failed sources instead of closing. |
 | Migrate from Another Browser (Arc / Dia / Zen Spaces wizard) | wizard rebuilds profiles + Spaces | none | 🔧 | Decided 2026-10-19: implement for the sources that exist on Windows (Zen; Arc only if a Windows install is found). Dia is Mac-only. Re-adds `browser_migration_finished` to `analytics.md`. |
 | AppleScript suite | `Phi.sdef`, ~16 commands | — | — | Platform scripting. The control pipe (`tools/phi-browser-skill`) is the Windows automation surface and is a superset. |
 | Deeplink `phi://native/openpage?page=settings…` | opens a Settings section | `phi://newtab` only | 🔧 | Small: a protocol handler registration plus the Settings route. |
@@ -179,12 +179,12 @@ Two standing decisions cover many rows and are not repeated in full:
 | Folio: Save to Folio, Open Folio, auto-save on site actions, Add Note | yes | yes | ✅ | `folio-port.md`. |
 | Native Folio library (All / Articles / Videos / Highlights, reading mode) | `docs/folio-native-library.md` | Mirage `library.html` | 🔧 | Decided 2026-10-19: implement the native library (it is also the Library's Folio section above); Open Folio then stops opening `library.html`. Video articles (`videoGist`) come with it. |
 
-## 7. Summary (2026-10-19)
+## 7. Summary (2026-10-19; import row ✅ 2026-10-23)
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 49 |
-| ◐ partial | 19 |
+| ✅ ported | 50 |
+| ◐ partial | 18 |
 | 🔧 to implement | 25 |
 | ⛔ deliberately left | 19 |
 | ❓ needs a decision | 0 |

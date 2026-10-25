@@ -1276,26 +1276,8 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     }
     case kCmdImportBrowser:
-      if (c->MenuFramework()) {
-        // The confirm IS this client's import window: the Mac's
-        // import_viewed as it opens, its selection and start as the user
-        // commits (one source, one type set), nothing when it is refused.
-        if (c->MenuWindowHost()) {
-          c->MenuWindowHost()->NoteImportPrompted();
-        }
-        if (PhiConfirm(c->MenuShellWindow(),
-                       PhiStr("menuBar.importFromGoogleChrome"),
-                       PhiStr("menuBar.importChromePromptBody"),
-                       PhiStr("app.import"), /*destructive=*/false)) {
-          if (c->MenuFramework()->StartChromeImport(target.value)) {
-            if (c->MenuWindowHost()) {
-              c->MenuWindowHost()->NoteImportStarted();
-            }
-          } else {
-            PhiNotice(c->MenuShellWindow(), PhiStr("app.import"),
-                      PhiStr("menuBar.importChromeFailedBody"));
-          }
-        }
+      if (c->MenuWindowHost()) {
+        c->MenuWindowHost()->RequestBrowserImport();
       }
       return true;
     case kCmdNewTabToRight: {

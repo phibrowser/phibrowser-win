@@ -18,18 +18,6 @@
 
 namespace phi_client {
 
-namespace {
-
-base::ListValue StringList(std::initializer_list<const char*> items) {
-  base::ListValue list;
-  for (const char* item : items) {
-    list.Append(item);
-  }
-  return list;
-}
-
-}  // namespace
-
 base::DictValue PhiAppOpenedProperties(const model::PhiSettings& settings) {
   base::DictValue props;
   props.Set("from_background", false);
@@ -327,33 +315,45 @@ base::DictValue PhiImportViewedProperties() {
   return props;
 }
 
-base::DictValue PhiImportTypesSelectedProperties() {
+namespace {
+
+base::ListValue SortedUnique(std::vector<std::string> values) {
+  std::sort(values.begin(), values.end());
+  values.erase(std::unique(values.begin(), values.end()), values.end());
+  base::ListValue list;
+  for (std::string& value : values) {
+    list.Append(std::move(value));
+  }
+  return list;
+}
+
+}  // namespace
+
+base::DictValue PhiImportTypesSelectedProperties(
+    const std::string& source,
+    std::vector<std::string> types) {
   base::DictValue props;
-  props.Set("source_browser", "chrome");
-  // What StartChromeImport takes, in the Mac's normalised vocabulary and
-  // its sorted order (passwords are not a type the Mac reports).
-  props.Set("types", StringList({"bookmarks", "cookies", "extensions",
-                                 "history"}));
+  props.Set("source_browser", source);
+  props.Set("types", SortedUnique(std::move(types)));
   return props;
 }
 
-base::DictValue PhiImportStartedProperties() {
+base::DictValue PhiImportStartedProperties(std::vector<std::string> sources) {
   base::DictValue props;
-  props.Set("source_browsers", StringList({"chrome"}));
+  props.Set("source_browsers", SortedUnique(std::move(sources)));
   return props;
 }
 
-base::DictValue PhiImportFinishedProperties(bool success,
-                                            int duration_seconds) {
-  base::DictValue props = PhiImportStartedProperties();
-  props.Set("success", success);
-  props.Set("failed_sources",
-            success ? base::ListValue() : StringList({"chrome"}));
+base::DictValue PhiImportFinishedProperties(std::vector<std::string> sources,
+                                            std::vector<std::string> failed,
+                                            int duration_seconds,
+                                            const std::string& error_code) {
+  base::DictValue props = PhiImportStartedProperties(std::move(sources));
+  props.Set("success", failed.empty());
+  props.Set("failed_sources", SortedUnique(std::move(failed)));
   props.Set("duration_seconds", std::max(0, duration_seconds));
-  if (!success) {
-    // The framework reports one bit; the Mac's code for "a source's
-    // importer failed" is the one it maps to.
-    props.Set("error_code", "source_import_failed");
+  if (!error_code.empty()) {
+    props.Set("error_code", error_code);
   }
   return props;
 }

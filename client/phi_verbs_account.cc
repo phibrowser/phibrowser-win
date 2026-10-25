@@ -18,6 +18,7 @@
 #include "phibrowser-win/client/phi_auth.h"
 #include "phibrowser-win/client/phi_chromium_sync.h"
 #include "phibrowser-win/client/phi_sync_key_service.h"
+#include "phibrowser-win/client/phi_import_window.h"
 #include "phibrowser-win/client/phi_sync_setup_window.h"
 #include "phibrowser-win/client/phi_control_dispatcher.h"
 #include "phibrowser-win/client/phi_coordinator.h"
@@ -471,6 +472,42 @@ PhiVerbResult PhiControlDispatcher::VerbSyncSetupDrive(
     return PhiVerbResult::Ok(std::move(out));
   }
   return VerbSyncSetupStatus(ctx);
+}
+
+PhiVerbResult PhiControlDispatcher::VerbImportOpen(const PhiVerbContext& ctx) {
+  coordinator_->RequestBrowserImport();
+  return VerbImportStatus(ctx);
+}
+
+PhiVerbResult PhiControlDispatcher::VerbImportStatus(
+    const PhiVerbContext& ctx) {
+  PhiImportWindow* window = PhiImportWindow::Current();
+  base::DictValue out;
+  if (window) {
+    std::optional<base::DictValue> state =
+        base::JSONReader::ReadDict(window->StateJson(), base::JSON_PARSE_RFC);
+    if (state) {
+      out = std::move(*state);
+    }
+    out.Set("hwnd", static_cast<double>(
+                        reinterpret_cast<uintptr_t>(window->hwnd())));
+  }
+  out.Set("open", window != nullptr);
+  out.Set("running", coordinator_->BrowserImportRunning());
+  return PhiVerbResult::Ok(std::move(out));
+}
+
+PhiVerbResult PhiControlDispatcher::VerbImportDrive(const PhiVerbContext& ctx) {
+  PhiImportWindow* window = PhiImportWindow::Current();
+  if (!window) {
+    return PhiVerbResult::Fail(PhiErrorCode::kInvalidPayload, "not_open");
+  }
+  const std::string error =
+      window->Drive(ctx.params.String("action"), ctx.params.String("value"));
+  if (!error.empty()) {
+    return PhiVerbResult::Fail(PhiErrorCode::kInvalidPayload, error);
+  }
+  return VerbImportStatus(ctx);
 }
 
 }  // namespace phi_client

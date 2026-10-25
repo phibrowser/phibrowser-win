@@ -1029,6 +1029,14 @@ constexpr PhiParamField kSyncSetupDrive[] = {
      "code: the text; local: \"<row>:<remote row>|new\"; remote: "
      "\"<row>:create|assign:<local row>|none\"."},
 };
+constexpr PhiParamField kImportDrive[] = {
+    {"action", kParamString, kRequired, "",
+     "expand, toggle, profile, file, import, cancel."},
+    {"value", kParamString, kOptional, "",
+     "expand: a source (chrome, edge, brave, arc, file); toggle: "
+     "\"<source>:<bookmarks|history|cookies|extensions>\"; profile: "
+     "\"<source>:<index>\" (an Arc Space for arc); file: a path."},
+};
 constexpr PhiParamField kFeedbackAccount[] = {
     {"userId", kParamString, kOptional, "", "A stand-in account id."},
     {"email", kParamString, kOptional, "", "Its email."},
@@ -1828,6 +1836,23 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        "test_rig_only not_open wrong_page unknown_action invalid_value busy "
        "undecided",
        "Presses a control of the sync setup window by name."},
+      // --- Import from another browser (phi_import_window.h) ---------------------
+      {"agentSpace.import.open", "", kScopeNone, kHost, kVerbPlain, {}, false,
+       false, &Call<&PhiControlDispatcher::VerbImportOpen>,
+       "test_rig_only not_open",
+       "Opens the import window for the focused window's Space, as the app "
+       "menu's \"Import from another browser…\" does."},
+      {"agentSpace.import.status", "", kScopeNone, kHost, kVerbPlain, {},
+       false, false, &Call<&PhiControlDispatcher::VerbImportStatus>,
+       "test_rig_only not_open",
+       "The import window's rows, selections, phase and status line, and "
+       "whether an import is running."},
+      {"agentSpace.import.drive", "", kScopeNone, kHost, kVerbPlain,
+       kImportDrive, false, false,
+       &Call<&PhiControlDispatcher::VerbImportDrive>,
+       "test_rig_only not_open wrong_phase unknown_action invalid_value "
+       "nothing_selected",
+       "Presses a control of the import window by name."},
       {"agentSpace.sync.keyOp", "", kScopeNone, kHost, kVerbPlain, kSyncKeyOp,
        false, false, &Call<&PhiControlDispatcher::VerbSyncKeyOp>,
        "test_rig_only invalid_payload no_key_layer",

@@ -456,11 +456,9 @@ class WindowHost {
   // the analytics count (phi_client_analytics.h).
   virtual void NoteAppActivation(bool active) = 0;
   virtual void NoteUserSpaceSwitched() = 0;
-  // The menu bar's "Import from Google Chrome…": the prompt shown, the run
-  // accepted (the Mac's import_viewed / import_types_selected /
-  // import_started; the framework's completion is import_finished).
-  virtual void NoteImportPrompted() = 0;
-  virtual void NoteImportStarted() = 0;
+  // "Import from another browser…": opens (or fronts) the import window
+  // targeting the focused window's Space (phi_import_window.h).
+  virtual void RequestBrowserImport() = 0;
   // The client's one analytics capture path (phi_client_analytics.h):
   // the harness ring, then the collector's consent gate and allow-list.
   virtual void CaptureAnalytics(const char* module,

@@ -868,6 +868,39 @@
    "zh-Hans": "导入",
    "zh-Hant": "匯入"
   },
+  "app.importBrowserData.unavailableInIncognito.dismissButton": {
+   "de": "OK",
+   "en": "OK",
+   "es": "OK",
+   "fr": "OK",
+   "ja": "OK",
+   "ko": "확인",
+   "nl": "OK",
+   "zh-Hans": "好",
+   "zh-Hant": "好"
+  },
+  "app.importBrowserData.unavailableInIncognito.message": {
+   "de": "Browserdaten können nicht in Inkognito importiert werden. Wechsle zu einem normalen Space oder Fenster und versuche es dann erneut.",
+   "en": "Browser data can't be imported into Incognito. Switch to a regular Space or window, then try again.",
+   "es": "Los datos del navegador no se pueden importar en Incógnito. Cambia a un Espacio o a una ventana normal y vuelve a intentarlo.",
+   "fr": "Les données du navigateur ne peuvent pas être importées en navigation privée. Passez à un Espace normal ou à une fenêtre normale, puis réessayez.",
+   "ja": "シークレットモードにはブラウザデータをインポートできません。通常のスペースまたはウインドウに切り替えてから、もう一度お試しください。",
+   "ko": "시크릿 모드로는 브라우저 데이터를 가져올 수 없어요. 일반 스페이스나 윈도우로 전환한 후 다시 시도해 주세요.",
+   "nl": "Browsergegevens kunnen niet in incognito worden geïmporteerd. Schakel over naar een gewone Space of een gewoon venster en probeer het opnieuw.",
+   "zh-Hans": "浏览器数据无法导入无痕模式。请切换到常规空间或窗口后再试。",
+   "zh-Hant": "瀏覽器資料無法匯入無痕模式。請切換到一般空間或視窗，然後再試一次。"
+  },
+  "app.importBrowserData.unavailableInIncognito.title": {
+   "de": "Browserdaten können nicht importiert werden",
+   "en": "Can't Import Browser Data",
+   "es": "No se pueden importar los datos del navegador",
+   "fr": "Impossible d'importer les données du navigateur",
+   "ja": "ブラウザデータをインポートできません",
+   "ko": "브라우저 데이터를 가져올 수 없어요",
+   "nl": "Browsergegevens kunnen niet worden geïmporteerd",
+   "zh-Hans": "无法导入浏览器数据",
+   "zh-Hant": "無法匯入瀏覽器資料"
+  },
   "app.importFinished": {
    "de": "Import abgeschlossen.",
    "en": "Import finished.",
@@ -4942,6 +4975,17 @@
    "zh-Hans": "拖移以调整空间顺序",
    "zh-Hant": "拖曳來重新排序空間"
   },
+  "localData.bookmarks.importedFromArcFolderTitle": {
+   "de": "Aus Arc importiert",
+   "en": "Imported From Arc",
+   "es": "Importado desde Arc",
+   "fr": "Importés depuis Arc",
+   "ja": "Arcからの読み込み",
+   "ko": "Arc에서 가져옴",
+   "nl": "Geïmporteerd uit Arc",
+   "zh-Hans": "从 Arc 导入",
+   "zh-Hant": "從 Arc 匯入"
+  },
   "localData.bookmarks.importedFromGuestFolderTitle": {
    "de": "Aus dem Gastmodus importiert",
    "en": "Imported from Guest",
@@ -5282,39 +5326,6 @@
    "nl": "Geschiedenis, bladwijzers, cookies en wachtwoorden uit je ",
    "zh-Hans": "将从以下位置导入历史记录、书签、Cookie 和密码：",
    "zh-Hant": "將從以下位置匯入瀏覽記錄、書籤、Cookie 與密碼："
-  },
-  "menuBar.importChromeFailedBody": {
-   "de": "Der Import konnte nicht gestartet werden. Ist Google Chrome installiert?",
-   "en": "The import could not start. Is Google Chrome installed?",
-   "es": "No se pudo iniciar la importación. ¿Está instalado Google Chrome?",
-   "fr": "L’importation n’a pas pu démarrer. Google Chrome est-il installé ?",
-   "ja": "インポートを開始できませんでした。Google Chrome はインストールされていますか?",
-   "ko": "가져오기를 시작할 수 없습니다. Google Chrome이 설치되어 있나요?",
-   "nl": "Het importeren kon niet worden gestart. Is Google Chrome geïnstalleerd?",
-   "zh-Hans": "无法开始导入。是否已安装 Google Chrome？",
-   "zh-Hant": "無法開始匯入。是否已安裝 Google Chrome？"
-  },
-  "menuBar.importChromePromptBody": {
-   "de": "Verlauf, Lesezeichen, Cookies und Passwörter aus deinem Google Chrome-Profil werden in Phi importiert. Das kann einen Moment dauern.",
-   "en": "History, bookmarks, cookies and passwords from your Google Chrome profile will be imported into Phi. This may take a moment.",
-   "es": "El historial, los marcadores, las cookies y las contraseñas de tu perfil de Google Chrome se importarán a Phi. Esto puede tardar un momento.",
-   "fr": "L’historique, les favoris, les cookies et les mots de passe de ton profil Google Chrome seront importés dans Phi. Cela peut prendre un moment.",
-   "ja": "Google Chrome プロファイルの履歴、ブックマーク、Cookie、パスワードが Phi にインポートされます。少し時間がかかることがあります。",
-   "ko": "Google Chrome 프로필의 기록, 북마크, 쿠키 및 비밀번호를 Phi로 가져옵니다. 잠시 시간이 걸릴 수 있습니다.",
-   "nl": "Geschiedenis, bladwijzers, cookies en wachtwoorden uit je Google Chrome-profiel worden geïmporteerd in Phi. Dit kan even duren.",
-   "zh-Hans": "你的 Google Chrome 个人资料中的历史记录、书签、Cookie 和密码将导入 Phi。这可能需要一点时间。",
-   "zh-Hant": "你的 Google Chrome 設定檔中的瀏覽記錄、書籤、Cookie 與密碼將匯入 Phi。這可能需要一點時間。"
-  },
-  "menuBar.importFromGoogleChrome": {
-   "de": "Aus Google Chrome importieren",
-   "en": "Import from Google Chrome",
-   "es": "Importar desde Google Chrome",
-   "fr": "Importer depuis Google Chrome",
-   "ja": "Google Chrome からインポート",
-   "ko": "Google Chrome에서 가져오기",
-   "nl": "Importeren uit Google Chrome",
-   "zh-Hans": "从 Google Chrome 导入",
-   "zh-Hant": "從 Google Chrome 匯入"
   },
   "menuBar.inspectElements": {
    "de": "Elemente untersuchen",
@@ -5879,6 +5890,215 @@
    "nl": "Voordat we beginnen",
    "zh-Hans": "开始之前",
    "zh-Hant": "開始之前"
+  },
+  "oobe.importBrowserData.arc.untitledSpaceName": {
+   "de": "Unbenannter Space",
+   "en": "Untitled Space",
+   "es": "Espacio sin título",
+   "fr": "Espace sans titre",
+   "ja": "無題のスペース",
+   "ko": "이름 없는 스페이스",
+   "nl": "Naamloze Space",
+   "zh-Hans": "未命名空间",
+   "zh-Hant": "未命名空間"
+  },
+  "oobe.importBrowserData.doneButton": {
+   "de": "Fertig",
+   "en": "Done",
+   "es": "Listo",
+   "fr": "Terminé",
+   "ja": "完了",
+   "ko": "완료",
+   "nl": "Gereed",
+   "zh-Hans": "完成",
+   "zh-Hant": "完成"
+  },
+  "oobe.importBrowserData.filePicker.emptySelectionPlaceholder": {
+   "de": "Keine Datei ausgewählt",
+   "en": "No file selected",
+   "es": "Ningún archivo seleccionado",
+   "fr": "Aucun fichier sélectionné",
+   "ja": "ファイルが選択されていません",
+   "ko": "선택된 파일 없음",
+   "nl": "Geen bestand geselecteerd",
+   "zh-Hans": "未选择文件",
+   "zh-Hant": "尚未選擇檔案"
+  },
+  "oobe.importBrowserData.importButton": {
+   "de": "Datei auswählen…",
+   "en": "Choose File…",
+   "es": "Seleccionar archivo…",
+   "fr": "Choisir un fichier…",
+   "ja": "ファイルを選択…",
+   "ko": "파일 선택…",
+   "nl": "Kies bestand…",
+   "zh-Hans": "选取文件…",
+   "zh-Hant": "選擇檔案…"
+  },
+  "oobe.importBrowserData.initialTitle": {
+   "de": "Browserdaten",
+   "en": "Browser data",
+   "es": "Datos del navegador",
+   "fr": "Données du navigateur",
+   "ja": "ブラウザデータ",
+   "ko": "브라우저 데이터",
+   "nl": "Browsergegevens",
+   "zh-Hans": "浏览器数据",
+   "zh-Hant": "瀏覽器資料"
+  },
+  "oobe.importBrowserData.progress.completedWithErrors": {
+   "de": "Import mit Fehlern abgeschlossen. Import aus folgenden Quellen fehlgeschlagen: {0}",
+   "en": "Import completed with errors. Failed to import from: {0}",
+   "es": "La importación se completó con errores. No se pudo importar desde: {0}",
+   "fr": "Importation terminée avec des erreurs. Échec de l'importation depuis : {0}",
+   "ja": "読み込みは完了しましたが、エラーが発生しました。読み込みに失敗したブラウザ: {0}",
+   "ko": "가져오기가 완료됐지만 다음에서 가져오지 못했어요: {0}",
+   "nl": "Import voltooid met fouten. Importeren is mislukt uit: {0}",
+   "zh-Hans": "导入已完成，但出现错误。未能从以下来源导入：{0}",
+   "zh-Hant": "匯入完成，但發生錯誤。無法從以下來源匯入：{0}"
+  },
+  "oobe.importBrowserData.progress.importingBrowser": {
+   "de": "{0}-Daten werden importiert…",
+   "en": "Importing {0} data...",
+   "es": "Importando los datos de {0}…",
+   "fr": "Importation des données {0}…",
+   "ja": "{0}のデータを読み込んでいます…",
+   "ko": "{0} 데이터 가져오는 중…",
+   "nl": "{0}-gegevens worden geïmporteerd…",
+   "zh-Hans": "正在导入 {0} 数据…",
+   "zh-Hant": "正在匯入 {0} 資料…"
+  },
+  "oobe.importBrowserData.progress.importingFile": {
+   "de": "Daten werden aus Datei importiert…",
+   "en": "Importing data from file...",
+   "es": "Importando los datos del archivo…",
+   "fr": "Importation des données depuis le fichier…",
+   "ja": "ファイルからデータを読み込んでいます…",
+   "ko": "파일에서 데이터 가져오는 중…",
+   "nl": "Gegevens uit bestand worden geïmporteerd…",
+   "zh-Hans": "正在从文件导入数据…",
+   "zh-Hant": "正在從檔案匯入資料…"
+  },
+  "oobe.importBrowserData.source.arcOption": {
+   "de": "Aus Arc",
+   "en": "From Arc",
+   "es": "Desde Arc",
+   "fr": "Depuis Arc",
+   "ja": "Arcから",
+   "ko": "Arc에서",
+   "nl": "Uit Arc",
+   "zh-Hans": "从 Arc 导入",
+   "zh-Hant": "從 Arc"
+  },
+  "oobe.importBrowserData.source.braveOption": {
+   "de": "Aus Brave",
+   "en": "From Brave",
+   "es": "Desde Brave",
+   "fr": "Depuis Brave",
+   "ja": "Braveから",
+   "ko": "Brave에서",
+   "nl": "Uit Brave",
+   "zh-Hans": "从 Brave 导入",
+   "zh-Hant": "從 Brave"
+  },
+  "oobe.importBrowserData.source.chromeOption": {
+   "de": "Aus Chrome",
+   "en": "From Chrome",
+   "es": "Desde Chrome",
+   "fr": "Depuis Chrome",
+   "ja": "Chromeから",
+   "ko": "Chrome에서",
+   "nl": "Uit Chrome",
+   "zh-Hans": "从 Chrome 导入",
+   "zh-Hant": "從 Chrome"
+  },
+  "oobe.importBrowserData.source.edgeOption": {
+   "de": "Aus Edge",
+   "en": "From Edge",
+   "es": "Desde Edge",
+   "fr": "Depuis Edge",
+   "ja": "Edgeから",
+   "ko": "Edge에서",
+   "nl": "Uit Edge",
+   "zh-Hans": "从 Edge 导入",
+   "zh-Hant": "從 Edge"
+  },
+  "oobe.importBrowserData.source.fileOption": {
+   "de": "Aus einer Datei",
+   "en": "From a file",
+   "es": "Desde un archivo",
+   "fr": "Depuis un fichier",
+   "ja": "ファイルから",
+   "ko": "파일에서",
+   "nl": "Uit een bestand",
+   "zh-Hans": "从文件导入",
+   "zh-Hant": "從檔案"
+  },
+  "oobe.importBrowserData.target.currentSpaceFallback": {
+   "de": "Aktueller Space",
+   "en": "Current Space",
+   "es": "Espacio actual",
+   "fr": "Espace actuel",
+   "ja": "現在のスペース",
+   "ko": "현재 스페이스",
+   "nl": "Huidige Space",
+   "zh-Hans": "当前空间",
+   "zh-Hant": "目前空間"
+  },
+  "oobe.importBrowserData.windows.closeReminder": {
+   "de": "Beende {0}, bevor du seine Daten importierst.",
+   "en": "Please close {0} before importing its data.",
+   "es": "Cierra {0} antes de importar sus datos.",
+   "fr": "Quittez {0} avant d'importer ses données.",
+   "ja": "{0}のデータをインポートする前に、{0}を終了してください。",
+   "ko": "{0} 데이터를 가져오기 전에 {0}를 종료해 주세요.",
+   "nl": "Stop {0} voordat je de gegevens ervan importeert.",
+   "zh-Hans": "请先退出 {0}，然后再导入其数据。",
+   "zh-Hant": "請先結束 {0}，再匯入它的資料。"
+  },
+  "oobe.importDataType.bookmarksToggle": {
+   "de": "Lesezeichen",
+   "en": "Bookmarks",
+   "es": "Marcadores",
+   "fr": "Favoris",
+   "ja": "ブックマーク",
+   "ko": "북마크",
+   "nl": "Bladwijzers",
+   "zh-Hans": "书签",
+   "zh-Hant": "書籤"
+  },
+  "oobe.importDataType.browsingHistoryToggle": {
+   "de": "Browserverlauf",
+   "en": "Browsing history",
+   "es": "Historial de navegación",
+   "fr": "Historique de navigation",
+   "ja": "閲覧履歴",
+   "ko": "방문 기록",
+   "nl": "Browsegeschiedenis",
+   "zh-Hans": "浏览历史记录",
+   "zh-Hant": "瀏覽記錄"
+  },
+  "oobe.importDataType.cookiesToggle": {
+   "de": "Cookies",
+   "en": "Cookies",
+   "es": "Cookies",
+   "fr": "Cookies",
+   "ja": "Cookie",
+   "ko": "쿠키",
+   "nl": "Cookies",
+   "zh-Hans": "Cookie",
+   "zh-Hant": "Cookie"
+  },
+  "oobe.importDataType.extensionsToggle": {
+   "de": "Erweiterungen",
+   "en": "Extensions",
+   "es": "Extensiones",
+   "fr": "Extensions",
+   "ja": "拡張機能",
+   "ko": "확장 프로그램",
+   "nl": "Extensies",
+   "zh-Hans": "扩展程序",
+   "zh-Hant": "擴充功能"
   },
   "oobe.layoutSelection.balancedOption": {
    "de": "Ausgewogen",

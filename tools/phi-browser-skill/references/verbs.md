@@ -97,7 +97,7 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 
 ## Verbs
 
-155 rows, 152 distinct names.
+158 rows, 155 distinct names.
 
 ### The agent-Space lifecycle
 
@@ -2162,6 +2162,41 @@ Presses a control of the sync setup window by name.
 | --- | --- | --- | --- | --- |
 | `action` | string | yes | — | continue, saved, copy, requestApproval, useRecovery, cancel, code, submit, tryAnother, tryAgain, local, remote, continueProfiles, finishLater. |
 | `value` | string | no | — | code: the text; local: "<row>:<remote row>\|new"; remote: "<row>:create\|assign:<local row>\|none". |
+
+### Import from another browser (phi_import_window.h)
+
+#### `agentSpace.import.open`
+
+Opens the import window for the focused window's Space, as the app menu's "Import from another browser…" does.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `not_open`
+
+*No payload fields.*
+
+#### `agentSpace.import.status`
+
+The import window's rows, selections, phase and status line, and whether an import is running.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `not_open`
+
+*No payload fields.*
+
+#### `agentSpace.import.drive`
+
+Presses a control of the import window by name.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `not_open`, `wrong_phase`, `unknown_action`, `invalid_value`, `nothing_selected`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `action` | string | yes | — | expand, toggle, profile, file, import, cancel. |
+| `value` | string | no | — | expand: a source (chrome, edge, brave, arc, file); toggle: "<source>:<bookmarks\|history\|cookies\|extensions>"; profile: "<source>:<index>" (an Arc Space for arc); file: a path. |
 
 #### `agentSpace.sync.keyOp`
 
