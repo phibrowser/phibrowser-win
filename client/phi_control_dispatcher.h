@@ -601,7 +601,7 @@ class PhiControlDispatcher : public PhiControlDelegate {
   static constexpr UINT kAwaitWindowPollMs = 250;
   // Verbs and consent decisions that arrived while a modal loop was on the
   // UI thread, in arrival order (see RunOrDeferUiCall).
-  std::deque<PhiUiCall*> deferred_ui_calls_;
+  RAW_PTR_EXCLUSION std::deque<PhiUiCall*> deferred_ui_calls_;
   // Admissions parked until a window can own the turn-on prompt.
   std::vector<PhiUiCall*> awaiting_window_;
   bool draining_ui_calls_ = false;
