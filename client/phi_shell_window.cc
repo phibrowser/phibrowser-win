@@ -2334,6 +2334,9 @@ PhiSidebarRects PhiShellWindow::BandRects(const Layout& layout) const {
 }
 
 HWND PhiShellWindow::SidebarShellWindow() const {
+  if (floating_drag_ && floating_sidebar_) {
+    return floating_sidebar_;  // The drag runs on the panel showing its rows.
+  }
   return shell_hwnd_;
 }
 
@@ -6478,6 +6481,13 @@ void PhiShellWindow::DestroyFloatingPanel() {
   if (!floating_sidebar_) {
     return;
   }
+  if (floating_drag_) {
+    sidebar_->AbortDrag();  // Its capture and timers live on the panel.
+    floating_drag_ = false;
+    if (floating_forward_depth_ == 0) {
+      floating_layout_ = false;
+    }
+  }
   HWND panel = floating_sidebar_;
   floating_sidebar_ = nullptr;
   floating_expanded_ = false;
@@ -6995,6 +7005,7 @@ void PhiShellWindow::PaintFloatingSidebar(HDC dc) {
   // include_child_controls: the panel has no live EDIT; the address text
   // is painted by hand where the layout has a field.
   PaintChrome(mem, layout, palette, /*include_child_controls=*/true);
+  sidebar_->DrawDragIndicator(mem);  // As the shell's paint: after the rows.
   ::BitBlt(dc, 0, 0, panel_rc.right, panel_rc.bottom, mem, 0,
            floating_offset_y_, SRCCOPY);
   ::SelectObject(mem, old);
@@ -7027,11 +7038,19 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
     return ::DefWindowProcW(hwnd, msg, wparam, lparam);
   }
   // Events forward through the docked sidebar's handlers under the
-  // expanded-layout override, shifted by the panel's band offset.
+  // expanded-layout override, shifted by the panel's band offset. The
+  // outermost one settles the override: it stays while a drag armed here is
+  // in flight (a release inside a commit re-enters through
+  // WM_CAPTURECHANGED, which must not end the drag under its own commit).
   const auto forward = [&](auto&& call) {
+    ++self->floating_forward_depth_;
     self->floating_layout_ = true;
     call();  // Reads the rows as they are (built for this geometry).
-    self->floating_layout_ = false;
+    if (--self->floating_forward_depth_ == 0) {
+      self->floating_drag_ =
+          self->floating_drag_ && self->sidebar_->drag_armed();
+      self->floating_layout_ = self->floating_drag_;
+    }
     ::InvalidateRect(hwnd, nullptr, FALSE);
   };
   switch (msg) {
@@ -7053,6 +7072,19 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       return 0;
     case WM_MOUSEMOVE:
       if (self) {
+        if (self->floating_drag_) {
+          // The docked band's drag move; once it lifts, the session holds
+          // the capture here, so the moves keep coming off the panel too.
+          forward([&] {
+            if (wparam & MK_LBUTTON) {
+              self->sidebar_->UpdateDrag({GET_X_LPARAM(lparam),
+                                          GET_Y_LPARAM(lparam) +
+                                              self->floating_offset_y_});
+              self->UpdateChromeTip(std::wstring());
+            }
+          });
+          return 0;
+        }
         if (!self->floating_expanded_) {
           return 0;  // Tucked: the tick's dwell decides.
         }
@@ -7074,8 +7106,22 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
         }
         forward([&] {
           self->OnChromeClick(pt.x, pt.y);
-          self->sidebar_->AbortDrag();  // Drags never start from the panel.
+          // A press on a row arms a drag, and a tab activates on its
+          // release: the panel runs it to the end, as the docked band does.
+          self->floating_drag_ = self->sidebar_->drag_armed();
         });
+        return 0;
+      }
+      break;
+    case WM_LBUTTONUP:
+      if (self && self->floating_drag_) {
+        forward([&] { self->sidebar_->CommitDrag(); });
+        return 0;
+      }
+      break;
+    case WM_CAPTURECHANGED:
+      if (self && self->floating_drag_) {
+        forward([&] { self->sidebar_->AbortDrag(); });
         return 0;
       }
       break;
@@ -7111,6 +7157,21 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
     case WM_TIMER:
       if (self && wparam == kFloatingTickTimer) {
         self->FloatingSidebarTick();
+        return 0;
+      }
+      // A panel drag's own clocks (SidebarShellWindow is the panel), routed
+      // as the shell routes them.
+      if (self && wparam == PhiSidebarDragSession::kHoverExpandTimer) {
+        ::KillTimer(hwnd, PhiSidebarDragSession::kHoverExpandTimer);
+        forward([&] { self->sidebar_->OnHoverExpandTimer(); });
+        return 0;
+      }
+      if (self && wparam == PhiSidebarDragSession::kSlideTimer) {
+        bool running = false;
+        forward([&] { running = self->sidebar_->OnSlideTimer(); });
+        if (!running) {
+          ::KillTimer(hwnd, PhiSidebarDragSession::kSlideTimer);
+        }
         return 0;
       }
       break;
@@ -7985,6 +8046,17 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         }
       }
       return 0;
+    case WM_ENABLE:
+      // A modal shell dialog (the file picker) hands the activation back
+      // while its owner is still disabled, and a disabled window's child
+      // cannot take the focus: the forward above left the keyboard on the
+      // shell itself, where every key is lost. Forward it again once the
+      // dialog's run enables the owner.
+      if (self && wparam && ::GetActiveWindow() == hwnd &&
+          ::GetFocus() == hwnd) {
+        ::PostMessageW(hwnd, WM_SETFOCUS, 0, 0);
+      }
+      return ::DefWindowProcW(hwnd, msg, wparam, lparam);
     case WM_CTLCOLOREDIT:
       // The EDIT would otherwise paint itself in SYSTEM colours; the session
       // hands it the palette's brush instead.

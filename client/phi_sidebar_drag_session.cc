@@ -78,6 +78,10 @@ HWND PhiSidebarDragSession::shell_hwnd() const {
   return shell_->SidebarShellWindow();
 }
 
+HWND PhiSidebarDragSession::frame_hwnd() const {
+  return shell_->SidebarOwner()->shell_hwnd();
+}
+
 PhiSpacesStrip* PhiSidebarDragSession::strip() const {
   return shell_->SidebarSpacesStrip();
 }
@@ -710,7 +714,7 @@ PhiDropBand PhiSidebarDragSession::DropBandAt(
   POINT screen = client_pt;
   ::ClientToScreen(shell_hwnd(), &screen);
   RECT window_rect = {};
-  ::GetWindowRect(shell_hwnd(), &window_rect);
+  ::GetWindowRect(frame_hwnd(), &window_rect);
   if (!::PtInRect(&window_rect, screen)) {
     return PhiDropBand::kOutside;
   }
@@ -1325,7 +1329,7 @@ bool PhiSidebarDragSession::DragImageInside(POINT pt) {
   POINT screen = pt;
   ::ClientToScreen(shell_hwnd(), &screen);
   RECT window_rect = {};
-  ::GetWindowRect(shell_hwnd(), &window_rect);
+  ::GetWindowRect(frame_hwnd(), &window_rect);
   if (::PtInRect(&window_rect, screen)) {
     return false;  // The page, the header, the caption band.
   }

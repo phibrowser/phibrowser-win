@@ -61,7 +61,8 @@ PhiReaderPanel::PhiReaderPanel(int64_t window_id,
   if (browser_hwnd_ && ::IsWindow(browser_hwnd_)) {
     LONG_PTR style = ::GetWindowLongPtrW(browser_hwnd_, GWL_STYLE);
     style &= ~(WS_POPUP | WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_THICKFRAME |
-               WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+               WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_MAXIMIZE |
+               WS_MINIMIZE);  // A maximized child covers the header.
     style |= WS_CHILD | WS_CLIPSIBLINGS;
     ::SetWindowLongPtrW(browser_hwnd_, GWL_STYLE, style);
     LONG_PTR ex = ::GetWindowLongPtrW(browser_hwnd_, GWL_EXSTYLE);

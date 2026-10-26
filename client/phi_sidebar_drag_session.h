@@ -222,6 +222,9 @@ class PhiSidebarDragSession {
   // Everything below is the body of the drag, in the order it runs.
   int Scaled(int design_units) const;
   HWND shell_hwnd() const;
+  // The shell's top-level window, for the tear-off bounds: shell_hwnd() is
+  // the floating panel while a drag runs from it.
+  HWND frame_hwnd() const;
   PhiSpacesStrip* strip() const;
 
   DropBand DropBandAt(POINT client_pt);

@@ -342,6 +342,18 @@ int main() {
     base::CommandLine::ForCurrentProcess()->AppendSwitch("no-first-run");
     base::CommandLine::ForCurrentProcess()->AppendSwitch(
         "no-default-browser-check");
+    // The file log the feedback zip picks up, warnings and up unless the
+    // launch names its own logging (chrome.dll applies the same default,
+    // ChromeMainDelegate::BasicStartupComplete): without it the client's
+    // lines would not join chrome.dll's in chrome_debug.log.
+    if (!command_line->HasSwitch(switches::kEnableLogging)) {
+      base::CommandLine::ForCurrentProcess()->AppendSwitch(
+          switches::kEnableLogging);
+      if (!command_line->HasSwitch(switches::kLoggingLevel)) {
+        base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
+            switches::kLoggingLevel, "1");
+      }
+    }
   }
 
 #if !defined(COMPONENT_BUILD) && DCHECK_IS_ON()

@@ -1966,6 +1966,11 @@ class PhiShellWindow : public PhiHitSource,
   std::string leaving_agent_space_;
   void FinishUnhost();
   bool floating_layout_ = false;
+  // A sidebar drag armed from the floating panel: until it ends the panel is
+  // the drag's window (capture, timers, paint) and floating_layout_ stays
+  // set between its events, as a menu opened from the panel holds it.
+  bool floating_drag_ = false;
+  int floating_forward_depth_ = 0;
   HWND floating_sidebar_ = nullptr;
   // The horizontal layout's Space chip width (dip), measured from the
   // active Space's name (§5.2); refreshed with the layout inputs.
