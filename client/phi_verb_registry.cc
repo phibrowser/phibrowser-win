@@ -993,7 +993,8 @@ constexpr PhiParamField kFeedbackForm[] = {
 };
 constexpr PhiParamField kOnboardingDrive[] = {
     {"action", kParamString, kRequired, "",
-     "signIn, guest, cancel, legal, metrics, name, swatch, layout, next, close."},
+     "signIn, guest, cancel, legal, metrics, name, swatch, randomize, layout, "
+     "next, close."},
     {"value", kParamString, kOptional, "", "The name / theme id / layout."},
 };
 constexpr PhiParamField kSyncProfileKey[] = {

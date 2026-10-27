@@ -49,6 +49,7 @@
 #include "phibrowser-win/client/phi_icons.h"
 #include "phibrowser-win/client/phi_log.h"
 #include "phibrowser-win/client/phi_menu_paint.h"
+#include "phibrowser-win/client/phi_popup_chrome.h"
 #include "phibrowser-win/client/phi_preferences.h"
 #include "phibrowser-win/client/phi_profile_service.h"
 #include "phibrowser-win/client/phi_prompt.h"
@@ -483,6 +484,7 @@ bool PhiSettingsWindow::OpenWindow() {
   sync_poll_ = NewTimer();
   card_timer_ = NewTimer();
   profile_card_.SetNotify(hwnd(), kMsgProfileCardFrame);
+  profile_card_.SetCacheDir(prefs_->user_data_dir() + L"\\PhiCardArtwork");
   // Content 680x561 under the caption strip and toolbar band — fixed,
   // non-resizable. WM_NCCALCSIZE keeps only the thin side/bottom borders,
   // so the window size is the content plus exactly those.
@@ -1941,6 +1943,26 @@ void PhiSettingsWindow::BuildSpaces(int* y) {
     *y += Scaled(kSpacesStackGap);
   }
 
+  // The Mac's "Manage Spaces in Library" button (SpacesSettingsView): the
+  // Library overlay on Spaces over the focused browser window, Settings
+  // hidden behind it.
+  if (const wchar_t* manage = PhiStr("settings.spaces.manageInLibrary");
+      SearchMatches(manage, nullptr)) {
+    if (!search_filter_.empty()) {
+      ++filter_hits_;
+    }
+    BeginSection(y, nullptr);
+    const RECT area = AddRow(y, manage, kPillHeight, 110, nullptr,
+                             kChipIndent, 0xE8F1);
+    Item button;
+    button.kind = ItemKind::kButton;
+    button.text = PhiStr("library.navigation.title");
+    button.action = "library";
+    button.bounds = area;
+    items_.push_back(std::move(button));
+    EndSection(y);
+  }
+
   // The design's URL Rules row closes its composition…
   AddSpacesUrlRow(y);
 
@@ -3081,8 +3103,11 @@ void PhiSettingsWindow::BuildAccount(int* y) {
   // view carries INSIDE its frame; the card's VISIBLE edge sits at 36 like
   // every other pane's content: card 36..276, right column 292..644.
   const int left = content_left_;
+  // The Mac's ProfileCardViewController: 240 wide at the card's 292:423.
   const int card_w = Scaled(240);
-  const int card_h = Scaled(380);
+  const int card_h = static_cast<int>(std::lround(
+      card_w * static_cast<double>(PhiHolographicCard::kDesignHeightDip) /
+      PhiHolographicCard::kDesignWidthDip));
   const int right_edge = content_right_;
   std::string account_name;
   std::string account_email;
@@ -3097,7 +3122,7 @@ void PhiSettingsWindow::BuildAccount(int* y) {
   if (show_card) {
     Item card;
     card.kind = ItemKind::kProfileCard;
-    card.action = "card";  // Hit-tested for the drag; Apply ignores it.
+    card.action = "card";  // Hit-tested so the pointer lights it; Apply ignores it.
     card.bounds = {left, top, left + card_w, top + card_h};
     items_.push_back(std::move(card));
     // The Mac's rounded "Download image" button, centred under the card
@@ -5549,17 +5574,24 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
         break;
       }
       case ItemKind::kProfileCard: {
-        // The conch card, themed like the Mac's ProfileCardViewController:
-        // the theme's overlay colour for the appearance in force.
-        const PhiTheme& theme = PhiThemeById(prefs_->ThemeId());
-        profile_card_.SetTheme(dark ? theme.dark.overlay : theme.light.overlay,
-                               prefs_->ThemeId() == "pure", dark);
+        // The membership card, like the Mac's ProfileCardViewController:
+        // the account's saved style under the CURRENT theme's palette
+        // (re-applied here on every theme or appearance change), the name,
+        // the member id from the Auth0 subject and the join month.
+        const std::string sub = account_->auth().user().sub;
+        PhiHolographicCardStyle style =
+            PhiHolographicCardStyle::FromMap(prefs_->ProfileCardStyle(sub));
+        style.palette = PhiHolographicCardStyle::PaletteForTheme(prefs_->ThemeId());
+        profile_card_.SetStyle(style);
         std::string name;
         account_->AccountInfo(&name, nullptr);
         const std::optional<PhiAccountProfile>& profile =
             account_->Profile().profile();
-        profile_card_.SetIdentity(name, profile ? profile->created_at
-                                                : std::string());
+        const bool profile_matches = profile && profile->auth0_id == sub;
+        profile_card_.SetIdentity(
+            name.empty() ? "Phi" : name, PhiHolographicCard::MemberId(sub),
+            profile_matches ? PhiHolographicCard::FormatJoinDate(profile->created_at)
+                            : std::string());
         profile_card_.Paint(dc, bounds);
         if (profile_card_.animating() && !card_timer_.running()) {
           card_timer_.Start(16, /*coalescable=*/true);
@@ -6349,6 +6381,12 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     section_ = "navigation";
     scroll_ = 0;
     SyncTitle();
+  } else if (item.action == "library") {
+    // Spaces ▸ "Manage Spaces in Library": the Library opens over the
+    // browser window and this window steps aside (WM_CLOSE hides it).
+    if (host_->OpenLibrarySpaces()) {
+      ::PostMessageW(hwnd(), WM_CLOSE, 0, 0);
+    }
   } else if (item.action == "urlrules") {
     // Navigation ▸ "Manage URL Rules…": the universal editor window (the
     // Mac's NavigationsSettingsView row over openURLRulesEditor).
@@ -6663,9 +6701,17 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
   } else if (item.action == "avatar") {
     account_->RequestEditAvatar();
   } else if (item.action == "downloadcard") {
-    profile_card_.ExportPng(hwnd());
+    // The Mac's exportImage canvas: the theme's hue at saturation .65,
+    // brightness .28; black for Pure.
+    const PhiTheme& theme = PhiThemeById(prefs_->ThemeId());
+    const bool dark = prefs_->Palette().dark;
+    const COLORREF overlay = dark ? theme.dark.overlay : theme.light.overlay;
+    const COLORREF canvas = prefs_->ThemeId() == "pure"
+                                ? RGB(0, 0, 0)
+                                : PhiHsbColor(PhiHueOf(overlay), 0.65, 0.28);
+    profile_card_.ExportPng(hwnd(), canvas);
   } else if (item.action == "card") {
-    // The card's click is its drag (OnMouseDown); nothing on release.
+    // The card only follows the pointer (WM_MOUSEMOVE); nothing on click.
   } else if (item.action == "autopip") {
     HMENU menu = ::CreatePopupMenu();
     if (!menu) {
@@ -7034,12 +7080,6 @@ void PhiSettingsWindow::OnMouseDown(int hit, POINT client_pt) {
     drag_ = Capture(this);
     ::SetCursor(::LoadCursorW(nullptr, IDC_SIZENS));
     ScheduleRebuild();
-  } else if (item.kind == ItemKind::kProfileCard) {
-    // The card is dragged through its grid, and springs back on release.
-    card_drag_ = true;
-    drag_ = Capture(this);
-    profile_card_.BeginDrag(client_pt);
-    Invalidate();
   }
 }
 
@@ -7053,15 +7093,6 @@ void PhiSettingsWindow::OnClick(int hit, POINT client_pt) {
   if (dragging_) {
     dragging_ = false;
     drag_.Release();
-    return;
-  }
-  if (card_drag_) {
-    card_drag_ = false;
-    drag_.Release();
-    profile_card_.EndDrag();
-    if (profile_card_.animating() && !card_timer_.running()) {
-      card_timer_.Start(16, /*coalescable=*/true);
-    }
     return;
   }
   // Press and release must land on the SAME control: the old handler fired
@@ -7265,12 +7296,31 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
         *handled = true;
         return 0;
       }
-      if (card_drag_ && (wparam & MK_LBUTTON)) {
-        if (profile_card_.Drag({GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)})) {
-          Invalidate();
+      // The membership card's light follows the pointer while it is over
+      // the card and settles when it leaves (the base keeps the hover).
+      for (const Item& item : items_) {
+        if (item.kind != ItemKind::kProfileCard) {
+          continue;
         }
-        *handled = true;
-        return 0;
+        const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        profile_card_.SetPointer(
+            ::PtInRect(&item.bounds, pt) ? std::optional<POINT>(pt) : std::nullopt,
+            item.bounds);
+        if (profile_card_.animating() && !card_timer_.running()) {
+          card_timer_.Start(16, /*coalescable=*/true);
+        }
+        break;
+      }
+      break;
+    case WM_MOUSELEAVE:
+      for (const Item& item : items_) {
+        if (item.kind == ItemKind::kProfileCard) {
+          profile_card_.SetPointer(std::nullopt, item.bounds);
+          if (profile_card_.animating() && !card_timer_.running()) {
+            card_timer_.Start(16, /*coalescable=*/true);
+          }
+          break;
+        }
       }
       break;
     case WM_KEYDOWN:
@@ -7287,7 +7337,7 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
       *handled = true;
       return 0;
     case kMsgProfileCardFrame:
-      // A frame decoded: repaint, and let the intro start if it can.
+      // The card's artwork landed: repaint, and let its entrance play.
       Invalidate();
       if (profile_card_.animating() && !card_timer_.running()) {
         card_timer_.Start(16, /*coalescable=*/true);
@@ -7448,14 +7498,6 @@ void PhiSettingsWindow::OnCaptureLost() {
     reorder_id_.clear();
     reorder_from_ = -1;
     ScheduleRebuild();
-  }
-  // A stolen capture ends the card drag where the release would have.
-  if (card_drag_) {
-    card_drag_ = false;
-    profile_card_.EndDrag();
-    if (profile_card_.animating() && !card_timer_.running()) {
-      card_timer_.Start(16, /*coalescable=*/true);
-    }
   }
   dragging_ = false;
 }

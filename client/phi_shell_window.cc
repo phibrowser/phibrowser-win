@@ -38,8 +38,10 @@
 #include "phibrowser-win/client/phi_agent_overlay.h"
 #include "phibrowser-win/client/phi_agent_spaces.h"
 #include "phibrowser-win/client/phi_downloads_popover.h"
+#include "phibrowser-win/client/phi_library.h"
 #include "phibrowser-win/client/phi_extensions_popover.h"
 #include "phibrowser-win/client/phi_group_overview.h"
+#include "phibrowser-win/client/phi_library.h"
 #include "phibrowser-win/client/phi_search_tabs_panel.h"
 #include "phibrowser-win/client/phi_space_theme_panel.h"
 #include "phibrowser-win/client/phi_bookmark_manager.h"
@@ -136,6 +138,23 @@ std::wstring MenuLabel(std::wstring name) {
     name.insert(at, 1, L'&');
   }
   return name;
+}
+
+// A command's chord as the ⋯ menu shows it (PhiAppMenu::Label's rule): the
+// user's effective binding when `id` is rebindable — empty while unbound —
+// else the catalogue string's own "\t<chord>" suffix. For the menus the
+// shell builds itself (the profile button's), whose rows carry the chord
+// apart from their label.
+std::wstring MenuChord(ChromePrefsHost* prefs, UINT id, const char* key) {
+  if (prefs) {
+    if (const std::optional<std::wstring> chord =
+            prefs->RebindableChordLabel(id)) {
+      return *chord;
+    }
+  }
+  const std::wstring text = PhiStr(key);
+  const size_t tab = text.find(L'\t');
+  return tab == std::wstring::npos ? std::wstring() : text.substr(tab + 1);
 }
 constexpr int kContentRadius = 8;  // The pane's corners (windows-native-ui.md §2.1).
 // 0x515 and 0x516 belonged to the Space swap and hover-card clocks; the
@@ -474,6 +493,7 @@ PhiShellWindow::Layout PhiShellWindow::ToLayout(
   out.bookmark_separator = PhiToRect(shell.bookmark_separator);
   out.new_tab_row = PhiToRect(shell.new_tab_row);
   out.bottom_bar = PhiToRect(shell.bottom_bar);
+  out.sidebar_profile = PhiToRect(shell.sidebar_profile);
   out.sidebar_downloads = PhiToRect(shell.sidebar_downloads);
   out.memory = PhiToRect(shell.memory);
   out.feedback = PhiToRect(shell.feedback);
@@ -867,6 +887,9 @@ POINT PhiShellWindow::frame_offset() const {
 }
 
 void PhiShellWindow::ApplyPalette() {
+  // A live create-form preview follows the appearance it was resolved in
+  // until re-resolved here (the editor's Light / Dark buttons move it).
+  spaces_->RefreshPreview();
   UpdateSidebarBackdrop();
   PlaceContentChildren(ComputeWindowLayout());
   RefreshTabs();  // Every colour is read from the host at paint time.
@@ -1273,6 +1296,7 @@ PhiShellWindow::~PhiShellWindow() {
   PhiCreateSpaceWindow::CloseIfBoundTo(this);
   PhiCloseCreateSpaceFlyoutIfBoundTo(this);
   PhiGroupOverview::CloseIfBoundTo(this);
+  PhiLibrary::CloseIfBoundTo(this);
   PhiTabSwitcher::CancelIfBoundTo(this);
   PhiSearchTabsPanel::CloseIfBoundTo(this);
   // Owned components and popups go BEFORE the shell: their teardown calls
@@ -1638,6 +1662,9 @@ HWND PhiShellWindow::MenuAddressField() const {
 }
 
 void PhiShellWindow::MenuFocusPageForFind() {
+  if (PhiLibrary::HandleFindIfBoundTo(this)) {
+    return;  // Spaces swallows Find; Downloads takes it for its search.
+  }
   const BrowserId browser = active_browser_id();
   if (PageCommandBrowser() != browser) {
     // Find opens inside the presented peek's own Views tree (the Mac's
@@ -1732,6 +1759,68 @@ void PhiShellWindow::MenuToggleDownloads() {
 
 void PhiShellWindow::MenuToggleSearchTabs() {
   PhiSearchTabsPanel::Toggle(this);
+}
+
+void PhiShellWindow::MenuToggleLibrary() {
+  // The ⋯ menu's row and Ctrl+Shift+L: the Library flies out of the ⋯
+  // button, on the window's last section (Downloads at first).
+  PhiLibrary::Toggle(this);
+}
+
+// static
+PhiShellWindow* PhiShellWindow::FromHwnd(HWND hwnd) {
+  if (!hwnd || !::IsWindow(hwnd)) {
+    return nullptr;
+  }
+  wchar_t name[64] = {};
+  if (!::GetClassNameW(hwnd, name, 64) ||
+      std::wstring_view(name) != kShellClassName) {
+    return nullptr;  // Another class's USERDATA is not a shell.
+  }
+  return reinterpret_cast<PhiShellWindow*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+}
+
+void PhiShellWindow::OpenStoredRowInSpace(const std::string& space_id,
+                                          const std::string& guid,
+                                          const std::string& url) {
+  if (space_id.empty() || url.empty()) {
+    return;
+  }
+  if (space_id == active_space()) {
+    OpenOrFocusPinned(guid, url);
+    return;
+  }
+  // A Space whose browser is attached presents synchronously; one that is
+  // not is created by the owner and lands through BrowserHostNoteActiveSpace,
+  // which runs the open then. Either way the switch goes first.
+  pending_stored_open_ = PendingStoredOpen{space_id, guid, url};
+  SwitchToSpace(space_id);
+  if (pending_stored_open_ && active_space() == space_id) {
+    pending_stored_open_.reset();
+    OpenOrFocusPinned(guid, url);
+  }
+}
+
+void PhiShellWindow::ConsumePendingStoredOpen(const std::string& landed_space,
+                                              bool drop_on_mismatch) {
+  if (!pending_stored_open_) {
+    return;
+  }
+  if (pending_stored_open_->space_id != landed_space) {
+    if (drop_on_mismatch) {
+      pending_stored_open_.reset();
+    }
+    return;
+  }
+  const PendingStoredOpen pending = *pending_stored_open_;
+  pending_stored_open_.reset();
+  if (active_space() == pending.space_id) {
+    // The sidebar resolves the row against the ACTIVE browser — the one
+    // that just landed — so a bound tab focuses and an unbound row opens
+    // there, never in the Space the Library was closed over.
+    OpenOrFocusPinned(pending.guid, pending.url);
+  }
 }
 
 void PhiShellWindow::ShowHeldShell() {
@@ -2012,6 +2101,9 @@ void PhiShellWindow::BrowserHostNoteActiveSpace(
   if (!PhiIsAgentSpaceId(space_id) && !model::IsIncognitoSpaceId(space_id)) {
     last_regular_space_ = space_id;  // Where closing an Incognito Space lands.
   }
+  // The Library's open waited for this Space (OpenStoredRowInSpace); a
+  // different Space landing in front of the user means they moved on.
+  ConsumePendingStoredOpen(space_id, /*drop_on_mismatch=*/true);
   // An Incognito Space is fixed-dark whatever the app's appearance: the
   // acrylic behind the sidebar follows (DWM's dark flag), or its light
   // tint shows through under the dark palette's white text.
@@ -2065,6 +2157,10 @@ void PhiShellWindow::AttachSpaceBrowser(const std::string& space_id,
                                              BrowserId browser,
                                              HWND browser_hwnd) {
   browsers_->AttachSpaceBrowser(space_id, browser, browser_hwnd);
+  // A Space the Library asked for arrives here as a FRESH browser (the
+  // attach makes it active without the ShowSpace path's active-Space note):
+  // its pending open runs now, against the browser just attached.
+  ConsumePendingStoredOpen(space_id, /*drop_on_mismatch=*/false);
   PostDeferredClose();
 }
 
@@ -2199,6 +2295,7 @@ void PhiShellWindow::SetShellFullscreen(BrowserId browser,
 void PhiShellWindow::OnContentBoundsChanged(BrowserId browser_id) {
   if (browser_id == active_browser_id()) {
     native_pages_->Reposition();
+    PhiLibrary::RepositionIfBoundTo(this);
   }
 }
 
@@ -3048,6 +3145,7 @@ void PhiShellWindow::LayoutContents() {
     return;
   }
   native_pages_->Reposition();
+  PhiLibrary::RepositionIfBoundTo(this);  // Covers the client area.
   // Reader and peek panels are hosted OVER the content card, in windows the
   // coordinator owns rather than this controller — they have to follow it.
   if (services_.sidebar) {
@@ -3396,7 +3494,7 @@ PhiDragBitmap PhiShellWindow::CaptureChromeRect(const RECT& client_rect) {
 
 
 
-std::array<RECT, 22> PhiShellWindow::NavHoverTable(
+std::array<RECT, 23> PhiShellWindow::NavHoverTable(
     const Layout& layout) const {
   // The nav buttons' hover washes (back/forward/reload/search).
   // The first six MUST stay in the paint table's order — PaintChrome keys
@@ -3412,7 +3510,9 @@ std::array<RECT, 22> PhiShellWindow::NavHoverTable(
   // button (§4.2); 18 Copy link and 19 the site menu, back as the Mac's
   // hover-only pair (a pointer on either is on the field, which shows them).
   // 20 is the Update reminder pill; 21 comfortable's strip overflow
-  // chevron (PhiSidebarView::kStripOverflowNavOrdinal).
+  // chevron (PhiSidebarView::kStripOverflowNavOrdinal); 22 the bottom
+  // bar's profile (avatar) button — hovered for its tooltip only, it has
+  // no wash (§4.2).
   return {layout.back,        layout.forward,    layout.reload,
           layout.search_tabs, sidebar_->add_tab_button(),   layout.app_menu,
           RECT{},             layout.memory,     layout.feedback,
@@ -3420,7 +3520,7 @@ std::array<RECT, 22> PhiShellWindow::NavHoverTable(
           RECT{},             layout.reader,     layout.sidebar_toggle,
           RECT{},             layout.agent_chip, layout.sidebar_downloads,
           layout.copy_link,   layout.site_menu,  layout.update,
-          sidebar_->strip_overflow_button()};
+          sidebar_->strip_overflow_button(),     layout.sidebar_profile};
 }
 
 // The client rect a hovered element's wash covers, empty for none — so a
@@ -3651,6 +3751,7 @@ std::wstring PhiShellWindow::ChromeTipAt(POINT pt) {
       {layout.copy_link, "contextMenu.copyLink"},
       {layout.site_menu, "shell.toolbar.siteInfo"},
       {layout.reader, "appMenu.readerView"},
+      {layout.sidebar_profile, "profile.button.accessibilityLabel"},
       {layout.sidebar_downloads, "app.downloads"},
       {layout.feedback, "appMenu.reportIssue"},
   };
@@ -3738,6 +3839,11 @@ void PhiShellWindow::CancelCreateSpaceForm() {
 void PhiShellWindow::PreviewCreateSpaceTheme(const std::string& theme_id,
                                                   int saturation) {
   spaces_->PreviewTheme(theme_id, saturation);
+}
+
+void PhiShellWindow::PreviewCreateSpacePalette(const std::string& theme_id,
+                                                    const PhiThemePalette& palette) {
+  spaces_->PreviewPalette(theme_id, palette);
 }
 
 void PhiShellWindow::SetCreateSpaceIcon(const std::string& storage_value) {
@@ -4432,7 +4538,8 @@ std::optional<PhiColor> PhiShellWindow::ComputeActivePageColor() const {
   // slide lands, while the LEAVING Space's page is still up (SyncNtp waits
   // for the reveal), and nothing rebuilds after it comes down.
   if (!model_ || !browsers_ || browsers_->ActiveBrowserPlaceholding() ||
-      PhiGroupOverview::IsOpen() || ActiveTabIsSplit()) {
+      PhiGroupOverview::IsOpen() || PhiLibrary::IsOpen() ||
+      ActiveTabIsSplit()) {
     return std::nullopt;
   }
   const PhiWindowModel::Tab* tab =
@@ -5053,6 +5160,9 @@ void PhiShellWindow::RebuildTabs() {
   }
   // A group overview open over this window lists the rows just rebuilt.
   PhiGroupOverview::RefreshIfBoundTo(this);
+  // The Library's cards re-read their Spaces, pins and bookmarks; a changed
+  // active tab or Space closes it (the Mac's focusingTab subscription).
+  PhiLibrary::RefreshIfBoundTo(this);
   // After the rows: the active tab (a reader redirects to its origin) is
   // theirs. Cached here like the nav state, so the rebuild turn's signature
   // sees the change and paint reads one settled value.
@@ -5259,6 +5369,11 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   }
   if (::PtInRect(&layout.sidebar_toggle, pt)) {
     ToggleSidebar();  // The sidebar header's toggle, View ▸ Toggle Sidebar.
+    return;
+  }
+  if (::PtInRect(&layout.sidebar_profile, pt)) {
+    // The Mac ProfileButton's menu. No analytics: the Mac counts none.
+    ShowProfileMenu();
     return;
   }
   if (::PtInRect(&layout.sidebar_downloads, pt)) {
@@ -5530,6 +5645,24 @@ int PhiShellWindow::ContentCornerRadius() const {
 
 RECT PhiShellWindow::app_menu_rect() {
   return ComputeLayout().app_menu;
+}
+
+RECT PhiShellWindow::profile_rect() {
+  return ComputeLayout().sidebar_profile;
+}
+
+void PhiShellWindow::InvalidateBottomBar() {
+  // The profile button's picture is read at paint time, so the bar alone
+  // recomposes — in the floating panel too, which paints the same layout
+  // at its own offset (and whose rects the layout carries while it is up,
+  // when the collapsed shell has no bar of its own to repaint).
+  const RECT bar = ComputeLayout().bottom_bar;
+  if (shell_hwnd_ && bar.right > bar.left && bar.bottom > bar.top) {
+    ::InvalidateRect(shell_hwnd_, &bar, FALSE);
+  }
+  if (const HWND panel = SpacesFloatingPanel(nullptr)) {
+    ::InvalidateRect(panel, nullptr, FALSE);
+  }
 }
 
 RECT PhiShellWindow::copy_link_rect() {
@@ -6257,6 +6390,67 @@ void PhiShellWindow::ShowAgentChipMenu(POINT pt, std::string task) {
   } else if (action.is("agent.finish")) {
     services_.agent->RequestAgentFinish(task);
     ScheduleRefresh();  // The pip leaves the strip with the task.
+  }
+}
+
+void PhiShellWindow::ShowProfileMenu() {
+  // The Mac ProfileButton's showProfileMenu: a plain menu (no Space rows,
+  // no bitmaps) dropped UPWARD off the bottom bar — its bottom edge 5 dip
+  // above the button, left edges aligned. The window comes forward first
+  // (the Mac's makeKeyAndOrderFront): the rows run this window's commands.
+  const Layout layout = ComputeLayout();
+  const RECT& button = layout.sidebar_profile;
+  if (button.right <= button.left) {
+    return;
+  }
+  if (shell_hwnd_ && ::GetForegroundWindow() != shell_hwnd_) {
+    ::SetForegroundWindow(shell_hwnd_);
+  }
+  // The chords are the user's effective ones, by the ⋯ menu's rule, so the
+  // two menus can never disagree about a rebound command.
+  ChromePrefsHost* prefs = services_.prefs;
+  PhiProfileMenuInputs in;
+  in.downloads_chord = MenuChord(prefs, kCmdDownloads, "appMenu.downloads");
+  in.bookmarks_chord =
+      MenuChord(prefs, kCmdBookmarkManager, "appMenu.bookmarkManager");
+  in.extensions_chord =
+      MenuChord(prefs, kCmdManageExtensions, "appMenu.manageExtensions");
+  in.new_tab_chord = MenuChord(prefs, kCmdNewTab, "appMenu.newTab");
+  in.new_incognito_space_chord =
+      MenuChord(prefs, kCmdNewIncognitoSpace, "appMenu.newIncognitoSpace");
+  in.new_incognito_window_chord =
+      MenuChord(prefs, kCmdNewIncognitoWindow, "appMenu.newIncognitoWindow");
+  in.settings_chord = MenuChord(prefs, kCmdPreferences, "appMenu.settings");
+  in.signed_in =
+      services_.window && services_.window->AccountInfo(nullptr, nullptr);
+  const PhiMenuAction action = PhiRunPopupMenu(
+      PhiBuildProfileMenu(in),
+      PopupAt(POINT{button.left, button.top - Scaled(5)},
+              TPM_LEFTALIGN | TPM_BOTTOMALIGN));
+  if (action.is("profile.downloads")) {
+    // "Download List" is the Library's Downloads section (the Mac's
+    // showLibrary(section: .downloads)), not the bar button's popover.
+    PhiLibrary::Open(this, PhiLibrarySection::kDownloads);
+  } else if (action.is("profile.signIn")) {
+    if (services_.window) {
+      services_.window->RequestSignIn();
+    }
+  } else if (PhiAppMenu* bar = app_menu(); bar && action.valid()) {
+    // The rest are the ⋯ menu's own commands, run through it so the two
+    // cannot drift apart.
+    if (action.is("profile.bookmarks")) {
+      bar->OnCommand(kCmdBookmarkManager);
+    } else if (action.is("profile.extensions")) {
+      bar->OnCommand(kCmdManageExtensions);
+    } else if (action.is("profile.newTab")) {
+      bar->OnCommand(kCmdNewTab);
+    } else if (action.is("profile.newIncognitoSpace")) {
+      bar->OnCommand(kCmdNewIncognitoSpace);
+    } else if (action.is("profile.newIncognitoWindow")) {
+      bar->OnCommand(kCmdNewIncognitoWindow);
+    } else if (action.is("profile.settings")) {
+      bar->OnCommand(kCmdPreferences);
+    }
   }
 }
 
@@ -7855,15 +8049,18 @@ void PhiShellWindow::PaintChrome(HDC dc,
   }
 
   // Bottom bar — docs/windows-native-ui.md §4.2: a 40 dip row, 8 dip of
-  // padding at each end, where the Downloads button leads (32 × 32, radius
-  // 4, a 16 dip glyph) with the memory chip beside it while the AI suite is
-  // on, and the Feedback pill trails (26 high, stroke_strong capsule, 16
-  // glyph + 6 + the 12/600 label). The Chat capsule (accent ground that
-  // darkens on hover) is AI-only and out of the design for now. There is NO
-  // settings gear here — settings opens from the app menu, as on Mac.
+  // padding at each end, where the profile (avatar) button leads (the Mac's
+  // ProfileButton: a 24 dip disc in a 32 hit box, no wash), then the
+  // Downloads button (32 × 32, radius 4, a 16 dip glyph) with the memory
+  // chip beside it while the AI suite is on, and the Feedback pill trails
+  // (26 high, stroke_strong capsule, 16 glyph + 6 + the 12/600 label). The
+  // Chat capsule (accent ground that darkens on hover) is AI-only and out
+  // of the design for now. There is still NO settings gear here — Settings
+  // is a row of the profile menu and of the app menu, as on Mac.
   // Ordinals into NavHoverTable, where the bottom bar's run starts at 6
   // (the retired address-row Downloads slot, memory, feedback, chat,
-  // extensions) and the bar's own Downloads button is the appended 17.
+  // extensions); the bar's own Downloads button is the appended 17 and the
+  // profile button 22.
   const auto bottom_hot = [&](int ordinal) {
     return hover_kind_ == HoverKind::kNav && hover_index_ == 6 + ordinal;
   };
@@ -7874,6 +8071,33 @@ void PhiShellWindow::PaintChrome(HDC dc,
                          palette, kLabel, Scaled(fluent::kIconToolbar),
                          Scaled(fluent::kButtonRadius));
     };
+    if (layout.sidebar_profile.right > layout.sidebar_profile.left) {
+      // The profile button (nav-hover ordinal 22, tracked for its tooltip
+      // only — the Mac's AvatarButton has no hover fill): the 24 dip disc
+      // centred in the hit box. Signed in with a picture: the account's
+      // avatar circle-clipped under a 1 px ring at ink 8 % (the Mac's
+      // commonBorder); Guest Mode, signed out or no picture yet: the
+      // Contact glyph (its person.crop.circle.fill), ringless.
+      const RECT& b = layout.sidebar_profile;
+      const int px = Scaled(24);
+      const int left = (b.left + b.right - px) / 2;
+      const int top = (b.top + b.bottom - px) / 2;
+      const RECT disc = {left, top, left + px, top + px};
+      bool drew_avatar = false;
+      if (services_.window && !services_.window->AccountIsGuest() &&
+          services_.window->AccountInfo(nullptr, nullptr)) {
+        const std::vector<uint8_t>& circle =
+            services_.window->AccountAvatarCircle(px);
+        if (!circle.empty()) {
+          drew_avatar = PhiBlendBgra(dc, disc, circle.data(), px, px);
+        }
+      }
+      if (drew_avatar) {
+        PhiStrokeEllipseAA(dc, disc, palette.border, std::max(1, Scaled(1)));
+      } else {
+        PhiDrawIconGlyph(dc, disc, fluent::kContact, px, kLabelDim);
+      }
+    }
     if (layout.sidebar_downloads.right > layout.sidebar_downloads.left) {
       // The bottom bar's own Downloads button (§4.2), nav-hover ordinal 17:
       // the design's line icon (a 24 dip frame, margin included) over the
@@ -8057,6 +8281,7 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       // window takes the click and decides where focus goes.
       const HWND page = self ? self->browsers_->content_hwnd() : nullptr;
       if (!in_chrome && self && !PhiGroupOverview::IsOpen() &&
+          !PhiLibrary::IsOpen() &&
           !self->native_pages_->ntp_mounted() && page &&
           ::IsWindow(page)) {
         ::SetFocus(page);
@@ -8379,6 +8604,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           self->services_.sidebar->RaiseReaderPanels(self->slot_.value);
         }
         self->browsers_->RaiseOverlays();
+        // The Library covers the client area, caps included (the Mac's
+        // panel sits over the whole content view): last, so the next raise
+        // never drops it under the browser child.
+        PhiLibrary::RaiseIfBoundTo(self);
       }
       return 0;
     case WM_INITMENUPOPUP:
@@ -8571,6 +8800,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       }
       return ::DefWindowProcW(hwnd, msg, wparam, lparam);
     case kMsgPhiCycleFocus:
+      if (self && PhiLibrary::HwndIfBoundTo(self)) {
+        PhiLibrary::Close();  // F6 leaves the Library for the chrome.
+      }
       if (self && self->sidebar_) {
         // F6 / Shift+F6: address field -> sidebar -> page, round; the
         // sidebar's Esc goes straight to the page. A step the window cannot

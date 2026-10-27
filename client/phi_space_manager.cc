@@ -7,6 +7,7 @@
 #include "phibrowser-win/client/phi_account_storage.h"
 #include "phibrowser-win/client/phi_agent_spaces.h"
 
+#include <cmath>
 #include <set>
 #include <utility>
 
@@ -24,6 +25,47 @@
 #include "phibrowser-win/client/phi_shell_window.h"
 
 namespace phi_client {
+
+namespace {
+
+// The Mac's ThemePalette coding (version, hue, saturation, brightness,
+// colorCount, harmony), decoded with its rules: a record before version 2
+// takes brightness 1 (the removed slider's right endpoint); no harmony
+// means the one its colour count implied.
+std::optional<PhiThemePalette> PaletteFromDict(const base::DictValue& record) {
+  const std::optional<double> hue = record.FindDouble("hue");
+  const std::optional<double> saturation = record.FindDouble("saturation");
+  if (!hue || !saturation) {
+    return std::nullopt;
+  }
+  const int version = record.FindInt("version").value_or(1);
+  const std::optional<double> brightness = record.FindDouble("brightness");
+  const int color_count = record.FindInt("colorCount").value_or(1);
+  PhiThemePalette::Harmony harmony =
+      PhiThemePalette::HarmonyForCount(color_count);
+  if (const std::string* name = record.FindString("harmony")) {
+    PhiThemePalette::Harmony named;
+    if (PhiThemePalette::HarmonyFromName(*name, &named)) {
+      harmony = named;
+    }
+  }
+  return PhiThemePalette::Make(
+      *hue, *saturation, version < 2 ? 1.0 : brightness.value_or(1.0),
+      harmony);
+}
+
+base::DictValue PaletteToDict(const PhiThemePalette& palette) {
+  base::DictValue record;
+  record.Set("version", PhiThemePalette::kVersion);
+  record.Set("hue", palette.hue);
+  record.Set("saturation", palette.saturation);
+  record.Set("brightness", palette.brightness);
+  record.Set("colorCount", palette.color_count());
+  record.Set("harmony", PhiThemePalette::HarmonyName(palette.harmony));
+  return record;
+}
+
+}  // namespace
 
 PhiSpaceManager::PhiSpaceManager(PhiWindowRegistry& registry,
                                  const PhiWindowModel& window_model,
@@ -66,6 +108,8 @@ void PhiSpaceManager::Load() {
       defaults_.GetStringMap(kDefaultsSpaceThemeIds);
   const std::map<std::string, int> saturations =
       defaults_.GetIntMap(kDefaultsWinSpaceSaturations);
+  const base::DictValue* palettes =
+      defaults_.GetDict(kDefaultsSpaceThemePalettes);
   std::vector<model::Space> spaces;
   for (const store::Space& row : store_.Spaces()) {
     model::Space space;
@@ -81,6 +125,10 @@ void PhiSpaceManager::Load() {
     if (const auto v = saturations.find(row.space_id);
         v != saturations.end()) {
       space.saturation = v->second < 0 ? -1 : std::min(100, v->second);
+    }
+    if (const base::DictValue* record =
+            palettes ? palettes->FindDict(row.space_id) : nullptr) {
+      space.palette = PaletteFromDict(*record);
     }
     spaces.push_back(std::move(space));
   }
@@ -240,6 +288,7 @@ void PhiSpaceManager::Save() {
   defaults_.SetString(kDefaultsDefaultSpaceId, model_.default_space_id);
   std::map<std::string, std::string> themes;
   std::map<std::string, int> saturations;
+  base::DictValue palettes;
   std::vector<model::Space> all = model_.spaces;
   all.insert(all.end(), hidden_.begin(), hidden_.end());
   for (const model::Space& space : all) {
@@ -249,9 +298,13 @@ void PhiSpaceManager::Save() {
     if (space.saturation >= 0) {
       saturations[space.id] = space.saturation;
     }
+    if (space.palette) {
+      palettes.Set(space.id, PaletteToDict(*space.palette));
+    }
   }
   defaults_.SetStringMap(kDefaultsSpaceThemeIds, themes);
   defaults_.SetIntMap(kDefaultsWinSpaceSaturations, saturations);
+  defaults_.SetDict(kDefaultsSpaceThemePalettes, std::move(palettes));
 }
 
 void PhiSpaceManager::RetreatFromMissingSpaces() {
@@ -335,7 +388,8 @@ std::vector<PhiSpaceSummary> PhiSpaceManager::Summaries() const {
   out.reserve(model_.spaces.size());
   for (const model::Space& space : model_.spaces) {
     out.push_back({space.id, space.name, PhiIconDisplayText(space.icon),
-                   space.profile_id, space.theme_id, space.saturation});
+                   space.profile_id, space.theme_id,
+                   SpaceSaturation(space.id)});
     out.back().icon = space.icon;
   }
   return out;
@@ -370,7 +424,18 @@ std::string PhiSpaceManager::SpaceThemeId(const std::string& space_id) const {
 
 int PhiSpaceManager::SpaceSaturation(const std::string& space_id) const {
   const model::Space* space = Find(space_id);
+  if (space && space->palette) {
+    // The Mac's effectiveOverlaySaturation: the palette's radius is what
+    // the Space's slider shows (and edits — SetSpaceSaturation).
+    return static_cast<int>(std::lround(space->palette->saturation * 100));
+  }
   return space ? space->saturation : -1;  // -1 follows the app-wide slider.
+}
+
+std::optional<PhiThemePalette> PhiSpaceManager::SpacePalette(
+    const std::string& space_id) const {
+  const model::Space* space = Find(space_id);
+  return space ? space->palette : std::nullopt;
 }
 
 // --- Writes -------------------------------------------------------------------
@@ -466,9 +531,11 @@ void PhiSpaceManager::SetSpaceTheme(const std::string& space_id,
       continue;
     }
     // An empty id clears the override, putting the Space back on the app-wide
-    // theme — the Mac's "no entry in spaceThemeIds" state.
+    // theme — the Mac's "no entry in spaceThemeIds" state. A preset choice
+    // ends the linked palette (the Mac's setTheme removes the record).
     space.theme_id =
         theme_id.empty() ? std::string() : PhiThemeById(theme_id).id;
+    space.palette.reset();
     MarkDirty();
     RebuildSpacePalettes();
     Notify(SpacesChange::kTheme);
@@ -482,8 +549,15 @@ void PhiSpaceManager::SetSpaceSaturation(const std::string& space_id,
     if (space.id != space_id) {
       continue;
     }
-    // -1 follows the app-wide slider; anything else clamps to its range.
-    space.saturation = value < 0 ? -1 : (value > 100 ? 100 : value);
+    if (space.palette) {
+      // The Mac's setOverlaySaturation under a palette: the slider moves
+      // the palette's radius; the legacy per-Space value stays untouched.
+      space.palette = space.palette->SettingSaturation(
+          std::max(0, std::min(100, value)) / 100.0);
+    } else {
+      // -1 follows the app-wide slider; anything else clamps to its range.
+      space.saturation = value < 0 ? -1 : (value > 100 ? 100 : value);
+    }
     MarkDirty();
     RebuildSpacePalettes();
     Notify(SpacesChange::kTheme);
@@ -498,12 +572,52 @@ void PhiSpaceManager::PinSpaceTheme(const std::string& space_id,
     if (space.id == space_id) {
       space.theme_id = PhiThemeById(theme_id).id;
       space.saturation = saturation < 0 ? -1 : std::min(100, saturation);
+      space.palette.reset();
       break;
     }
   }
   MarkDirty();
   RebuildSpacePalettes();
   Notify(SpacesChange::kTheme);
+}
+
+void PhiSpaceManager::SetSpacePalette(const std::string& space_id,
+                                      const PhiThemePalette& palette) {
+  for (model::Space& space : model_.spaces) {
+    if (space.id != space_id) {
+      continue;
+    }
+    if (space.palette != palette) {
+      space.palette = palette;
+      MarkDirty();
+    }
+    // Even when unchanged: a preview may have left the windows ahead of
+    // the model, so settle every window on the record.
+    RebuildSpacePalettes();
+    Notify(SpacesChange::kTheme);
+    return;
+  }
+}
+
+void PhiSpaceManager::PreviewSpacePalette(const std::string& space_id,
+                                          const PhiThemePalette& palette) {
+  const model::Space* space = FindSpaceIn(model_.spaces, space_id);
+  if (!space) {
+    return;
+  }
+  // The Mac's previewThemePalette: the Space's windows take the resolved
+  // theme; account preferences and the app-wide notification path are
+  // left alone until the editor commits. Only this Space's entry moves,
+  // and only the shells repaint — no observer, no sync note.
+  const std::string& base =
+      space->theme_id.empty() ? preferences_.settings().theme_id
+                              : space->theme_id;
+  palette_by_space_[space_id] = std::make_unique<PhiPalette>(
+      PhiResolvePalette(PhiThemeById(base), preferences_.Appearance(),
+                        palette));
+  for (PhiShellWindow* controller : registry_.Controllers()) {
+    controller->ApplyPalette();
+  }
 }
 
 bool PhiSpaceManager::SetSpaceProfile(const std::string& space_id,
@@ -680,6 +794,16 @@ void PhiSpaceManager::RebuildSpacePalettes() {
     // colour choice", not a tint.
     const bool has_hex = space.color_hex != store::kDefaultSpaceColorHex &&
                          PhiParseColorHex(space.color_hex, &accent);
+    if (space.palette) {
+      // The Mac's resolvedTheme: a linked palette beats the pin's colours,
+      // the saturation and the wire hex; the pin (else the app-wide theme)
+      // is the base whose window background shows through.
+      const std::string& base =
+          space.theme_id.empty() ? settings.theme_id : space.theme_id;
+      palette_by_space_[space.id] = std::make_unique<PhiPalette>(
+          PhiResolvePalette(PhiThemeById(base), appearance, *space.palette));
+      continue;
+    }
     if (space.theme_id.empty() && space.saturation < 0 && !has_hex) {
       continue;  // Follows the app-wide theme.
     }

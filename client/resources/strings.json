@@ -3776,6 +3776,50 @@
    "zh-Hans": "正在扫描…",
    "zh-Hant": "掃描中…"
   },
+  "downloads.all.empty": {
+   "de": "Keine Downloads",
+   "en": "No Downloads",
+   "es": "No hay descargas",
+   "fr": "Aucun téléchargement",
+   "ja": "ダウンロードはありません",
+   "ko": "다운로드 없음",
+   "nl": "Geen downloads",
+   "zh-Hans": "没有下载内容",
+   "zh-Hant": "沒有下載項目"
+  },
+  "downloads.all.noSearchResults": {
+   "de": "Keine passenden Downloads",
+   "en": "No Matching Downloads",
+   "es": "No hay descargas que coincidan",
+   "fr": "Aucun téléchargement correspondant",
+   "ja": "一致するダウンロードはありません",
+   "ko": "일치하는 다운로드 없음",
+   "nl": "Geen overeenkomende downloads",
+   "zh-Hans": "没有匹配的下载内容",
+   "zh-Hant": "沒有符合的下載項目"
+  },
+  "downloads.all.search": {
+   "de": "Downloads durchsuchen",
+   "en": "Search Downloads",
+   "es": "Buscar descargas",
+   "fr": "Rechercher dans les téléchargements",
+   "ja": "ダウンロードを検索",
+   "ko": "다운로드 검색",
+   "nl": "Zoek in downloads",
+   "zh-Hans": "搜索下载内容",
+   "zh-Hant": "搜尋下載項目"
+  },
+  "downloads.all.unknownDate": {
+   "de": "Unbekanntes Datum",
+   "en": "Unknown Date",
+   "es": "Fecha desconocida",
+   "fr": "Date inconnue",
+   "ja": "日付不明",
+   "ko": "알 수 없는 날짜",
+   "nl": "Onbekende datum",
+   "zh-Hans": "未知日期",
+   "zh-Hant": "未知日期"
+  },
   "downloads.b": {
    "de": "B",
    "en": "B",
@@ -4964,6 +5008,193 @@
    "zh-Hans": "打开到",
    "zh-Hant": "開啟於"
   },
+  "library.navigation.downloads": {
+   "de": "Downloads",
+   "en": "Downloads",
+   "es": "Descargas",
+   "fr": "Téléchargements",
+   "ja": "ダウンロード",
+   "ko": "다운로드",
+   "nl": "Downloads",
+   "zh-Hans": "下载内容",
+   "zh-Hant": "下載項目"
+  },
+  "library.navigation.openInNewWindow": {
+   "de": "Bibliothek in neuem Fenster öffnen",
+   "en": "Open Library in New Window",
+   "es": "Abrir la Biblioteca en una ventana nueva",
+   "fr": "Ouvrir la Bibliothèque dans une nouvelle fenêtre",
+   "ja": "ライブラリを新しいウインドウで開く",
+   "ko": "새 윈도우에서 라이브러리 열기",
+   "nl": "Open bibliotheek in nieuw venster",
+   "zh-Hans": "在新窗口中打开资料库",
+   "zh-Hant": "在新視窗中開啟收藏庫"
+  },
+  "library.navigation.spaces": {
+   "de": "Spaces",
+   "en": "Spaces",
+   "es": "Espacios",
+   "fr": "Espaces",
+   "ja": "スペース",
+   "ko": "스페이스",
+   "nl": "Spaces",
+   "zh-Hans": "空间",
+   "zh-Hant": "空間"
+  },
+  "library.navigation.title": {
+   "de": "Bibliothek",
+   "en": "Library",
+   "es": "Biblioteca",
+   "fr": "Bibliothèque",
+   "ja": "ライブラリ",
+   "ko": "라이브러리",
+   "nl": "Bibliotheek",
+   "zh-Hans": "资料库",
+   "zh-Hant": "收藏庫"
+  },
+  "library.spaces.create": {
+   "de": "Neuer Space",
+   "en": "New Space",
+   "es": "Nuevo Espacio",
+   "fr": "Nouvel Espace",
+   "ja": "新しいスペース",
+   "ko": "새 스페이스",
+   "nl": "Nieuwe Space",
+   "zh-Hans": "新建空间",
+   "zh-Hant": "新增空間"
+  },
+  "library.spaces.deleteItem": {
+   "de": "Löschen",
+   "en": "Delete",
+   "es": "Eliminar",
+   "fr": "Supprimer",
+   "ja": "削除",
+   "ko": "삭제",
+   "nl": "Verwijder",
+   "zh-Hans": "删除",
+   "zh-Hant": "刪除"
+  },
+  "library.spaces.deleteSpace": {
+   "de": "Space löschen…",
+   "en": "Delete Space…",
+   "es": "Eliminar Espacio…",
+   "fr": "Supprimer l'Espace…",
+   "ja": "スペースを削除…",
+   "ko": "스페이스 삭제…",
+   "nl": "Verwijder Space…",
+   "zh-Hans": "删除空间…",
+   "zh-Hant": "刪除空間…"
+  },
+  "library.spaces.editIcon": {
+   "de": "Space-Symbol ändern",
+   "en": "Change Space icon",
+   "es": "Cambiar el icono del Espacio",
+   "fr": "Modifier l'icône de l'Espace",
+   "ja": "スペースのアイコンを変更",
+   "ko": "스페이스 아이콘 변경",
+   "nl": "Wijzig Space-symbool",
+   "zh-Hans": "更改空间图标",
+   "zh-Hant": "變更空間圖示"
+  },
+  "library.spaces.editItem": {
+   "de": "Bearbeiten…",
+   "en": "Edit…",
+   "es": "Edición…",
+   "fr": "Édition…",
+   "ja": "編集…",
+   "ko": "편집…",
+   "nl": "Wijzig…",
+   "zh-Hans": "编辑…",
+   "zh-Hant": "編輯…"
+  },
+  "library.spaces.editTheme": {
+   "de": "Design bearbeiten",
+   "en": "Edit Theme",
+   "es": "Editar tema",
+   "fr": "Modifier le thème",
+   "ja": "テーマを編集",
+   "ko": "테마 편집",
+   "nl": "Wijzig thema",
+   "zh-Hans": "编辑主题",
+   "zh-Hant": "編輯主題"
+  },
+  "library.spaces.moreActions": {
+   "de": "Weitere Aktionen",
+   "en": "More Actions",
+   "es": "Más acciones",
+   "fr": "Autres actions",
+   "ja": "その他のアクション",
+   "ko": "추가 작업",
+   "nl": "Meer acties",
+   "zh-Hans": "更多操作",
+   "zh-Hant": "更多動作"
+  },
+  "library.spaces.moveToSpace": {
+   "de": "In anderen Space verschieben",
+   "en": "Move to Space",
+   "es": "Mover a otro Espacio",
+   "fr": "Déplacer vers un Espace",
+   "ja": "スペースに移動",
+   "ko": "스페이스로 이동",
+   "nl": "Verplaats naar Space",
+   "zh-Hans": "移到空间",
+   "zh-Hant": "移至空間"
+  },
+  "library.spaces.name": {
+   "de": "Space-Name",
+   "en": "Space name",
+   "es": "Nombre del Espacio",
+   "fr": "Nom de l'Espace",
+   "ja": "スペース名",
+   "ko": "스페이스 이름",
+   "nl": "Space-naam",
+   "zh-Hans": "空间名称",
+   "zh-Hant": "空間名稱"
+  },
+  "library.spaces.newBookmark": {
+   "de": "Neues Lesezeichen…",
+   "en": "New Bookmark…",
+   "es": "Nuevo marcador…",
+   "fr": "Nouveau signet…",
+   "ja": "新しいブックマーク…",
+   "ko": "새 북마크…",
+   "nl": "Nieuwe bladwijzer…",
+   "zh-Hans": "新建书签…",
+   "zh-Hant": "新增書籤…"
+  },
+  "library.spaces.newFolder": {
+   "de": "Neuer Ordner…",
+   "en": "New Folder…",
+   "es": "Nueva carpeta…",
+   "fr": "Nouveau dossier…",
+   "ja": "新しいフォルダ…",
+   "ko": "새 폴더…",
+   "nl": "Nieuwe map…",
+   "zh-Hans": "新建文件夹…",
+   "zh-Hant": "新增資料夾…"
+  },
+  "library.spaces.newPin": {
+   "de": "Neuer angehefteter Tab…",
+   "en": "New Pinned Tab…",
+   "es": "Nueva pestaña fijada…",
+   "fr": "Nouvel onglet épinglé…",
+   "ja": "新しい固定タブ…",
+   "ko": "새 고정 탭…",
+   "nl": "Nieuw vastgemaakt tabblad…",
+   "zh-Hans": "新建固定标签页…",
+   "zh-Hant": "新增釘選分頁…"
+  },
+  "library.spaces.openItem": {
+   "de": "Öffnen",
+   "en": "Open",
+   "es": "Abrir",
+   "fr": "Ouvrir",
+   "ja": "開く",
+   "ko": "열기",
+   "nl": "Open",
+   "zh-Hans": "打开",
+   "zh-Hant": "開啟"
+  },
   "library.spaces.reorder": {
    "de": "Ziehen, um den Space neu anzuordnen",
    "en": "Drag to reorder Space",
@@ -4974,6 +5205,17 @@
    "nl": "Sleep om de Space opnieuw te ordenen",
    "zh-Hans": "拖移以调整空间顺序",
    "zh-Hant": "拖曳來重新排序空間"
+  },
+  "library.spaces.setProfile": {
+   "de": "Profil festlegen",
+   "en": "Set Profile",
+   "es": "Establecer perfil",
+   "fr": "Définir le profil",
+   "ja": "プロファイルを設定",
+   "ko": "프로필 지정",
+   "nl": "Stel profiel in",
+   "zh-Hans": "设置个人资料",
+   "zh-Hant": "選擇設定檔"
   },
   "localData.bookmarks.importedFromArcFolderTitle": {
    "de": "Aus Arc importiert",
@@ -6353,6 +6595,17 @@
    "zh-Hans": "我该怎么称呼你？",
    "zh-Hant": "我該怎麼稱呼你？"
   },
+  "oobe.welcome.cardSaveFailed": {
+   "de": "Deine Karte konnte nicht gespeichert werden. Bitte versuche es erneut.",
+   "en": "Your card could not be saved. Please try again.",
+   "es": "No se pudo guardar tu tarjeta. Vuelve a intentarlo.",
+   "fr": "Impossible d'enregistrer votre carte. Veuillez réessayer.",
+   "ja": "カードを保存できませんでした。もう一度お試しください。",
+   "ko": "카드를 저장하지 못했어요. 다시 시도해 주세요.",
+   "nl": "Je kaart kan niet worden bewaard. Probeer het opnieuw.",
+   "zh-Hans": "无法保存你的卡片。请重试。",
+   "zh-Hant": "無法儲存你的卡片。請再試一次。"
+  },
   "oobe.welcome.nextButton": {
    "de": "Weiter",
    "en": "Next",
@@ -6364,27 +6617,16 @@
    "zh-Hans": "下一步",
    "zh-Hant": "下一步"
   },
-  "oobe.welcome.personalizedTitle": {
-   "de": "Willkommen, {0}",
-   "en": "Welcome {0}",
-   "es": "Te damos la bienvenida, {0}",
-   "fr": "Bienvenue {0}",
-   "ja": "ようこそ、{0}さん",
-   "ko": "{0}님, 환영해요",
-   "nl": "Welkom {0}",
-   "zh-Hans": "欢迎 {0}",
-   "zh-Hant": "歡迎，{0}"
-  },
-  "oobe.welcome.title": {
-   "de": "Willkommen",
-   "en": "Welcome",
-   "es": "Te damos la bienvenida",
-   "fr": "Bienvenue",
-   "ja": "ようこそ",
-   "ko": "환영해요",
-   "nl": "Welkom",
-   "zh-Hans": "欢迎",
-   "zh-Hant": "歡迎"
+  "oobe.welcome.randomizeCard": {
+   "de": "Zufällig auswählen",
+   "en": "Randomize",
+   "es": "Aleatorio",
+   "fr": "Aléatoire",
+   "ja": "ランダムに選択",
+   "ko": "무작위 선택",
+   "nl": "Willekeurig",
+   "zh-Hans": "随机",
+   "zh-Hant": "隨機"
   },
   "peek.panel.closeButtonTooltip": {
    "de": "Schließen",
@@ -6418,6 +6660,116 @@
    "nl": "Open als Split View",
    "zh-Hans": "以分屏打开",
    "zh-Hant": "以分割畫面開啟"
+  },
+  "profile.button.accessibilityLabel": {
+   "de": "Profilmenü",
+   "en": "Profile menu",
+   "es": "Menú del perfil",
+   "fr": "Menu du profil",
+   "ja": "プロファイルメニュー",
+   "ko": "프로필 메뉴",
+   "nl": "Profielmenu",
+   "zh-Hans": "个人资料菜单",
+   "zh-Hant": "設定檔選單"
+  },
+  "profile.card.dateJoined": {
+   "de": "Mitglied seit",
+   "en": "Date Joined",
+   "es": "Miembro desde",
+   "fr": "Date d'inscription",
+   "ja": "登録日",
+   "ko": "가입일",
+   "nl": "Lid sinds",
+   "zh-Hans": "加入日期",
+   "zh-Hant": "加入日期"
+  },
+  "profile.menu.bookmarks": {
+   "de": "Lesezeichen verwalten",
+   "en": "Manage Bookmarks",
+   "es": "Administrar marcadores",
+   "fr": "Gérer les signets",
+   "ja": "ブックマークを管理",
+   "ko": "북마크 관리",
+   "nl": "Beheer bladwijzers",
+   "zh-Hans": "管理书签",
+   "zh-Hant": "管理書籤"
+  },
+  "profile.menu.downloads": {
+   "de": "Downloadliste",
+   "en": "Download List",
+   "es": "Lista de descargas",
+   "fr": "Liste des téléchargements",
+   "ja": "ダウンロードリスト",
+   "ko": "다운로드 목록",
+   "nl": "Downloadlijst",
+   "zh-Hans": "下载列表",
+   "zh-Hant": "下載項目列表"
+  },
+  "profile.menu.extensions": {
+   "de": "Erweiterungen verwalten",
+   "en": "Manage Extensions",
+   "es": "Administrar extensiones",
+   "fr": "Gérer les extensions",
+   "ja": "拡張機能を管理",
+   "ko": "확장 프로그램 관리",
+   "nl": "Beheer extensies",
+   "zh-Hans": "管理扩展程序",
+   "zh-Hant": "管理擴充功能"
+  },
+  "profile.menu.newIncognitoSpace": {
+   "de": "Neuer Inkognito-Space",
+   "en": "New Incognito Space",
+   "es": "Nuevo Espacio de incógnito",
+   "fr": "Nouvel Espace de navigation privée",
+   "ja": "新しいシークレットスペース",
+   "ko": "새 시크릿 스페이스",
+   "nl": "Nieuwe incognito-Space",
+   "zh-Hans": "新建无痕空间",
+   "zh-Hant": "新增無痕空間"
+  },
+  "profile.menu.newIncognitoWindow": {
+   "de": "Neues Inkognitofenster",
+   "en": "New Incognito Window",
+   "es": "Nueva ventana de incógnito",
+   "fr": "Nouvelle fenêtre de navigation privée",
+   "ja": "新しいシークレットウインドウ",
+   "ko": "새 시크릿 윈도우",
+   "nl": "Nieuw incognitovenster",
+   "zh-Hans": "新建无痕式窗口",
+   "zh-Hant": "新增無痕視窗"
+  },
+  "profile.menu.newTab": {
+   "de": "Neuer Tab",
+   "en": "New Tab",
+   "es": "Nueva pestaña",
+   "fr": "Nouvel onglet",
+   "ja": "新しいタブ",
+   "ko": "새 탭",
+   "nl": "Nieuw tabblad",
+   "zh-Hans": "新建标签页",
+   "zh-Hant": "新增分頁"
+  },
+  "profile.menu.settings": {
+   "de": "Einstellungen",
+   "en": "Settings",
+   "es": "Configuración",
+   "fr": "Réglages",
+   "ja": "設定",
+   "ko": "설정",
+   "nl": "Instellingen",
+   "zh-Hans": "设置",
+   "zh-Hant": "設定"
+  },
+  "profile.menu.signIn": {
+   "de": "Anmelden",
+   "en": "Sign in",
+   "es": "Iniciar sesión",
+   "fr": "Se connecter",
+   "ja": "ログイン",
+   "ko": "로그인",
+   "nl": "Log in",
+   "zh-Hans": "登录",
+   "zh-Hant": "登入"
   },
   "prompt.alt": {
    "de": "Alt+",
@@ -10110,6 +10462,17 @@
    "zh-Hans": "你的空间",
    "zh-Hant": "你的空間"
   },
+  "settings.spaces.manageInLibrary": {
+   "de": "Spaces in der Bibliothek verwalten",
+   "en": "Manage Spaces in Library",
+   "es": "Administrar Espacios en la Biblioteca",
+   "fr": "Gérer les Espaces dans la Bibliothèque",
+   "ja": "ライブラリでスペースを管理",
+   "ko": "라이브러리에서 스페이스 관리",
+   "nl": "Beheer Spaces in de bibliotheek",
+   "zh-Hans": "在资料库中管理空间",
+   "zh-Hant": "在收藏庫中管理空間"
+  },
   "settings.spaces.newButtonTooltip": {
    "de": "Neuer Space",
    "en": "New Space",
@@ -10871,6 +11234,17 @@
    "nl": "Annuleer",
    "zh-Hans": "取消",
    "zh-Hant": "取消"
+  },
+  "sidebar.createSpace.colorPicker.label": {
+   "de": "Farbe",
+   "en": "Color",
+   "es": "Color",
+   "fr": "Couleur",
+   "ja": "カラー",
+   "ko": "색상",
+   "nl": "Kleur",
+   "zh-Hans": "颜色",
+   "zh-Hant": "顏色"
   },
   "sidebar.createSpace.createButton": {
    "de": "Space erstellen",
@@ -12817,6 +13191,61 @@
    "nl": "{0} · {1} tabbladen",
    "zh-Hans": "{0} · {1} 个标签页",
    "zh-Hant": "{0} · {1} 個分頁"
+  },
+  "theme.editor.analogousColors": {
+   "de": "Analoge Farben",
+   "en": "Analogous colors",
+   "es": "Colores análogos",
+   "fr": "Couleurs analogues",
+   "ja": "類似色",
+   "ko": "유사색",
+   "nl": "Analoge kleuren",
+   "zh-Hans": "类似色",
+   "zh-Hant": "類似色"
+  },
+  "theme.editor.colorHandle": {
+   "de": "Farbe {0}",
+   "en": "Color {0}",
+   "es": "Color {0}",
+   "fr": "Couleur {0}",
+   "ja": "カラー{0}",
+   "ko": "색상 {0}",
+   "nl": "Kleur {0}",
+   "zh-Hans": "颜色 {0}",
+   "zh-Hant": "顏色 {0}"
+  },
+  "theme.editor.singleColor": {
+   "de": "Eine Farbe",
+   "en": "Single color",
+   "es": "Un solo color",
+   "fr": "Couleur unique",
+   "ja": "単色",
+   "ko": "단일 색상",
+   "nl": "Eén kleur",
+   "zh-Hans": "单色",
+   "zh-Hant": "單色"
+  },
+  "theme.editor.threeColors": {
+   "de": "Drei Farben",
+   "en": "Three colors",
+   "es": "Tres colores",
+   "fr": "Trois couleurs",
+   "ja": "3色（分裂補色）",
+   "ko": "세 가지 색상",
+   "nl": "Drie kleuren",
+   "zh-Hans": "三色",
+   "zh-Hant": "三色"
+  },
+  "theme.editor.twoColors": {
+   "de": "Zwei Farben",
+   "en": "Two colors",
+   "es": "Dos colores",
+   "fr": "Deux couleurs",
+   "ja": "2色（補色）",
+   "ko": "두 가지 색상",
+   "nl": "Twee kleuren",
+   "zh-Hans": "双色",
+   "zh-Hant": "雙色"
   },
   "themes.appearance.darkOption": {
    "de": "Dunkel",

@@ -8,7 +8,6 @@
 #include <windowsx.h>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdio>
 
@@ -18,13 +17,16 @@
 #include "base/rand_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "phibrowser-win/client/phi_dwrite.h"
+#include "phibrowser-win/client/phi_opaque_edit.h"
 #include "phibrowser-win/client/phi_backdrop.h"
 #include "phibrowser-win/client/phi_emoji.h"
 #include "phibrowser-win/client/phi_i18n.h"
 #include "phibrowser-win/client/phi_icons.h"
 #include "phibrowser-win/client/phi_menu_paint.h"
+#include "phibrowser-win/client/phi_popover.h"
 #include "phibrowser-win/client/phi_prompt.h"
 #include "phibrowser-win/client/phi_shell_window.h"
+#include "phibrowser-win/client/phi_space_theme_panel.h"
 
 namespace phi_client {
 
@@ -100,14 +102,10 @@ constexpr int kEmojiFont = 14;      // emojiFontSize
 constexpr int kItemRadius = 10;     // itemCornerRadius
 constexpr int kRowSpacing = 4;
 constexpr int kColumnSpacing = 2;   // reflowColumnSpacing
-// colorBlock: 16pt dots in 20pt rings, a divider, the 20pt slider.
-constexpr int kDot = 16;
-constexpr int kRing = 20;
-constexpr int kColorHPad = 8;
-constexpr int kColorVPad = 12;
-constexpr int kColorGap = 12;
-constexpr int kSliderHeight = 20;
-constexpr int kSliderKnob = 18;
+// colorBlock: the "Color ›" row — a 32 row, 8 lead, the 11 chevron in a
+// 21 cell with 6 trailing (the Mac's HStack(spacing: 8) button).
+constexpr int kColorChevron = 11;
+constexpr int kColorChevronCell = 21;
 // actions: the Create capsule (13 medium, 16/6 padding) over the Cancel text.
 constexpr int kActionGap = 12;
 constexpr int kButtonHPad = 16;
@@ -131,61 +129,6 @@ COLORREF Blend(COLORREF over, COLORREF base, int alpha) {
 // fallback of their own.
 void FillRound(HDC dc, const RECT& r, int radius, COLORREF fill) {
   PhiFillRoundRectAA(dc, r, radius, fill);
-}
-
-void FillCircle(HDC dc, const RECT& r, COLORREF fill) {
-  PhiFillEllipseAA(dc, r, fill);
-}
-
-void StrokeCircle(HDC dc, const RECT& r, COLORREF ink, int width) {
-  PhiStrokeEllipseAA(dc, r, ink, width);
-}
-
-void RgbToHsv(COLORREF c, double* h, double* s, double* v) {
-  const double r = GetRValue(c) / 255.0;
-  const double g = GetGValue(c) / 255.0;
-  const double b = GetBValue(c) / 255.0;
-  const double mx = std::max(r, std::max(g, b));
-  const double mn = std::min(r, std::min(g, b));
-  const double d = mx - mn;
-  *v = mx;
-  *s = mx > 0 ? d / mx : 0;
-  if (d <= 0) {
-    *h = 0;
-  } else if (mx == r) {
-    *h = 60.0 * std::fmod((g - b) / d, 6.0);
-  } else if (mx == g) {
-    *h = 60.0 * ((b - r) / d + 2.0);
-  } else {
-    *h = 60.0 * ((r - g) / d + 4.0);
-  }
-  if (*h < 0) {
-    *h += 360.0;
-  }
-}
-
-COLORREF HsvToRgb(double h, double s, double v) {
-  const double c = v * s;
-  const double x = c * (1 - std::fabs(std::fmod(h / 60.0, 2.0) - 1));
-  const double m = v - c;
-  double r = 0, g = 0, b = 0;
-  if (h < 60) {
-    r = c, g = x;
-  } else if (h < 120) {
-    r = x, g = c;
-  } else if (h < 180) {
-    g = c, b = x;
-  } else if (h < 240) {
-    g = x, b = c;
-  } else if (h < 300) {
-    r = x, b = c;
-  } else {
-    r = c, b = x;
-  }
-  const auto to = [m](double q) {
-    return static_cast<int>(std::lround((q + m) * 255.0));
-  };
-  return RGB(to(r), to(g), to(b));
 }
 
 std::string HexOf(COLORREF c) {
@@ -221,10 +164,6 @@ struct PhiCreateSpacePanel::Geometry {
   RECT seg_emoji{};
   RECT grid{};
   RECT color_block{};
-  RECT divider{};
-  RECT slider{};
-  std::array<RECT, 8> dots{};
-  size_t dot_count = 0;
   RECT create_button{};
   RECT cancel_button{};
   int content_height = 0;       // The column's full height (form scroll).
@@ -239,6 +178,7 @@ PhiCreateSpacePanel::PhiCreateSpacePanel(PhiShellWindow* controller,
     : controller_(controller), host_hwnd_(host_hwnd), host_(host) {}
 
 PhiCreateSpacePanel::~PhiCreateSpacePanel() {
+  CloseColorEditor();  // Its callbacks point here.
   Destroy();  // Takes the field with it; the base drops its fonts.
   if (field_brush_) {
     ::DeleteObject(field_brush_);
@@ -428,14 +368,14 @@ void PhiCreateSpacePanel::Show(const RECT& bounds,
   }
   theme_id_ = fresh.empty() ? source_theme_id
                             : themes[fresh[base::RandGenerator(fresh.size())]].id;
-  slider_ = std::max(0, std::min(100, saturation));
-  user_adjusted_slider_ = false;
+  saturation_ = std::max(0, std::min(100, saturation));
+  palette_.reset();
+  CloseColorEditor();
   tab_ = Tab::kIcon;
   grid_scroll_ = 0;
   form_scroll_ = 0;
   hover_ = Hit::kNone;
   hover_index_ = -1;
-  dragging_slider_ = false;
   if (field_) {
     ::SetWindowTextW(field_, L"");
   }
@@ -465,10 +405,7 @@ void PhiCreateSpacePanel::Hide(bool animated) {
   if (!alive()) {
     return;
   }
-  if (dragging_slider_) {
-    dragging_slider_ = false;
-    slider_capture_.Release();
-  }
+  CloseColorEditor();
   if (IsPanelVisible()) {
     if (!animated ||
         !::AnimateWindow(hwnd(), kSlideMs,
@@ -627,33 +564,9 @@ PhiCreateSpacePanel::Geometry PhiCreateSpacePanel::ComputeGeometry() const {
   }
   y += block_h + Scaled(kFormGap);
 
-  {
-    const int ring = Scaled(kRing);
-    const int color_h = Scaled(kColorVPad) + ring + Scaled(kColorGap) + 1 +
-                        Scaled(kColorGap) + Scaled(kSliderHeight) +
-                        Scaled(kColorVPad);
-    g.color_block = {left, y, right, y + color_h};
-    const auto& themes = PhiBuiltInThemes();
-    g.dot_count = std::min<size_t>(themes.size(), 8);
-    const int inner_left = left + Scaled(kColorHPad);
-    const int inner_right = right - Scaled(kColorHPad);
-    const int cell_w = g.dot_count > 0
-                           ? (inner_right - inner_left) /
-                                 static_cast<int>(g.dot_count)
-                           : 0;
-    const int dots_top = y + Scaled(kColorVPad);
-    for (size_t i = 0; i < g.dot_count; ++i) {
-      const int cx = inner_left + cell_w * static_cast<int>(i) + cell_w / 2;
-      g.dots[i] = {cx - ring / 2, dots_top, cx - ring / 2 + ring,
-                   dots_top + ring};
-    }
-    const int divider_y = dots_top + ring + Scaled(kColorGap);
-    g.divider = {inner_left, divider_y, inner_right, divider_y + 1};
-    const int slider_top = divider_y + 1 + Scaled(kColorGap);
-    g.slider = {inner_left, slider_top, inner_right,
-                slider_top + Scaled(kSliderHeight)};
-    y += color_h + Scaled(kSectionGap);
-  }
+  // The "Color ›" row, the height of the name and profile rows.
+  g.color_block = {left, y, right, y + Scaled(kRowHeight)};
+  y += Scaled(kRowHeight) + Scaled(kSectionGap);
 
   {
     const int button_h = Scaled(kButtonTextHeight) + 2 * Scaled(kButtonVPad);
@@ -681,12 +594,8 @@ PhiCreateSpacePanel::Geometry PhiCreateSpacePanel::ComputeGeometry() const {
   for (RECT* r : {&g.column, &g.title, &g.subtitle, &g.name_row,
                   &g.profile_row, &g.pill, &g.icon_block, &g.segment,
                   &g.seg_icon, &g.seg_emoji, &g.grid, &g.color_block,
-                  &g.divider, &g.slider, &g.create_button,
-                  &g.cancel_button}) {
+                  &g.create_button, &g.cancel_button}) {
     shift(r);
-  }
-  for (size_t i = 0; i < g.dot_count; ++i) {
-    shift(&g.dots[i]);
   }
   return g;
 }
@@ -758,16 +667,8 @@ PhiCreateSpacePanel::Hit PhiCreateSpacePanel::HitTest(const Geometry& g,
     }
     return Hit::kNone;
   }
-  for (size_t i = 0; i < g.dot_count; ++i) {
-    RECT hit = g.dots[i];
-    ::InflateRect(&hit, Scaled(4), Scaled(4));
-    if (::PtInRect(&hit, pt)) {
-      *index = static_cast<int>(i);
-      return Hit::kDot;
-    }
-  }
-  if (::PtInRect(&g.slider, pt)) {
-    return Hit::kSlider;
+  if (::PtInRect(&g.color_block, pt)) {
+    return Hit::kColorRow;
   }
   if (::PtInRect(&g.create_button, pt)) {
     return Hit::kCreate;
@@ -778,16 +679,6 @@ PhiCreateSpacePanel::Hit PhiCreateSpacePanel::HitTest(const Geometry& g,
     return Hit::kCancel;
   }
   return Hit::kNone;
-}
-
-void PhiCreateSpacePanel::SelectTheme(size_t index) {
-  const auto& themes = PhiBuiltInThemes();
-  if (index >= themes.size() || theme_id_ == themes[index].id) {
-    return;
-  }
-  theme_id_ = themes[index].id;
-  PushPreview();
-  Refresh();
 }
 
 void PhiCreateSpacePanel::SelectIcon(size_t index) {
@@ -802,23 +693,52 @@ void PhiCreateSpacePanel::SelectIcon(size_t index) {
   Refresh();
 }
 
-void PhiCreateSpacePanel::SetSliderFromPoint(const Geometry& g, int x) {
-  const int knob = Scaled(kSliderKnob);
-  const int span = std::max(1, static_cast<int>(g.slider.right - g.slider.left) - knob);
-  const int value = std::max(
-      0, std::min(100, (x - static_cast<int>(g.slider.left) - knob / 2) * 100 / span));
-  if (value == slider_ && user_adjusted_slider_) {
+void PhiCreateSpacePanel::OpenColorEditor(const Geometry& g) {
+  if (editor_) {
+    CloseColorEditor();  // The row toggles.
     return;
   }
-  slider_ = value;
-  user_adjusted_slider_ = true;
-  PushPreview();
-  Refresh();
+  HWND owner = host_hwnd_ ? host_hwnd_
+                          : controller_ ? controller_->shell_hwnd() : nullptr;
+  if (!owner || PhiPopover::ShouldSuppressReopen(owner)) {
+    return;
+  }
+  // Beside the row (the Mac's arrowEdge: .trailing), in screen pixels.
+  RECT anchor = g.color_block;
+  ::MapWindowPoints(hwnd(), nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+  PhiThemeDraftEditor editor;
+  editor.base_theme_id = theme_id_;
+  editor.palette = palette_;
+  editor.on_change = [this](const PhiThemePalette& palette) {
+    palette_ = palette;
+    PushPreview();
+    Invalidate();
+  };
+  editor.on_closed = [this] {
+    editor_ = nullptr;
+    Invalidate();
+  };
+  editor_ = PhiOpenSpaceThemeDraftPanel(controller_, owner, anchor,
+                                        std::move(editor));
+}
+
+void PhiCreateSpacePanel::CloseColorEditor() {
+  if (PhiPopover* editor = editor_) {
+    // Dismiss runs on_closed synchronously (WM_NCDESTROY), which nulls
+    // editor_ — the copy above is what makes a re-entrant call a no-op.
+    editor_ = nullptr;
+    editor->Dismiss();
+  }
 }
 
 void PhiCreateSpacePanel::PushPreview() {
-  if (controller_ && !standalone()) {
-    controller_->PreviewCreateSpaceTheme(theme_id_, slider_);
+  if (!controller_ || standalone()) {
+    return;
+  }
+  if (palette_) {
+    controller_->PreviewCreateSpacePalette(theme_id_, *palette_);
+  } else {
+    controller_->PreviewCreateSpaceTheme(theme_id_, saturation_);
   }
 }
 
@@ -896,13 +816,17 @@ void PhiCreateSpacePanel::Create() {
   spec.profile_id = profile_id_;
   spec.icon = icon_;
   spec.theme_id = theme_id_;
-  spec.saturation = user_adjusted_slider_ ? slider_ : -1;
+  spec.saturation = -1;  // The removed slider: the new Space follows the app.
+  spec.palette = palette_;
   spec.after_space_id = source_space_id_;
-  // The Mac derives the stored colorHex from the theme's overlay colour, so
-  // the sidebar tint matches the pinned theme on both clients.
+  // The Mac derives the stored colorHex from the resolved theme's overlay
+  // colour — the draft palette's anchor once one exists — so the sidebar
+  // tint matches the pinned theme on both clients.
   const PhiTheme& theme = PhiThemeById(theme_id_);
   const bool dark = controller_->CurrentPalette().dark;
-  spec.color_hex = HexOf(dark ? theme.dark.overlay : theme.light.overlay);
+  spec.color_hex =
+      HexOf(palette_ ? palette_->ResolvedColor(0, dark)
+                     : (dark ? theme.dark.overlay : theme.light.overlay));
   if (host_) {
     host_->FormCommit(spec);
   } else {
@@ -985,7 +909,6 @@ void PhiCreateSpacePanel::PaintForm(HDC dc) {
   const COLORREF fill10 = Blend(ink, ground, 25);   // hover / selected
   const COLORREF label = palette.label;             // primary 85%
   const COLORREF label50 = Blend(ink, ground, 128); // primary 50%
-  const COLORREF divider = Blend(ink, ground, 31);
 
   // Header.
   HGDIOBJ prev = ::SelectObject(dc, TitleFont());
@@ -1053,42 +976,43 @@ void PhiCreateSpacePanel::PaintForm(HDC dc) {
   }
   PaintCells(dc, g, palette);
 
-  // Colour: the theme dots, a divider, the saturation slider.
-  FillRound(dc, g.color_block, Scaled(kRowRadius), fill4);
+  // Colour: the "Color ›" row that opens the theme editor on the draft.
+  FillRound(dc, g.color_block, Scaled(kRowRadius),
+            hover_ == Hit::kColorRow || editor_ ? fill6 : fill4);
   {
-    const auto& themes = PhiBuiltInThemes();
-    const PhiAppearance appearance =
-        controller_->prefs_host() ? controller_->prefs_host()->Appearance()
-                                  : PhiAppearance::kSystem;
-    for (size_t i = 0; i < g.dot_count; ++i) {
-      const PhiPalette resolved =
-          PhiResolvePalette(themes[i], appearance, slider_);
-      const bool pure = i == 0;
-      const COLORREF fill = pure ? RGB(0xFF, 0xFF, 0xFF) : resolved.accent;
-      if (theme_id_ == themes[i].id) {
-        StrokeCircle(dc, g.dots[i], resolved.accent, Scaled(2));
-      }
-      RECT dot = g.dots[i];
-      const int inset = (Scaled(kRing) - Scaled(kDot)) / 2;
-      ::InflateRect(&dot, -inset, -inset);
-      FillCircle(dc, dot, fill);
-      if (pure) {
-        StrokeCircle(dc, dot, divider, 1);  // showsContrastBorder
-      }
-    }
-    HBRUSH line = ::CreateSolidBrush(divider);
-    ::FillRect(dc, &g.divider, line);
-    ::DeleteObject(line);
-    PaintSlider(dc, g.slider, palette);
+    ::SelectObject(dc, BodyFont());
+    ::SetTextColor(dc, Blend(ink, ground, 217));  // primary 85%
+    RECT color_label = {g.color_block.left + Scaled(kRowLead),
+                        g.color_block.top,
+                        g.color_block.right - Scaled(kRowTrail) -
+                            Scaled(kColorChevronCell) - Scaled(8),
+                        g.color_block.bottom};
+    PhiDrawTextAA(dc, PhiStr("sidebar.createSpace.colorPicker.label"), -1,
+                  &color_label,
+                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    RECT color_chevron = {g.color_block.right - Scaled(kRowTrail) -
+                              Scaled(kColorChevronCell),
+                          g.color_block.top,
+                          g.color_block.right - Scaled(kRowTrail),
+                          g.color_block.bottom};
+    HGDIOBJ prev_face = ::SelectObject(
+        dc, FaceFont(&fonts(), kColorChevron, FW_MEDIUM, PhiIconFaceName()));
+    const wchar_t chevron_glyph[] = {wchar_t(0xE76C), 0};  // ChevronRight
+    PhiDrawTextAA(dc, chevron_glyph, -1, &color_chevron,
+                  DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    ::SelectObject(dc, prev_face);
   }
 
   // Actions.
   {
-    const PhiPalette selected_palette = PhiResolvePalette(
-        PhiThemeById(theme_id_),
+    const PhiAppearance appearance =
         controller_->prefs_host() ? controller_->prefs_host()->Appearance()
-                                  : PhiAppearance::kSystem,
-        slider_);
+                                  : PhiAppearance::kSystem;
+    const PhiPalette selected_palette =
+        palette_ ? PhiResolvePalette(PhiThemeById(theme_id_), appearance,
+                                     *palette_)
+                 : PhiResolvePalette(PhiThemeById(theme_id_), appearance,
+                                     saturation_);
     COLORREF accent = selected_palette.accent;
     if (hover_ == Hit::kCreate) {
       accent = Blend(RGB(0, 0, 0), accent, 30);
@@ -1160,49 +1084,6 @@ void PhiCreateSpacePanel::PaintCells(HDC dc,
   ::RestoreDC(dc, save);
 }
 
-void PhiCreateSpacePanel::PaintSlider(HDC dc,
-                                      const RECT& bounds,
-                                      const PhiPalette& palette) {
-  // ThemeOpacitySliderView, as the Settings pane draws it: a 10pt rounded
-  // bar ramping the theme overlay's saturation 0.1 → 0.5 (Pure ramps
-  // brightness, brightest at the left), a 1pt border, an 18pt white knob.
-  const PhiTheme& theme = PhiThemeById(theme_id_);
-  const COLORREF overlay = palette.dark ? theme.dark.overlay : theme.light.overlay;
-  const bool pure = theme_id_ == "pure";
-  const int mid = (bounds.top + bounds.bottom) / 2;
-  RECT track = {bounds.left, mid - Scaled(5), bounds.right, mid + Scaled(5)};
-  const int span = track.right - track.left;
-  double hue = 0, sat = 0, val = 0;
-  RgbToHsv(overlay, &hue, &sat, &val);
-  // Painted square, then the corners are knocked back to the ground
-  // (antialiased) — a region clip would cut the rounded track on the
-  // pixel grid.
-  const int bands = 32;
-  for (int i = 0; i < bands; ++i) {
-    RECT band = {track.left + span * i / bands, track.top,
-                 track.left + span * (i + 1) / bands, track.bottom};
-    const double t = (i + 0.5) / bands;
-    COLORREF tint;
-    if (pure) {
-      const double hi = palette.dark ? 0.40 : 0.94;
-      const double lo = palette.dark ? 0.0 : 0.84;
-      tint = HsvToRgb(hue, sat, hi + (lo - hi) * t);
-    } else {
-      tint = HsvToRgb(hue, 0.1 + 0.4 * t, val);
-    }
-    HBRUSH brush = ::CreateSolidBrush(tint);
-    ::FillRect(dc, &band, brush);
-    ::DeleteObject(brush);
-  }
-  PhiKnockOutRoundRectAA(dc, track, Scaled(5), palette.ground_top);
-  PhiStrokeRoundRectAA(dc, track, Scaled(5), palette.border, 1);
-  const int knob = Scaled(kSliderKnob);
-  const int at = track.left + (span - knob) * slider_ / 100;
-  RECT dot = {at, mid - knob / 2, at + knob, mid + knob / 2};
-  FillCircle(dc, dot, RGB(0xFF, 0xFF, 0xFF));
-  StrokeCircle(dc, dot, palette.border, 1);
-}
-
 void PhiCreateSpacePanel::OnMouseDown(int, POINT pt) {
   const Geometry g = ComputeGeometry();
   int index = -1;
@@ -1223,17 +1104,9 @@ void PhiCreateSpacePanel::OnMouseDown(int, POINT pt) {
     case Hit::kCell:
       SelectIcon(static_cast<size_t>(index));
       break;
-    case Hit::kDot:
-      SelectTheme(static_cast<size_t>(index));
-      break;
-    case Hit::kSlider:
-      dragging_slider_ = true;
-      // RAII capture: WM_CAPTURECHANGED and WM_CANCELMODE both end the
-      // drag through OnCaptureLost(), so a stolen capture cannot leave the
-      // slider stuck (lane 3 §4.2).
-      slider_capture_ = BeginCapture();
-      SetSliderFromPoint(g, pt.x);
-      break;
+    case Hit::kColorRow:
+      OpenColorEditor(g);
+      return;  // The editor takes the focus.
     case Hit::kCreate:
       Create();
       return;
@@ -1244,7 +1117,7 @@ void PhiCreateSpacePanel::OnMouseDown(int, POINT pt) {
       break;
   }
   // The ground takes focus, so Escape / Enter still reach the form.
-  if (!dragging_slider_ && ::PtInRect(&g.name_row, pt) && field_) {
+  if (::PtInRect(&g.name_row, pt) && field_) {
     ::SetFocus(field_);
   } else {
     ::SetFocus(hwnd());
@@ -1266,10 +1139,6 @@ void PhiCreateSpacePanel::OnWheel(int delta, POINT pt) {
   Invalidate();
 }
 
-void PhiCreateSpacePanel::OnCaptureLost() {
-  dragging_slider_ = false;
-}
-
 bool PhiCreateSpacePanel::OnKey(WPARAM virtual_key) {
   if (virtual_key == VK_ESCAPE) {
     Cancel();
@@ -1288,14 +1157,7 @@ LRESULT PhiCreateSpacePanel::OnMessage(UINT message,
                                        bool* handled) {
   switch (message) {
     case WM_MOUSEMOVE:
-      // The slider drag owns the pointer while it runs; hover is the base's
-      // otherwise, over the hits the form's own HitTest resolves.
-      if (dragging_slider_) {
-        const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
-        SetSliderFromPoint(ComputeGeometry(), pt.x);
-        *handled = true;
-        return 0;
-      }
+      // Hover is the base's, over the hits the form's own HitTest resolves.
       {
         const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
         const Geometry g = ComputeGeometry();
@@ -1315,14 +1177,6 @@ LRESULT PhiCreateSpacePanel::OnMessage(UINT message,
         Invalidate();
       }
       break;  // The base clears its own leave tracking.
-    case WM_LBUTTONUP:
-      if (dragging_slider_) {
-        dragging_slider_ = false;
-        slider_capture_.Release();
-        *handled = true;
-        return 0;
-      }
-      break;
     case WM_CTLCOLOREDIT:
       if (controller_ && reinterpret_cast<HWND>(lparam) == field_) {
         const PhiPalette colors = QueryPalette();
@@ -1369,10 +1223,27 @@ LRESULT CALLBACK PhiCreateSpacePanel::FieldProc(HWND hwnd,
           self->PaintBackdropField(hwnd)) {
         return 0;
       }
+      if (self && self->host_) {
+        // Hosted (the Library's card, the create window): the field's
+        // interior is the row wash its frame is painted with, the value
+        // WM_CTLCOLOREDIT answers, drawn with opaque alpha so a DWM frame
+        // under the host cannot add the backdrop to it (phi_opaque_edit.h).
+        const PhiPalette colors = self->QueryPalette();
+        const COLORREF ink =
+            colors.dark ? RGB(0xFF, 0xFF, 0xFF) : RGB(0, 0, 0);
+        if (PhiPaintEditOpaque(hwnd, base,
+                               Blend(ink, self->host_->FormGround(), 10),
+                               self->field_surface_)) {
+          return 0;
+        }
+      }
       break;
     case WM_ERASEBKGND:
       if (self && self->UsesSidebarBackdrop()) {
         return 1;  // The buffered paint owns the name field's whole ground.
+      }
+      if (self && self->host_) {
+        return 1;  // WM_PAINT's opaque path owns the hosted field's ground.
       }
       break;
     case WM_KEYDOWN:
@@ -1395,7 +1266,8 @@ LRESULT CALLBACK PhiCreateSpacePanel::FieldProc(HWND hwnd,
   }
   // EDIT also paints synchronously during editing/selection. Follow those
   // writes with the alpha-aware path so they cannot leave zero-alpha text.
-  const bool repaint = self && self->UsesSidebarBackdrop() &&
+  const bool repaint = self &&
+      (self->UsesSidebarBackdrop() || self->host_) &&
       (msg == WM_CHAR || msg == WM_KEYDOWN || msg == WM_SETTEXT ||
        msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP ||
        (msg == WM_MOUSEMOVE && (w & MK_LBUTTON)) ||

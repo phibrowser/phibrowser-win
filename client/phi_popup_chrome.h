@@ -56,6 +56,11 @@ void PhiSetPopupPalette(const PhiPalette* live);
 
 // `over` at alpha/255 on `base` — the Mac's percentage overlays, opaque.
 COLORREF PhiPopupBlend(COLORREF over, COLORREF base, int alpha);
+// HSB -> COLORREF (the Mac's NSColor(hue:saturation:brightness:)); every
+// component 0..1, the hue wrapping.
+COLORREF PhiHsbColor(double hue, double saturation, double brightness);
+// The hue (0..1) of a colour; 0 for a grey.
+double PhiHueOf(COLORREF color);
 void PhiPopupFillRounded(HDC dc, const RECT& r, COLORREF fill, int radius);
 void PhiPopupStrokeRounded(HDC dc,
                            const RECT& r,

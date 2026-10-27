@@ -272,8 +272,12 @@ class PhiCoordinator : public SidebarHost,
   void RequestCreateSpace(int64_t slot, bool new_profile) override;
   void RequestNewIncognitoSpace(int64_t slot) override;
   void RequestCloseIncognitoSpace(const std::string& space_id) override;
-  bool AccountInfo(std::string* name, std::string* email) const;
+  // WindowHost's account seam (the sidebar's profile button); RequestSignIn
+  // is PhiSettingsHost's as well.
+  bool AccountInfo(std::string* name, std::string* email) const override;
   bool AccountSigningIn() const;
+  bool AccountIsGuest() const override;
+  const std::vector<uint8_t>& AccountAvatarCircle(int px) override;
   void RequestSignIn() override;
   void RequestSignOut() override;
 
@@ -335,6 +339,9 @@ class PhiCoordinator : public SidebarHost,
   std::string RequestCreateSpaceWithOptions(int64_t slot,
                                             const PhiNewSpaceSpec& spec,
                                             const char* surface) override;
+  std::string RequestCreateSpaceInBackground(int64_t slot,
+                                             const PhiNewSpaceSpec& spec,
+                                             const char* surface) override;
   int64_t SlotAtScreenPoint(POINT screen, int64_t exclude_slot) const override;
   bool RequestDropTabOnWindow(int64_t source_slot,  // tab ids
                               int index,
@@ -357,6 +364,22 @@ class PhiCoordinator : public SidebarHost,
   std::vector<PhiStoredRowView> BookmarkRows(
       int64_t slot,
       const std::string& parent_guid) const override;
+  // The Library's Space-scoped rows (phi_library.cc).
+  std::vector<PhiStoredRowView> PinnedRowsForSpace(
+      const std::string& space_id) const override;
+  std::vector<PhiStoredRowView> BookmarkRowsForSpace(
+      const std::string& space_id,
+      const std::string& parent_guid) const override;
+  std::string AddPinnedToSpace(const std::string& space_id,
+                               const std::string& title,
+                               const std::string& url) override;
+  std::string AddBookmarkToSpace(const std::string& space_id,
+                                 const std::string& parent_guid,
+                                 const std::string& title,
+                                 const std::string& url,
+                                 bool folder) override;
+  bool TransferPinToSpace(const std::string& guid,
+                          const std::string& space_id) override;
   void RequestOpen(int64_t slot, const std::string& url) override;
   void RequestBookmarkActiveTab(int64_t slot, int64_t browser) override;
   std::string AddBookmarkFolder(int64_t slot,
@@ -381,6 +404,7 @@ class PhiCoordinator : public SidebarHost,
   // PhiSettingsHost:
   std::string ThemeId() const override;
   PhiAppearance Appearance() const override;
+  void RequestAppearance(PhiAppearance appearance) override;
   int Saturation() const override;
   std::optional<std::wstring> RebindableChordLabel(UINT command) const override;
   void SetThemeId(const std::string& id) override;
@@ -471,6 +495,12 @@ class PhiCoordinator : public SidebarHost,
   void SetSpaceSaturation(const std::string& space_id, int value) override;
   void SetSettingsWindowSize(int width, int height) override;
   int SpaceSaturation(const std::string& space_id) const override;
+  std::optional<PhiThemePalette> SpacePalette(
+      const std::string& space_id) const override;
+  void SetSpacePalette(const std::string& space_id,
+                       const PhiThemePalette& palette) override;
+  void PreviewSpacePalette(const std::string& space_id,
+                           const PhiThemePalette& palette) override;
   bool RenameSpace(const std::string& space_id,
                    const std::string& name) override;
   bool DeleteSpace(const std::string& space_id) override;
@@ -530,6 +560,7 @@ class PhiCoordinator : public SidebarHost,
   void CreateSpaceNamed(const std::string& name) override;
   bool OpenCreateSpaceWindow(const std::string& initial_profile_id,
                              HWND anchor) override;
+  bool OpenLibrarySpaces() override;
   // The URL-rule door the VERB LADDER still takes: wire rows and POSITIONAL
   // edits (agentSpace.urlRules.*, which resolve a wire id to an index of
   // their own before calling in). The settings window takes PhiUrlRouter
@@ -1140,7 +1171,16 @@ class PhiCoordinator : public SidebarHost,
                         int index);
   bool MoveStoredRowToSpace(const std::string& guid,
                             const std::string& space_id,
-                            bool clone);
+                            bool clone) override;  // Also the Library's.
+  // The one creation flow behind RequestCreateSpaceWithOptions (activates
+  // the new Space in `slot`) and RequestCreateSpaceInBackground (does not).
+  std::string CreateSpaceWithOptions(int64_t slot,
+                                     const PhiNewSpaceSpec& spec,
+                                     const char* surface,
+                                     bool activate);
+  // A slot whose window shows `space_id`, for the favicon service's
+  // per-profile lookup; any user slot when none does.
+  SlotId SlotShowingSpace(const std::string& space_id) const;
   void RequestTabToSpace(SlotId slot,
                          TabId tab,
                          const std::string& space_id,

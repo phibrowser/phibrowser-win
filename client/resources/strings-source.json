@@ -3254,6 +3254,22 @@
    "comment": "downloads — used at phi_downloads_popover.cc:423",
    "en": "Scanning..."
   },
+  "downloads.all.empty": {
+   "comment": "Mac key (translations by key); library — the Library's Downloads section with nothing to list (used at phi_library.cc)",
+   "en": "No Downloads"
+  },
+  "downloads.all.noSearchResults": {
+   "comment": "Mac key (translations by key); library — the Library's Downloads section when the search matches nothing (used at phi_library.cc)",
+   "en": "No Matching Downloads"
+  },
+  "downloads.all.search": {
+   "comment": "Mac key (translations by key); library — placeholder of the Downloads section's search field, over file name and source URL (used at phi_library.cc)",
+   "en": "Search Downloads"
+  },
+  "downloads.all.unknownDate": {
+   "comment": "Mac key (translations by key); library — day-group heading for downloads without a usable date (used at phi_library.cc)",
+   "en": "Unknown Date"
+  },
   "downloads.b": {
    "comment": "downloads — the bytes unit, beside a figure ('812 B'). Used at phi_downloads_popover.cc",
    "en": "B",
@@ -4276,9 +4292,81 @@
    "comment": "kiosk — used in phi_kiosk_window.cc",
    "en": "Open in"
   },
+  "library.navigation.downloads": {
+   "comment": "Mac key (translations by key); library — the Library rail's Downloads item (label and tooltip) (used at phi_library.cc)",
+   "en": "Downloads"
+  },
+  "library.navigation.openInNewWindow": {
+   "comment": "Mac key (translations by key); library — the Library rail's bottom button, opens the Library as its own window (tooltip and accessible name) (used at phi_library.cc)",
+   "en": "Open Library in New Window"
+  },
+  "library.navigation.spaces": {
+   "comment": "Mac key (translations by key); library — the Library rail's Spaces item (label and tooltip) (used at phi_library.cc)",
+   "en": "Spaces"
+  },
+  "library.navigation.title": {
+   "comment": "Mac key (translations by key); appMenu — the ⋯ menu's Library row, the Ctrl+Shift+L shortcut's name in Settings ▸ Shortcuts, and the Settings ▸ Spaces button that opens it (used at phi_app_menu.cc, phi_preferences.cc, phi_settings_window.cc)",
+   "en": "Library"
+  },
+  "library.spaces.create": {
+   "comment": "Mac key (translations by key); library — the + circle after the last Space card (tooltip and accessible name) (used at phi_library.cc)",
+   "en": "New Space"
+  },
+  "library.spaces.deleteItem": {
+   "comment": "Mac key (translations by key); library — a pin's or bookmark's context menu: delete it (used at phi_library.cc)",
+   "en": "Delete"
+  },
+  "library.spaces.deleteSpace": {
+   "comment": "Mac key (translations by key); library — a Space card's … menu: delete the Space after confirmation (used at phi_library.cc)",
+   "en": "Delete Space…"
+  },
+  "library.spaces.editIcon": {
+   "comment": "Mac key (translations by key); library — a Space card's icon button (tooltip and accessible name), opens the icon picker (used at phi_library.cc)",
+   "en": "Change Space icon"
+  },
+  "library.spaces.editItem": {
+   "comment": "Mac key (translations by key); library — a pin's or bookmark's context menu: edit its address (a folder: its name) (used at phi_library.cc)",
+   "en": "Edit…"
+  },
+  "library.spaces.editTheme": {
+   "comment": "Mac key (translations by key); library — a Space card's palette button (tooltip and accessible name), opens the theme editor (used at phi_library.cc)",
+   "en": "Edit Theme"
+  },
+  "library.spaces.moreActions": {
+   "comment": "Mac key (translations by key); library — a Space card's … button (tooltip and accessible name) (used at phi_library.cc)",
+   "en": "More Actions"
+  },
+  "library.spaces.moveToSpace": {
+   "comment": "Mac key (translations by key); library — a pin's or bookmark's context menu: the submenu of other Spaces to move it to (used at phi_library.cc)",
+   "en": "Move to Space"
+  },
+  "library.spaces.name": {
+   "comment": "Mac key (translations by key); library — placeholder of a Space card's inline name editor (used at phi_library.cc)",
+   "en": "Space name"
+  },
+  "library.spaces.newBookmark": {
+   "comment": "Mac key (translations by key); library — a Space card's … menu and body menu: create a bookmark (also the address prompt's title) (used at phi_library.cc)",
+   "en": "New Bookmark…"
+  },
+  "library.spaces.newFolder": {
+   "comment": "Mac key (translations by key); library — a Space card's … menu and body menu: create a bookmark folder (used at phi_library.cc)",
+   "en": "New Folder…"
+  },
+  "library.spaces.newPin": {
+   "comment": "Mac key (translations by key); library — a Space card's … menu and body menu: create a pinned tab (also the address prompt's title) (used at phi_library.cc)",
+   "en": "New Pinned Tab…"
+  },
+  "library.spaces.openItem": {
+   "comment": "Mac key (translations by key); library — a pin's or bookmark's context menu: open it in the browser (used at phi_library.cc)",
+   "en": "Open"
+  },
   "library.spaces.reorder": {
-   "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): Spaces list, a row's reorder grip (accessible name, followed by the Space name)",
+   "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): Spaces list, a row's reorder grip (accessible name, followed by the Space name); library — a Space card's drag handle tooltip (phi_library.cc)",
    "en": "Drag to reorder Space"
+  },
+  "library.spaces.setProfile": {
+   "comment": "Mac key (translations by key); library — a Space card's … menu: the submenu choosing the Space's profile (used at phi_library.cc)",
+   "en": "Set Profile"
   },
   "localData.bookmarks.importedFromArcFolderTitle": {
    "comment": "importWindow — the Arc landing folder, used at phi_coordinator.cc",
@@ -5553,17 +5641,17 @@
    "comment": "onboarding — Mac key (translations by key)",
    "en": "What should I call you?"
   },
+  "oobe.welcome.cardSaveFailed": {
+   "comment": "onboarding — Mac key (translations by key); used at phi_onboarding_window.cc",
+   "en": "Your card could not be saved. Please try again."
+  },
   "oobe.welcome.nextButton": {
    "comment": "onboarding — Mac key (translations by key)",
    "en": "Next"
   },
-  "oobe.welcome.personalizedTitle": {
-   "comment": "onboarding — Mac key (translations by key)",
-   "en": "Welcome {0}"
-  },
-  "oobe.welcome.title": {
-   "comment": "onboarding — Mac key (translations by key)",
-   "en": "Welcome"
+  "oobe.welcome.randomizeCard": {
+   "comment": "onboarding — Mac key (translations by key); the dice button's tooltip, phi_onboarding_window.cc",
+   "en": "Randomize"
   },
   "peek.panel.closeButtonTooltip": {
    "comment": "peek — the header's close button, tooltip and accessible name; used at phi_peek_panel.cc",
@@ -5576,6 +5664,46 @@
   "peek.panel.splitButtonTooltip": {
    "comment": "peek — the header's split-view button, tooltip and accessible name; used at phi_peek_panel.cc",
    "en": "Open as Split View"
+  },
+  "profile.button.accessibilityLabel": {
+   "comment": "profile button — Mac key (translations by key); the sidebar bottom bar's avatar button, tooltip and accessible name; used at phi_shell_window.cc",
+   "en": "Profile menu"
+  },
+  "profile.card.dateJoined": {
+   "comment": "membership card — Mac key (translations by key); used at phi_holographic_card.cc",
+   "en": "Date Joined"
+  },
+  "profile.menu.bookmarks": {
+   "comment": "profile menu — Mac key (translations by key); Manage Bookmarks row, phi_shell_menus.cc",
+   "en": "Manage Bookmarks"
+  },
+  "profile.menu.downloads": {
+   "comment": "profile menu — Mac key (translations by key); Download List row (opens Library ▸ Downloads), phi_shell_menus.cc",
+   "en": "Download List"
+  },
+  "profile.menu.extensions": {
+   "comment": "profile menu — Mac key (translations by key); Manage Extensions row, phi_shell_menus.cc",
+   "en": "Manage Extensions"
+  },
+  "profile.menu.newIncognitoSpace": {
+   "comment": "profile menu — Mac key (translations by key); New Incognito Space row, phi_shell_menus.cc",
+   "en": "New Incognito Space"
+  },
+  "profile.menu.newIncognitoWindow": {
+   "comment": "profile menu — Mac key (translations by key); New Incognito Window row, phi_shell_menus.cc",
+   "en": "New Incognito Window"
+  },
+  "profile.menu.newTab": {
+   "comment": "profile menu — Mac key (translations by key); New Tab row, phi_shell_menus.cc",
+   "en": "New Tab"
+  },
+  "profile.menu.settings": {
+   "comment": "profile menu — Mac key (translations by key); Settings row, phi_shell_menus.cc",
+   "en": "Settings"
+  },
+  "profile.menu.signIn": {
+   "comment": "profile menu — Mac key (translations by key); Sign in row, shown only while no account is signed in, phi_shell_menus.cc",
+   "en": "Sign in"
   },
   "prompt.alt": {
    "comment": "prompt — used in phi_prompt.cc",
@@ -8105,6 +8233,10 @@
    "comment": "settings — used at phi_settings_window.cc:925",
    "en": "Your Spaces"
   },
+  "settings.spaces.manageInLibrary": {
+   "comment": "Mac key (translations by key); settings — Settings ▸ Spaces: the row whose button opens the Library on Spaces and hides Settings (used at phi_settings_window.cc)",
+   "en": "Manage Spaces in Library"
+  },
   "settings.spaces.newButtonTooltip": {
    "comment": "settings — used at phi_settings_window.cc:3275",
    "en": "New Space"
@@ -8192,11 +8324,11 @@
    }
   },
   "settings.spaces.theme.colorLabel": {
-   "comment": "spaces — Set Theme panel, color row label; used at phi_space_theme_panel.cc",
+   "comment": "spaces — Settings > Spaces editor, color row label; used at phi_settings_window.cc",
    "en": "Color"
   },
   "settings.spaces.theme.saturationLabel": {
-   "comment": "spaces — Set Theme panel, saturation row label; used at phi_space_theme_panel.cc",
+   "comment": "spaces — Settings > Spaces editor, saturation row label; used at phi_settings_window.cc",
    "en": "Saturation"
   },
   "settings.sync.approve": {
@@ -8634,6 +8766,10 @@
   "sidebar.createSpace.cancelButton": {
    "comment": "createSpace — used at phi_create_space_panel.cc",
    "en": "Cancel"
+  },
+  "sidebar.createSpace.colorPicker.label": {
+   "comment": "Mac key (translations by key); createSpace — the form's row that opens the Space theme editor (used at phi_create_space_panel.cc)",
+   "en": "Color"
   },
   "sidebar.createSpace.createButton": {
    "comment": "createSpace — used at phi_create_space_panel.cc",
@@ -9752,6 +9888,26 @@
   "tabs.tabGroup.summaryWithTabCount": {
    "comment": "sidebar — auto-generated title of an unnamed tab group, e.g. \"Blue · 3 tabs\". {0} is the colour name, {1} the member count",
    "en": "{0} · {1} tabs"
+  },
+  "theme.editor.analogousColors": {
+   "comment": "Mac key (translations by key); spaces — Space theme editor toolbar, select two linked neighboring colors 45 degrees apart (used at phi_space_theme_panel.cc)",
+   "en": "Analogous colors"
+  },
+  "theme.editor.colorHandle": {
+   "comment": "Mac key (translations by key); spaces — Space theme editor, accessible name of a color handle; {0} is the color number, one to three (used at phi_space_theme_panel.cc)",
+   "en": "Color {0}"
+  },
+  "theme.editor.singleColor": {
+   "comment": "Mac key (translations by key); spaces — Space theme editor toolbar, select a palette with one color (used at phi_space_theme_panel.cc)",
+   "en": "Single color"
+  },
+  "theme.editor.threeColors": {
+   "comment": "Mac key (translations by key); spaces — Space theme editor toolbar, select three linked split complementary colors (used at phi_space_theme_panel.cc)",
+   "en": "Three colors"
+  },
+  "theme.editor.twoColors": {
+   "comment": "Mac key (translations by key); spaces — Space theme editor toolbar, select two linked complementary colors (used at phi_space_theme_panel.cc)",
+   "en": "Two colors"
   },
   "themes.appearance.darkOption": {
    "comment": "settings — used at phi_settings_window.cc:700",

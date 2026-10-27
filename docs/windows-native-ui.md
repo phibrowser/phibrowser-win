@@ -518,9 +518,17 @@ page pane, left and right is ok").
   cell grid, the outline (with the dashed "Drag tabs here" well when
   empty, as the drag zone already does), then "+ New tab" (Ctrl+T keycap
   trailing) and the tab list. The one line that stays is the agent
-  Space's "Claude's tabs" cue (§5.10). The bottom bar (40):
-  Downloads and memory leading, the Feedback pill trailing. No Chat
-  capsule (out of scope for now).
+  Space's "Claude's tabs" cue (§5.10). The bottom bar (40): the
+  **profile button** (the Mac's `ProfileButton`, 2026-10-27) left-most at
+  x 8 — a 24 dip disc, the account picture circle-clipped with a 1 px
+  ink-8 % ring when signed in, the Fluent Contact glyph otherwise, no
+  hover wash — then Downloads and memory, the Feedback pill trailing. No
+  Chat capsule (out of scope for now). The profile button drops the Mac's
+  `populateProfileMenu` upward (its bottom edge 5 dip above the button,
+  left-aligned): Download List (→ Library ▸ Downloads), Manage Bookmarks,
+  Manage Extensions, ─, New Tab, New Incognito Space, New Incognito
+  Window, ─, Settings, and Sign in while no account is signed in — each
+  row with the user's effective chord.
 * Rows: 36 high, radius 6; the active tab is a `card` tile with a 1 px
   stroke and a 0 1 2 shadow (the screenshot's raised "New Tab" row);
   hover ink 4.5 %; close box 20 on hover / active; dimmed rows at 62 %.

@@ -47,8 +47,7 @@ OBJ_DIR = "phi_clientkit/obj"
 RESOURCES = ("emoji-catalog.json", "phi.ico", "strings.json")
 # The client-owned subtrees under <out>/resources (staged below), and the
 # manifest naming them all for the installer's layout split.
-CLIENT_RESOURCE_TREES = ("phi-browser-skill", "profile-card", "onboarding",
-                         "fonts")
+CLIENT_RESOURCE_TREES = ("phi-browser-skill", "onboarding", "fonts")
 CLIENT_RESOURCES_MANIFEST = "phi-client-resources.txt"
 # The phi-browser skill ships beside the exe as resources/phi-browser-skill:
 # the tree Settings > Developer > "Add skill to..." junctions into an agent's
@@ -366,13 +365,9 @@ def main():
         shutil.copy2(os.path.join(CLIENT_DIR, "resources", name),
                      resources_dir)
     sync_tree(SKILL_DIR, os.path.join(resources_dir, "phi-browser-skill"))
-    # The You pane's profile card: the Mac's conch frames and dot pattern
-    # (client/resources/profile-card, decoded at run time by
-    # phi_profile_card.cc).
-    sync_tree(os.path.join(CLIENT_DIR, "resources", "profile-card"),
-              os.path.join(resources_dir, "profile-card"))
-    # The onboarding window's pages (login still, conch frames, tiles) and
-    # the brand faces it registers privately (phi_fonts.cc).
+    # The onboarding window's pages (login still, wallpaper, dot pattern,
+    # tiles) and the brand faces it registers privately (phi_fonts.cc). The
+    # membership card (phi_holographic_card.cc) is procedural: no frames.
     sync_tree(os.path.join(CLIENT_DIR, "resources", "onboarding"),
               os.path.join(resources_dir, "onboarding"))
     sync_tree(os.path.join(CLIENT_DIR, "resources", "fonts"),

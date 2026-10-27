@@ -410,6 +410,9 @@ std::string_view PhiTelemetry::AllowedProperties(std::string_view module) {
   if (module == "notifications") {
     return "|action|";
   }
+  if (module == "library") {
+    return "|section|is_standalone_window|";
+  }
   return std::string_view();
 }
 

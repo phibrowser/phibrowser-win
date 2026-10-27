@@ -115,6 +115,11 @@ constexpr RebindableShortcut kRebindableShortcuts[] = {
      kCmdDownloads, {'J', true, false, false}},
     {"searchTabs", "Window", "settings.shortcuts.command.searchTabs",
      kCmdSearchTabs, {'A', true, true, false}},
+    // The Library has no chord on Mac (its profile-menu row); the Windows
+    // ledger gave it the ⋯ row plus a Ctrl chord. Ctrl+L is the address
+    // field, so Ctrl+Shift+L.
+    {"library", "View", "library.navigation.title", kCmdLibrary,
+     {'L', true, true, false}},
     {"nextSpace", "Spaces", "settings.shortcuts.command.selectNextSpace",
      kCmdNextSpace, {VK_RIGHT, true, false, true}},
     {"previousSpace", "Spaces",
@@ -395,6 +400,10 @@ void PhiPreferences::SetThemeId(const std::string& id) {
   Notify(PreferenceChange::kTheme);
 }
 
+void PhiPreferences::RequestAppearance(PhiAppearance appearance) {
+  SetAppearance(appearance);
+}
+
 void PhiPreferences::SetAppearance(PhiAppearance appearance) {
   if (appearance == Appearance()) {
     return;
@@ -610,6 +619,37 @@ void PhiPreferences::SetOnboardingPhase(const std::string& sub, int phase) {
   settings_.login_phase = phase;
   MarkDirty();
   Notify(PreferenceChange::kAccess);
+}
+
+// The Mac's profileCardStyle, in the account's defaults like loginPhase.
+std::map<std::string, std::string> PhiPreferences::ProfileCardStyle(
+    const std::string& sub) const {
+  if (sub.empty() || user_data_dir_.empty()) {
+    return {};
+  }
+  const std::wstring dir = PhiAccountDirPath(user_data_dir_, sub);
+  if (account_ && account_->dir() == dir) {
+    return account_->GetStringMap(kDefaultsProfileCardStyle);
+  }
+  PhiAccountDefaults defaults;
+  defaults.Load(dir);
+  return defaults.GetStringMap(kDefaultsProfileCardStyle);
+}
+
+bool PhiPreferences::SetProfileCardStyle(
+    const std::string& sub, const std::map<std::string, std::string>& style) {
+  if (sub.empty() || user_data_dir_.empty()) {
+    return false;
+  }
+  const std::wstring dir = PhiAccountDirPath(user_data_dir_, sub);
+  if (account_ && account_->dir() == dir) {
+    account_->SetStringMap(kDefaultsProfileCardStyle, style);
+  } else {
+    PhiAccountDefaults defaults;
+    defaults.Load(PhiEnsureAccountDir(user_data_dir_, sub));
+    defaults.SetStringMap(kDefaultsProfileCardStyle, style);
+  }
+  return true;
 }
 
 void PhiPreferences::SetAllowAgentControl(bool enabled) {

@@ -10,6 +10,7 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <climits>
 #include <optional>
 #include <set>
 #include <string_view>
@@ -34,6 +35,7 @@
 #include "phibrowser-win/client/phi_client_analytics.h"
 #include "phibrowser-win/client/phi_control_dispatcher.h"
 #include "phibrowser-win/client/phi_create_space_window.h"
+#include "phibrowser-win/client/phi_library.h"
 #include "phibrowser-win/client/phi_extensions_popover.h"
 #include "phibrowser-win/client/phi_features.h"
 #include "phibrowser-win/client/phi_file_io.h"
@@ -958,6 +960,122 @@ std::vector<PhiStoredRowView> PhiCoordinator::BookmarkRows(
     }
   }
   return out;
+}
+
+SlotId PhiCoordinator::SlotShowingSpace(const std::string& space_id) const {
+  SlotId first;
+  for (PhiShellWindow* controller : registry_.UserControllers()) {
+    if (controller->HasSpace(space_id)) {
+      return controller->slot();
+    }
+    if (!first.valid()) {
+      first = controller->slot();
+    }
+  }
+  return first;
+}
+
+std::vector<PhiStoredRowView> PhiCoordinator::PinnedRowsForSpace(
+    const std::string& space_id) const {
+  std::vector<PhiStoredRowView> out;
+  const Space* space = space_manager_->Find(space_id);
+  if (!space || model::IsIncognitoSpaceId(space_id)) {
+    return out;  // An Incognito Space keeps no rows.
+  }
+  const SlotId slot = SlotShowingSpace(space_id);
+  for (const PhiRow& row : tab_store_.PinnedFor(space->profile_id, space_id,
+                                                PhiFaviconForm::kRaw)) {
+    out.push_back(StoredRowView(row));
+    UpgradeFavicon(slot, row.url, &out.back());
+  }
+  return out;
+}
+
+std::vector<PhiStoredRowView> PhiCoordinator::BookmarkRowsForSpace(
+    const std::string& space_id,
+    const std::string& parent_guid) const {
+  std::vector<PhiStoredRowView> out;
+  const Space* space = space_manager_->Find(space_id);
+  if (!space || model::IsIncognitoSpaceId(space_id)) {
+    return out;
+  }
+  const SlotId slot = SlotShowingSpace(space_id);
+  for (const PhiRow& row :
+       tab_store_.BookmarksFor(space->profile_id, space_id, parent_guid,
+                               PhiFaviconForm::kRaw)) {
+    out.push_back(StoredRowView(row));
+    UpgradeFavicon(slot, row.url, &out.back());
+  }
+  return out;
+}
+
+std::string PhiCoordinator::AddPinnedToSpace(const std::string& space_id,
+                                             const std::string& title,
+                                             const std::string& url) {
+  const Space* space = space_manager_->Find(space_id);
+  if (!space || url.empty() || model::IsIncognitoSpaceId(space_id)) {
+    return std::string();
+  }
+  const std::string guid = tab_store_.AddPinned(
+      space->profile_id, space_id, !title.empty() ? title : url, url,
+      std::string(), 0, 0);
+  if (!guid.empty()) {
+    registry_.InvalidateAll();
+    NotifySettingsObservers(PhiSettingsChange::kStoredRows);
+  }
+  return guid;
+}
+
+std::string PhiCoordinator::AddBookmarkToSpace(const std::string& space_id,
+                                               const std::string& parent_guid,
+                                               const std::string& title,
+                                               const std::string& url,
+                                               bool folder) {
+  const Space* space = space_manager_->Find(space_id);
+  if (!space || model::IsIncognitoSpaceId(space_id) ||
+      (folder ? title.empty() : url.empty())) {
+    return std::string();
+  }
+  const std::string guid = tab_store_.AddBookmark(
+      space->profile_id, space_id, parent_guid,
+      !title.empty() ? title : url, folder ? std::string() : url, folder,
+      std::string(), 0, 0);
+  if (!guid.empty()) {
+    registry_.InvalidateAll();
+    NotifySettingsObservers(PhiSettingsChange::kStoredRows);
+  }
+  return guid;
+}
+
+bool PhiCoordinator::TransferPinToSpace(const std::string& guid,
+                                        const std::string& space_id) {
+  const std::optional<PhiRow> found = tab_store_.Find(guid);
+  if (!found || found->type != PhiRowType::kPinnedTab ||
+      found->space_id == space_id) {
+    return false;
+  }
+  const Space* target = space_manager_->Find(space_id);
+  if (!target || model::IsIncognitoSpaceId(space_id)) {
+    return false;
+  }
+  // The pin's bound tabs in the source Space go back to being plain tabs:
+  // the cell they were bound to leaves (another owner copies it under
+  // fresh guids; the same owner only reorders, and the tags still match).
+  const std::vector<BoundTab> bound = TabsBoundTo(guid);
+  const std::string moved = local_store_.TransferPin(
+      guid, found->profile_id, found->space_id, target->profile_id, space_id,
+      INT_MAX);
+  if (moved.empty()) {
+    return false;
+  }
+  if (framework_ && moved != guid) {
+    for (const BoundTab& b : bound) {
+      TagTab(b.browser, b.tab.value, "");
+    }
+  }
+  registry_.InvalidateAll();
+  NotifySettingsObservers(PhiSettingsChange::kStoredRows);
+  return true;
 }
 
 std::vector<SidebarStoredItem> PhiCoordinator::SidebarStoredItems(
@@ -3191,6 +3309,21 @@ void PhiCoordinator::SetSpaceSaturation(const std::string& space_id,
   space_manager_->SetSpaceSaturation(space_id, value);
 }
 
+std::optional<PhiThemePalette> PhiCoordinator::SpacePalette(
+    const std::string& space_id) const {
+  return space_manager_->SpacePalette(space_id);
+}
+
+void PhiCoordinator::SetSpacePalette(const std::string& space_id,
+                                     const PhiThemePalette& palette) {
+  space_manager_->SetSpacePalette(space_id, palette);
+}
+
+void PhiCoordinator::PreviewSpacePalette(const std::string& space_id,
+                                         const PhiThemePalette& palette) {
+  space_manager_->PreviewSpacePalette(space_id, palette);
+}
+
 bool PhiCoordinator::RenameSpace(const std::string& space_id,
                                  const std::string& name) {
   return space_manager_->RenameSpace(space_id, name);
@@ -3468,6 +3601,19 @@ bool PhiCoordinator::OpenCreateSpaceWindow(
   }
   PhiCreateSpaceWindow::Open(controller, initial_profile_id, theme_id,
                              preferences_.Saturation(), anchor);
+  return true;
+}
+
+bool PhiCoordinator::OpenLibrarySpaces() {
+  // Settings ▸ Spaces ▸ "Manage Spaces in Library": the Library over the
+  // focused browser window, on Spaces; Settings hides behind it (the Mac's
+  // openLibrary then closeSettings). False with no window to open it over.
+  PhiShellWindow* controller = FocusedUserController();
+  if (!controller) {
+    return false;
+  }
+  PhiLibrary::Open(controller, PhiLibrarySection::kSpaces);
+  ::SetForegroundWindow(controller->shell_hwnd());
   return true;
 }
 
@@ -3778,6 +3924,10 @@ void PhiCoordinator::SetAppearance(PhiAppearance appearance) {
   preferences_.SetAppearance(appearance);
 }
 
+void PhiCoordinator::RequestAppearance(PhiAppearance appearance) {
+  SetAppearance(appearance);
+}
+
 void PhiCoordinator::RequestSettings() {
   PhiSettingsWindow::Open(this);
 }
@@ -3974,6 +4124,16 @@ bool PhiCoordinator::AccountInfo(std::string* name,
 
 bool PhiCoordinator::AccountSigningIn() const {
   return account_.AccountSigningIn();
+}
+
+bool PhiCoordinator::AccountIsGuest() const {
+  // The Mac's ApplicationState.isGuest: the profile button shows no avatar
+  // in Guest Mode even while a session is signing in over it.
+  return access_ == Access::kGuest;
+}
+
+const std::vector<uint8_t>& PhiCoordinator::AccountAvatarCircle(int px) {
+  return account_.AccountAvatarCircle(px);
 }
 
 void PhiCoordinator::RequestSignIn() {
@@ -4312,6 +4472,11 @@ void PhiCoordinator::OpenUrlInFirstUserSlot(const std::string& url) {
 
 void PhiCoordinator::NoteAccountChanged() {
   NotifySettingsObservers(PhiSettingsChange::kAccount);
+  // The sidebar's profile button reads the account at paint time: every
+  // shell's bottom bar recomposes, so a late avatar fetch reaches it.
+  for (PhiShellWindow* controller : registry_.Controllers()) {
+    controller->InvalidateBottomBar();
+  }
   if (onboarding_) {
     onboarding_->OnAccountChanged();
   }
@@ -4921,9 +5086,25 @@ std::string PhiCoordinator::RequestCreateSpaceWithOptions(
     int64_t slot,
     const PhiNewSpaceSpec& spec,
     const char* surface) {
+  return CreateSpaceWithOptions(slot, spec, surface, /*activate=*/true);
+}
+
+std::string PhiCoordinator::RequestCreateSpaceInBackground(
+    int64_t slot,
+    const PhiNewSpaceSpec& spec,
+    const char* surface) {
+  // The Library's inline card: the new Space takes its place after the
+  // window's current one and is not presented (the Mac's .library style).
+  return CreateSpaceWithOptions(slot, spec, surface, /*activate=*/false);
+}
+
+std::string PhiCoordinator::CreateSpaceWithOptions(int64_t slot,
+                                                   const PhiNewSpaceSpec& spec,
+                                                   const char* surface,
+                                                   bool activate) {
   // CreateSpacePanel.create: the Space through the one creation flow, then
-  // its theme pinned (setTheme / setOverlaySaturation), then activated in
-  // the window the form was in.
+  // its theme pinned (setTheme / setOverlaySaturation), then — when the
+  // form's style presents it — activated in the window the form was in.
   base::DictValue payload;
   if (!spec.name.empty()) {
     payload.Set("name", spec.name);
@@ -4954,6 +5135,11 @@ std::string PhiCoordinator::RequestCreateSpaceWithOptions(
   if (!spec.theme_id.empty()) {
     space_manager_->PinSpaceTheme(new_id, spec.theme_id, spec.saturation);
   }
+  // CreateSpacePanel.create: the draft palette is committed only after the
+  // new Space exists, over the pin just written.
+  if (spec.palette) {
+    space_manager_->SetSpacePalette(new_id, *spec.palette);
+  }
   // The Mac's afterSpaceId: the new Space lands right after the one the
   // form opened from rather than at the row's end — while that Space still
   // exists. Nothing else (sync, the verb) names one, so those keep
@@ -4969,7 +5155,12 @@ std::string PhiCoordinator::RequestCreateSpaceWithOptions(
           new_id, static_cast<int>(source - spaces.begin()) + 1);
     }
   }
-  RequestSwitchSpace(slot, new_id);
+  if (activate) {
+    RequestSwitchSpace(slot, new_id);
+  } else {
+    // Not presented: the strips and menus still learn of the new Space.
+    registry_.InvalidateAll();
+  }
   return new_id;
 }
 

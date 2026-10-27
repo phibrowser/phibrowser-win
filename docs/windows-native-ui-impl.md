@@ -856,3 +856,441 @@ with the session.
   (`PhiWindowRegistry::Kiosks()`), and `CloseForSignOut()` on the Feedback,
   URL-rules and Create-Space windows (a WM_CLOSE with `kCloseWithoutPrompt`
   skips the discard prompt), the Sync setup window and the Import window.
+
+## Round J — Space theme palette editor (2026-10-27)
+
+The Mac's SpaceThemeEditorView (`3d045cf6`, `4c9d919e`, the harmony half of
+`23c728d9`) on Windows; `mac-parity.md` §2 row ◐.
+
+* **Record.** `PhiThemePalette` (`client/phi_theme_palette.h`, host-clean:
+  STL + `phi_util.h`) is the Mac's `ThemePalette`: anchor hue, saturation,
+  brightness (0…1) and a harmony (single / analogous +45° / complementary
+  +180° / split complementary +150° and +210°); only the anchor is stored.
+  Its geometry and colour maps are the Mac's to the constant: hue → angle
+  through the Figma spectrum stops, radius = saturation × 0.42, centre snap
+  within 0.025; light S = sat × 0.52, B = 0.65 + 0.35 × brightness; dark S
+  from the two-branch radial curve (squared smoothstep to 90 % at 40 % of
+  the radius, falling to 45 % at the edge), B = 0.12 + brightness × (0.24 +
+  0.54 × sat); accent S .65 / B .60 light, S .50 / B .85 dark; the inverse
+  (`FromColor`, the seed from a preset's overlay) prefers the outer dark
+  radius when it can carry the input brightness. `model::Space::palette`
+  is optional; `PhiSpaceManager` loads and saves it in the account
+  defaults under the Mac's `spaceThemePalettes` key with the Mac's coding
+  keys (`version` 3, `hue`, `saturation`, `brightness`, `colorCount`,
+  `harmony`; a record before version 2 decodes at brightness 1, a missing
+  harmony takes the count's). LOCAL ONLY: `phi_sync_spaces*` is untouched
+  and the Space proto carries nothing new; a Mac palette Space renders here
+  as its pinned preset, as the Mac Theme README says it should.
+* **Resolution.** `PhiResolvePalette(base, appearance, palette)`: the
+  palette's anchor colour composited at the Mac's fixed 0.8 overlay alpha
+  over the BASE theme's window background (the pin, else the app-wide
+  theme — its dark background shows through, as `applying(to:)` keeps it),
+  the anchor hue's accent, then the one shared ladder (`ResolveFromColors`,
+  split out of the theme resolver). Precedence is the Mac's
+  `resolvedTheme`: a palette beats the pin's colours, the per-Space
+  saturation and the wire hex; `SetSpaceTheme` / `PinSpaceTheme` drop the
+  record; `SetSpaceSaturation` under a palette writes the palette's radius
+  and `SpaceSaturation` reads it back, so Settings ▸ Spaces' slider keeps
+  working; `PreviewSpacePalette` re-resolves one Space's entry and repaints
+  the shells without a save, a sync note or a Settings rebuild.
+  **Deviation:** a 2–3-colour palette paints the Mac sidebar as a vertical
+  Oklab gradient. The Windows ground is flat by design (§2.3) and every
+  wash is pre-blended over `ground_top` (GDI composites nothing), so a
+  gradient would leave the pinned cells and the active row in the primary
+  hue over the secondary colour — the chrome takes the PRIMARY colour; the
+  linked colours show on the editor's handles. Doing it properly means
+  re-deriving each row's washes over the ground at its own y.
+* **Editor** (`phi_space_theme_panel.cc`, a `PhiPopover`, 260×296 DIP): the
+  244 field with a 12 radius, 38 / 28 / 14 handles filled with the exact
+  resolved colours under a 2 white rim, a 24 toolbar — Light / Dark in a
+  padded capsule at the left (the APP-WIDE appearance, through the new
+  `ChromePrefsHost::RequestAppearance`), the four harmony buttons at the
+  right (ring + dots glyphs drawn with the AA primitives, names = the Mac
+  keys as tooltips). The field bitmap is sampled per device pixel through
+  `ColorAt` (one bitmap per appearance, keyed by brightness and dpi),
+  softened in linear light (three box passes ≈ the Mac's 7 % Gaussian,
+  then saturation 0.84 / contrast 0.96) and drawn with `PhiDrawBgra`, its
+  corners bitten back with `PhiKnockOutRoundRectAA`. A press takes the
+  handle within 20 of it (else the primary); under 3 of travel it is a
+  click that moves the PRIMARY with the Mac's 0.3 s ease-out; a drag
+  previews per move and writes ONCE on release (capture loss keeps the
+  edit); Left / Right rotate the hue a degree. The panel reads the record
+  back from the host on every paint and seeds from the resolved preset's
+  overlay at brightness 1 when the Space has none. Ground is the flyout
+  colour, which does not move with the tint being edited.
+* **Create form.** The theme dots and slider are gone; a 32 "Color ›" row
+  (`sidebar.createSpace.colorPicker.label`, ChevronRight) opens the same
+  editor beside it (`PhiOpenSpaceThemeDraftPanel`, `kRightTop`, owned by
+  the shell / flyout / standalone window) on a DRAFT: every edit lands in
+  `PhiCreateSpacePanel::palette_` and previews on the sidebar
+  (`PreviewCreateSpacePalette` → `PhiSpacesStrip::PreviewPalette`); the row
+  toggles (reopen guard); the form dismisses the editor when it hides.
+  `PhiNewSpaceSpec::palette` is committed in
+  `RequestCreateSpaceWithOptions` after `agentSpace.spaces.create` and the
+  pin (`SetSpacePalette`); the form's `colorHex` is the draft's resolved
+  anchor (the Mac's `resolvedColorHex` over `effectiveTheme()`); the legacy
+  slider value is no longer sent (`saturation` -1). The strip now keeps
+  the preview's INPUTS and re-resolves them on `ApplyPalette`
+  (`RefreshPreview`), so Light / Dark pressed in the editor re-tints the
+  previewing form instead of leaving the other appearance's colours.
+* **Nested popovers.** The pip flyout's form hosts the editor inside a
+  popover: `PhiPopover` no longer dismisses on `WA_INACTIVE` when the
+  window taking activation is one it owns, and a child dismissed for a
+  window outside its owner forwards the deactivation to an owner that is
+  itself a popover (`IsPopoverWindow`, a window property), so no parent
+  lingers inactive.
+* **Strings.** The Mac keys `theme.editor.singleColor / analogousColors /
+  twoColors / threeColors / colorHandle`, `sidebar.createSpace.colorPicker.label`
+  (translations by key).
+* **Verified on gmk** (100 % DPI): editor over the active Space in light
+  and dark; click, split-complementary (three handles), Dark → the chrome
+  follows; the record in `account_defaults.json`; the create form's row →
+  draft editor → live sidebar preview → Create lands the pin + palette;
+  `spaces.setTheme coral` removes the record; preset-pinned Spaces
+  unchanged; a drag rig run shows the chrome recolouring mid-drag and the
+  file written on release.
+* **Open:** the sidebar gradient (above); per-handle UIA names (one field
+  hit, so no "Color n" tooltip covers the field); palettes are not carried
+  by the guest→account migration (`GuestThemes`); the Mac's Pure-brightness
+  slider has no Windows twin, so `brightness` only ever changes through a
+  record the Mac wrote (never synced) and stays 1 here.
+
+## Round K — holographic membership card (2026-10-27)
+
+The Mac's `HolographicCardView` (6b300dc0 … cda12eaf) on the onboarding
+Welcome page and in Settings ▸ You, replacing the conch frame-sequence card
+(`phi_profile_card.{h,cc}` and 12.5 MB of JPEG frames under
+`resources/profile-card` + `resources/onboarding`, both deleted; the `.rc`
+never referenced them — the trees were staged by `build-client.py`, whose
+`profile-card` entry is gone).
+
+* `client/phi_holographic_card.{h,cc}` — `PhiHolographicCardStyle`
+  (palette ↔ theme id, texture, ornament, `Random()`, `ToMap`/`FromMap` in
+  the Mac's raw values) and `PhiHolographicCard`. The card is authored at
+  292 × 423 dips (28 dip corner) and composed in software at its pixel
+  size. Materials — the six engraved foil textures (arcs, waves, guilloche,
+  brushed, diamond, stardust; the Mac's exact formulas incl. its LCG seeds
+  and the contrast(1.18) pass), the feTurbulence-style grain tile and the
+  two stroked seal masks (lace, lotus, periodic, modulated, epicycloid) —
+  are rasterised ONCE per (style, size) with GDI+ on a worker thread and
+  cached as PNG under `<user data>\PhiCardArtwork\v1` (`foil-<texture>-
+  WxH.png`, `grain-WxH.png`, `seal-<ornament>-WxH.png`; bump
+  `kCacheVersion` when a formula changes). The light-driven layers
+  (iridescence gradient + radial highlight, sheen, logo sweep, the seal's
+  groove / reflection gradients) recompose per frame from the pointer with
+  LUT blends (overlay / soft light / screen / hard light tables), over
+  static layers built on the UI thread (base gradient, logo ink, tear line,
+  the copy, the edge hairline, the rounded-corner coverage, the shadow).
+* Motion is the Mac's `HolographicCardMotion`: the pointer over the card
+  moves the light angle (125 + 24x − 20y) and tilts the card (rotations
+  about x/y/z of 10°/13°/1.7° under a 1/1100 perspective — a software
+  homography warp of the composed face with bilinear sampling), settling
+  flat when the pointer leaves; no idle sway. A card appearing spins in
+  once (1.7 s: scale 0.16 → 1, a full turn showing the dark reverse, fade
+  over the first 18 %); `SPI_GETCLIENTAREAANIMATION` off skips the motion.
+  The card draws nothing until its materials landed (the Mac's hidden
+  rotor); a style change keeps the old card until the new one is ready.
+* Copy: the name in IvyPresto Headline Light 31 (the face now ships in
+  `resources/fonts`, registered by `phi_fonts.cc`; Segoe UI Light for
+  scripts it lacks), the member id (Consolas 10) = first 8 bytes of
+  SHA-256(Auth0 `sub`) as lowercase hex (BoringSSL `SHA256`), and "Date
+  Joined" + `yyyy.MM` (local time) when the profile's `created_at` is known.
+* Onboarding Welcome (`phi_onboarding_window.cc`): the shared dark ground,
+  the card centred at centre-y 337.5, a 40 dip dice button at y 585
+  (`oobe-dice.svg` transcribed as GDI+ paths) that draws a random style and
+  switches the app theme to the palette's theme id (the Mac's
+  `randomizeCard`), the base's gradient-ring Next. No title, no swatches
+  (`oobe.welcome.title` / `.personalizedTitle` retired from the catalog;
+  `oobe.welcome.randomizeCard`, `oobe.welcome.cardSaveFailed`,
+  `profile.card.dateJoined` added under the Mac's keys). Next persists the
+  style for the account (`PhiPreferences::SetProfileCardStyle`, the Mac's
+  `profileCardStyle` key in the account defaults, bound or on disk like
+  `loginPhase`) and shows `cardSaveFailed` when it cannot. The window
+  pre-warms the default style's artwork on open. Harness: `swatch` (theme
+  id) now sets the palette + app theme, `randomize` is the dice; `state`
+  carries `cardStyle` and `memberId`.
+* Settings ▸ You (`phi_settings_window.cc`): the card at 240 × 348 (the
+  design aspect), the account's saved style with the palette overridden by
+  the CURRENT theme on every paint (so theme / appearance changes re-apply,
+  as the Mac's `applyCurrentTheme`), the pointer lights it, "Download
+  image" exports the front at 2× centred on a canvas twice its size in the
+  Mac's accent (theme hue at saturation .65 / brightness .28; black for
+  Pure) through the save dialog. The old grid drag is gone.
+* `PhiHsbColor` / `PhiHueOf` moved from the onboarding window into
+  `phi_popup_chrome.{h,cc}` so Settings can derive the export accent.
+* Not ported: the Mac's back-face flip on demand (`showsReverse`, unused
+  there too), its 3× export (the card is rendered directly at 2×), and the
+  `onboarding_completed` analytics event with the theme id (never ported).
+* **Sidebar profile button** (the Mac's `ProfileButton` +
+  `populateProfileMenu`, 2026-10-27): back in the bottom bar, LEFT-MOST
+  (`ShellLayout::sidebar_profile`, a 32 dip hit box at x 8 before
+  Downloads; §4.2). A 24 dip disc: the account picture circle-clipped
+  (`WindowHost::AccountAvatarCircle`, the Settings rail's buffer) under a
+  1 px `border` ring when signed in and not in Guest Mode, else the Fluent
+  Contact glyph in `label_dim`; no hover wash, no badge, tooltip
+  `profile.button.accessibilityLabel`. Nav-hover ordinal 22. A click drops
+  `PhiBuildProfileMenu` (phi_shell_menus) upward, left-aligned, its bottom
+  5 dip above the button: Download List (`PhiLibrary::Open` ▸ Downloads),
+  Manage Bookmarks, Manage Extensions, ─, New Tab, New Incognito Space,
+  New Incognito Window, ─, Settings, and Sign in (`WindowHost::
+  RequestSignIn`) while no account is signed in. Chords are the user's
+  EFFECTIVE ones, resolved in the shell by the ⋯ menu's rule
+  (`ChromePrefsHost::RebindableChordLabel`, else the catalogue's
+  `appMenu.*` suffix) and carried on the rows; the rows run through
+  `PhiAppMenu::OnCommand`. `PhiCoordinator::NoteAccountChanged` invalidates
+  every shell's bottom bar so a late avatar fetch repaints the button. The
+  `profile.*` keys are the Mac's; the layout verb publishes `profile`.
+
+## Round L — the Library (2026-10-27)
+
+The Mac Library (`LibraryViewModule` + `LibraryOverlayController` +
+`LibraryWindowController`, `Library/Space/*`, `Downloads/AllDownloadsListView`)
+without its Folio section: `client/phi_library.{h,cc}`, with the downloads
+model the popover and the Library share pulled out into
+`client/phi_downloads_model.{h,cc}`.
+
+### Hosting and z-order
+
+* `PhiLibrary::Open(shell, section)` builds a `LibraryOverlay` (not a window)
+  over ONE shell: a layered `LibraryScrim` panel (black 28 %, per-pixel alpha
+  through `PhiLayerSurface`; a click on it dismisses) and the opaque
+  `LibraryView` panel (the card), both `PhiPanel` children of the shell in
+  its `PhiCardStack`, both SELF-OWNED (`DeleteWhenDestroyed`) because Escape
+  and the double-click open tear the view down from inside its own handlers
+  — the group overview's shape. The overlay object is freed by `Finish()`
+  after the close fade; `g_dying` keeps the fading ones so a shell going
+  away (`CloseIfBoundTo`) ends them first.
+* The overlay covers the shell's client area BELOW the caption band (sidebar
+  and content both, like the Mac's panel over the content view; the caption
+  buttons stay reachable) — a panel sits above the shell's own sidebar paint
+  by being a child, and above the browser child through the card stack. The
+  card is that rect inset 36, radius 14 cut by `SetCornerFringe` (the card
+  hosts EDIT children, so it cannot be a shaped layer), 1 px `border` stroke,
+  ground `palette.flyout`. The Mac's 12-blur shadow is not drawn.
+* Raise order: the shell's `kMsgRaiseCaps` turn ends with
+  `PhiLibrary::RaiseIfBoundTo` AFTER `RaiseOverlays` (the caps), not between
+  the NTP and the reader panels as first planned: the scrim covers the caps
+  as the Mac's panel covers the whole content view, and nothing needs to sit
+  above the Library. `RepositionIfBoundTo` from `LayoutContents` /
+  `OnContentBoundsChanged`; `RefreshIfBoundTo` from `RebuildTabs` (which is
+  also where a changed active tab or Space closes it unanimated — the Mac's
+  `focusingTab` subscription); `CloseIfBoundTo` from the destructor; the
+  page-colour and edge-hover gates read `PhiLibrary::IsOpen()`; F6
+  (`kMsgPhiCycleFocus`) closes it; `MenuFocusPageForFind` hands Ctrl+F to
+  it (Spaces swallows, Downloads focuses its search).
+* Motion: in, the scrim 0 → 1 and the card from a rect scaled to 2–12 %
+  centred on the source control (the ⋯ button; `OpenFrom` takes any other)
+  to its place, ease-out 200 ms (`PhiAnimator`; the content paints once the
+  flight lands); out, ease-in 160 ms back. `SPI_GETCLIENTAREAANIMATION` off
+  skips both. Not the Mac's spring.
+* Dismissal: Escape (a card drag in flight snaps back first, an inline
+  rename or the create card cancels first), the scrim, the window's active
+  tab / Space changing, the shell closing. Never focus loss: the icon picker,
+  theme panel, menus and prompts all take the focus. The window's last
+  section is remembered per shell (Downloads at first); `Toggle` reopens it.
+
+### Entry points
+
+* ⋯ menu row **Library** (`library.navigation.title`, `fluent::kLibrary`,
+  after Reader View) → `kCmdLibrary` (appended after `kCmdOpenFolio`;
+  `OnCommand`'s range check widened) → `PhiAppMenuShell::MenuToggleLibrary`.
+* Rebindable chord `{"library", "View", "library.navigation.title",
+  kCmdLibrary, Ctrl+Shift+L}` (Ctrl+L is the address field).
+* Settings ▸ Spaces row "Manage Spaces in Library"
+  (`settings.spaces.manageInLibrary`, button "Library") →
+  `PhiSettingsHost::OpenLibrarySpaces` (coordinator: the focused user shell)
+  and the Settings window hides (WM_CLOSE).
+* The downloads popover's "All Downloads" → `PhiLibrary::Open(shell,
+  kDownloads)`, the shell found from the owner HWND through the new
+  `PhiShellWindow::FromHwnd` (the popover is only handed the HWND).
+* `OpenInNewWindow` (the rail's ↗ button) hosts the same `LibraryView` in a
+  `LibraryWindow : PhiSecondaryWindow` (1120×780, min 840×560, all three
+  caption buttons, no title text, frame remembered for the process only —
+  no preference exists for window frames). One per process; another shell's
+  request takes it over. Its rail has no ↗ and no sidebar collapse (the
+  Mac's HSplitView collapse is not ported).
+
+### Spaces section
+
+* One horizontal row, padding 12, cards 240 × (content − 38), gap 22, wheel
+  scrolls sideways outside a card body and vertically inside one; user
+  Spaces only (agent and Incognito skipped); after the last card the 48 "+"
+  circle. Card ground = the Space's overlay at 80 % over the card ground:
+  `SpacePalette(id)->ResolvedColor(0, dark)` when linked, else
+  `PhiThemeById(SpaceThemeId(id) or the app theme).light|dark.overlay`;
+  text colours from `PaletteForSpace(id)`. Radius 18; a 2-dip ring offset 4
+  stands in for the Mac's blurred shadow.
+* Header (h-pad 20, 34 high, 17 semibold): icon button 32 (the Space's
+  catalog / colour glyph at 23) → `ShowSpaceIconPicker` (now public on the
+  shell); the name → inline EDIT rename (Return / blur commit through
+  `RenameSpace`, Escape cancels); palette button 28 (`fluent::kColor`) →
+  `PhiShowSpaceThemePanel`.
+* Body (h-pad 8): the pins grid (3 × 64×45, radius 8, ink 4 % / hover 8 % /
+  selected `card`, favicon 18 or two 16s for a split pin, collapsed to 0
+  without pins), 8, the bookmark outline (rows 36 / pill 30 radius 8, indent
+  10 per level, favicon 14 drawn scaled through `PhiDrawBgra`, folders with
+  a chevron + the catalog mask as the bookmark manager draws it). Single
+  click: a folder toggles (expanded ids kept per Space for the overlay's
+  life), a pin / bookmark selects; double-click opens; Delete deletes the
+  selection; right-click → Open / Edit… / Move to Space ▸ / Delete, on the
+  blank body the three New… rows.
+* Footer: the move-glyph handle 24 (bottom-left, `library.spaces.reorder`)
+  — press + horizontal move > 4 dip starts the drag, the card follows in x,
+  the others slide to their new slots (ease-out 150 ms, target =
+  round(Δx / 262)), mouse-up commits `ReorderSpace(id, global index of the
+  card that held the slot)`, Escape snaps back; "…" 24 (bottom-right) →
+  New Pinned Tab… / New Bookmark… / New Folder… / ─ / Set Profile ▸ (radio
+  over `ProfileSummaries`, disabled for the default Space; `PhiConfirm` +
+  `SetSpaceProfile`) / Delete Space… (`CanDeleteSpace`;
+  `PhiAppMenu::DeleteSpace`'s confirming flow). Menus are `PhiMenuSpec`s
+  built in phi_library.cc with their own glyphs (no `kRowDecor` rows).
+* Data through new `SidebarHost` methods the coordinator implements over
+  `PhiTabStore` by Space (not by slot): `PinnedRowsForSpace`,
+  `BookmarkRowsForSpace`, `AddPinnedToSpace`, `AddBookmarkToSpace`,
+  `MoveStoredRowToSpace` (the existing private coordinator method, now on
+  the interface), `TransferPinToSpace` (the first caller of
+  `LocalStore::TransferPin`, destination INT_MAX = the end). Favicons are
+  upgraded through the slot whose window shows the Space.
+* Opening a row: `PhiShellWindow::OpenStoredRowInSpace(space, guid, url)`
+  — the Library yields, the shell switches Space, and opens at once when the
+  Space's browser is attached, else when `BrowserHostNoteActiveSpace` lands
+  on that Space (`pending_stored_open_`; a different Space landing first
+  drops it) — the Mac's `slot.activate(onSwapSettled:)`.
+* "+" hosts `PhiCreateSpacePanel` INLINE as a 240 card (the panel takes a
+  host HWND + `PhiCreateSpaceFormHost`; its 280 column fits the card's
+  200), ground = the source theme's overlay at 80 %. Commit →
+  `SpacesHost::RequestCreateSpaceInBackground(slot, spec, "library")`: the
+  coordinator's one creation flow (`CreateSpaceWithOptions(…, activate)`)
+  with the switch skipped, so the new Space lands after the window's current
+  one (`spec.after_space_id`) and is NOT activated; `space_created` carries
+  `surface: "library"` (the three existing literals untouched).
+
+### Downloads section
+
+* Content max 800 centred, h-pad 80; header pad 16 with a 32 search pill
+  (an EDIT inside, `downloads.all.search`, filters name + URL live; Ctrl+F
+  focuses it; Escape clears then dismisses); the list in day groups (header
+  13 semibold dim, 16/4 padding) of the popover's rows (56; icon 30, name 13
+  with the struck-through failed/cancelled/deleted tag, 11 dim second line:
+  relative time / "From host" / the 3-dip progress bar, figures while
+  hovered), hover ink 5 % radius 10, hover-only 24 action buttons at the
+  right (the popover's per-state set through `PhiDownloadActionsFor`;
+  actions through `DownloadAction(window, id, verb)`, Copy Link to the
+  clipboard); double-click opens a finished file. Empty state: a 36 glyph +
+  `downloads.all.empty` / `downloads.all.noSearchResults` in `label_dim`.
+  500 ms poll while the section is up.
+* Deviation: `ListDownloadsJson` carries `endTime` only and is capped at 20
+  per window profile, so the groups are by the local day the download
+  ENDED (a live one groups under today; "Today" / "Yesterday" labels, else
+  the long date) and only the newest 20 appear; the Mac groups by start
+  over every profile's full history. No profile filter: no per-profile
+  listing exists in the framework (`DownloadsJsonForAgent` is per window
+  too and refuses open/show).
+
+### Strings
+
+Under the Mac's keys with the Mac English: `library.navigation.title`
+("Library"), `.spaces`, `.downloads`, `.openInNewWindow`;
+`library.spaces.create` ("New Space"), `.editIcon` ("Change Space icon"),
+`.name` ("Space name"), `.editTheme` ("Edit Theme"), `.moreActions` ("More
+Actions"), `.newPin` ("New Pinned Tab…"), `.newBookmark` ("New Bookmark…"),
+`.newFolder` ("New Folder…"), `.setProfile` ("Set Profile"), `.deleteSpace`
+("Delete Space…"), `.openItem` ("Open"), `.editItem` ("Edit…"),
+`.moveToSpace` ("Move to Space"), `.deleteItem` ("Delete") (`.reorder`
+already existed); `downloads.all.search` ("Search Downloads"), `.empty` ("No
+Downloads"), `.noSearchResults` ("No Matching Downloads"), `.unknownDate`
+("Unknown Date"); `settings.spaces.manageInLibrary` ("Manage Spaces in
+Library"). Analytics: module `library`, event `library_section_viewed`
+(`section`, `is_standalone_window`), allow-listed in phi_telemetry.cc.
+
+### Deferred / not ported
+
+* Dragging pins and bookmarks between cards (the Mac's
+  `LibrarySpaceItemDrag` pasteboard flows) — context-menu Move to Space ▸
+  stands in.
+* The Mac's title + URL editor (`EditPinnedTabPresenter`) for New / Edit:
+  the sidebar's address prompt is used; a new pin or bookmark is titled by
+  its address until the favicon/title upgrade.
+* Moving a folder to another Space (the Mac moves whole subtrees).
+* The standalone window's collapsible rail, its frame across launches, the
+  Folio section, the card shadow blur, the spring flight.
+* Split-pin editing of the second pane; "Edit…" edits the primary address.
+
+### Box verification
+
+1. ⋯ ▸ Library (and Ctrl+Shift+L, and Settings ▸ Spaces ▸ "Manage Spaces in
+   Library" — Settings hides, the Library opens on Spaces): the scrim covers
+   sidebar + content below the caption band, the card flies out of the ⋯
+   button; the rail's Spaces / Downloads switch; Downloads popover ▸ "All
+   Downloads" opens the Library on Downloads.
+2. Spaces: one card per user Space with its theme ground, pins grid and
+   outline; the icon button opens the picker; the name → inline rename
+   (Return commits, Esc cancels, click elsewhere commits); the palette
+   button opens the theme panel; a folder click discloses; double-click on
+   a bookmark closes the Library, switches the window to that Space and
+   focuses/opens the row (also for a Space whose browser is not yet
+   attached); the handle drag slides the others and mouse-up reorders the
+   strip; "+" shows the create card after the last one, Create inserts the
+   new Space right after the window's current one WITHOUT switching to it
+   (and `analytics.list` shows `space_created` with `surface: library`).
+3. Downloads: the search filters live; hover shows the row actions; Copy
+   Link / Pause / Resume / Cancel / Show in folder / Remove / Retry act;
+   double-click opens a finished file; the empty states.
+4. Esc, a click on the scrim, switching the active tab or Space (Ctrl+N,
+   a tab click behind a torn-down Library) and closing the window all close
+   it; a menu or prompt opened from the Library does not.
+5. "Open Library in New Window": a 1120×780 window with the same view, the
+   rail's ↗ hidden; its row double-click fronts the browser window.
+
+### Fix-ups after the first box pass (2026-10-27)
+
+* A row of a Space whose browser was not attached yet never opened: the
+  fresh browser lands through `PhiShellWindow::AttachSpaceBrowser` (the
+  attach makes it active; only the ShowSpace path notes the active Space).
+  `ConsumePendingStoredOpen(space, drop_on_mismatch)` now runs from both —
+  the attach keeps a pending open for another Space, the visible landing
+  drops it.
+* Escape while Chromium holds the focus: the view retakes the keyboard on
+  the next turn and 80 ms later (`kMsgTakeFocus` / `focus_retake_`, never
+  over its own fields), and the thread hook routes VK_ESCAPE through
+  `PhiLibrary::HandleEscapeIfBoundTo` before the peeks — the view's
+  `HandleEscape` (drag snaps back, rename / create card cancel, a filled
+  search clears, else dismiss), swallowed either way.
+* The Library ground is `CurrentPalette().ground_top` (the sidebar's own
+  ground), the dark content base the window's resolved overlay (the linked
+  palette's when there is one); the search pill and its EDIT share
+  `FieldFill()` (ink over the content ground), answered for
+  WM_CTLCOLOREDIT and WM_CTLCOLORSTATIC with the rename on its card's
+  ground and ink.
+* Hover is re-derived from the real pointer after every Refresh
+  (`RefreshHover`: a synthetic WM_MOUSEMOVE / WM_MOUSELEAVE), so a row no
+  longer keeps its pill after a context menu or a handle drop.
+* The card's "…" menu opens upward from the button's top
+  (`TPM_BOTTOMALIGN`); the ⋯ menu's Library row wears `fluent::kTaskView`
+  (ViewAll), Open Folio keeps `fluent::kLibrary`.
+* Second pass: the search EDIT and the pill share ONE stored value
+  (`search_fill_`, computed in the layout pass), the rename EDIT and its
+  card another (`rename_fill_`); the fields ERASE themselves with that value
+  in `FieldProc` (WM_ERASEBKGND) and WM_CTLCOLOREDIT / WM_CTLCOLORSTATIC
+  answer it too, so the control's own background path is never trusted.
+  The hosted create card's "Space name" EDIT does the same in
+  `PhiCreateSpacePanel::FieldProc` (ink 4 % over `FormGround()`, the row
+  wash its frame uses). `HandleEscapeIfBoundTo` stands down while
+  `PhiModalDepth() > 0` or a `#32768` menu window is visible, so a tracking
+  menu / prompt / picker keeps its Escape. A left press anywhere but on a
+  pin or row (blank body, another card, the content ground, the rail)
+  clears the selection. The Space card's shadow is three concentric rings
+  2 dip down (black 18 / 10 / 4 %, light 10 / 5 / 2 %) plus a 1 px border
+  in the card palette's `border`.
+* Third pass (2026-10-27): the Library's search and rename EDITs, and the
+  create-Space panel's "Space name" EDIT when it is hosted (Library card,
+  create window), now paint through `PhiPaintEditOpaque`
+  (`client/phi_opaque_edit.h`): WM_PRINTCLIENT into an offscreen 32bpp
+  surface, alpha forced to 255, then blitted; `PhiEditDrawsDirectly` lists
+  the messages after which the native EDIT drew synchronously, so the field
+  is invalidated and redrawn through the same path. The shell extends its
+  DWM frame under the whole client area, so GDI's alpha-0 output had the
+  backdrop ADDED to it (each interior read ≈ intended + 128 per channel on
+  the box). This is the address field's technique (`PaintField`), now
+  shared. Remaining nits: the cue banner is the system grey text (low
+  contrast on saturated dark grounds) and the caret is the native XOR caret.

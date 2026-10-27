@@ -510,6 +510,39 @@ PhiMenuSpec PhiBuildSpaceSwitcherMenu(const std::vector<PhiMenuChoice>& spaces,
   return spec;
 }
 
+// --- The sidebar's profile button ------------------------------------------
+
+PhiMenuSpec PhiBuildProfileMenu(const PhiProfileMenuInputs& in) {
+  // The Mac's populateProfileMenu, row for row. The chords arrive resolved
+  // (a rebindable command shows the user's binding, as the ⋯ menu does)
+  // rather than from the decor table, which only knows the defaults.
+  PhiMenuSpec spec;
+  std::vector<PhiMenuItem>& items = spec.items;
+  const auto row = [&](const char* key, const char* label_key,
+                       const std::wstring& chord) {
+    PhiMenuItem item = PhiMenuItem::Command(key, PhiStr(label_key));
+    item.shortcut = chord;
+    items.push_back(std::move(item));
+  };
+  row("profile.downloads", "profile.menu.downloads", in.downloads_chord);
+  row("profile.bookmarks", "profile.menu.bookmarks", in.bookmarks_chord);
+  row("profile.extensions", "profile.menu.extensions", in.extensions_chord);
+  items.push_back(PhiMenuItem::Separator());
+  row("profile.newTab", "profile.menu.newTab", in.new_tab_chord);
+  row("profile.newIncognitoSpace", "profile.menu.newIncognitoSpace",
+      in.new_incognito_space_chord);
+  row("profile.newIncognitoWindow", "profile.menu.newIncognitoWindow",
+      in.new_incognito_window_chord);
+  items.push_back(PhiMenuItem::Separator());
+  row("profile.settings", "profile.menu.settings", in.settings_chord);
+  if (!in.signed_in) {
+    // Guest Mode / signed out: the Mac's trailing Sign in (its
+    // supportsAuthentication && !isAuthenticated).
+    row("profile.signIn", "profile.menu.signIn", std::wstring());
+  }
+  return spec;
+}
+
 // --- The omnibox field -----------------------------------------------------
 
 PhiMenuSpec PhiBuildOmniboxFieldMenu(bool has_selection,
@@ -700,6 +733,16 @@ constexpr RowDecor kRowDecor[] = {
     {"feedback.open", L"Enter", false, fluent::kOpenFile},
     {"feedback.reveal", nullptr, false, fluent::kOpenFolder},
     {"feedback.remove", L"Del", true, fluent::kDelete},
+    // The profile button's rows wear the ⋯ menu's icons for the same
+    // commands; their chords come resolved on the row (PhiBuildProfileMenu).
+    {"profile.downloads", nullptr, false, fluent::kDownload},
+    {"profile.bookmarks", nullptr, false, fluent::kFavoriteStar},
+    {"profile.extensions", nullptr, false, fluent::kPuzzle},
+    {"profile.newTab", nullptr, false, fluent::kAdd},
+    {"profile.newIncognitoSpace", nullptr, false, nullptr},
+    {"profile.newIncognitoWindow", nullptr, false, fluent::kIncognito},
+    {"profile.settings", nullptr, false, fluent::kSettings},
+    {"profile.signIn", nullptr, false, fluent::kContact},
 };
 
 const RowDecor* DecorFor(const std::string& key) {

@@ -10,6 +10,7 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <vector>
 
@@ -210,6 +211,41 @@ PhiPopupColors PhiPopupColorsNow() {
 
 void PhiSetPopupPalette(const PhiPalette* live) {
   g_live_palette = live;
+}
+
+COLORREF PhiHsbColor(double hue, double saturation, double brightness) {
+  const double h = std::fmod(std::max(0.0, hue), 1.0) * 6.0;
+  const int i = static_cast<int>(std::floor(h));
+  const double f = h - i;
+  const double s = saturation, b = brightness;
+  const double p = b * (1 - s), q = b * (1 - s * f), t = b * (1 - s * (1 - f));
+  double r = 0, g = 0, bl = 0;
+  switch (i % 6) {
+    case 0: r = b; g = t; bl = p; break;
+    case 1: r = q; g = b; bl = p; break;
+    case 2: r = p; g = b; bl = t; break;
+    case 3: r = p; g = q; bl = b; break;
+    case 4: r = t; g = p; bl = b; break;
+    default: r = b; g = p; bl = q; break;
+  }
+  return RGB(static_cast<int>(std::lround(r * 255)),
+             static_cast<int>(std::lround(g * 255)),
+             static_cast<int>(std::lround(bl * 255)));
+}
+
+double PhiHueOf(COLORREF color) {
+  const double r = GetRValue(color) / 255.0, g = GetGValue(color) / 255.0,
+               b = GetBValue(color) / 255.0;
+  const double mx = std::max({r, g, b}), mn = std::min({r, g, b});
+  const double d = mx - mn;
+  if (d <= 0.0) {
+    return 0.0;
+  }
+  double h = mx == r ? std::fmod((g - b) / d, 6.0)
+             : mx == g ? (b - r) / d + 2.0
+                       : (r - g) / d + 4.0;
+  h /= 6.0;
+  return h < 0 ? h + 1.0 : h;
 }
 
 COLORREF PhiPopupBlend(COLORREF over, COLORREF base, int alpha) {

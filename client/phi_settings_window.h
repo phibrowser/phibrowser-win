@@ -16,7 +16,7 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
 #include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_profile_card.h"
+#include "phibrowser-win/client/phi_holographic_card.h"
 #include "phibrowser-win/client/phi_secondary_window.h"
 #include "phibrowser-win/client/phi_settings_types.h"
 #include "phibrowser-win/client/phi_sync_keys.h"
@@ -208,6 +208,11 @@ class PhiSettingsHost {
   // there is no browser window to create the Space in.
   virtual bool OpenCreateSpaceWindow(const std::string& initial_profile_id,
                                      HWND anchor) = 0;
+  // Spaces ▸ "Manage Spaces in Library": the Library overlay on its Spaces
+  // section over the focused browser window (phi_library.h). False when
+  // there is no browser window to open it over; the Settings window hides
+  // itself on true (the Mac's openLibrary then closeSettings).
+  virtual bool OpenLibrarySpaces() = 0;
 
   // --- Navigation -----------------------------------------------------------
   // Peek View, the Mac's peekViewEnabled / autoPeekViewEnabled pair. The
@@ -354,7 +359,7 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
     kIconChip,       // The Mac's 24pt SettingsIconChip leading a row.
     kAvatar,         // The account's picture as a circle; `text` = fallback glyph.
     kEditableLabel,  // A 13pt semibold label trailed by a pencil; click edits.
-    kProfileCard,    // The Mac's draggable conch card (PhiProfileCard).
+    kProfileCard,    // The membership card (PhiHolographicCard).
     kExpander,       // An expander card's header row (§7.1 / §7.2).
     kAppMark,        // The Phi mark at `bounds` size (About).
     kAccountBlock,   // The rail's account block: 44 avatar, name, email.
@@ -762,11 +767,10 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   // rebuild; the id comes from the window's own pool, not the hand-picked
   // 0x517 (lane 3 §4.1).
   Timer profile_poll_;
-  // The You pane's profile card: its frame animation timer and the drag
-  // through its grid (which holds the capture like the slider does).
-  PhiProfileCard profile_card_;
+  // Settings ▸ You's membership card (the Mac's ProfileCardViewController):
+  // the account's persisted style under the current theme's palette.
+  PhiHolographicCard profile_card_;
   Timer card_timer_;
-  bool card_drag_ = false;
   // Settings ▸ Sync: the last device list, whether one is being fetched, and
   // the pane's action outcome lines. Replies find the window through
   // `sync_alive_` (the key layer answers asynchronously).

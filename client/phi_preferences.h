@@ -8,6 +8,7 @@
 #include <windows.h>
 
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -128,6 +129,7 @@ class PhiPreferences : public ChromePrefsHost {
   void SetBookmarkBarOnNewTab(bool enabled) override;
   std::string ThemeId() const override;
   PhiAppearance Appearance() const override;
+  void RequestAppearance(PhiAppearance appearance) override;
   int Saturation() const override;
   std::optional<std::wstring> RebindableChordLabel(UINT command) const override;
 
@@ -200,6 +202,15 @@ class PhiPreferences : public ChromePrefsHost {
   // The account's onboarding phase (0 = unknown / brand new).
   int OnboardingPhase(const std::string& sub) const;
   void SetOnboardingPhase(const std::string& sub, int phase);
+  // The account's membership-card style (the Mac's profileCardStyle in the
+  // account's defaults): {"palette", "texture", "ornament"} raw values;
+  // empty when the account never chose one. False when `sub` is empty.
+  std::map<std::string, std::string> ProfileCardStyle(const std::string& sub) const;
+  bool SetProfileCardStyle(const std::string& sub,
+                           const std::map<std::string, std::string>& style);
+  // Where the store lives (the Chromium user data directory); empty before
+  // Load. Caches that belong to the profile rather than an account go here.
+  const std::wstring& user_data_dir() const { return user_data_dir_; }
   bool SkipOnboarding() const { return settings_.skip_onboarding; }
   bool AllowAgentControl() const override;
   void SetAllowAgentControl(bool enabled);

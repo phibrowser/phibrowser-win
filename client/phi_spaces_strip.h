@@ -216,6 +216,12 @@ class PhiSpacesStrip {
   void CommitCreateForm(const PhiNewSpaceSpec& spec);
   void CancelCreateForm();
   void PreviewTheme(const std::string& theme_id, int saturation);
+  void PreviewPalette(const std::string& theme_id,
+                      const PhiThemePalette& palette);
+  // The app-wide theme or appearance moved under a live preview (the
+  // editor's Light / Dark buttons): the preview is re-resolved from its
+  // inputs so the chrome does not keep the other appearance's colours.
+  void RefreshPreview();
   void SetFormIcon(const std::string& storage_value);
   void OnFormProfileCreated(const std::string& profile_id);
   bool creating() const { return creating_; }
@@ -376,6 +382,10 @@ class PhiSpacesStrip {
   std::wstring creating_icon_;
   std::string creating_source_;  // The active Space as the form opened.
   std::optional<PhiPalette> preview_palette_;
+  // The preview's inputs, so RefreshPreview can re-resolve them.
+  std::string preview_theme_id_;
+  int preview_saturation_ = -1;
+  std::optional<PhiThemePalette> preview_record_;
   bool preview_until_switch_ = false;
 
   // The Space switch: the band slide's clock and the theme ramp's, plus the

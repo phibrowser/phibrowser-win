@@ -8,6 +8,7 @@
 #include <windows.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +19,7 @@
 
 namespace phi_client {
 
+class PhiPopover;
 class PhiShellWindow;
 struct PhiNewSpaceSpec;
 
@@ -44,8 +46,9 @@ class PhiCreateSpaceFormHost {
 // Spaces/CreateSpacePanel.swift, mounted by SidebarViewController.
 // showCreateSpaceOverlay): the "Create a Space" form that fills the sidebar
 // below the Spaces strip when the strip's "+" is clicked — a name field, the
-// profile picker, the icon / emoji picker, the theme dots with their
-// saturation slider, then Create and Cancel.
+// profile picker, the icon / emoji picker, the "Color ›" row that opens the
+// Space theme editor on a DRAFT palette (phi_space_theme_panel.h), then
+// Create and Cancel.
 //
 // A child window of the shell, like the native new-tab page: the sidebar
 // content it covers stays painted underneath and simply shows again when the
@@ -69,8 +72,9 @@ class PhiCreateSpacePanel : public PhiPanel {
 
   // Mounts the form over `bounds` (shell client pixels) in its clean state.
   // The profile picker opens on `initial_profile_id` (the active Space's),
-  // the random theme avoids `source_theme_id`, and the slider rests at
-  // `saturation` until the user drags it.
+  // the random theme avoids `source_theme_id`, and `saturation` is the
+  // app-wide slider the preset preview inherits (the draft palette, once
+  // edited, carries its own).
   void Show(const RECT& bounds,
             const std::string& initial_profile_id,
             const std::string& source_theme_id,
@@ -104,7 +108,6 @@ class PhiCreateSpacePanel : public PhiPanel {
   void OnDpiChanged(UINT old_dpi) override;
   void OnMouseDown(int hit, POINT client_pt) override;
   void OnWheel(int delta, POINT client_pt) override;
-  void OnCaptureLost() override;
   bool OnKey(WPARAM virtual_key) override;
   PhiPalette QueryPalette() const override;
   LRESULT OnMessage(UINT message,
@@ -120,8 +123,7 @@ class PhiCreateSpacePanel : public PhiPanel {
     kTabIcon,
     kTabEmoji,
     kCell,
-    kDot,
-    kSlider,
+    kColorRow,
     kCreate,
     kCancel,
   };
@@ -149,9 +151,12 @@ class PhiCreateSpacePanel : public PhiPanel {
   // accessibility hit list) stays visible beside it.
   using PhiWindow::HitTest;
   Hit HitTest(const Geometry& g, POINT pt, int* index) const;
-  void SelectTheme(size_t index);
   void SelectIcon(size_t index);
-  void SetSliderFromPoint(const Geometry& g, int x);
+  // The "Color ›" row: opens the theme editor beside it on the draft (or
+  // closes an open one — the row toggles); every edit previews live where
+  // the host can and lands in palette_.
+  void OpenColorEditor(const Geometry& g);
+  void CloseColorEditor();
   void PushPreview();
   void ShowProfileMenu(const Geometry& g);
   void Create();
@@ -160,7 +165,6 @@ class PhiCreateSpacePanel : public PhiPanel {
   bool UsesSidebarBackdrop() const;
   bool PaintBackdropField(HWND field);
   void PaintCells(HDC dc, const Geometry& g, const PhiPalette& palette);
-  void PaintSlider(HDC dc, const RECT& bounds, const PhiPalette& palette);
 
   static LRESULT CALLBACK FieldProc(HWND hwnd, UINT msg, WPARAM w, LPARAM l);
 
@@ -181,17 +185,20 @@ class PhiCreateSpacePanel : public PhiPanel {
   std::string icon_;      // Storage form ("phi:<id>" / "emoji:<id>").
   std::string theme_id_;
   std::string source_space_id_;  // Active at Show: the new Space follows it.
-  int slider_ = 50;
-  bool user_adjusted_slider_ = false;
+  // The app-wide saturation the preset preview inherits (CreateSpacePanel's
+  // untouched slider); the new Space follows the app (-1) either way.
+  int saturation_ = 50;
+  // The draft palette (CreateSpacePanel.selectedPalette): nil until the
+  // editor is used; committed onto the new Space after creation.
+  std::optional<PhiThemePalette> palette_;
+  // The open editor popover, owned by the host window; null when closed.
+  // Self-deleting — this only ever Dismiss()es it.
+  RAW_PTR_EXCLUSION PhiPopover* editor_ = nullptr;
   Tab tab_ = Tab::kIcon;
   int grid_scroll_ = 0;   // The picker's own scroll, pixels.
   int form_scroll_ = 0;   // The column's scroll when taller than the sidebar.
   Hit hover_ = Hit::kNone;
   int hover_index_ = -1;
-  bool dragging_slider_ = false;
-  // Held while the saturation slider is being dragged; the base ends it on
-  // WM_CAPTURECHANGED and WM_CANCELMODE alike (lane 3 §4.2).
-  Capture slider_capture_;
 };
 
 }  // namespace phi_client

@@ -384,8 +384,10 @@ browser requested by the coordinator, reparented into the window; a shadow
 browser was tried first and cannot take the keyboard because its view skips
 activation), Before we begin (guest consents; metrics default off in
 Europe), What should I call you? (an EDIT; PUT only when changed),
-Welcome (the OOBE conch grid over the page — PhiProfileCard chrome-less —
-with the eight theme swatches applied live), Layout selection, Next steps
+Welcome (the membership card — PhiHolographicCard, docs/windows-native-ui-impl.md
+Round K — centred on the dark ground with a dice that randomises its style
+and switches the app theme to the palette's; no title, no swatches), Layout
+selection, Next steps
 (the four steps + consents + Let's Begin). Phase 4 (Passwords Manager)
 is skipped. Titles use IvyPresto Display SemiBold Italic, registered
 privately from resources/fonts (Latin only; Segoe UI otherwise).

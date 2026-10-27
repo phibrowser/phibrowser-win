@@ -10,8 +10,9 @@
 namespace phi_client {
 
 // The brand faces the Mac bundles (Resources/Fonts): IvyPresto Display
-// SemiBold Italic (the onboarding titles) and IvyPresto Headline SemiBold
-// (the profile card's name). Shipped beside the exe as resources/fonts and
+// SemiBold Italic (the onboarding titles), IvyPresto Headline SemiBold and
+// IvyPresto Headline Light (the membership card's name; GDI family
+// "IvyPresto Headline Light"). Shipped beside the exe as resources/fonts and
 // registered PRIVATE to this process, so CreateFont finds the families
 // without an install. Idempotent; UI thread, before the first window.
 void PhiLoadPrivateFonts();

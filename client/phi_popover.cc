@@ -24,6 +24,10 @@ PhiPopover::PhiPopover() = default;
 
 PhiPopover::~PhiPopover() = default;
 
+namespace {
+constexpr wchar_t kPopoverProp[] = L"PhiPopover";
+}  // namespace
+
 // static
 void PhiPopover::RecordClose(HWND owner) {
   g_last_closed_owner = owner;
@@ -107,7 +111,14 @@ bool PhiPopover::CreatePopover(const ClassSpec& spec,
   // Hit names are the tooltips (phi_window.h): the icon-only actions on a
   // popover are otherwise unlabelled to a sighted user.
   EnableTooltips(true);
+  // The nested-popover rule above recognises an owner by this mark.
+  ::SetPropW(hwnd(), kPopoverProp, reinterpret_cast<HANDLE>(1));
   return true;
+}
+
+// static
+bool PhiPopover::IsPopoverWindow(HWND hwnd) {
+  return hwnd && ::GetPropW(hwnd, kPopoverProp) != nullptr;
 }
 
 void PhiPopover::Show() {
@@ -196,8 +207,25 @@ LRESULT PhiPopover::OnMessage(UINT message,
         if (!options_.dismiss_on_inactive || InOpeningGrace()) {
           break;
         }
+        // NESTED POPOVERS (the create-Space flyout's colour editor): a
+        // popover this one owns taking the activation is not the user
+        // leaving — the parent stays up under its child, as an AppKit
+        // popover does. When the CHILD is then dismissed for a window
+        // that is neither its owner nor a sibling under that owner, the
+        // owner popover has lost the user too but never hears it (it was
+        // already inactive): tell it, so no parent lingers inactive.
+        const HWND next = reinterpret_cast<HWND>(lparam);
+        if (next && ::GetWindow(next, GW_OWNER) == hwnd()) {
+          break;
+        }
         *handled = true;
+        const HWND owner = owner_;
         OnDismiss();
+        if (owner && ::IsWindow(owner) && IsPopoverWindow(owner) &&
+            next != owner && (!next || ::GetWindow(next, GW_OWNER) != owner)) {
+          ::SendMessageW(owner, WM_ACTIVATE, WA_INACTIVE,
+                         reinterpret_cast<LPARAM>(next));
+        }
         return 0;
       }
       break;

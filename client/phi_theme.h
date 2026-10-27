@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "phibrowser-win/client/phi_theme_palette.h"
 #include "phibrowser-win/client/phi_util.h"
 
 namespace phi_client {
@@ -176,6 +177,24 @@ inline constexpr PhiMetrics kPhiMetrics = {};
 PhiPalette PhiResolvePalette(const PhiTheme& theme,
                              PhiAppearance appearance,
                              int saturation = 10);
+// Resolves a Space's linked palette (the Mac's ThemePalette.applying(to:)):
+// the record's anchor colour for the appearance, composited at the Mac's
+// fixed 0.8 overlay alpha over `base`'s window background, is the ground;
+// the anchor hue's accent (S .65 / B .60 light, S .50 / B .85 dark) is the
+// accent; every wash and label re-derives over them. `base` is the Space's
+// theme pin (its background shows through the overlay); the palette beats
+// its overlay colour and the saturation slider alike.
+//
+// DEVIATION from the Mac: a two- or three-colour palette paints the Mac
+// sidebar as a vertical Oklab gradient. The Windows sidebar ground is flat
+// by design (docs/windows-native-ui.md §2.3) and every wash on it is
+// pre-blended over ground_top (GDI composites nothing), so a gradient
+// ground would leave the pinned cells and the active row carrying the
+// primary hue over the secondary colour. The chrome takes the PRIMARY
+// colour; the linked colours show on the editor's handles.
+PhiPalette PhiResolvePalette(const PhiTheme& base,
+                             PhiAppearance appearance,
+                             const PhiThemePalette& palette);
 // The chrome around a page that reported its own colour (the Mac's
 // WebContentHeaderPageColorPresentation): `base` with `page` as the ground of
 // every surface the palette paints on, and the ink the page's colour calls for

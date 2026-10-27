@@ -378,13 +378,18 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   out.new_tab_row = {inset, y, sidebar - inset, y + scaled(kNewTabRowHeight)};
   out.tabs_top = out.new_tab_row.bottom + scaled(kTabRowGap);
 
-  // The bottom bar: downloads (and the memory chip while the AI suite is
-  // on) leading, the Feedback pill trailing.
+  // The bottom bar: the profile button, downloads (and the memory chip
+  // while the AI suite is on) leading, the Feedback pill trailing.
   out.bottom_bar = {0, bar_top, sidebar, bar_top + bar_h};
   const int bar_mid = bar_top + bar_h / 2;
   int bx = inset;
-  // Downloads leads the bar, as the board draws it — its own slot, beside
-  // the tool cluster's copy in the address row — then the memory chip.
+  // The profile (avatar) button leads, as the Mac's SidebarBottomBar does
+  // (ProfileButton at x 8, then its 4 dip gap): the same 32 dip hit box
+  // as its neighbours, the 24 dip disc centred in it by the painter.
+  out.sidebar_profile = {bx, bar_mid - btn / 2, bx + btn, bar_mid + btn / 2};
+  bx += btn + btn_gap;
+  // Downloads next, as the board draws it — its own slot, beside the tool
+  // cluster's copy in the address row — then the memory chip.
   out.sidebar_downloads = {bx, bar_mid - btn / 2, bx + btn, bar_mid + btn / 2};
   bx += btn + btn_gap;
   if (in.ai_enabled) {
@@ -416,6 +421,7 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     out.tabs_label = zero;
     out.new_tab_row = zero;
     out.bottom_bar = zero;
+    out.sidebar_profile = zero;
     out.sidebar_downloads = zero;
     out.memory = zero;
     out.feedback = zero;

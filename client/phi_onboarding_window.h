@@ -18,7 +18,7 @@
 #include "base/values.h"
 #include "phibrowser-win/client/phi_oobe_analytics.h"
 #include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_profile_card.h"
+#include "phibrowser-win/client/phi_holographic_card.h"
 #include "phibrowser-win/client/phi_secondary_window.h"
 #include "phibrowser-win/client/phi_shell_layout.h"
 
@@ -42,7 +42,7 @@ class PhiPreferences;
 //                  is the browser, so the page rides inside this window)
 //   GuestPrivacy   "Before we begin": the legal and metrics consents
 //   SetName   (1)  "What should I call you?"
-//   Welcome   (2)  the theme picker over the draggable conch
+//   Welcome   (2)  the membership card (PhiHolographicCard) and its dice
 //   Layout    (3)  Balanced / Performance / Comfortable
 //   NextSteps (5)  the four steps + the consents + "Let's Begin"
 //
@@ -134,9 +134,10 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
 
   // The harness (agentSpace.onboarding.*): the page's state, and a control
   // pressed by name — "signIn", "guest", "cancel", "legal", "metrics"
-  // (toggles), "name" (value = the text), "swatch" (value = theme id),
-  // "layout" (value = mode name), "next", "close". Empty on success, else
-  // an error token.
+  // (toggles), "name" (value = the text), "swatch" (value = theme id: the
+  // card's palette and the app theme), "randomize" (the dice), "layout"
+  // (value = mode name), "next", "close". Empty on success, else an error
+  // token.
   std::string StateJson() const;
   std::string Drive(const std::string& action, const std::string& value);
 
@@ -173,9 +174,9 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
     kPrivacyLink,
     kTermsLink,
     kNext,
-    kSwatch,      // key = theme index
     kLayoutRow,   // key = layout mode
-    kConch,       // the draggable conch (Welcome)
+    kCard,        // the membership card (Welcome): the pointer lights it
+    kDice,        // the Welcome page's randomize button
   };
   struct Hit {
     Control control = Control::kNone;
@@ -237,7 +238,17 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   Image& ResourceImage(const wchar_t* file, int width, int height);
   HFONT BrandTitleFont(const std::wstring& text, int size_dip);
   void Activate(const Hit& hit);
+  // The theme in force on the Welcome page: the app theme AND the card's
+  // palette (the Mac's themeChanged).
   void ApplyTheme(const std::string& theme_id);
+  // The Welcome card's rect in client px (centred, centre-y 337.5 dips).
+  RECT CardRect() const;
+  // The dice: a random style, and the app theme follows its palette.
+  void RandomizeCard();
+  // The Welcome page's copy and persisted style for the signed-in account.
+  void LoadCard();
+  void StartCardTimer();
+  void PaintDice(HDC dc, const RECT& bounds, bool hot);
   void SubmitName();
   void NoteSignInPressed();
   // The user's action moved the flow forward: the step on screen completes
@@ -256,8 +267,6 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
                   std::wstring name, PhiHitRole role, bool selected,
                   bool enabled);
   const Hit* HitOf(int index) const;
-  COLORREF Accent() const;
-  COLORREF Tint() const;
 
   RAW_PTR_EXCLUSION Host* host_;
   RAW_PTR_EXCLUSION PhiPreferences* prefs_;
@@ -280,12 +289,11 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   BrowserId browser_;
   std::string pending_url_;
   std::function<void(BrowserId, const std::string&)> navigate_;
-  // The Welcome conch (the profile card's engine, chrome-less, the OOBE
-  // frame set), its animation timer and drag.
-  PhiProfileCard conch_;
-  Timer conch_timer_;
-  bool conch_drag_ = false;
-  Capture drag_;
+  // The Welcome membership card, its chosen style (palette = the theme in
+  // force) and its animation timer.
+  PhiHolographicCard card_;
+  PhiHolographicCardStyle card_style_;
+  Timer card_timer_;
   // Decoded resources, keyed by file and size.
   std::map<std::wstring, std::unique_ptr<Image>> images_;
   int pressed_ = -1;

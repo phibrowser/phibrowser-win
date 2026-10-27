@@ -238,6 +238,10 @@ void PhiAppMenu::BuildStatic() {
   row(root_, kCmdPrint, "appMenu.print", fluent::kPrint, false);
   row(root_, kCmdFind, "appMenu.findOnPage", fluent::kFind, false);
   row(root_, kCmdToggleReader, "appMenu.readerView", fluent::kReadingMode);
+  // The Mac's Library (its profile menu row; here the View area), under
+  // the Mac's own title key.
+  // ViewAll's grid, not Open Folio's book (fluent::kLibrary).
+  row(root_, kCmdLibrary, "library.navigation.title", fluent::kTaskView);
   // Folio (docs/folio-port.md): the Mac's File ▸ Save to Folio / Open Folio.
   if (PhiFolio::Enabled()) {
     row(root_, kCmdSaveToFolio, "appMenu.saveToFolio", fluent::kSaveLocal);
@@ -1107,6 +1111,9 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
     case kCmdToggleReader:
       c->MenuToggleReader(from_accelerator);
       return true;
+    case kCmdLibrary:
+      c->MenuToggleLibrary();
+      return true;
     case kCmdReload:
     case kCmdForceReload:
       if (const BrowserId page = c->MenuPageCommandBrowser();
@@ -1363,7 +1370,7 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       break;
   }
   // Disabled placeholders land here when invoked programmatically.
-  return id >= kCmdAbout && id <= kCmdOpenFolio;
+  return id >= kCmdAbout && id <= kCmdLibrary;
 }
 
 std::string PhiAppMenu::BuildBookmarksHtml() const {

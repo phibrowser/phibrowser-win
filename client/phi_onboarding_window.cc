@@ -9,6 +9,9 @@
 #include <wincodec.h>
 #include <wrl/client.h>
 
+#include <objidl.h>
+#include <gdiplus.h>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -21,9 +24,11 @@
 #include "phibrowser-win/client/phi_client_analytics.h"
 #include "phibrowser-win/client/phi_dwrite.h"
 #include "phibrowser-win/client/phi_fonts.h"
+#include "phibrowser-win/client/phi_gdiplus.h"
 #include "phibrowser-win/client/phi_i18n.h"
 #include "phibrowser-win/client/phi_popup_chrome.h"
 #include "phibrowser-win/client/phi_preferences.h"
+#include "phibrowser-win/client/phi_prompt.h"
 #include "phibrowser-win/client/phi_theme.h"
 
 #pragma comment(lib, "windowscodecs.lib")
@@ -56,8 +61,11 @@ constexpr int kNameFieldWidth = 398;
 constexpr int kNameFieldHeight = 54;
 constexpr int kNameFieldRadius = 10;
 constexpr int kNameFieldInset = 17;
-constexpr int kSwatch = 26;
-constexpr int kSwatchGap = 12;
+// The Welcome page (OnboardingWelcomeViewController after cda12eaf): the
+// card centred at y 337.5, the 40-dip dice button at y 585.
+constexpr int kCardTop = 126;  // 337.5 - 423 / 2
+constexpr int kDiceTop = 585;
+constexpr int kDiceSize = 40;
 constexpr int kLayoutRowWidth = 456;
 constexpr int kLayoutRowHeight = 116;
 constexpr int kLayoutPreviewWidth = 140;
@@ -86,6 +94,57 @@ constexpr std::array<COLORREF, 5> kPillGradient = {
     RGB(0xFF, 0xCA, 0xE5), RGB(0x00, 0xAA, 0xFF), RGB(0x94, 0x52, 0xF9),
     RGB(0xFF, 0x8E, 0xC7), RGB(0xFF, 0xCA, 0xE5)};
 
+// One SVG path command of the dice icon: 0 move, 1 line, 2 cubic, 3 close.
+struct DiceSeg {
+  int op;
+  float a, b, c, d, e, f;
+};
+constexpr float kDiceIconW = 22.073f;
+constexpr float kDiceIconH = 20.598f;
+constexpr std::array<DiceSeg, 10> kDiceFront = {{
+    {0, 14.928f, 14.321f, 0, 0, 0, 0}, {1, 13.178f, 7.792f, 0, 0, 0, 0},
+    {2, 12.749f, 6.191f, 11.104f, 5.241f, 9.504f, 5.670f}, {1, 2.974f, 7.420f, 0, 0, 0, 0},
+    {2, 1.374f, 7.849f, 0.424f, 9.494f, 0.853f, 11.094f}, {1, 2.603f, 17.624f, 0, 0, 0, 0},
+    {2, 3.032f, 19.224f, 4.677f, 20.174f, 6.277f, 19.745f}, {1, 12.807f, 17.995f, 0, 0, 0, 0},
+    {2, 14.407f, 17.567f, 15.357f, 15.922f, 14.928f, 14.321f}, {3, 0, 0, 0, 0, 0, 0},
+}};
+constexpr std::array<DiceSeg, 14> kDiceBack = {{
+    {0, 8.186f, 5.977f, 0, 0, 0, 0}, {1, 8.226f, 5.807f, 0, 0, 0, 0}, {1, 8.244f, 5.739f, 0, 0, 0, 0},
+    {2, 8.962f, 3.044f, 9.325f, 1.681f, 10.396f, 1.067f},
+    {2, 11.476f, 0.447f, 12.846f, 0.807f, 15.586f, 1.547f}, {1, 16.286f, 1.727f, 0, 0, 0, 0},
+    {1, 16.351f, 1.744f, 0, 0, 0, 0}, {2, 19.047f, 2.472f, 20.391f, 2.835f, 21.006f, 3.907f},
+    {2, 21.626f, 4.987f, 21.266f, 6.347f, 20.536f, 9.077f}, {1, 19.816f, 11.767f, 0, 0, 0, 0},
+    {2, 19.696f, 12.317f, 19.518f, 12.853f, 19.286f, 13.367f},
+    {2, 19.021f, 13.842f, 18.632f, 14.237f, 18.160f, 14.508f},
+    {2, 17.688f, 14.780f, 17.150f, 14.917f, 16.606f, 14.907f},
+    {2, 16.236f, 14.907f, 15.806f, 14.777f, 14.956f, 14.547f},
+}};
+constexpr std::array<std::pair<float, float>, 3> kDicePips = {{{9.55f, 9.86f}, {17.36f, 6.14f}, {6.23f, 15.72f}}};
+
+void AddDiceSegs(Gdiplus::GraphicsPath* path, base::span<const DiceSeg> segs) {
+  Gdiplus::PointF current(0, 0);
+  for (const DiceSeg& seg : segs) {
+    switch (seg.op) {
+      case 0:
+        path->StartFigure();
+        current = Gdiplus::PointF(seg.a, seg.b);
+        break;
+      case 1:
+        path->AddLine(current, Gdiplus::PointF(seg.a, seg.b));
+        current = Gdiplus::PointF(seg.a, seg.b);
+        break;
+      case 2:
+        path->AddBezier(current, Gdiplus::PointF(seg.a, seg.b), Gdiplus::PointF(seg.c, seg.d),
+                        Gdiplus::PointF(seg.e, seg.f));
+        current = Gdiplus::PointF(seg.e, seg.f);
+        break;
+      default:
+        path->CloseFigure();
+        break;
+    }
+  }
+}
+
 std::wstring ResourceDir() {
   wchar_t exe_path[MAX_PATH] = {};
   ::GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
@@ -104,41 +163,6 @@ COLORREF Mix(COLORREF a, COLORREF b, double t) {
   };
   return RGB(ch(GetRValue(a), GetRValue(b)), ch(GetGValue(a), GetGValue(b)),
              ch(GetBValue(a), GetBValue(b)));
-}
-
-// HSB -> COLORREF (the Mac's NSColor(hue:saturation:brightness:)).
-COLORREF FromHsb(double h, double s, double b) {
-  h = std::fmod(std::max(0.0, h), 1.0) * 6.0;
-  const int i = static_cast<int>(std::floor(h));
-  const double f = h - i;
-  const double p = b * (1 - s), q = b * (1 - s * f), t = b * (1 - s * (1 - f));
-  double r = 0, g = 0, bl = 0;
-  switch (i % 6) {
-    case 0: r = b; g = t; bl = p; break;
-    case 1: r = q; g = b; bl = p; break;
-    case 2: r = p; g = b; bl = t; break;
-    case 3: r = p; g = q; bl = b; break;
-    case 4: r = t; g = p; bl = b; break;
-    default: r = b; g = p; bl = q; break;
-  }
-  return RGB(static_cast<int>(std::lround(r * 255)),
-             static_cast<int>(std::lround(g * 255)),
-             static_cast<int>(std::lround(bl * 255)));
-}
-
-double HueOf(COLORREF c) {
-  const double r = GetRValue(c) / 255.0, g = GetGValue(c) / 255.0,
-               b = GetBValue(c) / 255.0;
-  const double mx = std::max({r, g, b}), mn = std::min({r, g, b});
-  const double d = mx - mn;
-  if (d <= 0.0) {
-    return 0.0;
-  }
-  double h = mx == r ? std::fmod((g - b) / d, 6.0)
-             : mx == g ? (b - r) / d + 2.0
-                       : (r - g) / d + 4.0;
-  h /= 6.0;
-  return h < 0 ? h + 1.0 : h;
 }
 
 // The Mac's NextStepConsentState: metrics sharing defaults OFF for a
@@ -207,7 +231,6 @@ PhiOnboardingWindow::PhiOnboardingWindow(Host* host,
     : host_(host),
       prefs_(prefs),
       account_(account),
-      conch_(L"onboarding", /*card_chrome=*/false),
       oobe_([this](const PhiOobeAnalyticsSession::Event& event) {
         host_->CaptureAnalytics(kAnalyticsModuleOobe, event.name,
                                 PhiOobeEventProperties(event));
@@ -316,7 +339,14 @@ std::string PhiOnboardingWindow::StateJson() const {
   json += legal_checked_ ? "true" : "false";
   json += ",\"metrics\":";
   json += metrics_checked_ ? "true" : "false";
-  json += ",\"theme\":\"" + theme_id_ + "\",\"layout\":\"";
+  json += ",\"theme\":\"" + theme_id_ + "\",\"cardStyle\":{";
+  bool first = true;
+  for (const auto& [key, value] : card_style_.ToMap()) {
+    json += std::string(first ? "" : ",") + "\"" + key + "\":\"" + value + "\"";
+    first = false;
+  }
+  json += "},\"memberId\":\"" +
+          PhiHolographicCard::MemberId(account_->auth().user().sub) + "\",\"layout\":\"";
   json += PhiLayoutModeName(static_cast<PhiLayoutMode>(layout_choice_));
   json += "\",\"embeddedBrowser\":";
   json += browser_.valid() ? "true" : "false";
@@ -360,16 +390,24 @@ std::string PhiOnboardingWindow::Drive(const std::string& action,
     ::SetWindowTextW(name_field_, base::UTF8ToWide(value).c_str());
     return std::string();
   } else if (action == "swatch") {
-    const std::vector<PhiTheme>& themes = PhiBuiltInThemes();
-    for (size_t i = 0; i < themes.size(); ++i) {
-      if (value == themes[i].id) {
-        hit.control = Control::kSwatch;
-        hit.key = static_cast<int>(i);
-      }
+    if (page_ != Page::kWelcome) {
+      return "wrong_page";
     }
-    if (hit.control == Control::kNone) {
+    const PhiTheme& theme = PhiThemeById(value);
+    if (value != theme.id) {
       return "unknown_theme";
     }
+    // Live, as the Mac's themeChanged: the selection IS the saved theme.
+    prefs_->SetThemeId(theme.id);
+    ApplyTheme(theme.id);
+    Layout();
+    Invalidate();
+    return std::string();
+  } else if (action == "randomize") {
+    if (page_ != Page::kWelcome) {
+      return "wrong_page";
+    }
+    hit.control = Control::kDice;
   } else if (action == "layout") {
     hit.control = Control::kLayoutRow;
     if (value == "performance") {
@@ -406,9 +444,15 @@ bool PhiOnboardingWindow::Open(Page page) {
   ::SetWindowPos(hwnd(), nullptr, 0, 0, outer.cx, outer.cy,
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
   CenterOn(nullptr);
-  conch_timer_ = NewTimer();
-  conch_.SetNotify(hwnd(), kMsgNavigate + 1);
+  card_timer_ = NewTimer();
+  card_.SetNotify(hwnd(), kMsgNavigate + 1);
+  card_.SetCacheDir(prefs_->user_data_dir() + L"\\PhiCardArtwork");
   theme_id_ = prefs_->ThemeId();
+  // Pre-warm the default style's artwork so the Welcome page's card is
+  // ready when the flow reaches it.
+  card_style_.palette = PhiHolographicCardStyle::PaletteForTheme(theme_id_);
+  card_.SetStyle(card_style_);
+  card_.Prepare(CardRect());
   ShowPage(page);
   ::ShowWindow(hwnd(), SW_SHOW);
   ::SetForegroundWindow(hwnd());
@@ -436,7 +480,9 @@ void PhiOnboardingWindow::ShowPage(Page page) {
   }
   if (page == Page::kWelcome) {
     theme_id_ = prefs_->ThemeId();
+    LoadCard();
     ApplyTheme(theme_id_);
+    card_.ReplayEntrance();
   }
   if (page == Page::kGuestPrivacy || page == Page::kNextSteps) {
     legal_checked_ = false;
@@ -634,21 +680,15 @@ void PhiOnboardingWindow::Layout() {
                  false, !name_submitting_);
       break;
     case Page::kWelcome: {
-      // The conch takes the whole page; the controls sit over it.
-      AddControl(Control::kConch, 0, ContentDip(0, 0, kWidth, kHeight),
-                 std::wstring(), PhiHitRole::kImage, false, true);
-      const std::vector<PhiTheme>& themes = PhiBuiltInThemes();
-      const int total = static_cast<int>(themes.size()) * kSwatch +
-                        (static_cast<int>(themes.size()) - 1) * kSwatchGap;
-      const int left = (kWidth - total) / 2;
-      const int top = 45 + kTitleHeight + 22;
-      for (size_t i = 0; i < themes.size(); ++i) {
-        AddControl(Control::kSwatch, static_cast<int>(i),
-                   ContentDip(left + static_cast<int>(i) * (kSwatch + kSwatchGap),
-                              top, kSwatch, kSwatch),
-                   base::UTF8ToWide(themes[i].name), PhiHitRole::kListItem,
-                   theme_id_ == themes[i].id, true);
-      }
+      // The membership card, centred, and the dice under it.
+      std::string name;
+      account_->AccountInfo(&name, nullptr);
+      AddControl(Control::kCard, 0, CardRect(), base::UTF8ToWide(name),
+                 PhiHitRole::kImage, false, true);
+      AddControl(Control::kDice, 0,
+                 ContentDip((kWidth - kDiceSize) / 2, kDiceTop, kDiceSize, kDiceSize),
+                 PhiStr("oobe.welcome.randomizeCard"), PhiHitRole::kButton, false,
+                 true);
       AddControl(Control::kNext, 0,
                  ContentDip((kWidth - kPillWidth) / 2,
                             kHeight - kButtonBottom - kPillHeight, kPillWidth,
@@ -755,29 +795,52 @@ HFONT PhiOnboardingWindow::BrandTitleFont(const std::wstring& text,
   return fonts().Get(desc);
 }
 
-COLORREF PhiOnboardingWindow::Accent() const {
-  const PhiTheme& theme = PhiThemeById(theme_id_);
-  if (theme_id_ == "pure") {
-    return RGB(0, 0, 0);
-  }
-  const bool dark = prefs_->Palette().dark;
-  return FromHsb(HueOf(dark ? theme.dark.overlay : theme.light.overlay), 1.0,
-                 0.37);
+RECT PhiOnboardingWindow::CardRect() const {
+  return ContentDip((kWidth - PhiHolographicCard::kDesignWidthDip) / 2, kCardTop,
+                    PhiHolographicCard::kDesignWidthDip,
+                    PhiHolographicCard::kDesignHeightDip);
 }
 
-COLORREF PhiOnboardingWindow::Tint() const {
-  const PhiTheme& theme = PhiThemeById(theme_id_);
-  const bool dark = prefs_->Palette().dark;
-  const double hue = HueOf(dark ? theme.dark.overlay : theme.light.overlay);
-  return theme_id_ == "pure" ? FromHsb(hue, 0.0, 0.5) : FromHsb(hue, 0.85, 0.75);
+void PhiOnboardingWindow::LoadCard() {
+  // The Mac's OnboardingWelcomeViewController.requestProfile: the member id
+  // from the Auth0 subject, the name and the join date from the profile
+  // (already fetched by the sign-in), and the account's saved style when it
+  // has one (a repeat of the page).
+  const std::string sub = account_->auth().user().sub;
+  std::string name;
+  account_->AccountInfo(&name, nullptr);
+  const std::optional<PhiAccountProfile>& profile = account_->Profile().profile();
+  const bool profile_matches = profile && profile->auth0_id == sub;
+  card_.SetIdentity(name.empty() ? "Phi" : name, PhiHolographicCard::MemberId(sub),
+                    profile_matches ? PhiHolographicCard::FormatJoinDate(profile->created_at)
+                                    : std::string());
+  const std::map<std::string, std::string> saved = prefs_->ProfileCardStyle(sub);
+  if (!saved.empty()) {
+    card_style_ = PhiHolographicCardStyle::FromMap(saved);
+  }
 }
 
 void PhiOnboardingWindow::ApplyTheme(const std::string& theme_id) {
   theme_id_ = theme_id;
-  const PhiTheme& theme = PhiThemeById(theme_id_);
-  const bool dark = prefs_->Palette().dark;
-  conch_.SetTheme(dark ? theme.dark.overlay : theme.light.overlay,
-                  theme_id_ == "pure", dark);
+  card_style_.palette = PhiHolographicCardStyle::PaletteForTheme(theme_id_);
+  card_.SetStyle(card_style_);
+}
+
+void PhiOnboardingWindow::RandomizeCard() {
+  // The Mac's randomizeCard: every selection anew, and the app theme
+  // follows the palette.
+  card_style_ = PhiHolographicCardStyle::Random();
+  const std::string theme_id = PhiHolographicCardStyle::ThemeIdFor(card_style_.palette);
+  prefs_->SetThemeId(theme_id);
+  ApplyTheme(theme_id);
+  Layout();
+  Invalidate();
+}
+
+void PhiOnboardingWindow::StartCardTimer() {
+  if (card_.animating() && !card_timer_.running()) {
+    card_timer_.Start(16, /*coalescable=*/true);
+  }
 }
 
 // --- Paint ------------------------------------------------------------------
@@ -866,9 +929,6 @@ void PhiOnboardingWindow::PaintGround(HDC dc, const RECT& content) {
                                content.bottom - content.top),
                  false);
       break;
-    case Page::kWelcome:
-      conch_.Paint(dc, content);
-      break;
     case Page::kSigningIn:
       break;
     default:
@@ -895,9 +955,9 @@ void PhiOnboardingWindow::PaintFooterControls(HDC dc) {
                     DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
       ::SelectObject(dc, old_font);
     } else if (hit.control == Control::kNext && page_ == Page::kWelcome) {
-      const COLORREF accent = Accent();
       PaintPillButton(dc, hit.bounds, PhiStr("oobe.welcome.nextButton"),
-                      hit.enabled, hot, false, accent, accent, Tint());
+                      hit.enabled, hot, true, RGB(255, 255, 255),
+                      RGB(255, 255, 255), RGB(0x80, 0x80, 0x80));
     } else if (hit.control == Control::kNext) {
       const char* label = page_ == Page::kGuestPrivacy
                               ? "oobe.guestPrivacy.beginButton"
@@ -1286,39 +1346,54 @@ void PhiOnboardingWindow::PaintSetName(HDC dc, const RECT& content) {
 }
 
 void PhiOnboardingWindow::PaintWelcome(HDC dc, const RECT& content) {
-  // The conch fills the page (white ground until its centre frame lands).
-  conch_.Paint(dc, content);
-  if (conch_.animating() && !conch_timer_.running()) {
-    conch_timer_.Start(16, /*coalescable=*/true);
-  }
-  const COLORREF accent = Accent();
-  std::string name;
-  account_->AccountInfo(&name, nullptr);
-  const std::wstring title =
-      name.empty() ? std::wstring(PhiStr("oobe.welcome.title"))
-                   : PhiStrF("oobe.welcome.personalizedTitle",
-                             {base::UTF8ToWide(name)});
-  PaintTitle(dc, content, title, accent, 45);
-  const std::vector<PhiTheme>& themes = PhiBuiltInThemes();
+  // The shared dark ground, the card (hidden until its artwork is ready)
+  // and the dice. No title, no swatches: the card IS the page.
+  PaintDarkGround(dc, content);
+  card_.Paint(dc, CardRect());
+  StartCardTimer();
   for (size_t i = 0; i < hits_.size(); ++i) {
     const Hit& hit = hits_[i];
-    if (hit.control == Control::kSwatch) {
-      const PhiTheme& theme = themes[static_cast<size_t>(hit.key)];
-      const bool pure = std::string(theme.id) == "pure";
-      const bool selected = theme_id_ == theme.id;
-      const COLORREF fill = pure ? RGB(255, 255, 255) : theme.light.accent;
-      // A soft shadow under the dot, then the dot, then the selection ring.
-      RECT shadow = hit.bounds;
-      ::OffsetRect(&shadow, 0, Scaled(1));
-      PhiFillEllipseAA(dc, shadow, PhiPopupBlend(RGB(0, 0, 0), RGB(255, 255, 255), 30));
-      PhiFillEllipseAA(dc, hit.bounds, fill);
-      if (selected) {
-        PhiStrokeEllipseAA(dc, hit.bounds,
-                           pure ? RGB(0, 0, 0) : theme.light.overlay,
-                           std::max(2, Scaled(2)));
-      }
+    if (hit.control == Control::kDice) {
+      PaintDice(dc, hit.bounds, hovered() == static_cast<int>(i));
     }
   }
+}
+
+void PhiOnboardingWindow::PaintDice(HDC dc, const RECT& bounds, bool hot) {
+  // The Mac's randomButton: a 40-dip circle of white at 10%, the dice
+  // glyph in white (stroked 1.5, round joins), lifted a little under the
+  // pointer.
+  const int w = bounds.right - bounds.left;
+  const int h = bounds.bottom - bounds.top;
+  if (w <= 0 || h <= 0 || !PhiEnsureGdiPlus()) {
+    return;
+  }
+  std::vector<uint8_t> layer(static_cast<size_t>(w) * h * 4, 0);
+  {
+    Gdiplus::Bitmap bitmap(w, h, w * 4, PixelFormat32bppPARGB, layer.data());
+    Gdiplus::Graphics g(&bitmap);
+    g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+    g.Clear(Gdiplus::Color(0, 0, 0, 0));
+    Gdiplus::SolidBrush ground(Gdiplus::Color(hot ? 46 : 26, 255, 255, 255));
+    g.FillEllipse(&ground, 0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h));
+    const float scale = w / static_cast<float>(kDiceSize);
+    g.TranslateTransform((w - kDiceIconW * scale) / 2, (h - kDiceIconH * scale) / 2);
+    g.ScaleTransform(scale, scale);
+    Gdiplus::GraphicsPath path;
+    AddDiceSegs(&path, kDiceFront);
+    AddDiceSegs(&path, kDiceBack);
+    Gdiplus::Pen pen(Gdiplus::Color(255, 255, 255, 255), 1.5f);
+    pen.SetStartCap(Gdiplus::LineCapRound);
+    pen.SetEndCap(Gdiplus::LineCapRound);
+    pen.SetLineJoin(Gdiplus::LineJoinRound);
+    g.DrawPath(&pen, &path);
+    Gdiplus::SolidBrush pip(Gdiplus::Color(255, 255, 255, 255));
+    for (const auto& [cx, cy] : kDicePips) {
+      g.FillEllipse(&pip, cx - 1.0f, cy - 1.0f, 2.0f, 2.0f);
+    }
+    g.Flush(Gdiplus::FlushIntentionSync);
+  }
+  PhiBlendBgra(dc, bounds, layer.data(), w, h);
 }
 
 void PhiOnboardingWindow::PaintLayout(HDC dc, const RECT& content) {
@@ -1377,12 +1452,17 @@ void PhiOnboardingWindow::PaintLayout(HDC dc, const RECT& content) {
 
 // --- Input ------------------------------------------------------------------
 
-void PhiOnboardingWindow::OnHover(int, int) {
+void PhiOnboardingWindow::OnHover(int hit, int) {
+  if (hit < 0 && page_ == Page::kWelcome) {
+    // The pointer left the window: the card settles flat.
+    card_.SetPointer(std::nullopt, CardRect());
+    StartCardTimer();
+  }
   Invalidate();
 }
 
 void PhiOnboardingWindow::OnWheel(int delta, POINT) {
-  if (MaxScroll() > 0 && !conch_drag_) {
+  if (MaxScroll() > 0) {
     ScrollTo(scroll_ - delta * Scaled(kScrollStep) / WHEEL_DELTA);
   }
 }
@@ -1422,26 +1502,11 @@ bool PhiOnboardingWindow::OnKey(WPARAM virtual_key) {
   return PhiSecondaryWindow::OnKey(virtual_key);
 }
 
-void PhiOnboardingWindow::OnMouseDown(int hit, POINT client_pt) {
+void PhiOnboardingWindow::OnMouseDown(int hit, POINT) {
   pressed_ = hit;
-  const Hit* h = HitOf(hit);
-  if (h && h->control == Control::kConch) {
-    conch_drag_ = true;
-    drag_ = BeginCapture();
-    conch_.BeginDrag(client_pt);
-  }
 }
 
 void PhiOnboardingWindow::OnClick(int hit, POINT) {
-  if (conch_drag_) {
-    conch_drag_ = false;
-    drag_.Release();
-    conch_.EndDrag();
-    if (conch_.animating() && !conch_timer_.running()) {
-      conch_timer_.Start(16, true);
-    }
-    return;
-  }
   const int pressed = pressed_;
   pressed_ = -1;
   if (hit < 0 || hit != pressed) {
@@ -1455,12 +1520,7 @@ void PhiOnboardingWindow::OnClick(int hit, POINT) {
   Activate(copy);
 }
 
-void PhiOnboardingWindow::OnCaptureLost() {
-  if (conch_drag_) {
-    conch_drag_ = false;
-    conch_.EndDrag();
-  }
-}
+void PhiOnboardingWindow::OnCaptureLost() {}
 
 void PhiOnboardingWindow::Activate(const Hit& hit) {
   switch (hit.control) {
@@ -1496,17 +1556,9 @@ void PhiOnboardingWindow::Activate(const Hit& hit) {
     case Control::kTermsLink:
       host_->OnboardingOpenLink(kTermsUrl);
       break;
-    case Control::kSwatch: {
-      const std::vector<PhiTheme>& themes = PhiBuiltInThemes();
-      if (hit.key >= 0 && hit.key < static_cast<int>(themes.size())) {
-        // Live, as on the Mac: the selection IS the saved theme.
-        prefs_->SetThemeId(themes[static_cast<size_t>(hit.key)].id);
-        ApplyTheme(themes[static_cast<size_t>(hit.key)].id);
-        Layout();
-        Invalidate();
-      }
+    case Control::kDice:
+      RandomizeCard();
       break;
-    }
     case Control::kLayoutRow:
       layout_choice_ = hit.key;
       Layout();
@@ -1515,7 +1567,7 @@ void PhiOnboardingWindow::Activate(const Hit& hit) {
     case Control::kNext:
       OnEnter();
       break;
-    case Control::kConch:
+    case Control::kCard:
     case Control::kNone:
       break;
   }
@@ -1543,6 +1595,12 @@ void PhiOnboardingWindow::OnEnter() {
       SubmitName();
       break;
     case Page::kWelcome:
+      // The Mac's nextButtonTapped: the card's style is saved for the
+      // account before the flow moves on.
+      if (!prefs_->SetProfileCardStyle(account_->auth().user().sub, card_style_.ToMap())) {
+        PhiNotice(hwnd(), PhiStr("oobe.welcome.cardSaveFailed"), L"");
+        return;
+      }
       host_->OnboardingSetPhase(3);
       AdvanceTo(Page::kLayout);
       break;
@@ -1582,14 +1640,17 @@ void PhiOnboardingWindow::OnEscape() {
 }
 
 void PhiOnboardingWindow::OnTimerFired(UINT_PTR id) {
-  if (id != conch_timer_.id()) {
+  if (id != card_timer_.id()) {
     return;
   }
-  if (conch_.Tick()) {
-    Invalidate();
+  if (card_.Tick()) {
+    RECT card = CardRect();
+    const int margin = PhiHolographicCard::MarginPx(card);
+    ::InflateRect(&card, margin, margin);
+    Invalidate(card);
   }
-  if (!conch_.animating()) {
-    conch_timer_.Stop();
+  if (!card_.animating()) {
+    card_timer_.Stop();
   }
 }
 
@@ -1606,7 +1667,7 @@ void PhiOnboardingWindow::OnDpiChanged(UINT old_dpi) {
 }
 
 void PhiOnboardingWindow::OnNcDestroy() {
-  conch_timer_.Stop();
+  card_timer_.Stop();
   DetachBrowser();
   PhiSecondaryWindow::OnNcDestroy();
 }
@@ -1825,12 +1886,14 @@ LRESULT PhiOnboardingWindow::OnWindowMessage(UINT msg, WPARAM wparam,
       return reinterpret_cast<LRESULT>(field_brush_);
     }
     case WM_MOUSEMOVE:
-      if (conch_drag_ && (wparam & MK_LBUTTON)) {
-        if (conch_.Drag({GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)})) {
-          Invalidate();
-        }
-        *handled = true;
-        return 0;
+      if (page_ == Page::kWelcome) {
+        // The pointer over the card moves its light (the Mac's tracking
+        // area); off it, the card settles. The base keeps the hover.
+        const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        const RECT card = CardRect();
+        card_.SetPointer(::PtInRect(&card, pt) ? std::optional<POINT>(pt) : std::nullopt,
+                         card);
+        StartCardTimer();
       }
       break;
     case kMsgNavigate:
@@ -1867,11 +1930,9 @@ LRESULT PhiOnboardingWindow::OnWindowMessage(UINT msg, WPARAM wparam,
         Refit();  // The taskbar moved or grew.
       }
       break;
-    case kMsgNavigate + 1:  // A conch frame decoded.
+    case kMsgNavigate + 1:  // The card's artwork landed.
       Invalidate();
-      if (conch_.animating() && !conch_timer_.running()) {
-        conch_timer_.Start(16, true);
-      }
+      StartCardTimer();
       *handled = true;
       return 0;
     default:

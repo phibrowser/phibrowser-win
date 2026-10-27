@@ -73,7 +73,7 @@ Two standing decisions cover many rows and are not repeated in full:
 |---|---|---|---|---|
 | Docked sidebar: Space pips, pinned grid, bookmarks, tab tree, bottom bar | yes | yes, 200–480 dip | ✅ | `sidebar-architecture.md`. |
 | Floating sidebar (edge hover) | yes | yes | ✅ | No fade on slide-in (impl doc §4.4). |
-| Sidebar bottom bar: profile, chat, memory, downloads, feedback | all five | Downloads + Feedback pill | ◐ | Chat and memory are ⛔ AI suite; the profile button's menu moved to Settings ▸ You and the app menu (`windows-native-ui.md` §4.5). |
+| Sidebar bottom bar: profile, chat, memory, downloads, feedback | all five | profile avatar + Downloads + Feedback pill | ✅ | Chat and memory are ⛔ AI suite. The profile button returned 2026-10-27 on request (left-most 24 dip avatar / person glyph, the Mac's menu: Download List → Library ▸ Downloads, Manage Bookmarks, Manage Extensions, New Tab, New Incognito Space / Window, Settings, Sign in when guest), reversing the 2026-09 decision in `windows-native-ui.md` §4.2. |
 | Horizontal strip: Space chip, group chips, overflow, bookmarks bar | yes | yes | ✅ | Group headers in the horizontal layout: none on either side's strip beyond chips. |
 | Tab groups (9 colours, collapse, overview) | yes | yes | ✅ | |
 | Tab hover preview card | yes | yes | ✅ | |
@@ -93,8 +93,8 @@ Two standing decisions cover many rows and are not repeated in full:
 | Incognito Space | ⌃⇧N | Ctrl+Alt+N | ✅ | `incognito-space-port.md`; not ported: account-menu entry, scripting command, pre-warmed tree, new-pip chip flight. |
 | URL rules (Domain / contains / suffix / URL → Space / Incognito / Kiosk / Ask) | yes | yes | ✅ | |
 | Pinned tab scope follows the synced setting (per-account follower, 2026-10-14 Mac `05160468`) | yes | Windows syncs `PhiPinnedTabScope` | ✅ | Generation fence + commit / landing fences ported 2026-10-19 (§9); 2026-10-27 `parked_for_scope` keeps dormant other-scope copies out of "Needs attention" (`4d6a7bf2`). No "not applied yet" status line: Windows migrates the store and writes the key in one call. |
-| Library (overlay / window: Space cards, pins, bookmarks, Downloads, Folio) | View ▸ Library | none | 🔧 | Decided 2026-10-19: implement as a Windows surface (app menu row + Ctrl chord), hosting the Spaces cards, Downloads and Folio sections. Re-adds `library_section_viewed` and `space_created` with `surface: library`. Since Mac `45a10144` (2026-10-19) the Folio section hosts Mirage's `library.html` in an embedded off-strip browser pane (a link click adopts the tab into the strip and dismisses the Library), not a native list. |
-| Space theme palette editor: colour field, 1–3 linked handles, harmony (single / analogous / complementary / split), Light / Dark buttons (Mac `3d045cf6`, `4c9d919e`, `23c728d9`, 2026-10-21/23) | replaces the swatch row + saturation slider in the Space editor and the create form | swatch row + saturation slider (`phi_space_theme_panel.cc`, `phi_create_space_panel.cc`) | ❓ | New on the Mac this cycle. The palette is a LOCAL per-Space record (`spaceThemePalettes` in the account defaults, not on the Space sync payload — the Mac Theme README says so), so a Mac palette Space renders on Windows as its pinned preset and nothing is on the wire. L design port; decide implement or leave. |
+| Library (overlay / window: Space cards, pins, bookmarks, Downloads, Folio) | View ▸ Library; rail Folio / Spaces / Downloads | ⋯ ▸ Library, Ctrl+Shift+L, Settings ▸ Spaces ▸ Manage Spaces in Library, downloads popover ▸ All Downloads, profile menu ▸ Download List; rail Spaces / Downloads | ◐ | Built 2026-10-27 (`windows-native-ui-impl.md` Round L): scrim + 36-dip card over sidebar and content, Space cards (theme ground, icon picker, inline rename, theme panel, pins grid + bookmark outline, double-click opens, handle drag reorders, "…" menu, row context menus with Move to Space ▸), inline create card after the current Space (`space_created surface: library`), Downloads list (search, grouped, hover actions), standalone window, `library_section_viewed`. Gaps: no Folio section (Folio is being redesigned — deliberately omitted 2026-10-27); no drag of pins / bookmarks between cards (Move to Space ▸ stands in); no profile filter in Downloads (the framework lists per window, 20 rows); no spring flight / shadow blur. |
+| Space theme palette editor: colour field, 1–3 linked handles, harmony (single / analogous / complementary / split), Light / Dark buttons (Mac `3d045cf6`, `4c9d919e`, `23c728d9`, 2026-10-21/23) | replaces the swatch row + saturation slider in the Space editor and the create form; 2–3 colours paint the sidebar as a vertical Oklab gradient | same editor (`phi_space_theme_panel.cc`: 260×296 popover, 244 field, 38/28/14 handles, harmony + Light/Dark toolbar), the create form's "Color ›" row on a draft, local `spaceThemePalettes` record (`model::Space::palette`, `PhiThemePalette`) | ◐ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round J), box-verified on gmk: Space editor light/dark, draft editor from the create form, a split-complementary palette on the chrome, preset choice drops the record, pinned-preset Spaces unchanged. Record is LOCAL on both sides (not on the Space sync payload), so a Mac palette Space still renders here as its pinned preset. **Gap:** the chrome takes the palette's PRIMARY colour only — the Windows sidebar ground is flat by design (`windows-native-ui.md` §2.3) and GDI pre-blends every wash over `ground_top`, so a gradient ground would leave pinned cells and the active row in the primary hue over the secondary colour; the linked colours show on the editor's handles. Minor: handles are not named for UIA (one field hit, no "Color n" tooltip); the guest→account migration does not carry palettes. |
 | Group Overview page | yes | yes | ✅ | |
 
 ## 3. Address bar and page
@@ -107,7 +107,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Site menu: Collect Site Memories / Delete Site Memories | yes | none | ⛔ | AI suite (site memory is browser memory). |
 | Copy link in the field, Reader button (hover) | yes | yes | ✅ | |
 | Reader View (typography prefs) | yes | yes + read-aloud HUD | ✅ | Windows has read-aloud; Mac does not. `-phi-auto-reader` automation entry point not ported (analytics doc). |
-| Peek (Shift-click, auto-peek from pins/bookmarks) | chips: Close, Open as Tab, Open as Split, Reader View | chips: Close, Open as Tab, Open as Split | ◐ | No Reader chip on the Peek card; Peek is omitted from session restore (`analytics.md`). Page commands and the address field aim at the presented Peek since 2026-10-27 (`a19624bb`, `c11849cf`; Back / Forward and the Reader toggle stay on the opener). Still missing: appear / close flights and the opener dim, and the Shift-click SPA-router guard + opener video pause (`80f92213`, needs a fork seam). |
+| Peek (Shift-click, auto-peek from pins/bookmarks) | chips: Close, Open as Tab, Open as Split, Reader View | chips: Close, Open as Tab, Open as Split | ◐ | No Reader chip on the Peek card; Peek is omitted from session restore (`analytics.md`). Page commands and the address field aim at the presented Peek since 2026-10-27 (`a19624bb`, `c11849cf`; Back / Forward and the Reader toggle stay on the opener). The Shift-click SPA-router guard + opener video pause landed 2026-10-27 (`80f92213`: fork `phi_peek_link_guard.{h,cc}` runs the Mac's capture-phase click guard in a Phi isolated world of every document, gated on `peekViewEnabled`; `OpenUrlAsPeek` pauses the opener's videos in every frame). Still missing: appear / close flights and the opener dim. |
 | Split view (two panes, drop hints, swap, convert, pin/bookmark a split) | yes | yes | ✅ | `split-view-chrome.md`. |
 | Modifier clicks: Shift → Peek, Alt/⌥ → split, Ctrl+Alt/⌘⌥ → Kiosk | yes | yes | ✅ | |
 | Kiosk window ("Open in" Space, profile chip) | yes, profile chip menu, cursor-zoom open animation, frame autosave | yes, no profile switch from the chip, default size | ◐ | `phi_kiosk_window.h` lists the four pieces as deliberately not ported; the profile-chip switch has no framework call. |
@@ -162,7 +162,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Crash feedback ("Phi quit unexpectedly") on next launch | `docs/crash-feedback.md` | Crashpad → Sentry, no prompt | 🔧 | Needs the last-run status from Crashpad and the existing Send feedback form with the crash id. |
 | Send feedback: files, pasted images, diagnostics, outbox | 10 × 20 MiB, Sentinel logs | 5 × 10 MB, week-long outbox | ✅ | Sentinel logs are ⛔ AI suite. |
 | Account deletion local data removal | yes | none | 🔧 | With the Delete account row above. |
-| Membership card: holographic foil card with member ID (SHA-256(sub)[0:8]), "Date Joined", random style + PNG export, on the onboarding Welcome page and Settings ▸ You (Mac `6b300dc0`, `cda12eaf`, 2026-10-20/26) | `HolographicCardView` | conch frame-sequence card (`phi_profile_card.cc`, 12.5 MB of JPEG frames), no member ID | ❓ | New on the Mac this cycle. L design port (procedural GDI+ layers, member ID from the Auth0 `sub`, style persisted per account; the Welcome page becomes a dark ground with the centred card and a dice button, no theme swatches). Decide implement or leave. |
+| Membership card: holographic foil card with member ID (SHA-256(sub)[0:8]), "Date Joined", random style + PNG export, on the onboarding Welcome page and Settings ▸ You (Mac `6b300dc0`, `cda12eaf`, 2026-10-20/26) | `HolographicCardView` | `PhiHolographicCard` (`client/phi_holographic_card.cc`): the same layer stack composed in software — palette base + iridescence + radial, one of 6 procedural foil textures, seeded grain, logo + sweep, one of 6 seal ornaments, sheen, edge; pointer light + tilt, entrance spin, flat PNG export at 2× on the accent canvas | ✅ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round K). Foil / grain / seal masks are rasterised once per style and size with GDI+ on a worker and cached as PNG under `<user data>\PhiCardArtwork\v1`; the light-driven layers recompose per frame. Member id from `auth().user().sub`, join month from the profile's `created_at`, style in the account defaults under the Mac's `profileCardStyle` key (palette overridden by the current theme in Settings, as on the Mac). The conch frame sets (12.5 MB) are gone. Not ported: the Mac's `.random()` seeding details (both are uniform), IvyPresto Headline Light now ships for the name. |
 
 ## 6. Agents and automation
 
@@ -187,15 +187,15 @@ Two standing decisions cover many rows and are not repeated in full:
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 51 |
-| ◐ partial | 19 |
-| 🔧 to implement | 25 |
+| ✅ ported | 53 |
+| ◐ partial | 20 |
+| 🔧 to implement | 24 |
 | ⛔ deliberately left | 18 |
-| ❓ needs a decision | 2 |
+| ❓ needs a decision | 0 |
 | — not applicable | 4 |
 
 **The 🔧 list, roughly by user impact:** Mini Player / media controls ·
-content blocking switches · Library surface · multi-selection · Bitwarden Settings rows and standing grants ·
+content blocking switches · multi-selection · Bitwarden Settings rows and standing grants ·
 Time Machine-style snapshots + restore · crash feedback prompt · image
 preview · Arc/Zen migration wizard · Share · Capture Full Page ·
 Export/Import user data · account export + deletion · invitation code
@@ -211,10 +211,14 @@ Export Logs / Extension Info) are all to be implemented. The native Folio
 library row closed itself 2026-10-27: the Mac deleted its native library
 and both sides open Mirage's `library.html`.
 
-**Open ❓ (2026-10-27), both new Mac design work this cycle, both L:**
+**Decided 2026-10-27, both new Mac design work this cycle, both L:**
 the Space theme palette editor (§2) and the holographic membership card
-(§5). Each is a visual redesign of a surface Windows already has, so the
-decision is implement-for-parity or keep the Windows look.
+(§5). Each was a visual redesign of a surface Windows already had; both
+were implemented for parity the same day (§2 row now ◐, Round J; §5 row
+now ✅, Round K). No ❓ rows remain. Also on request 2026-10-27: the
+sidebar profile button (§2, ✅, reversing the 2026-09 decision) and the
+Library surface (§2, ◐ — Spaces + Downloads, no Folio while Folio is being
+redesigned).
 
 ## 8. The weekly check
 
@@ -325,10 +329,12 @@ test account), `parked_for_scope` and the App-rule replay (host tests only).**
     SHA-256(sub)[0:8], random style, export) in onboarding Welcome and
     Settings ▸ You — **recommend, L**: replaces the 12.5 MB conch frame
     sets; a design decision for the Windows-native direction (new §5 row).
+    LANDED 2026-10-27 (§5 row ✅, Round K: `PhiHolographicCard`).
 13. `3d045cf6` + `4c9d919e` + the harmony half of `23c728d9` **Space theme
     palette editor** (colour field, 1–3 linked handles, harmony, light/dark)
     — **recommend, L**: local-only record, nothing on the wire; a Mac palette
-    Space renders on Windows as its pinned preset (new §2 row).
+    Space renders on Windows as its pinned preset (new §2 row). LANDED
+    2026-10-27 (§2 row ◐: primary colour only on the chrome, Round J).
 14. `80f92213` **Shift-click SPA-router guard + opener video pause** —
     **recommend, M, fork**: a capture-phase click guard so page listeners
     cannot navigate the opener behind a Peek; needs a Blink or per-tab CDP
@@ -360,7 +366,7 @@ test account), `parked_for_scope` and the App-rule replay (host tests only).**
 | `4f947521` | fix: prevent crash when opening the profile menu | skip | AppKit `NSMenuItem.copy()` of a hosting view; Windows menus are HMENU rows. |
 | `39681178`… | (screenshot editor, see above) | watch | |
 | `60dfd31a` | improve: use reset wording in shortcut settings | done | Ported 2026-10-27: "Reset All to Defaults" behind a destructive `PhiConfirm`; per-row "Reset". |
-| `80f92213` | fix: refine PeekView transitions and link activation | port (recommend) | Functional half: a Shift-click on an SPA link still lets the page's router navigate the opener behind the Peek on Windows (Blink dispatches `click` before the browser-side Peek routing). Needs a fork seam. Visual half (appear/close flights, opener dim, chip shadow) is a pre-existing Peek ◐ gap. |
+| `80f92213` | fix: refine PeekView transitions and link activation | done | Functional half ported 2026-10-27, box-verified on gmk (PhiModClick, `probes/spa-guard.mjs` + `pk-pages/spa*.html`): fork `chrome/browser/phinomenon/phi_peek_link_guard.{h,cc}` installs the Mac's capture-phase `click` guard (verbatim script) in a Phi isolated world of every committed document — `TabsProxy` attaches the helper per tab, `DidFinishNavigation` runs it, no DevTools session — and removes it from live documents when `peekViewEnabled` is pushed off; `phi::OpenUrlAsPeek` pauses the opener's playing `<video>`s in every frame. Verified: a Shift-click on a `preventDefault` + `pushState` link opens the Peek with the opener's URL unchanged and its video paused (also a video inside an iframe); a plain click still runs the router; with Peek off the Shift-click reaches the router and opens nothing. Visual half (appear/close flights, opener dim, chip shadow) stays a Peek ◐ gap. |
 | `6f047987` | fix: display keypad Enter symbol in shortcut settings | done | Windows stores the VK only; both Enter keys are one chord labelled "Enter". |
 | `7fe71d5c` | fix: support non-Latin shortcuts for screenshot history and feedback image paste | done / watch | Feedback paste keys on the WM_KEYDOWN virtual key (`PhiFeedbackWindow::ControlProc`), layout-independent. Screenshot half: Capture 🔧. |
 | `4bfb1639` | fix: use cached thumbnails for group overview previews | done | `PhiGroupOverview::BuildCards` only reads `TabThumbnailBgra` (the cached thumbnail); no live capture to remove. |
@@ -368,7 +374,7 @@ test account), `parked_for_scope` and the App-rule replay (host tests only).**
 | `d830a327` | fix: load notification avatars through the agent transport | skip | Windows cards draw no agent avatar (noted on the §6 row). Rule for when one is added: `/api/v1/files/…` refs go through the agent transport, internet URLs never carry the Phi token. |
 | `a96f0673`, `f20dbecd`, `53045c78`, `615e2335`, `84c793c5`, `129229f9`, `708ec8ed`, `568c062d` | Sentinel service broker, Private AI settings, `openPhiChatAtPath`, Phi Chat links | skip | ⛔ AI suite. |
 | `e7e62b93`, `d2d989a0`, `5e1fce4f` | merges (release/2.14.0, #212, #215) | skip | Merges; their contents are triaged by commit here. |
-| `3d045cf6`, `4c9d919e`, `23c728d9` | feat: linked theme palettes + colour picker; dark palette curve / drag preview; unified content surfaces + palette refinements | port (recommend) | New per-Space palette record `{hue, saturation, brightness, colorCount, harmony}` stored LOCALLY (`spaceThemePalettes` in the account defaults; not on the Space proto — the Theme README says so), so nothing for a Windows peer to read; a palette Space syncs its `theme_id` pin as before. The editor (colour field + handles + harmony + Light/Dark) replacing the swatch row + saturation slider in `phi_space_theme_panel.cc` / the create form is an L design port — new §2 row ❓. `23c728d9`'s Chat canvas / `getWindowTheme` / header-above-NTP parts are ⛔ Chat or Mac content-surface. |
+| `3d045cf6`, `4c9d919e`, `23c728d9` | feat: linked theme palettes + colour picker; dark palette curve / drag preview; unified content surfaces + palette refinements | done | Ported 2026-10-27 (Round J): per-Space palette record `{hue, saturation, brightness, colorCount, harmony}` stored LOCALLY under the Mac's `spaceThemePalettes` key with the Mac's coding (version 3, legacy decode rules), not on the Space proto; `PhiResolvePalette(base, appearance, palette)` with the Mac's HSB maps and 0.8 overlay alpha, palette over saturation / hex, a preset choice clears it, the Settings slider writes the palette's radius; the editor replaces the swatch row + slider in `phi_space_theme_panel.cc` and the create form's colour block is the Mac's "Color ›" row on a draft committed after creation. §2 row ◐: the chrome takes the primary colour (no sidebar gradient). `23c728d9`'s Chat canvas / `getWindowTheme` / header-above-NTP parts are ⛔ Chat or Mac content-surface. |
 | `5588d798` | feat: refine space switcher and window controls | done | Ported 2026-10-27: a new Space is placed right after the source Space (`ReorderSpace` after create; strip placeholder after the source pip, viewport anchored on the source); hover card restyled neutral (ink washes, no Space tint; Windows keeps its agent status line). Traffic lights skip; Mini Player card material watch; `RetitleShell` same-title guard already present. |
 | `40312627` | feat(sync): sync method step, Merge or Use your account's data (PHI-1716) | watch | Layered on the pairing wizard's Spaces step, which Windows lacks (`user-data-parity.md` S5). No wire change: no endpoint, envelope field or flag — a Windows peer sees the Mac join exactly as before. §5 sync row corrected to ◐. |
 | `48d4c4a6` | Route external links by sending app with App URL rules (#220) | done (storage / sync / editor half) | Ported 2026-10-27: `UrlRuleKind::Refuses` accepts `app:<id>` hosts, `SpaceSyncTable::inbound_acceptance_version` (=1, absent → 0) arms a one-time Space replay so already-refused rules arrive, the URL-rules editor shows the kind as "App" (retarget / ask / delete, not creatable), `PushRoutingTableNow` skips them. Matching is Mac-only (new §1 row). |

@@ -262,9 +262,13 @@ struct ShellLayout {
   SidebarRect bookmark_separator;
   SidebarRect new_tab_row;  // The sidebar's "+ New Tab" row.
   SidebarRect bottom_bar;
-  // Bottom-bar buttons (§4.2): Downloads and the memory chip leading, the
-  // Feedback pill (and the Chat capsule while the AI suite is on) trailing.
-  // The address row has no Downloads button of its own.
+  // Bottom-bar buttons (§4.2): the profile (avatar) button, Downloads and
+  // the memory chip leading, the Feedback pill (and the Chat capsule while
+  // the AI suite is on) trailing. The address row has no Downloads button
+  // of its own.
+  // The Mac's ProfileButton: a 32 dip hit box like its neighbours, the 24
+  // dip avatar disc drawn centred in it. Left-most, always present.
+  SidebarRect sidebar_profile;
   SidebarRect sidebar_downloads;
   SidebarRect memory, feedback, chat;
   SidebarRect extensions;  // The puzzle button.

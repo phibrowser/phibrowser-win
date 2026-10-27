@@ -159,6 +159,7 @@ enum : UINT {
   // and open the library (Mirage's library.html). The Mac's File menu rows.
   kCmdSaveToFolio,
   kCmdOpenFolio,
+  kCmdLibrary,  // View — the Library overlay (Spaces / Downloads).
   // Layout ▸ Show sidebar — the same toggle as kCmdToggleSidebar, listed
   // under its own name so the remote surface can address the row.
   kCmdShowBookmarksBar = kCmdAlwaysShowBookmarkBar,
@@ -264,6 +265,8 @@ class PhiAppMenuShell {
   virtual void MenuToggleReader(bool from_accelerator) = 0;
   virtual void MenuToggleDownloads() = 0;
   virtual void MenuToggleSearchTabs() = 0;
+  // The Library overlay (phi_library.h), on the window's last section.
+  virtual void MenuToggleLibrary() = 0;
   virtual void MenuOpenFeedback() = 0;
   // Ctrl+W on an Incognito Space's last tab ends the Space instead (asked
   // first). True when it took the close — whatever the answer was.

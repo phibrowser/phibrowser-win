@@ -29,9 +29,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
+#include "phibrowser-win/client/phi_downloads_model.h"
 #include "phibrowser-win/client/phi_dwrite.h"
 #include "phibrowser-win/client/phi_i18n.h"
+#include "phibrowser-win/client/phi_library.h"
 #include "phibrowser-win/client/phi_popover.h"
+#include "phibrowser-win/client/phi_shell_window.h"
 #include "phibrowser-win/client/phi_util.h"
 
 namespace phi_client {
@@ -48,7 +51,6 @@ constexpr int kIconGap = 12;
 constexpr int kActionButton = 24;
 constexpr int kBottomBar = 33;
 
-constexpr UINT kPollIntervalMs = 500;  // Live refresh while open.
 // hits_ keys: row i is i * kKeyStride, its action `a` is + 1 + a. The
 // footer button has its own key. The base resolves hover and clicks over
 // the list; nothing here hit-tests by hand any more.
@@ -65,120 +67,9 @@ void FillRounded(HDC dc, const RECT& r, COLORREF color, int radius) {
   PhiFillRoundRectAA(dc, r, radius, color);
 }
 
-std::wstring FormatBytes(double bytes) {
-  // The unit names are catalog keys rather than literals. The FIGURE is
-  // still built with std::to_wstring, which is C-locale: a German user reads
-  // "9.3 MB" where the system writes "9,3 MB". The fix is
-  // PhiFormatNumber(bytes, 1) — deliberately NOT made here, because
-  // GetNumberFormatEx also groups, so "1023 B" would become "1,023 B" and
-  // this change is required to render identically in English. It is on the
-  // list for the pass that converts the rest of this file.
-  static constexpr std::array<const char*, 4> kUnitKeys = {
-      "downloads.b", "downloads.kb", "downloads.mb", "downloads.gb"};
-  size_t unit = 0;
-  while (bytes >= 1024.0 && unit + 1 < kUnitKeys.size()) {
-    bytes /= 1024.0;
-    ++unit;
-  }
-  const double rounded =
-      unit == 0 ? bytes : std::round(bytes * 10.0) / 10.0;
-  std::wstring text = std::to_wstring(rounded);
-  const size_t dot = text.find(L'.');
-  if (dot != std::wstring::npos) {
-    text.resize(unit == 0 ? dot : dot + 2);
-  }
-  return text + L" " + PhiStr(kUnitKeys[unit]);
-}
-
-// DownloadItemRow's friendly completion time. The ladder itself is
-// PhiRelativeSpanFor (phi_util.h) so its boundaries are pinned by a host
-// test; this function only names the strings. Before this change the sentence
-// was CONCATENATED — `n + L" days ago"` — which reads "1 days ago" at 48
-// hours, cannot be reordered by a translator, and made the string
-// untranslatable in any language whose number goes elsewhere.
-std::wstring FormatRelative(double unix_seconds) {
-  const auto now = static_cast<double>(::time(nullptr));
-  const auto delta = static_cast<long long>(now - unix_seconds);
-  const PhiRelativeSpan span = PhiRelativeSpanFor(delta);
-  switch (span.unit) {
-    case PhiRelativeUnit::kJustNow:
-      return PhiStr("downloads.item.completedTime.justNow");
-    case PhiRelativeUnit::kMinutes:
-      return PhiStrN("downloads.item.completedTime.minutesAgo", span.count);
-    case PhiRelativeUnit::kHours:
-      return PhiStrN("downloads.item.completedTime.hoursAgo", span.count);
-    case PhiRelativeUnit::kToday:
-      return PhiStr("downloads.item.completedTime.today");
-    case PhiRelativeUnit::kYesterday:
-      return PhiStr("downloads.item.completedTime.yesterday");
-    case PhiRelativeUnit::kDays:
-      return PhiStrN("downloads.item.completedTime.daysAgo", span.count);
-    case PhiRelativeUnit::kAbsolute:
-      break;
-  }
-  // "%b %d, %Y" was English wearing a format string's clothes: it puts the
-  // month first for every locale on earth and abbreviates it in English.
-  // The locale's own short date is both correct and narrower, which this
-  // 340pt row wants.
-  return PhiFormatDate(static_cast<int64_t>(unix_seconds) * 1000,
-                       PhiDateStyle::kShortDate);
-}
-
-struct DownloadRow {
-  int id = 0;
-  std::wstring name;
-  std::wstring host;
-  std::wstring path;
-  std::wstring url;
-  std::string state;
-  bool paused = false;
-  bool exists = true;
-  double received = 0;
-  double total = 0;
-  double speed = 0;
-  double end_time = 0;
-  // "normal|scanning|warning|blocked|policyBlocked" — the framework's
-  // DownloadSafetyState (the Mac safety-state mapping).
-  std::string danger = "normal";
-};
-
-struct RowAction {
-  const char* verb;     // Framework DownloadAction verb, or "copy".
-  wchar_t glyph;        // MDL2.
-  // The catalog key of its tooltip / accessible name (DownloadItemRow's
-  // per-state tooltip keys): a raw verb is no name for a user.
-  const char* name_key;
-  bool enabled = true;
-};
-
-// A completed download the user can open from the list: the file is there
-// and nothing about it is in question (DownloadItemRow.openCompletedFile).
-bool CanOpen(const DownloadRow& row) {
-  return row.state == "complete" && row.exists && row.danger == "normal";
-}
-
-// The icon the shell shows for `path`'s type, from the system image list
-// nearest `px` (32, 48), not a 32 px icon stretched. Caller destroys it.
-HICON ShellIconFor(const std::wstring& path, int px) {
-  SHFILEINFOW info = {};
-  if (!::SHGetFileInfoW(path.c_str(), FILE_ATTRIBUTE_NORMAL, &info,
-                        sizeof(info),
-                        SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES)) {
-    return nullptr;
-  }
-  IImageList* list = nullptr;
-  if (FAILED(::SHGetImageList(px <= 32 ? SHIL_LARGE : SHIL_EXTRALARGE,
-                              IID_PPV_ARGS(&list))) ||
-      !list) {
-    return nullptr;
-  }
-  HICON icon = nullptr;
-  if (FAILED(list->GetIcon(info.iIcon, ILD_TRANSPARENT, &icon))) {
-    icon = nullptr;
-  }
-  list->Release();
-  return icon;
-}
+// The row shape, the JSON parse, the per-state actions, the icon cache and
+// the formatters live in phi_downloads_model.h, shared with the Library's
+// All Downloads list.
 
 // The popover keeps its download rows, its Paint() and its per-row
 // actions. The window, the placement, the back buffer, hover, the poll
@@ -190,13 +81,7 @@ class Popover : public PhiPopover {
   Popover(phi_framework::PhiFramework* framework, BrowserId browser)
       : framework_(framework), browser_id_(browser.value) {}
 
-  ~Popover() override {
-    for (auto& [ext, icon] : icons_) {
-      if (icon) {
-        ::DestroyIcon(icon);
-      }
-    }
-  }
+  ~Popover() override = default;  // icons_ owns its handles.
 
   bool Open(HWND owner, const RECT& anchor, const PhiPalette& colors) {
     ClassSpec spec;
@@ -223,7 +108,7 @@ class Popover : public PhiPopover {
     Refresh();
     Show();
     poll_ = NewTimer();
-    poll_.Start(kPollIntervalMs);
+    poll_.Start(kPhiDownloadsPollMs);
     return true;
   }
 
@@ -276,13 +161,7 @@ class Popover : public PhiPopover {
     // Placement again, not a resize in place: the panel hangs ABOVE its
     // button, so growing it with SWP_NOMOVE ran it down over the button.
     Reposition(placement_, {Scaled(kPanelWidth), Scaled(kPanelHeight)});
-    // The icons were picked for the old size.
-    for (auto& [ext, icon] : icons_) {
-      if (icon) {
-        ::DestroyIcon(icon);
-      }
-    }
-    icons_.clear();
+    icons_.Clear();  // The icons were picked for the old size.
     BuildHits();
   }
 
@@ -300,7 +179,7 @@ class Popover : public PhiPopover {
         const int key = hits_[static_cast<size_t>(hit)].key;
         const size_t row = static_cast<size_t>(key / kKeyStride);
         if (key != kAllDownloadsKey && key % kKeyStride == 0 &&
-            row < rows_.size() && CanOpen(rows_[row])) {
+            row < rows_.size() && PhiDownloadCanOpen(rows_[row])) {
           framework_->DownloadAction(browser_id_,
                                      static_cast<uint32_t>(rows_[row].id),
                                      "open");
@@ -359,7 +238,8 @@ class Popover : public PhiPopover {
       }
       AddHit(visible, static_cast<int>(i) * kKeyStride, rows_[i].name,
              PhiHitRole::kListItem);
-      const std::vector<RowAction> actions = ActionsFor(rows_[i]);
+      const std::vector<PhiDownloadAction> actions =
+          PhiDownloadActionsFor(rows_[i]);
       for (size_t a = 0; a < actions.size(); ++a) {
         RECT button = ActionRect(row, static_cast<int>(a),
                                  static_cast<int>(actions.size()));
@@ -386,123 +266,13 @@ class Popover : public PhiPopover {
       return;
     }
     last_json_ = json;
-    rows_.clear();
-    std::optional<base::Value> parsed =
-        base::JSONReader::Read(last_json_, base::JSON_PARSE_RFC);
-    if (parsed && parsed->is_list()) {
-      for (const base::Value& value : parsed->GetList()) {
-        const base::DictValue* dict = value.GetIfDict();
-        if (!dict) {
-          continue;
-        }
-        DownloadRow row;
-        row.id = dict->FindInt("id").value_or(0);
-        // A row can arrive before the framework has a name for it (an
-        // in-flight download whose target is still being chosen); the row
-        // shape is the framework's, not ours, so never assume the key.
-        if (const std::string* name = dict->FindString("name")) {
-          row.name = base::UTF8ToWide(*name);
-        }
-        if (const std::string* host = dict->FindString("host")) {
-          row.host = base::UTF8ToWide(*host);
-        }
-        if (const std::string* path = dict->FindString("path")) {
-          row.path = base::UTF8ToWide(*path);
-        }
-        if (const std::string* url = dict->FindString("url")) {
-          row.url = base::UTF8ToWide(*url);
-        }
-        if (const std::string* state = dict->FindString("state")) {
-          row.state = *state;
-        }
-        row.paused = dict->FindBool("paused").value_or(false);
-        row.exists = dict->FindBool("exists").value_or(true);
-        row.received = dict->FindDouble("received").value_or(0);
-        row.total = dict->FindDouble("total").value_or(0);
-        row.speed = dict->FindDouble("speed").value_or(0);
-        row.end_time = dict->FindDouble("endTime").value_or(0);
-        if (const std::string* danger = dict->FindString("danger")) {
-          row.danger = *danger;
-        }
-        rows_.push_back(std::move(row));
-      }
-    }
+    rows_ = PhiParseDownloadsJson(last_json_);
     const int list_h = Scaled(kPanelHeight - kBottomBar);
     max_scroll_ = std::max(
         0, static_cast<int>(rows_.size()) * Scaled(kRowHeight) - list_h);
     scroll_ = std::min(scroll_, max_scroll_);
     BuildHits();
     Invalidate();
-  }
-
-  // The per-state action set (DownloadItemRow's normalActionButtons).
-  std::vector<RowAction> ActionsFor(const DownloadRow& row) const {
-    // Safe Browsing states first (the Mac popover's keep/discard): a
-    // warning offers Keep + Discard, a block offers Discard only.
-    // "remove" IS the discard — Chromium's bubble does the same (cancel +
-    // delete the temporary file). Scanning rows keep the normal actions.
-    // Glyphs are escapes: private-use characters do not survive every
-    // editor round-trip.
-    if (row.danger == "warning") {
-      return {{"keep", L'\uE73E',
-               "downloads.item.safetyWarning.keepButtonTooltip"},
-              {"remove", L'\uE74D',
-               "downloads.item.safetyWarning.discardButtonTooltip"}};
-    }
-    if (row.danger == "blocked" || row.danger == "policyBlocked") {
-      return {{"remove", L'\uE74D',
-               "downloads.item.blocked.discardButtonTooltip"}};
-    }
-    if (row.state == "in_progress") {
-      return {{"copy", L'\uE8C8',
-               "downloads.item.inProgress.copyLinkButtonTooltip"},
-              {row.paused ? "resume" : "pause",
-               row.paused ? L'\uE768' : L'\uE769',
-               row.paused ? "downloads.item.resumeButtonTooltip"
-                          : "downloads.item.pauseButtonTooltip"},
-              {"cancel", L'\uE74D', "downloads.item.cancelButtonTooltip"}};
-    }
-    if (row.state == "complete") {
-      return {{"copy", L'\uE8C8',
-               "downloads.item.completed.copyLinkButtonTooltip"},
-              {"show", L'\uE838',
-               "downloads.item.showInFolderButtonTooltip", row.exists},
-              {"remove", L'\uE74D',
-               "downloads.item.completed.removeButtonTooltip"}};
-    }
-    if (row.state == "interrupted") {
-      // Retry (DownloadItemRow's, for a failed download): the framework's
-      // "resume" restarts an interrupted item, from where it stopped when
-      // the server allows it. MDL2 Refresh.
-      return {{"copy", L'\uE8C8',
-               "downloads.item.interrupted.copyLinkButtonTooltip"},
-              {"resume", L'\uE72C', "downloads.item.retryButtonTooltip"},
-              {"remove", L'\uE74D',
-               "downloads.item.interrupted.removeButtonTooltip"}};
-    }
-    return {{"copy", L'\uE8C8',
-             "downloads.item.interrupted.copyLinkButtonTooltip"},
-            {"remove", L'\uE74D',
-             "downloads.item.interrupted.removeButtonTooltip"}};
-  }
-
-  HICON IconFor(const std::wstring& path, int px) {
-    size_t dot = path.find_last_of(L'.');
-    std::wstring ext = dot == std::wstring::npos ? L"" : path.substr(dot);
-    auto found = icons_.find(ext);
-    if (found != icons_.end()) {
-      return found->second;
-    }
-    HICON icon = ShellIconFor(L"file" + ext, px);
-    if (!icon) {
-      SHFILEINFOW info = {};
-      ::SHGetFileInfoW((L"file" + ext).c_str(), FILE_ATTRIBUTE_NORMAL, &info,
-                       sizeof(info),
-                       SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES);
-      icon = info.hIcon;
-    }
-    icons_[ext] = icon;
-    return icon;
   }
 
   RECT ListRect() const {
@@ -572,39 +342,18 @@ class Popover : public PhiPopover {
       if (row.bottom <= list.top || row.top >= list.bottom) {
         continue;
       }
-      const DownloadRow& item = rows_[i];
-      const bool failed = item.state == "cancelled" ||
-                          item.state == "interrupted" ||
-                          (item.state == "complete" && !item.exists);
+      const PhiDownloadRow& item = rows_[i];
+      const bool failed = PhiDownloadFailed(item);
 
       // File-type icon, from the shell like NSWorkspace's.
       const int icon = Scaled(kIconSize);
       const int mid = (row.top + row.bottom) / 2;
-      if (HICON handle = IconFor(item.path, icon)) {
-        // At the image list's own size when that is within a pixel or two
-        // of the slot (32 for 30, 48 for 45), centred on it: a GDI stretch
-        // of an icon is nearest-neighbour, and blurs or jags it.
-        int draw = icon;
-        ICONINFO info = {};
-        if (::GetIconInfo(handle, &info)) {
-          BITMAP bitmap = {};
-          if (info.hbmColor &&
-              ::GetObjectW(info.hbmColor, sizeof(bitmap), &bitmap) &&
-              std::abs(static_cast<int>(bitmap.bmWidth) - icon) <= 3) {
-            draw = static_cast<int>(bitmap.bmWidth);
-          }
-          if (info.hbmColor) {
-            ::DeleteObject(info.hbmColor);
-          }
-          if (info.hbmMask) {
-            ::DeleteObject(info.hbmMask);
-          }
-        }
-        ::DrawIconEx(dc, row.left + (icon - draw) / 2, mid - draw / 2, handle,
-                     draw, draw, 0, nullptr, DI_NORMAL);
-      }
+      const RECT icon_rc = {row.left, mid - icon / 2, row.left + icon,
+                            mid - icon / 2 + icon};
+      icons_.Draw(dc, icon_rc, item.path, icon);
 
-      const std::vector<RowAction> actions = ActionsFor(item);
+      const std::vector<PhiDownloadAction> actions =
+          PhiDownloadActionsFor(item);
       const int actions_w = static_cast<int>(actions.size()) *
                                 Scaled(kActionButton) +
                             (static_cast<int>(actions.size()) - 1) * Scaled(4);
@@ -618,17 +367,7 @@ class Popover : public PhiPopover {
       ::SetTextColor(dc, p.label);
       RECT name_rc = {info.left, mid - Scaled(18), info.right,
                       mid - Scaled(1)};
-      const char* status_key =
-          item.danger == "warning"         ? "downloads.dangerous"
-          : item.danger == "blocked"       ? "download.safety.short.blocked"
-          : item.danger == "policyBlocked" ? "downloads.blockedByPolicy"
-          : item.danger == "scanning"      ? "download.safety.short.scanning"
-          : item.state == "cancelled"      ? "downloads.item.status.cancelled"
-          : item.state == "interrupted"
-              ? "downloads.item.status.failed"
-              : (item.state == "complete" && !item.exists
-                     ? "downloads.item.status.deleted"
-                     : nullptr);
+      const char* status_key = PhiDownloadStatusKey(item);
       const wchar_t* status = status_key ? PhiStr(status_key) : nullptr;
       RECT name_measure = name_rc;
       PhiDrawTextAA(dc, item.name.c_str(), -1, &name_measure,
@@ -671,12 +410,13 @@ class Popover : public PhiPopover {
         if (hover_row_ == static_cast<int>(i)) {
           std::wstring text =
               PhiStrF("downloads.item.transfer.progressLabel",
-                      {FormatBytes(item.received), FormatBytes(item.total)});
+                      {PhiFormatDownloadBytes(item.received),
+                       PhiFormatDownloadBytes(item.total)});
           if (item.paused) {
             text += L" ";
             text += PhiStr("downloads.item.status.pausedIndicator");
           } else if (item.speed > 0) {
-            text += L" ・ " + FormatBytes(item.speed) + L"/s";
+            text += L" ・ " + PhiFormatDownloadBytes(item.speed) + L"/s";
           }
           PhiDrawTextAA(dc, text.c_str(), -1, &sub,
                       DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
@@ -702,7 +442,7 @@ class Popover : public PhiPopover {
       } else {
         const std::wstring text =
             item.state == "complete" && item.end_time > 0
-                ? FormatRelative(item.end_time)
+                ? PhiFormatDownloadRelative(item.end_time)
                 : PhiStrF("downloads.item.sourceHostLabel", {item.host});
         PhiDrawTextAA(dc, text.c_str(), -1, &sub,
                     DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
@@ -771,47 +511,30 @@ class Popover : public PhiPopover {
 
   void RunHoveredAction() {
     if (hover_all_) {
-      // A tab of its own, not the current page navigated away (the Mac's
-      // "All Downloads" opens the downloads page beside what you were
-      // reading) — and the one already open, when there is one. Opening a
-      // tab can activate another window and destroy this panel: capture
-      // the target and dismiss before handing control to Chromium.
-      auto* framework = framework_;
-      const int64_t browser_id = browser_id_;
+      // The Mac's "All Downloads" opens the Library on its Downloads
+      // section over the owning shell. Opening it refocuses and destroys
+      // this panel: resolve the shell first, dismiss, then open.
+      PhiShellWindow* shell = PhiShellWindow::FromHwnd(owner());
       Dismiss();
-      if (!framework) {
-        return;
+      if (shell) {
+        PhiLibrary::Open(shell, PhiLibrarySection::kDownloads);
       }
-      int existing = 0;
-      if (const phi_framework::WindowSnapshot* snapshot =
-              framework->Snapshot(phi_framework::WindowId{browser_id})) {
-        for (const phi_framework::TabSnapshot& tab : snapshot->tabs) {
-          if (tab.url.rfind("chrome://downloads", 0) == 0) {
-            existing = tab.id.value;
-            break;
-          }
-        }
-      }
-      if (existing > 0 && framework->ActivateTabById(browser_id, existing)) {
-        return;
-      }
-      framework->OpenTab(phi_framework::WindowId{browser_id},
-                         "chrome://downloads");
       return;
     }
     if (hover_row_ < 0 || hover_action_ < 0 ||
         hover_row_ >= static_cast<int>(rows_.size())) {
       return;
     }
-    const DownloadRow& row = rows_[static_cast<size_t>(hover_row_)];
-    const std::vector<RowAction> actions = ActionsFor(row);
+    const PhiDownloadRow& row = rows_[static_cast<size_t>(hover_row_)];
+    const std::vector<PhiDownloadAction> actions = PhiDownloadActionsFor(row);
     if (hover_action_ >= static_cast<int>(actions.size()) ||
         !actions[static_cast<size_t>(hover_action_)].enabled) {
       return;
     }
-    const RowAction& action = actions[static_cast<size_t>(hover_action_)];
+    const PhiDownloadAction& action =
+        actions[static_cast<size_t>(hover_action_)];
     if (std::string_view(action.verb) == "copy") {
-      CopyToClipboard(row.url);
+      PhiCopyTextToClipboard(hwnd(), row.url);
       return;
     }
     if (framework_) {
@@ -822,25 +545,6 @@ class Popover : public PhiPopover {
     }
   }
 
-  void CopyToClipboard(const std::wstring& text) {
-    if (!::OpenClipboard(hwnd())) {
-      return;
-    }
-    ::EmptyClipboard();
-    const size_t bytes = (text.size() + 1) * sizeof(wchar_t);
-    if (HGLOBAL handle = ::GlobalAlloc(GMEM_MOVEABLE, bytes)) {
-      if (void* target = ::GlobalLock(handle)) {
-        // SAFETY: the allocation above is exactly `bytes` long.
-        UNSAFE_BUFFERS(::memcpy(target, text.c_str(), bytes));
-        ::GlobalUnlock(handle);
-        ::SetClipboardData(CF_UNICODETEXT, handle);
-      } else {
-        ::GlobalFree(handle);
-      }
-    }
-    ::CloseClipboard();
-  }
-
   // Not rewritten to raw_ptr: the popover lives strictly inside the
   // framework's lifetime (owned popup of the shell window).
   RAW_PTR_EXCLUSION phi_framework::PhiFramework* framework_;
@@ -849,9 +553,9 @@ class Popover : public PhiPopover {
   int64_t browser_id_;
   Placement placement_;
   Timer poll_;
-  std::vector<DownloadRow> rows_;
+  std::vector<PhiDownloadRow> rows_;
   std::string last_json_;
-  std::map<std::wstring, HICON> icons_;
+  PhiDownloadIconCache icons_;
   int scroll_ = 0;
   int max_scroll_ = 0;
   int hover_row_ = -1;

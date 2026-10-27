@@ -124,6 +124,9 @@ class PhiPopover : public PhiWindow {
   // RecordClose() on its way out.
   static void RecordClose(HWND owner);
   static bool ShouldSuppressReopen(HWND owner, int within_ms = 300);
+  // True for a window this family created (a popover owning a popover is
+  // the nested case WM_ACTIVATE handles).
+  static bool IsPopoverWindow(HWND hwnd);
 
  protected:
   // The popover is being dismissed by activation loss or Escape. The

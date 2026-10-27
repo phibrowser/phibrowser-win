@@ -721,14 +721,39 @@ void PhiSpacesStrip::PreviewTheme(const std::string& theme_id, int saturation) {
   if (!prefs_host_ || !creating_) {
     return;
   }
-  preview_palette_ =
-      PhiResolvePalette(PhiThemeById(theme_id), prefs_host_->Appearance(),
-                        saturation);
+  preview_theme_id_ = theme_id;
+  preview_saturation_ = saturation;
+  preview_record_.reset();
+  RefreshPreview();
   shell_->SpacesApplyPalette();
+  shell_->SpacesRefreshTinted();
+}
+
+void PhiSpacesStrip::PreviewPalette(const std::string& theme_id,
+                                    const PhiThemePalette& palette) {
+  if (!prefs_host_ || !creating_) {
+    return;
+  }
+  preview_theme_id_ = theme_id;
+  preview_record_ = palette;
+  RefreshPreview();
+  shell_->SpacesApplyPalette();
+  shell_->SpacesRefreshTinted();
+}
+
+void PhiSpacesStrip::RefreshPreview() {
+  if (!prefs_host_ || preview_theme_id_.empty()) {
+    return;
+  }
+  const PhiTheme& base = PhiThemeById(preview_theme_id_);
+  const PhiAppearance appearance = prefs_host_->Appearance();
+  preview_palette_ =
+      preview_record_
+          ? PhiResolvePalette(base, appearance, *preview_record_)
+          : PhiResolvePalette(base, appearance, preview_saturation_);
   if (form_) {
     form_->Refresh();
   }
-  shell_->SpacesRefreshTinted();
 }
 
 void PhiSpacesStrip::EndPreview() {
@@ -736,6 +761,8 @@ void PhiSpacesStrip::EndPreview() {
     return;
   }
   preview_palette_.reset();
+  preview_theme_id_.clear();
+  preview_record_.reset();
   preview_until_switch_ = false;
   shell_->SpacesApplyPalette();
   shell_->SpacesRefreshTinted();

@@ -111,11 +111,17 @@ inline constexpr char kDefaultsSpaceThemeIds[] = "spaceThemeIds";
 inline constexpr char kDefaultsSpaceOverlayOpacities[] =
     "spaceOverlayOpacities";
 inline constexpr char kDefaultsLoginPhase[] = "loginPhase";
+// The membership card's {palette, texture, ornament} (HolographicCardStyle).
+inline constexpr char kDefaultsProfileCardStyle[] = "profileCardStyle";
 inline constexpr char kDefaultsSidebarWidth[] = "lastKnownSidebarWidth";
 // Windows-only: the per-Space saturation (0..100). The Mac's
 // spaceThemeSaturations has a different shape and meaning, so it is not
 // reused under its name (docs/user-data-parity.md §6, themes).
 inline constexpr char kDefaultsWinSpaceSaturations[] = "winSpaceSaturations";
+// {spaceId: {version, hue, saturation, brightness, colorCount, harmony}}:
+// the Mac's per-Space linked palettes (ThemePalette's own coding keys), a
+// LOCAL record on both clients — never on the Space sync payload.
+inline constexpr char kDefaultsSpaceThemePalettes[] = "spaceThemePalettes";
 
 }  // namespace phi_client
 

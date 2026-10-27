@@ -84,7 +84,10 @@ struct PhiNewSpaceSpec {
   std::string profile_id;
   std::string icon;        // Storage form ("phi:<id>" / "emoji:<id>").
   std::string theme_id;    // A built-in theme, pinned to the new Space.
-  int saturation = -1;     // The slider once dragged; -1 = follow the app.
+  int saturation = -1;     // Legacy slider value; -1 = follow the app.
+  // The form's draft palette (its "Color ›" editor), committed onto the new
+  // Space after creation — the Mac's selectedPalette.
+  std::optional<PhiThemePalette> palette;
   std::string color_hex;   // The theme overlay, "#RRGGBB" (the Mac's colorHex).
   // The Space the form opened from (the Mac's afterSpaceId): the new Space
   // lands right after it in the order; empty appends.
@@ -253,6 +256,36 @@ class SidebarHost {
                                   const std::string& layout) = 0;
   virtual bool RenameStoredRow(const std::string& guid,
                                const std::string& name) = 0;
+  // --- Space-scoped rows, for the Library's cards (phi_library.cc) --------
+  // The sidebar's PinnedRows / BookmarkRows read the SLOT's current Space;
+  // the Library shows every Space at once, so these name the Space (the
+  // coordinator maps it to its profile). The same favicon upgrade applies.
+  virtual std::vector<PhiStoredRowView> PinnedRowsForSpace(
+      const std::string& space_id) const = 0;
+  virtual std::vector<PhiStoredRowView> BookmarkRowsForSpace(
+      const std::string& space_id,
+      const std::string& parent_guid) const = 0;
+  // Appends a pinned tab / a bookmark (or, `folder`, a folder under
+  // `parent_guid`, "" = the root) to `space_id`'s rows — the Library's
+  // New Pinned Tab… / New Bookmark… / New Folder…. Returns the new guid.
+  virtual std::string AddPinnedToSpace(const std::string& space_id,
+                                       const std::string& title,
+                                       const std::string& url) = 0;
+  virtual std::string AddBookmarkToSpace(const std::string& space_id,
+                                         const std::string& parent_guid,
+                                         const std::string& title,
+                                         const std::string& url,
+                                         bool folder) = 0;
+  // Re-homes a bookmark under another Space's root (the Mac's
+  // moveBookmarks(toSpace:)); `clone` copies instead. Folders and pins
+  // are refused.
+  virtual bool MoveStoredRowToSpace(const std::string& guid,
+                                    const std::string& space_id,
+                                    bool clone) = 0;
+  // Moves a pinned tab (a split pair travels whole) to the end of another
+  // Space's pins — the Mac's transferPinnedTab over LocalStore::TransferPin.
+  virtual bool TransferPinToSpace(const std::string& guid,
+                                  const std::string& space_id) = 0;
 };
 
 // The Space list, switching, creation, per-Space theme and the default role.
@@ -303,6 +336,16 @@ class SpacesHost {
   // both.
   virtual int SpaceSaturation(const std::string& space_id) const = 0;
   virtual void SetSpaceSaturation(const std::string& space_id, int value) = 0;
+  // A Space's linked palette (the Mac's spaceThemePalettes record; nullopt
+  // when it paints with its pin) and the theme editor's two writes: Set
+  // persists once (a release, a toolbar click), Preview repaints the
+  // Space's windows per pointer move without writing.
+  virtual std::optional<PhiThemePalette> SpacePalette(
+      const std::string& space_id) const = 0;
+  virtual void SetSpacePalette(const std::string& space_id,
+                               const PhiThemePalette& palette) = 0;
+  virtual void PreviewSpacePalette(const std::string& space_id,
+                                   const PhiThemePalette& palette) = 0;
   // Space management (the menu bar and the chip context menu). Only the
   // last Space is undeletable (the default hands its role on); deletion
   // takes the Space's bookmarks and space-scoped pins with it, as on Mac.
@@ -344,6 +387,14 @@ class SpacesHost {
   // CreateSpacePanel.Style.analyticsSurface): "sidebar" for the strip's
   // and the pip flyout's form, "standalone_window" for the create window.
   virtual std::string RequestCreateSpaceWithOptions(
+      int64_t slot,
+      const PhiNewSpaceSpec& spec,
+      const char* surface) = 0;
+  // The same creation WITHOUT the switch: the new Space lands after
+  // `spec.after_space_id` and stays in the background — the Library's
+  // inline create card (the Mac's CreateSpacePanel(style: .library)).
+  // `surface` is "library".
+  virtual std::string RequestCreateSpaceInBackground(
       int64_t slot,
       const PhiNewSpaceSpec& spec,
       const char* surface) = 0;
@@ -400,6 +451,9 @@ class ChromePrefsHost {
   // host's spellings, so one coordinator override serves both.
   virtual std::string ThemeId() const = 0;  // The app-wide theme.
   virtual PhiAppearance Appearance() const = 0;
+  // The theme editor's Light / Dark buttons write the APP-WIDE appearance
+  // (the Mac's ThemeManager.setUserAppearanceChoice), as Settings does.
+  virtual void RequestAppearance(PhiAppearance appearance) = 0;
   virtual int Saturation() const = 0;  // 0..100.
   // The ⋯ menu's chord column for a menu command: the EFFECTIVE chord of a
   // rebindable one (PhiPreferences' table, with the user's overrides),
@@ -485,6 +539,19 @@ class WindowHost {
                                 base::DictValue properties) = 0;
   // Opens the settings window (theme, appearance, layout).
   virtual void RequestSettings() = 0;
+  // --- The account (the sidebar's profile button) --------------------------
+  // The signed-in account's name / email (either may be null); false signed
+  // out — the Mac's isAuthenticated, which gates the menu's Sign in row.
+  virtual bool AccountInfo(std::string* name, std::string* email) const = 0;
+  // Guest Mode (the Mac's isGuest): the button shows no avatar there even
+  // while a session is being signed in over it.
+  virtual bool AccountIsGuest() const = 0;
+  // The account picture as a `px` circle (premultiplied BGRA for
+  // PhiBlendBgra), empty until one is fetched. The buffer is the account
+  // service's cache for that size — use it before the next call.
+  virtual const std::vector<uint8_t>& AccountAvatarCircle(int px) = 0;
+  // Starts the hosted login (the profile menu's Sign in).
+  virtual void RequestSignIn() = 0;
   // Opens the universal URL Rules editor (Spaces ▸ URL Rules…), centred
   // over `anchor`.
   virtual void RequestUrlRulesEditor(HWND anchor) = 0;
@@ -746,6 +813,9 @@ class PhiShellWindow : public PhiHitSource,
   // The form's live theme preview: the chrome paints with this palette
   // until the created Space presents, or the form is cancelled.
   void PreviewCreateSpaceTheme(const std::string& theme_id, int saturation);
+  // The same for the form's draft palette over its base theme.
+  void PreviewCreateSpacePalette(const std::string& theme_id,
+                                 const PhiThemePalette& palette);
   // The form's icon, mirrored on the strip's dashed placeholder pip.
   void SetCreateSpaceIcon(const std::string& storage_value);
   void OnSpaceFormProfileCreated(const std::string& profile_id);
@@ -823,6 +893,28 @@ class PhiShellWindow : public PhiHitSource,
   // exists, otherwise open the row's url as a new bound tab — the Mac's
   // BrowserState.openOrFocusPinnedTab / bookmarkGuidBacking model.
   void OpenOrFocusPinned(const std::string& guid, const std::string& url);
+  // The Library's open (phi_library.cc): switches this window to
+  // `space_id`, then opens or focuses the row there — at once when the
+  // Space's browser is attached, else once the switch lands
+  // (BrowserHostNoteActiveSpace), the Mac's slot.activate(onSwapSettled:).
+  void OpenStoredRowInSpace(const std::string& space_id,
+                            const std::string& guid,
+                            const std::string& url);
+  // The §5.9 icon picker flyout for `space_id`, hung off `anchor_screen`;
+  // a pick applies through the spaces host at once. Pumps its own loop.
+  void ShowSpaceIconPicker(const std::string& space_id,
+                           const RECT& anchor_screen);
+  // The ACTIVE tab, as the sidebar's rebuild resolved it (surfaces
+  // redirected to the page they cover), and its URL. The omnibox, the
+  // reader affordance, the native-page route, the feedback context and the
+  // Library's close-on-tab-change all read the shell's spelling of the
+  // sidebar's answer.
+  TabId active_tab_id() const;
+  const std::string& active_tab_url() const;
+  // The shell bound to a PhiClientShell HWND (GWLP_USERDATA, as
+  // ShellWndProc reads it), or null for any other window — the way a
+  // surface that was handed only the owner HWND finds its controller.
+  static PhiShellWindow* FromHwnd(HWND hwnd);
 
   // The pointered link target changed in `browser_id`'s page (empty url =
   // pointer left the link). Shows/hides the status bubble when that browser
@@ -872,6 +964,10 @@ class PhiShellWindow : public PhiHitSource,
   // PhiUpdater::UpdateAvailable changed: the Update reminder appears or
   // goes, and what it pushes along moves with it.
   void NoteUpdateAvailabilityChanged();
+  // The account moved (sign-in, sign-out, a profile or avatar fetch —
+  // PhiCoordinator::NoteAccountChanged): the bottom bar's profile button
+  // reads it at paint time, so the bar recomposes.
+  void InvalidateBottomBar();
 
   // --- Spaces (client-owned, as on Mac) ------------------------------------
   // A slot shows ONE Space at a time. Each Space has its own Browser; the
@@ -1022,6 +1118,8 @@ class PhiShellWindow : public PhiHitSource,
   RECT sidebar_toggle_rect();
   // The app menu button (⋯), for the layout verb.
   RECT app_menu_rect();
+  // The sidebar bottom bar's profile (avatar) button, for the layout verb.
+  RECT profile_rect();
   // The Update reminder pill (empty without an update), for the layout verb.
   RECT update_rect();
   // The in-field Copy link and site-menu slots, for the layout verb.
@@ -1166,10 +1264,11 @@ class PhiShellWindow : public PhiHitSource,
     RECT bookmark_separator{};
     RECT new_tab_row{};    // The sidebar's "+ New Tab" row.
     RECT bottom_bar{};
-    // Bottom-bar buttons, the Mac's order: downloads and memory leading, the
-    // Feedback and Chat capsules trailing. Settings has NO bottom-bar button —
-    // it opens from the menu bar, as on Mac. All placeholders except through
-    // the menu.
+    // Bottom-bar buttons, the Mac's order: the profile (avatar) button,
+    // downloads and memory leading, the Feedback and Chat capsules
+    // trailing. Settings has NO bottom-bar button — it is a row of the
+    // profile menu and of the app menu, as on Mac.
+    RECT sidebar_profile{};    // The Mac's ProfileButton, left-most.
     RECT sidebar_downloads{};  // The bottom bar's own Downloads button.
     RECT memory{}, feedback{}, chat{};
     RECT extensions{};     // The puzzle button (in-field / bottom bar / header).
@@ -1314,6 +1413,9 @@ class PhiShellWindow : public PhiHitSource,
   // The compact pip's switcher (with_new_space false) and the overflow "…"
   // button's (true, which adds the two creation rows).
   void ShowSpaceSwitcherMenu(POINT pt, bool overflow);
+  // The bottom bar's profile (avatar) button: the Mac's populateProfileMenu,
+  // dropped upward off the button (docs/windows-native-ui.md §4.2).
+  void ShowProfileMenu();
 
   // Collapses/restores the sidebar (View > Toggle Sidebar, Ctrl+S). The
   // content card widens to the left margin; the margin becomes the hover
@@ -1328,13 +1430,6 @@ class PhiShellWindow : public PhiHitSource,
   void ToggleDownloadsPopover();
   // Re-reads navigation state (url/title/canGoBack/…) for the toolbar.
   void RebuildNavState();
-
-  // The ACTIVE tab, as the sidebar's rebuild resolved it (surfaces
-  // redirected to the page they cover), and its URL. The omnibox, the
-  // reader affordance, the native-page route and the feedback context all
-  // read the shell's spelling of the sidebar's answer.
-  TabId active_tab_id() const;
-  const std::string& active_tab_url() const;
 
   // The shell's UI font at `ui_font_dpi_`, used both for the address field and
   // for every label PaintChrome draws, so text and boxes scale together.
@@ -1453,7 +1548,7 @@ class PhiShellWindow : public PhiHitSource,
   RECT HoverRect(HoverKind kind, int index);
   void SetHover(HoverKind kind, int index);
   // The chrome buttons a kNav hover indexes, in PaintChrome's order.
-  std::array<RECT, 22> NavHoverTable(const Layout& layout) const;
+  std::array<RECT, 23> NavHoverTable(const Layout& layout) const;
   // The 12/600 face the Space chip, the agent chip and the Feedback pill
   // share; built on demand and rebuilt when the DPI moves.
   HFONT EnsureChipNameFont();
@@ -1720,16 +1815,13 @@ class PhiShellWindow : public PhiHitSource,
   bool MenuAgentHoldsInput() const override;
   void MenuToggleDownloads() override;
   void MenuToggleSearchTabs() override;
+  void MenuToggleLibrary() override;
   void MenuOpenFeedback() override;
   bool MenuCloseTabEndsIncognitoSpace() override;
   void MenuCloseIncognitoSpace() override;
   void MenuCreateSpace() override;
   void MenuEditSpaceTheme() override;
   void MenuChangeSpaceIcon() override;
-  // The §5.9 icon picker flyout for `space_id`, hung off `anchor_screen`;
-  // a pick applies through the spaces host at once.
-  void ShowSpaceIconPicker(const std::string& space_id,
-                           const RECT& anchor_screen);
   void MenuTriggerExtension(const std::string& extension_id) override;
   bool MenuSidebarShown() const override;
 
@@ -1906,6 +1998,22 @@ class PhiShellWindow : public PhiHitSource,
   // The site menu is tracking (its button stays lit and shown).
   bool site_menu_open_ = false;
   std::string last_regular_space_;  // See last_regular_space().
+  // A Library open waiting for its Space's browser to arrive
+  // (OpenStoredRowInSpace): opened by BrowserHostNoteActiveSpace once the
+  // switch lands, dropped when another Space lands first.
+  struct PendingStoredOpen {
+    std::string space_id;
+    std::string guid;
+    std::string url;
+  };
+  std::optional<PendingStoredOpen> pending_stored_open_;
+  // Runs the pending open when `landed_space` is its Space. A fresh browser
+  // lands through AttachSpaceBrowser (which never notes the active Space),
+  // an attached one through BrowserHostNoteActiveSpace; only the latter,
+  // being the user's visible landing, drops a pending open for another
+  // Space (`drop_on_mismatch`) — a background attach must not.
+  void ConsumePendingStoredOpen(const std::string& landed_space,
+                                bool drop_on_mismatch);
   // The dark flag the DWM backdrop was last given (UpdateSidebarBackdrop).
   bool backdrop_dark_ = false;
   // Whether the slot's settled palette (its active Space's) is dark.

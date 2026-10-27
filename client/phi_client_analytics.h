@@ -48,6 +48,7 @@ inline constexpr char kAnalyticsModuleAccount[] = "account";
 inline constexpr char kAnalyticsModuleImport[] = "import";
 inline constexpr char kAnalyticsModuleFeature[] = "feature";
 inline constexpr char kAnalyticsModuleNotifications[] = "notifications";
+inline constexpr char kAnalyticsModuleLibrary[] = "library";
 
 // Event names. The four capitalised ones are what the Mac PostHog SDK
 // auto-captures for the app lifecycle; matching them verbatim is what makes
@@ -115,6 +116,14 @@ base::DictValue PhiAppOpenedProperties(const model::PhiSettings& settings);
 // A single boolean property, for the events that carry exactly one
 // ("enabled", "incognito", "success", …).
 base::DictValue PhiFlagProperties(const char* key, bool value);
+
+// "library_section_viewed": the Library shows a section — on open and on
+// every rail switch (the Mac's task(id: selection) in LibraryContentView).
+// `section` is "spaces" / "downloads"; `standalone` says whether the
+// Library is its own window rather than the overlay over a browser window.
+inline constexpr char kEventLibrarySectionViewed[] = "library_section_viewed";
+base::DictValue PhiLibrarySectionViewedProperties(const char* section,
+                                                  bool standalone);
 
 // "user_defaults_snapshot": the launch-time state of the settings the Mac
 // snapshot reports, under the Mac's keys, for the ones that exist on

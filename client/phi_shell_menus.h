@@ -236,6 +236,26 @@ PhiMenuSpec PhiBuildSpaceSwitcherMenu(const std::vector<PhiMenuChoice>& spaces,
                                       bool with_new_space,
                                       bool with_new_profile);
 
+// --- The sidebar's profile button -----------------------------------------
+
+// The avatar button's menu (the Mac's populateProfileMenu): Download List,
+// Manage Bookmarks, Manage Extensions, ─, New Tab, New Incognito Space, New
+// Incognito Window, ─, Settings, and Sign in while no account is signed in.
+// The chords are the user's EFFECTIVE ones (the ⋯ menu's
+// PhiAppMenu::Label rule), so the shell resolves them and passes them in;
+// empty leaves the row without one.
+struct PhiProfileMenuInputs {
+  std::wstring downloads_chord;
+  std::wstring bookmarks_chord;
+  std::wstring extensions_chord;
+  std::wstring new_tab_chord;
+  std::wstring new_incognito_space_chord;
+  std::wstring new_incognito_window_chord;
+  std::wstring settings_chord;
+  bool signed_in = false;  // True hides the Sign in row.
+};
+PhiMenuSpec PhiBuildProfileMenu(const PhiProfileMenuInputs& in);
+
 // --- The bookmark bar's dropdown ------------------------------------------
 
 // A snapshot of the store's bookmark outline, taken before the menu opens.

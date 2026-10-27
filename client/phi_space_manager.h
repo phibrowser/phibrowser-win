@@ -228,8 +228,13 @@ class PhiSpaceManager {
   // Mac's KioskSpaceMenuTargetResolver.primarySpace.
   std::string KioskTargetSpaceId() const;
   std::string SpaceThemeId(const std::string& space_id) const;
-  // -1 follows the app-wide slider.
+  // -1 follows the app-wide slider. A Space with a linked palette answers
+  // the palette's own saturation (its radius on the field, as 0..100) —
+  // the Mac's effectiveOverlaySaturation.
   int SpaceSaturation(const std::string& space_id) const;
+  // The Space's linked palette (the Mac's themePalette(forSpaceId:)), or
+  // nullopt when it paints with its theme pin.
+  std::optional<PhiThemePalette> SpacePalette(const std::string& space_id) const;
 
   // --- Writes (each persists and publishes SpacesChanged) -----------------
   bool RenameSpace(const std::string& space_id, const std::string& name);
@@ -244,14 +249,27 @@ class PhiSpaceManager {
   // Refused for an icon the catalogue does not know.
   void SetSpaceIcon(const std::string& space_id, const std::string& icon);
   // An empty id clears the override, putting the Space back on the app-wide
-  // theme — the Mac's "no entry in spaceThemeIds" state.
+  // theme — the Mac's "no entry in spaceThemeIds" state. Choosing a preset
+  // also DROPS the Space's linked palette (the Mac's setTheme).
   void SetSpaceTheme(const std::string& space_id, const std::string& theme_id);
-  // -1 follows the app-wide slider; anything else clamps to 0..100.
+  // -1 follows the app-wide slider; anything else clamps to 0..100. With a
+  // linked palette the value writes the PALETTE's saturation instead (the
+  // Mac's setOverlaySaturation), so the Settings slider still works.
   void SetSpaceSaturation(const std::string& space_id, int value);
-  // The create-Space form's pin: theme and saturation in one write.
+  // The create-Space form's pin: theme and saturation in one write (any
+  // palette goes, as for SetSpaceTheme; the form sets its own after).
   void PinSpaceTheme(const std::string& space_id,
                      const std::string& theme_id,
                      int saturation);
+  // The Space theme editor's writes (the Mac's setThemePalette /
+  // previewThemePalette). Set persists the record and fans the theme change
+  // out like any other; Preview repaints the Space's windows with the
+  // record WITHOUT writing it, publishing a sync note or waking Settings —
+  // pointer tracking previews per move and sets once on release.
+  void SetSpacePalette(const std::string& space_id,
+                       const PhiThemePalette& palette);
+  void PreviewSpacePalette(const std::string& space_id,
+                           const PhiThemePalette& palette);
   // Re-binds a Space to another profile (the Mac's changeProfile): its
   // browser is closed and respawned in the new profile with its open tabs,
   // and the rows it owns move with it. Refused for the default Space, whose

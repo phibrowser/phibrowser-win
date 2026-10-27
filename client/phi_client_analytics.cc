@@ -39,6 +39,14 @@ base::DictValue PhiFlagProperties(const char* key, bool value) {
   return props;
 }
 
+base::DictValue PhiLibrarySectionViewedProperties(const char* section,
+                                                  bool standalone) {
+  base::DictValue props;
+  props.Set("section", section);
+  props.Set("is_standalone_window", standalone);
+  return props;
+}
+
 base::DictValue PhiUserDefaultsSnapshotProperties(
     const model::PhiSettings& settings,
     bool is_default_browser) {

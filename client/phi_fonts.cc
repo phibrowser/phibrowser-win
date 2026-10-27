@@ -28,7 +28,8 @@ void PhiLoadPrivateFonts() {
   dir.resize(slash + 1);
   dir += L"resources\\fonts\\";
   for (const wchar_t* file : {L"IvyPrestoDisplay-SemiBoldItalic.otf",
-                              L"IvyPrestoHeadline-SemiBold.otf"}) {
+                              L"IvyPrestoHeadline-SemiBold.otf",
+                              L"IvyPrestoHeadline-Light.otf"}) {
     const std::wstring path = dir + file;
     if (::AddFontResourceExW(path.c_str(), FR_PRIVATE, nullptr) == 0) {
       LOG(WARNING) << "[PhiFonts] private font not loaded: "

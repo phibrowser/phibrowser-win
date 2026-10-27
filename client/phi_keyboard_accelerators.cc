@@ -14,6 +14,7 @@ PhiKeyboardCommandQueue::~PhiKeyboardCommandQueue() = default;
 #if defined(_WIN32)
 
 #include "phibrowser-win/client/phi_app_menu.h"
+#include "phibrowser-win/client/phi_library.h"
 #include "phibrowser-win/client/phi_preferences.h"
 #include "phibrowser-win/client/phi_tab_switcher.h"
 #include "phibrowser-win/client/phi_shell_window.h"
@@ -200,6 +201,13 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   // it. With no card open the key goes to the page as usual.
   if (wparam == VK_ESCAPE && !ctrl && !shift && !alt) {
     if (HWND shell = host_.FocusedShellHwnd()) {
+      // The Library over the shell takes Escape first, whoever holds the
+      // focus under it (Chromium keeps the web contents focused after the
+      // overlay presents): a card drag or rename in flight cancels, else
+      // the overlay closes — swallowed either way.
+      if (PhiLibrary::HandleEscapeIfBoundTo(PhiShellWindow::FromHwnd(shell))) {
+        return 1;
+      }
       if (host_.DismissPeeksForShell(shell)) {
         return 1;
       }

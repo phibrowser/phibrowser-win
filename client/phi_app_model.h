@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -15,6 +16,7 @@
 
 #include "phibrowser-win/client/phi_shell_layout.h"
 #include "phibrowser-win/client/phi_tab_store.h"
+#include "phibrowser-win/client/phi_theme_palette.h"
 
 // The application model (docs/architecture-review.md §3.4, lane 4 §5): the
 // four persisted domains the coordinator's ad-hoc load/save pairs are
@@ -53,6 +55,11 @@ struct Space {
   // app-wide choice".
   std::string theme_id;
   int saturation = -1;
+  // The Space's linked palette (the Mac's spaceThemePalettes record): when
+  // set it beats the theme pin's colours AND the saturation above — the
+  // pin still names the base theme (its window background, what a peer
+  // renders). LOCAL ONLY: never on the Space sync payload.
+  std::optional<PhiThemePalette> palette;
   std::string color_hex;  // "#RRGGBB", cosmetic, echoed for the Mac wire.
   bool operator==(const Space&) const = default;
 };

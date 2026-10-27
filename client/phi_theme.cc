@@ -40,6 +40,16 @@ constexpr int kTintMinAlpha = 20;
 constexpr int kTintMaxAlpha = 80;
 // The gradient's foot is a little stronger than its head.
 constexpr int kTintGradientSpread = 36;
+// A linked palette's anchor colour reaches the window at the Mac's fixed
+// overlay alpha (ThemeColorAdjustment.defaultOverlayAlpha, 0.8): the
+// palette's own saturation is the user's radius on the field, so no slider
+// scales it further.
+constexpr int kPaletteOverlayAlpha = 204;
+
+bool ResolveDark(PhiAppearance appearance) {
+  return appearance == PhiAppearance::kDark ||
+         (appearance == PhiAppearance::kSystem && PhiSystemPrefersDark());
+}
 
 }  // namespace
 
@@ -204,25 +214,17 @@ PhiPalette PhiHighContrastPalette() {
   return PhiPaletteFromSystemColors(colors);
 }
 
-PhiPalette PhiResolvePalette(const PhiTheme& theme,
-                             PhiAppearance appearance,
-                             int saturation) {
-  // A contrast theme overrides the app's theme, its appearance and the
-  // Space tint alike (see the header).
-  if (PhiHighContrastActive()) {
-    return PhiHighContrastPalette();
-  }
-  saturation = PhiClamp(saturation, 0, 100);
-  const int top_alpha =
-      kTintMinAlpha + (kTintMaxAlpha - kTintMinAlpha) * saturation / 100;
-  const int bottom_alpha = top_alpha + kTintGradientSpread > 255
-                               ? 255
-                               : top_alpha + kTintGradientSpread;
-  const bool dark = appearance == PhiAppearance::kDark ||
-                    (appearance == PhiAppearance::kSystem &&
-                     PhiSystemPrefersDark());
-  const PhiThemeColors& colors = dark ? theme.dark : theme.light;
+namespace {
 
+// The one ladder every resolved palette climbs: `colors`' overlay over its
+// background at the two alphas is the ground, its accent the accent, and
+// every wash, label and hairline derives from those. Shared by the theme
+// resolver (the slider picks the alphas) and the linked-palette resolver
+// (the Mac's fixed overlay alpha).
+PhiPalette ResolveFromColors(const PhiThemeColors& colors,
+                             bool dark,
+                             int top_alpha,
+                             int bottom_alpha) {
   PhiPalette palette;
   palette.dark = dark;
   palette.ground_top = PhiBlend(colors.overlay, colors.background, top_alpha);
@@ -304,6 +306,44 @@ PhiPalette PhiResolvePalette(const PhiTheme& theme,
   palette.overlay_scrim =
       PhiBlend(PhiRgb(0, 0, 0), palette.ground_top, dark ? 140 : 102);
   return palette;
+}
+
+}  // namespace
+
+PhiPalette PhiResolvePalette(const PhiTheme& theme,
+                             PhiAppearance appearance,
+                             int saturation) {
+  // A contrast theme overrides the app's theme, its appearance and the
+  // Space tint alike (see the header).
+  if (PhiHighContrastActive()) {
+    return PhiHighContrastPalette();
+  }
+  saturation = PhiClamp(saturation, 0, 100);
+  const int top_alpha =
+      kTintMinAlpha + (kTintMaxAlpha - kTintMinAlpha) * saturation / 100;
+  const int bottom_alpha = top_alpha + kTintGradientSpread > 255
+                               ? 255
+                               : top_alpha + kTintGradientSpread;
+  const bool dark = ResolveDark(appearance);
+  return ResolveFromColors(dark ? theme.dark : theme.light, dark, top_alpha,
+                           bottom_alpha);
+}
+
+PhiPalette PhiResolvePalette(const PhiTheme& base,
+                             PhiAppearance appearance,
+                             const PhiThemePalette& palette) {
+  if (PhiHighContrastActive()) {
+    return PhiHighContrastPalette();
+  }
+  const bool dark = ResolveDark(appearance);
+  // ThemePalette.applying(to:): the base keeps its window background; the
+  // overlay and the accent are the palette's. The ground is flat — the
+  // Mac's gradient has no home on the Windows sidebar (see the header).
+  PhiThemeColors colors = dark ? base.dark : base.light;
+  colors.overlay = palette.ResolvedColor(0, dark);
+  colors.accent = palette.Accent(dark);
+  return ResolveFromColors(colors, dark, kPaletteOverlayAlpha,
+                           kPaletteOverlayAlpha);
 }
 
 namespace {
