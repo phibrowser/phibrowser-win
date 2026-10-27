@@ -338,6 +338,10 @@ def render(rows, schemas, error_codes, reason_codes):
       '`error.code` and the token in `error.details.reason`. Any other '
       'fields a refusal carries ride alongside it in `error.details`.')
     w('')
+    w('A scoped verb whose `taskId`, `windowId` or `spaceId` names nothing '
+      'live is refused with `unknown_task`, `window_not_open` or '
+      '`space_not_open`, whether or not its row below lists the code.')
+    w('')
 
     w('## Error codes')
     w('')

@@ -1478,14 +1478,29 @@ PhiVerbResult PhiControlDispatcher::Execute(const std::string& type,
   }
   const PhiVerbContext ctx{principal, scope,  params,
                            *spec,     caller, ::GetTickCount64()};
+  PhiVerbResult result;
   if (!spec->prompts) {
-    return spec->handler(this, ctx);
+    result = spec->handler(this, ctx);
+  } else {
+    // The prompt mutex: while this verb's dialog is up every other call
+    // parks in the deferred queue (RunOrDeferUiCall), so two prompts never
+    // stack.
+    prompt_in_flight_ = true;
+    result = spec->handler(this, ctx);
+    prompt_in_flight_ = false;
   }
-  // The prompt mutex: while this verb's dialog is up every other call parks
-  // in the deferred queue (RunOrDeferUiCall), so two prompts never stack.
-  prompt_in_flight_ = true;
-  PhiVerbResult result = spec->handler(this, ctx);
-  prompt_in_flight_ = false;
+  // A refusal its handler left unnamed (PhiVerbOk(false), Refuse) is named
+  // here: by the scope when the payload's window, Space or task names
+  // nothing — that is why the handler found nothing to act on — else by its
+  // code. No refusal reaches the wire as a bare {ok:false}.
+  if (!result.ok && !result.deferred() && result.reason.empty()) {
+    if (!scope.valid() && !scope.unscoped) {
+      result.code = PhiErrorCodeForReason(scope.error);
+      result.reason = scope.error;
+    } else {
+      result.reason = std::string(PhiErrorCodeName(result.code));
+    }
+  }
   return result;
 }
 

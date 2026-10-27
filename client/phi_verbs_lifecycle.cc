@@ -610,7 +610,11 @@ PhiVerbResult PhiControlDispatcher::VerbAgentPanelSize(
     const PhiVerbContext& ctx) {
   // The Mac's visible content panel size, so a driver can size its
   // captures to what the user would see: the watched agent window's
-  // content, else the first user window's, else no_visible_panel.
+  // content, else the first user window's, else no_visible_panel. A
+  // {taskId} that names no task is refused like every task verb.
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);
+  }
   PhiShellWindow* shell = nullptr;
   const std::string& watched = coordinator_->agent_manager().watched_task();
   if (!watched.empty()) {
@@ -753,7 +757,11 @@ PhiVerbResult PhiControlDispatcher::VerbShadowList(
     const PhiVerbContext& ctx) {
   // The caller's live shadow windows — the Mac scopes this to the calling
   // driver's principal, and so does this: another agent's background work
-  // is not this one's to see. The host sees them all.
+  // is not this one's to see. The host sees them all. A {taskId} that
+  // names no task is refused, not answered with an empty list.
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);
+  }
   base::ListValue rows;
   for (const auto& [task_id, shadow] : coordinator_->shadow_windows()) {
     if (!coordinator_->registry().IsBound(shadow.window_id)) {
@@ -913,7 +921,7 @@ PhiVerbResult PhiControlDispatcher::VerbJsDialogState(
       framework_->JavaScriptDialogStateJson(target.c_str()),
       base::JSON_PARSE_RFC);
   if (!state || !state->FindBool("found").value_or(false)) {
-    return PhiVerbResult::Fail("No target with given id found");
+    return PhiVerbResult::Fail("unknown_target");
   }
   base::DictValue out;
   out.Set("open", state->FindBool("open").value_or(false));
@@ -937,7 +945,7 @@ PhiVerbResult PhiControlDispatcher::VerbJsDialogHandle(
   if (!framework_->HandleJavaScriptDialog(
           target.c_str(), ctx.params.Bool("accept", false),
           prompt_text ? prompt_text->c_str() : nullptr, &handled)) {
-    return PhiVerbResult::Fail("No target with given id found");
+    return PhiVerbResult::Fail("unknown_target");
   }
   base::DictValue out;
   out.Set("handled", handled);

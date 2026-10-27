@@ -48,6 +48,13 @@ SlotId SlotOf(const PhiVerbContext& ctx) {
                               : SlotId{ctx.params.Int64("windowId", 0)};
 }
 
+// A rule host that is really a URL ("https://host/", "host/path"): the
+// Mac editor never stores one, and stored as typed it could never match a
+// navigation's host, so the verbs refuse it rather than accept a dead rule.
+bool RuleHostLooksLikeUrl(std::string_view host) {
+  return host.find_first_of("/?#") != std::string_view::npos;
+}
+
 // Splits a tab-separated row (the coordinator's URLRuleRows() encoding).
 // Keeps empty fields so positional indices stay stable.
 std::vector<std::string> SplitTabRow(const std::string& value) {
@@ -217,7 +224,9 @@ PhiVerbResult PhiControlDispatcher::VerbSpacesCreate(
   space.color_hex = from_agent ? PhiThemeOverlayHex(theme_id)
                                : ctx.params.String("colorHex");
   coordinator_->spaces_model().spaces.push_back(std::move(space));
-  coordinator_->ScheduleSave(PhiCoordinator::StoreDomain::kSpaces);
+  // Now, not on the save timer: a bookmark or pin added to the Space by the
+  // next verb needs its store row (read-your-writes).
+  coordinator_->SaveNow(PhiCoordinator::StoreDomain::kSpaces);
   if (from_agent) {
     coordinator_->SetSpaceTheme(id, theme_id);
   }
@@ -288,6 +297,9 @@ PhiVerbResult PhiControlDispatcher::VerbSpacesSwitch(
 
 PhiVerbResult PhiControlDispatcher::VerbSpacesRename(
     const PhiVerbContext& ctx) {
+  if (!FindSpace(ctx.params.String("spaceId"))) {
+    return PhiVerbResult::Fail("unknown_space");
+  }
   return PhiVerbOk(coordinator_->RenameSpace(ctx.params.String("spaceId"),
                                              ctx.params.String("name")));
 }
@@ -307,6 +319,9 @@ PhiVerbResult PhiControlDispatcher::VerbSpacesDelete(
     coordinator_->RequestCloseIncognitoSpace(space_id);
     return PhiVerbOk(live);
   }
+  if (!FindSpace(space_id)) {
+    return PhiVerbResult::Fail("unknown_space");
+  }
   return PhiVerbOk(coordinator_->space_manager().DeleteSpace(space_id));
 }
 
@@ -314,23 +329,27 @@ PhiVerbResult PhiControlDispatcher::VerbSpacesReorder(
     const PhiVerbContext& ctx) {
   const std::string space_id = ctx.params.String("spaceId");
   const int index = ctx.params.Int("index", -1);
-  const bool known = index >= 0 && FindSpace(space_id) != nullptr;
-  if (known) {
+  if (!FindSpace(space_id)) {
+    return PhiVerbResult::Fail("unknown_space");
+  }
+  const bool ok = index >= 0;
+  if (ok) {
     coordinator_->ReorderSpace(space_id, index);
   }
-  return PhiVerbOk(known);
+  return PhiVerbOk(ok);
 }
 
 PhiVerbResult PhiControlDispatcher::VerbSpacesSetTheme(
     const PhiVerbContext& ctx) {
   const std::string space_id = ctx.params.String("spaceId");
   const std::string theme_id = ctx.params.String("themeId");
+  if (!FindSpace(space_id)) {
+    return PhiVerbResult::Fail("unknown_space");
+  }
   // An empty id is legal: it clears the override.
-  const bool known = theme_id.empty() || theme_id == PhiThemeById(theme_id).id;
-  bool ok = false;
-  if (known && FindSpace(space_id)) {
+  const bool ok = theme_id.empty() || theme_id == PhiThemeById(theme_id).id;
+  if (ok) {
     coordinator_->SetSpaceTheme(space_id, theme_id);
-    ok = true;
   }
   base::DictValue out;
   out.Set("themeId", coordinator_->SpaceThemeId(space_id));
@@ -340,14 +359,15 @@ PhiVerbResult PhiControlDispatcher::VerbSpacesSetTheme(
 PhiVerbResult PhiControlDispatcher::VerbSpacesSetIcon(
     const PhiVerbContext& ctx) {
   const std::string icon = ctx.params.String("icon");
-  bool ok = false;
-  if (PhiIconIsValid(icon)) {
-    if (Space* space = FindSpace(ctx.params.String("spaceId"))) {
-      space->icon = icon;
-      coordinator_->ScheduleSave(PhiCoordinator::StoreDomain::kSpaces);
-      coordinator_->registry().InvalidateAll();
-      ok = true;
-    }
+  Space* space = FindSpace(ctx.params.String("spaceId"));
+  if (!space) {
+    return PhiVerbResult::Fail("unknown_space");
+  }
+  const bool ok = PhiIconIsValid(icon);
+  if (ok) {
+    space->icon = icon;
+    coordinator_->ScheduleSave(PhiCoordinator::StoreDomain::kSpaces);
+    coordinator_->registry().InvalidateAll();
   }
   base::DictValue out;
   out.Set("icon", icon);
@@ -706,6 +726,9 @@ PhiVerbResult PhiControlDispatcher::VerbUrlRulesAdd(
   if (!SpaceExists(space_id)) {
     return PhiVerbResult::Fail("unknown_space");
   }
+  if (RuleHostLooksLikeUrl(ctx.params.String("host"))) {
+    return PhiVerbResult::Fail(PhiErrorCode::kInvalidPayload);
+  }
   coordinator_->AddURLRule(space_id,
                            base::ToLowerASCII(ctx.params.String("host")),
                            ctx.params.String("pathPrefix"),
@@ -740,6 +763,9 @@ PhiVerbResult PhiControlDispatcher::UrlRuleEdit(const PhiVerbContext& ctx,
   std::string prefix = parts.size() > 2 ? parts[2] : "";
   bool ask = parts.size() > 3 && parts[3] == "1";
   if (const std::string* h = ctx.params.FindString("host")) {
+    if (RuleHostLooksLikeUrl(*h)) {
+      return PhiVerbResult::Fail(PhiErrorCode::kInvalidPayload);
+    }
     host = base::ToLowerASCII(*h);
   }
   // pathPrefix: key presence is meaningful (present clears/sets, absent
@@ -799,6 +825,9 @@ PhiVerbResult PhiControlDispatcher::VerbPinnedScopeSet(
 
 PhiVerbResult PhiControlDispatcher::VerbPinnedList(
     const PhiVerbContext& ctx) {
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);  // Not an empty slot.
+  }
   const SlotId slot = SlotOf(ctx);
   std::string profile_id, space_id;
   base::ListValue list;
@@ -844,7 +873,9 @@ PhiVerbResult PhiControlDispatcher::VerbPinnedOpen(
     }
   }
   if (!known) {
-    return PhiVerbResult::Fail("unknown pin");
+    return PhiVerbResult::Fail(controller            ? "unknown_pin"
+                               : ctx.scope.valid() ? "window_not_open"
+                                                   : ctx.scope.error);
   }
   controller->OpenOrFocusPinned(guid, url);
   return PhiVerbResult::Ok();
@@ -920,6 +951,9 @@ PhiVerbResult PhiControlDispatcher::VerbBookmarksRemove(
 
 PhiVerbResult PhiControlDispatcher::VerbBookmarksListFlat(
     const PhiVerbContext& ctx) {
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);
+  }
   const SlotId slot = SlotOf(ctx);
   const std::string parent = ctx.params.String("parentGuid");
   std::string profile_id, space_id;

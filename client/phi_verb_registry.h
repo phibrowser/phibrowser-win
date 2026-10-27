@@ -126,9 +126,10 @@ struct PhiVerbResult {
   // PhiErrorCodeForReason.
   static PhiVerbResult Fail(std::string reason,
                             base::DictValue details = base::DictValue());
-  // The legacy "bare" refusal — `{ok:false}` plus `fields`, no `error`
-  // token on the v1 wire (the handlers that answered that way still do;
-  // v2 sees `code`).
+  // A refusal the handler does not name — `{ok:false}` plus `fields`.
+  // The dispatcher names it on the way out (the scope's error when the
+  // payload's window, Space or task names nothing, else `code`), so no
+  // bare refusal reaches the wire.
   static PhiVerbResult Refuse(PhiErrorCode code,
                               base::DictValue fields = base::DictValue());
   static PhiVerbResult Deferred(int pending_reply);
@@ -157,9 +158,9 @@ struct PhiVerbResult {
 };
 
 // The `out.Set("ok", ok)` answer most of the client-dialect verbs have
-// always given: success with `fields`, or the legacy BARE refusal —
-// `{ok:false}` with no `error` token on the v1 wire (v2 sees
-// invalid_payload plus whatever `fields` carried).
+// always given: success with `fields`, or an unnamed refusal (Refuse) —
+// the dispatcher answers it as the scope's error when the payload's
+// window, Space or task names nothing, else as invalid_payload.
 PhiVerbResult PhiVerbOk(bool ok, base::DictValue fields = base::DictValue());
 
 // --- Parameter schema --------------------------------------------------------

@@ -730,6 +730,10 @@ class PhiCoordinator : public SidebarHost,
     kConsent,   // consent_: agent "always" grants, credential grants/audit
   };
   void ScheduleSave(StoreDomain domain);
+  // Writes `domain` (and whatever else is dirty) now, for a change the very
+  // next verb reads back through the store rather than the model: a new
+  // Space has no store row, so no bookmark root, until its save lands.
+  void SaveNow(StoreDomain domain);
   // The bit set of dirty StoreDomains (1u << domain) — what agentSpace.ping
   // reports as pendingSaves.
   uint32_t dirty_stores() const { return dirty_stores_; }
@@ -910,8 +914,8 @@ class PhiCoordinator : public SidebarHost,
   void FlushSpacePushes();
 
   // --- Coalesced saves (the domains and ScheduleSave are public, above) -----
-  // Writes every dirty domain now and disarms the timer. The shutdown path
-  // and the timer are its only callers.
+  // Writes every dirty domain now and disarms the timer. The shutdown path,
+  // the timer and SaveNow are its only callers.
   void FlushDirtyStores();
   // The bit set of dirty StoreDomains (1u << domain).
   uint32_t dirty_stores_ = 0;

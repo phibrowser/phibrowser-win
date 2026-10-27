@@ -112,7 +112,10 @@ PhiVerbResult PhiControlDispatcher::VerbClose(const PhiVerbContext& ctx) {
   if (PhiShellWindow* controller = ctx.scope.controller) {
     ok = true;  // Set first: the call below may destroy the controller.
     controller->RequestClose();
-  } else if (framework_ && window_id) {
+  } else if (framework_ && window_id &&
+             framework_->Snapshot(BrowserId{window_id})) {
+    // A browser no shell hosts (a hosted window); an id the framework does
+    // not know either is the scope's refusal, never an accepted close.
     framework_->CloseBrowserWindow(window_id);
     ok = true;
   }
@@ -122,7 +125,8 @@ PhiVerbResult PhiControlDispatcher::VerbClose(const PhiVerbContext& ctx) {
 PhiVerbResult PhiControlDispatcher::VerbNavigate(const PhiVerbContext& ctx) {
   const int64_t window_id = ctx.params.Int64("windowId", 0);
   const std::string url = ctx.params.String("url");
-  const bool ok = framework_ && window_id && !url.empty();
+  const bool ok =
+      framework_ && window_id && ctx.scope.valid() && !url.empty();
   if (ok) {
     framework_->Navigate(ctx.scope.browser.value, url.c_str());
   }
@@ -241,7 +245,7 @@ PhiVerbResult PhiControlDispatcher::VerbWindowHandle(
   PhiShellWindow* shell =
       coordinator_->registry().Resolve(ctx.params.Int64("windowId", 0));
   if (!shell || !shell->shell_hwnd()) {
-    return PhiVerbOk(false);
+    return PhiVerbResult::Fail(PhiErrorCode::kWindowNotOpen);
   }
   base::DictValue out;
   out.Set("hwnd",
@@ -280,6 +284,9 @@ PhiVerbResult PhiControlDispatcher::VerbMenuClick(const PhiVerbContext& ctx) {
 // --- Tabs -----------------------------------------------------------------------
 
 PhiVerbResult PhiControlDispatcher::VerbTabsList(const PhiVerbContext& ctx) {
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);  // Not an empty strip.
+  }
   const int64_t window_id = ctx.params.Int64("windowId", 0);
   base::DictValue out;
   if (framework_ && window_id) {
@@ -451,6 +458,9 @@ PhiVerbResult PhiControlDispatcher::VerbTabsStoreSplit(
 // --- Navigation --------------------------------------------------------------------
 
 PhiVerbResult PhiControlDispatcher::VerbNavState(const PhiVerbContext& ctx) {
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);
+  }
   const int64_t window_id = ctx.params.Int64("windowId", 0);
   base::DictValue out;
   if (const phi_framework::WindowSnapshot* window =
@@ -503,6 +513,9 @@ PhiVerbResult PhiControlDispatcher::VerbNavStop(const PhiVerbContext& ctx) {
 // --- Tab groups, the client dialect --------------------------------------------------
 
 PhiVerbResult PhiControlDispatcher::VerbGroupsList(const PhiVerbContext& ctx) {
+  if (!ctx.scope.valid()) {
+    return PhiVerbResult::Fail(ctx.scope.error);
+  }
   const int64_t window_id = ctx.params.Int64("windowId", 0);
   if (!framework_ || !window_id) {
     return PhiVerbOk(false);
@@ -1135,11 +1148,14 @@ PhiVerbResult PhiControlDispatcher::VerbFeedbackStatus(
 PhiVerbResult PhiControlDispatcher::VerbFeedbackOpen(
     const PhiVerbContext& ctx) {
   // Opens the form for {windowId} (a slot), else the focused window —
-  // exactly what Help ▸ Report an Issue does.
+  // exactly what Help ▸ Report an Issue does. A {windowId} that names no
+  // window is refused, never a cue to open the form somewhere else.
   PhiShellWindow* controller = nullptr;
-  if (ctx.params.Has("windowId")) {
-    controller =
-        coordinator_->registry().Resolve(ctx.params.Int64("windowId", 0));
+  if (const int64_t window_id = ctx.params.Int64("windowId", 0)) {
+    controller = coordinator_->registry().Resolve(window_id);
+    if (!controller) {
+      return PhiVerbResult::Fail(PhiErrorCode::kWindowNotOpen);
+    }
   }
   if (!controller) {
     controller = coordinator_->FocusedUserController();

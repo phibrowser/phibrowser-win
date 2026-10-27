@@ -29,6 +29,8 @@ The channel speaks one of two protocols, chosen on the WebSocket upgrade and fix
 
 A verb that answers a finer token than its code keeps the token: protocol 1 puts it in `error`, protocol 2 puts the closed code in `error.code` and the token in `error.details.reason`. Any other fields a refusal carries ride alongside it in `error.details`.
 
+A scoped verb whose `taskId`, `windowId` or `spaceId` names nothing live is refused with `unknown_task`, `window_not_open` or `space_not_open`, whether or not its row below lists the code.
+
 ## Error codes
 
 The closed set. Protocol 2 answers only these in `error.code`.
@@ -69,7 +71,6 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 | `unknown_bookmark` | `invalid_payload` |
 | `unknown_folder` | `invalid_payload` |
 | `unknown_pin` | `invalid_payload` |
-| `unknown pin` | `invalid_payload` |
 | `unknown_download` | `invalid_payload` |
 | `unknown_target` | `invalid_payload` |
 | `duplicate_name` | `invalid_payload` |
@@ -84,7 +85,6 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 | `target_not_found` | `invalid_payload` |
 | `not_found` | `invalid_payload` |
 | `ambiguous` | `invalid_payload` |
-| `No target with given id found` | `invalid_payload` |
 | `no_window` | `window_not_open` |
 | `no_focused_window` | `window_not_open` |
 | `not_ready` | `busy` |
@@ -306,6 +306,7 @@ The agent surface's content size.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
+- **Errors**: `unknown_task`, `no_visible_panel`
 
 *No payload fields.*
 
@@ -398,6 +399,7 @@ The caller's live shadow windows (every one, with the host capability).
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
+- **Errors**: `unknown_task`
 
 *No payload fields.*
 
@@ -473,7 +475,7 @@ Whether a target has a JavaScript dialog up.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: app-wide.
-- **Errors**: `invalid_payload`, `scope_not_allowed`
+- **Errors**: `invalid_payload`, `unknown_target`, `scope_not_allowed`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -485,7 +487,7 @@ Accepts or dismisses a target's dialog.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: app-wide.
-- **Errors**: `invalid_payload`, `scope_not_allowed`
+- **Errors**: `invalid_payload`, `unknown_target`, `scope_not_allowed`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -616,7 +618,7 @@ Renames a Space.
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: app-wide.
 - Mutates the user's state (arms the agent drive context).
-- **Errors**: `user_space_operations_disabled`
+- **Errors**: `unknown_space`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -629,7 +631,7 @@ Deletes a Space.
 
 - **Capabilities**: `userSpaceWrite`, `destructive`
 - **Scope**: app-wide.
-- **Errors**: `user_space_operations_disabled`, `test_rig_only`
+- **Errors**: `unknown_space`, `user_space_operations_disabled`, `test_rig_only`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -642,7 +644,7 @@ Moves a Space in the sidebar.
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: app-wide.
 - Mutates the user's state (arms the agent drive context).
-- **Errors**: `user_space_operations_disabled`
+- **Errors**: `unknown_space`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -656,7 +658,7 @@ Pins a Space's theme.
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: app-wide.
 - Mutates the user's state (arms the agent drive context).
-- **Errors**: `user_space_operations_disabled`
+- **Errors**: `unknown_space`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -670,7 +672,7 @@ Sets a Space's icon.
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: app-wide.
 - Mutates the user's state (arms the agent drive context).
-- **Errors**: `user_space_operations_disabled`
+- **Errors**: `unknown_space`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -895,7 +897,7 @@ Focuses a pin's live tab, or opens one bound to it.
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: agent, shadow, user — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
 - Mutates the user's state (arms the agent drive context); no scope in the payload means the first user window.
-- **Errors**: `unknown`, `pin`, `user_space_operations_disabled`
+- **Errors**: `unknown_pin`, `window_not_open`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -1250,7 +1252,7 @@ The slot's shell HWND, for a capture tool.
 
 - **Capabilities**: `host`
 - **Scope**: app-wide.
-- **Errors**: `test_rig_only`
+- **Errors**: `test_rig_only`, `window_not_open`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -2005,7 +2007,7 @@ Opens the feedback form, as Help ▸ Report an Issue does.
 - **Capabilities**: `appSettings`
 - **Scope**: agent, shadow, user — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
 - No scope in the payload means the first user window.
-- **Errors**: `capability_required`
+- **Errors**: `capability_required`, `window_not_open`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |

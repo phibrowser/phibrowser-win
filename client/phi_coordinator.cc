@@ -564,6 +564,11 @@ void PhiCoordinator::ScheduleSave(StoreDomain domain) {
   }
 }
 
+void PhiCoordinator::SaveNow(StoreDomain domain) {
+  dirty_stores_ |= StoreBit(domain);
+  FlushDirtyStores();
+}
+
 void PhiCoordinator::FlushDirtyStores() {
   if (msg_hwnd_) {
     ::KillTimer(msg_hwnd_, kSaveTimer);
