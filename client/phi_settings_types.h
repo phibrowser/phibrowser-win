@@ -186,43 +186,44 @@ inline bool PhiParseCredentialAuditWireRow(std::string_view value,
 
 // --- The Shortcuts pane's row order ------------------------------------------
 
-// The pane's groups in Mac order. "App" leads with two fixed rows and holds
-// no rebindable ones. constexpr string_views: no allocation, and nothing to
-// destroy at exit.
+// The pane's groups in Mac order — ASCII ids, which the pane spells as
+// PhiStr("settings.shortcuts.group.<id, lower-cased>") so every heading is
+// translated. constexpr string_views: no allocation, and nothing to destroy
+// at exit.
 inline constexpr std::array<std::string_view, 9> kPhiShortcutGroups = {
     "App",       "File",   "Edit", "View",  "History",
     "Bookmarks", "Window", "Tab",  "Spaces"};
 
 // Assembles the Shortcuts pane's rows: for each group, its REBINDABLE rows
 // first (yielded by `append_rebindable`, which appends the group's rows in
-// table order), then that group's fixed, informational ones. The order and
-// the fixed rows live HERE rather than inside the preferences service so
-// the pane's shape is one piece of data instead of two lists that can
-// drift; the service supplies only the chords it owns.
+// table order), then that group's fixed, informational ones, whose titles
+// `label` resolves from the Mac's string keys (this header has no catalog
+// of its own). The order and the fixed rows live HERE rather than inside
+// the preferences service so the pane's shape is one piece of data instead
+// of two lists that can drift; the service supplies only the chords it owns.
 inline std::vector<PhiShortcutRow> PhiBuildShortcutRows(
     const std::function<void(std::string_view group,
                              std::vector<PhiShortcutRow>* out)>&
-        append_rebindable) {
-  const auto fixed = [](std::vector<PhiShortcutRow>* out, const char* group,
-                        const char* label, const char* keys) {
-    out->push_back({group, label, keys, std::string(), false});
+        append_rebindable,
+    const std::function<std::string(const char* key)>& label) {
+  const auto fixed = [&](std::vector<PhiShortcutRow>* out, const char* group,
+                         const char* label_key, const char* keys) {
+    out->push_back({group, label(label_key), keys, std::string(), false});
   };
   std::vector<PhiShortcutRow> rows;
   for (const std::string_view group : kPhiShortcutGroups) {
-    if (group == "App") {
-      // Preferences and Quit are the hook's own; they are shown so the pane
-      // is not lying about what the chords do, never rebound.
-      fixed(&rows, "App", "Preferences", "Ctrl+,");
-      fixed(&rows, "App", "Quit Phi", "Ctrl+Shift+Q");
-      continue;
-    }
     append_rebindable(group, &rows);
-    if (group == "History") {
-      fixed(&rows, "History", "Back", "Alt+Left");
-      fixed(&rows, "History", "Forward", "Alt+Right");
+    if (group == "App") {
+      // Quit is the hook's own (the Mac locks ⌘Q the same way); shown so
+      // the pane is not lying about what the chord does, never rebound.
+      fixed(&rows, "App", "settings.shortcuts.command.quitApp",
+            "Ctrl+Shift+Q");
     } else if (group == "Tab") {
-      fixed(&rows, "Tab", "Select Next Tab", "Ctrl+Tab");
-      fixed(&rows, "Tab", "Select Previous Tab", "Ctrl+Shift+Tab");
+      // The MRU switcher's chords, handled in the hook (PhiTabSwitcher).
+      fixed(&rows, "Tab", "settings.shortcuts.command.selectNextTab",
+            "Ctrl+Tab");
+      fixed(&rows, "Tab", "settings.shortcuts.command.selectPreviousTab",
+            "Ctrl+Shift+Tab");
     }
   }
   return rows;

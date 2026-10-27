@@ -23,65 +23,103 @@ namespace phi_client {
 namespace {
 
 // The customisable shortcuts (the Mac Shortcuts pane's editable rows), in the
-// pane's display order. `name` is the stable prefs key; the chord here is the
-// default the menu bar advertises. Everything NOT in this table (Quit, zoom,
-// devtools, Ctrl+Tab's MRU switcher, Ctrl+1..9 Spaces...) stays fixed.
+// pane's display order. `name` is the stable prefs key (what
+// CustomShortcuts.json stores, so it never changes); `group` the pane's
+// ASCII group id (phi_settings_types.h kPhiShortcutGroups); `label_key` the
+// Mac's title key, resolved when the rows are built so translations join by
+// key; the chord the default the ⋯ menu advertises. Everything NOT in this
+// table (Quit, F5, the app menu's F10 / Alt+F / Alt+E, F6, Ctrl+Tab's MRU
+// switcher, Ctrl+1..9 Spaces) stays fixed — only ⌘Q does on Mac.
 struct RebindableShortcut {
   const char* name;
-  const wchar_t* group;
-  const wchar_t* label;
+  const char* group;
+  const char* label_key;
   UINT command;
   PhiShortcutChord def;
 };
 constexpr RebindableShortcut kRebindableShortcuts[] = {
-      {"newTab", L"File", L"New Tab", kCmdNewTab, {'T', true, false, false}},
-      {"newWindow", L"File", L"New Window", kCmdNewWindow,
-       {'N', true, false, false}},
-      {"newIncognitoWindow", L"File", L"New Incognito Window",
-       kCmdNewIncognitoWindow, {'N', true, true, false}},
-      // The Mac's ⌃⇧N has no free twin here (Ctrl+Shift+N is the incognito
-      // window); Ctrl+Alt follows the reader's Ctrl+Alt+R.
-      {"newIncognitoSpace", L"File", L"New Incognito Space",
-       kCmdNewIncognitoSpace, {'N', true, false, true}},
-      {"reopenClosedTab", L"File", L"Reopen Closed Tab", kCmdReopenClosedTab,
-       {'T', true, true, false}},
-      // The Mac's ⌘⌥S, as Reader's ⌘⌥R became Ctrl+Alt+R.
-      {"saveToFolio", L"File", L"Save to Folio", kCmdSaveToFolio,
-       {'S', true, false, true}},
-      {"openLocation", L"File", L"Open Location", kCmdOpenLocation,
-       {'L', true, false, false}},
-      {"closeTab", L"File", L"Close Tab", kCmdCloseTab,
-       {'W', true, false, false}},
-      {"closeWindow", L"File", L"Close Window", kCmdCloseWindow,
-       {'W', true, true, false}},
-      {"copyUrl", L"Edit", L"Copy URL", kCmdCopyUrl,
-       {'C', true, true, false}},
-      {"reload", L"View", L"Reload This Page", kCmdReload,
-       {'R', true, false, false}},
-      {"forceReload", L"View", L"Force Reload This Page", kCmdForceReload,
-       {'R', true, true, false}},
-      {"toggleSidebar", L"View", L"Toggle Sidebar", kCmdToggleSidebar,
-       {'S', true, false, false}},
-      // Ctrl+Alt+R, the Mac's Cmd-Opt-R: Safari's reader chord (Cmd-Shift-R)
-      // is Chromium's hard reload on both platforms.
-      {"toggleReader", L"View", L"Toggle Reader View", kCmdToggleReader,
-       {'R', true, false, true}},
-      {"toggleBookmarkBar", L"View", L"Always Show Bookmark Bar",
-       kCmdAlwaysShowBookmarkBar, {'B', true, true, false}},
-      {"showFullHistory", L"History", L"Show Full History",
-       kCmdShowFullHistory, {'H', true, false, false}},
-      {"bookmarkThisTab", L"Bookmarks", L"Bookmark This Tab",
-       kCmdBookmarkThisTab, {'D', true, false, false}},
-      {"bookmarkAllTabs", L"Bookmarks", L"Bookmark All Tabs",
-       kCmdBookmarkAllTabs, {'D', true, true, false}},
-      {"downloads", L"Window", L"Downloads", kCmdDownloads,
-       {'J', true, false, false}},
-      {"searchTabs", L"Window", L"Search Tabs", kCmdSearchTabs,
-       {'A', true, true, false}},
-      {"nextSpace", L"Spaces", L"Next Space", kCmdNextSpace,
-       {VK_RIGHT, true, false, true}},
-      {"previousSpace", L"Spaces", L"Previous Space", kCmdPreviousSpace,
-       {VK_LEFT, true, false, true}},
+    {"openSettings", "App", "settings.shortcuts.command.openSettings",
+     kCmdPreferences, {VK_OEM_COMMA, true, false, false}},
+    {"newTab", "File", "settings.shortcuts.command.newTab", kCmdNewTab,
+     {'T', true, false, false}},
+    {"newWindow", "File", "settings.shortcuts.command.newWindow",
+     kCmdNewWindow, {'N', true, false, false}},
+    {"newIncognitoWindow", "File",
+     "settings.shortcuts.command.newIncognitoWindow", kCmdNewIncognitoWindow,
+     {'N', true, true, false}},
+    // The Mac's ⌃⇧N has no free twin here (Ctrl+Shift+N is the incognito
+    // window); Ctrl+Alt follows the reader's Ctrl+Alt+R.
+    {"newIncognitoSpace", "File", "app.fileMenu.createNewIncognitoSpace",
+     kCmdNewIncognitoSpace, {'N', true, false, true}},
+    {"reopenClosedTab", "File", "settings.shortcuts.command.reopenClosedTab",
+     kCmdReopenClosedTab, {'T', true, true, false}},
+    {"openFile", "File", "settings.shortcuts.command.openFile", kCmdOpenFile,
+     {'O', true, false, false}},
+    // The Mac's ⌘⌥S, as Reader's ⌘⌥R became Ctrl+Alt+R.
+    {"saveToFolio", "File", "settings.shortcuts.command.saveToFolio",
+     kCmdSaveToFolio, {'S', true, false, true}},
+    {"openLocation", "File", "settings.shortcuts.command.focusAddressBar",
+     kCmdOpenLocation, {'L', true, false, false}},
+    {"closeTab", "File", "settings.shortcuts.command.closeTab", kCmdCloseTab,
+     {'W', true, false, false}},
+    {"closeWindow", "File", "settings.shortcuts.command.closeWindow",
+     kCmdCloseWindow, {'W', true, true, false}},
+    {"print", "File", "settings.shortcuts.command.printPage", kCmdPrint,
+     {'P', true, false, false}},
+    {"copyUrl", "Edit", "settings.shortcuts.command.copyURL", kCmdCopyUrl,
+     {'C', true, true, false}},
+    {"find", "Edit", "settings.shortcuts.command.findOnPage", kCmdFind,
+     {'F', true, false, false}},
+    {"reload", "View", "settings.shortcuts.command.reloadPage", kCmdReload,
+     {'R', true, false, false}},
+    {"forceReload", "View", "settings.shortcuts.command.forceReload",
+     kCmdForceReload, {'R', true, true, false}},
+    // Ctrl+0 / Ctrl++ / Ctrl+-; the numeric keypad's zoom twins stay fixed
+    // in the hook's table.
+    {"actualSize", "View", "settings.shortcuts.command.resetZoom",
+     kCmdActualSize, {'0', true, false, false}},
+    {"zoomIn", "View", "settings.shortcuts.command.zoomIn", kCmdZoomIn,
+     {VK_OEM_PLUS, true, false, false}},
+    {"zoomOut", "View", "settings.shortcuts.command.zoomOut", kCmdZoomOut,
+     {VK_OEM_MINUS, true, false, false}},
+    {"viewSource", "View", "settings.shortcuts.command.viewPageSource",
+     kCmdViewSource, {'U', true, false, false}},
+    {"devTools", "View", "settings.shortcuts.command.openDeveloperTools",
+     kCmdDevTools, {'I', true, true, false}},
+    {"jsConsole", "View", "settings.shortcuts.command.openDeveloperConsole",
+     kCmdJsConsole, {'J', true, true, false}},
+    {"toggleSidebar", "View", "settings.shortcuts.command.toggleSidebar",
+     kCmdToggleSidebar, {'S', true, false, false}},
+    // Ctrl+Alt+R, the Mac's Cmd-Opt-R: Safari's reader chord (Cmd-Shift-R)
+    // is Chromium's hard reload on both platforms.
+    {"toggleReader", "View", "settings.shortcuts.command.toggleReaderView",
+     kCmdToggleReader, {'R', true, false, true}},
+    {"toggleBookmarkBar", "View",
+     "settings.shortcuts.command.toggleBookmarkBar", kCmdAlwaysShowBookmarkBar,
+     {'B', true, true, false}},
+    // The history chords Chrome reserves: Alt+Home / Left / Right.
+    {"home", "History", "settings.shortcuts.command.goHome", kCmdHome,
+     {VK_HOME, false, false, true}},
+    {"back", "History", "settings.shortcuts.command.goBack", kCmdBack,
+     {VK_LEFT, false, false, true}},
+    {"forward", "History", "settings.shortcuts.command.goForward",
+     kCmdForward, {VK_RIGHT, false, false, true}},
+    {"showFullHistory", "History", "settings.shortcuts.command.showHistory",
+     kCmdShowFullHistory, {'H', true, false, false}},
+    {"bookmarkThisTab", "Bookmarks", "settings.shortcuts.command.bookmarkTab",
+     kCmdBookmarkThisTab, {'D', true, false, false}},
+    {"bookmarkAllTabs", "Bookmarks",
+     "settings.shortcuts.command.bookmarkAllTabs", kCmdBookmarkAllTabs,
+     {'D', true, true, false}},
+    {"downloads", "Window", "settings.shortcuts.command.showDownloads",
+     kCmdDownloads, {'J', true, false, false}},
+    {"searchTabs", "Window", "settings.shortcuts.command.searchTabs",
+     kCmdSearchTabs, {'A', true, true, false}},
+    {"nextSpace", "Spaces", "settings.shortcuts.command.selectNextSpace",
+     kCmdNextSpace, {VK_RIGHT, true, false, true}},
+    {"previousSpace", "Spaces",
+     "settings.shortcuts.command.selectPreviousSpace", kCmdPreviousSpace,
+     {VK_LEFT, true, false, true}},
 };
 
 }  // namespace
@@ -683,20 +721,25 @@ void PhiPreferences::SetLanguage(const std::string& tag) {
 std::vector<PhiShortcutRow> PhiPreferences::ShortcutRows() const {
   // The group order and the fixed, informational rows are the PANE's shape
   // and live in phi_settings_types.h; this service supplies only what it
-  // owns — each group's rebindable rows, with their EFFECTIVE chords.
+  // owns — each group's rebindable rows, with their EFFECTIVE chords — plus
+  // the catalog lookup that header cannot make itself.
+  const auto label = [](const char* key) {
+    return base::WideToUTF8(PhiStr(key));
+  };
   return PhiBuildShortcutRows(
-      [this](std::string_view group, std::vector<PhiShortcutRow>* out) {
+      [&](std::string_view group, std::vector<PhiShortcutRow>* out) {
         for (const RebindableShortcut& def : kRebindableShortcuts) {
-          if (base::WideToUTF8(def.group) != group) {
+          if (group != def.group) {
             continue;
           }
           out->push_back(
-              {std::string(group), base::WideToUTF8(def.label),
+              {std::string(group), label(def.label_key),
                base::WideToUTF8(PhiFormatChord(EffectiveChord(def.name))),
                def.name,
                settings_.shortcut_overrides.count(def.name) != 0});
         }
-      });
+      },
+      label);
 }
 
 void PhiPreferences::RebindShortcut(const std::string& name,
@@ -711,14 +754,18 @@ void PhiPreferences::RebindShortcut(const std::string& name,
       break;
     }
   }
-  if (!target || !vk) {
+  if (!target) {
     return;
   }
-  const PhiShortcutChord chord{vk, ctrl, shift, alt};
+  // vk 0 is the UNBOUND chord (the recorder's Delete): a stored override
+  // with no key, so the row stays inert across restarts; no modifier rides
+  // it.
+  const PhiShortcutChord chord =
+      vk ? PhiShortcutChord{vk, ctrl, shift, alt} : PhiShortcutChord{};
   // Steal the chord from whichever rebindable currently answers to it — the
   // stolen shortcut goes UNBOUND (vk 0) until given a new chord or restored.
   for (const RebindableShortcut& def : kRebindableShortcuts) {
-    if (name != def.name && EffectiveChord(def.name) == chord) {
+    if (chord.vk && name != def.name && EffectiveChord(def.name) == chord) {
       settings_.shortcut_overrides[def.name] = {};
     }
   }
@@ -728,6 +775,14 @@ void PhiPreferences::RebindShortcut(const std::string& name,
   } else {
     settings_.shortcut_overrides[name] = {chord.vk, chord.ctrl, chord.shift,
                                           chord.alt};
+  }
+  SaveShortcuts();
+  Notify(PreferenceChange::kShortcuts);
+}
+
+void PhiPreferences::RestoreShortcut(const std::string& name) {
+  if (settings_.shortcut_overrides.erase(name) == 0) {
+    return;
   }
   SaveShortcuts();
   Notify(PreferenceChange::kShortcuts);
@@ -772,6 +827,39 @@ UINT PhiPreferences::MatchRebindableChord(UINT vk,
     }
   }
   return 0;
+}
+
+bool PhiPreferences::IsDisplacedDefaultChord(UINT vk,
+                                             bool ctrl,
+                                             bool shift,
+                                             bool alt) const {
+  const PhiShortcutChord pressed{vk, ctrl, shift, alt};
+  for (const RebindableShortcut& def : kRebindableShortcuts) {
+    if (def.def == pressed && EffectiveChord(def.name) != pressed) {
+      return true;
+    }
+    // Chromium binds Ctrl+Shift+= beside Ctrl+= for zoom in (the shifted
+    // key is the "+" the label names); the twin goes dead with its row.
+    if (def.def.vk == VK_OEM_PLUS && !def.def.shift) {
+      PhiShortcutChord twin = def.def;
+      twin.shift = true;
+      if (pressed == twin && EffectiveChord(def.name) != def.def) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+std::optional<std::wstring> PhiPreferences::RebindableChordLabel(
+    UINT command) const {
+  for (const RebindableShortcut& def : kRebindableShortcuts) {
+    if (def.command == command) {
+      const PhiShortcutChord chord = EffectiveChord(def.name);
+      return chord.vk ? PhiFormatChord(chord) : std::wstring();
+    }
+  }
+  return std::nullopt;
 }
 
 // --- Mirrors ----------------------------------------------------------------

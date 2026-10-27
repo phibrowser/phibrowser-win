@@ -7705,92 +7705,216 @@
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc) — {0} = the Space name",
    "en": "Go to Space \"{0}\""
   },
+  "settings.shortcuts.command.bookmarkAllTabs": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Bookmark All Tabs"
+  },
+  "settings.shortcuts.command.bookmarkTab": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Bookmark Tab"
+  },
+  "settings.shortcuts.command.closeTab": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Close Tab"
+  },
   "settings.shortcuts.command.closeWindow": {
-   "comment": "menuBar — used at phi_menu_bar.cc:305",
-   "en": "Close Window\tCtrl+Shift+W"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Close Window"
+  },
+  "settings.shortcuts.command.copyURL": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Copy URL"
   },
   "settings.shortcuts.command.duplicateTab": {
    "comment": "menuBar — used at phi_menu_bar.cc:720",
    "en": "Duplicate Tab"
   },
   "settings.shortcuts.command.findNextMatch": {
-   "comment": "menuBar — used at phi_menu_bar.cc:329",
-   "en": "Find Next\tCtrl+G"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (no Windows row yet)",
+   "en": "Find Next"
   },
   "settings.shortcuts.command.findOnPage": {
-   "comment": "menuBar — used at phi_menu_bar.cc:332",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
    "en": "Find"
   },
   "settings.shortcuts.command.findPreviousMatch": {
-   "comment": "menuBar — used at phi_menu_bar.cc:330",
-   "en": "Find Previous\tCtrl+Shift+G"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (no Windows row yet)",
+   "en": "Find Previous"
+  },
+  "settings.shortcuts.command.focusAddressBar": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Focus Address Bar"
+  },
+  "settings.shortcuts.command.forceReload": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Force Reload Page"
+  },
+  "settings.shortcuts.command.goBack": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Back"
+  },
+  "settings.shortcuts.command.goForward": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Forward"
   },
   "settings.shortcuts.command.goHome": {
-   "comment": "menuBar — used at phi_menu_bar.cc:370",
-   "en": "Home\tAlt+Home"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Home"
   },
   "settings.shortcuts.command.muteSite": {
    "comment": "menuBar — used at phi_menu_bar.cc:721",
    "en": "Mute Site"
   },
   "settings.shortcuts.command.newIncognitoWindow": {
-   "comment": "menuBar — used at phi_menu_bar.cc:297",
-   "en": "New Incognito Window\tCtrl+Shift+N"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "New Incognito Window"
+  },
+  "settings.shortcuts.command.newTab": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "New Tab"
   },
   "settings.shortcuts.command.newWindow": {
-   "comment": "menuBar — used at phi_menu_bar.cc:296",
-   "en": "New Window\tCtrl+N"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "New Window"
+  },
+  "settings.shortcuts.command.openDeveloperConsole": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Dev Tools Console"
+  },
+  "settings.shortcuts.command.openDeveloperTools": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Open DevTools"
+  },
+  "settings.shortcuts.command.openFile": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Open File…"
+  },
+  "settings.shortcuts.command.openSettings": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Settings"
   },
   "settings.shortcuts.command.printPage": {
-   "comment": "menuBar — used at phi_menu_bar.cc:309",
-   "en": "Print...\tCtrl+P"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Print…"
+  },
+  "settings.shortcuts.command.quitApp": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane fixed row title (phi_settings_types.h PhiBuildShortcutRows)",
+   "en": "Quit Phi"
+  },
+  "settings.shortcuts.command.reloadPage": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Reload Page"
+  },
+  "settings.shortcuts.command.reopenClosedTab": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Reopen Closed Tab"
+  },
+  "settings.shortcuts.command.resetZoom": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Zoom Normal"
+  },
+  "settings.shortcuts.command.saveToFolio": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Save to Folio"
+  },
+  "settings.shortcuts.command.searchTabs": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Tab Search"
   },
   "settings.shortcuts.command.searchTheWeb": {
    "comment": "menuBar — used at phi_menu_bar.cc:326",
    "en": "Search the Web..."
   },
+  "settings.shortcuts.command.selectNextSpace": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Next Space"
+  },
   "settings.shortcuts.command.selectNextTab": {
-   "comment": "menuBar — used at phi_menu_bar.cc:717",
-   "en": "Select Next Tab\tCtrl+Tab"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane fixed row title (phi_settings_types.h PhiBuildShortcutRows)",
+   "en": "Select Next Tab"
+  },
+  "settings.shortcuts.command.selectPreviousSpace": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Previous Space"
   },
   "settings.shortcuts.command.selectPreviousTab": {
-   "comment": "menuBar — used at phi_menu_bar.cc:718",
-   "en": "Select Previous Tab\tCtrl+Shift+Tab"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane fixed row title (phi_settings_types.h PhiBuildShortcutRows)",
+   "en": "Select Previous Tab"
+  },
+  "settings.shortcuts.command.showDownloads": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Downloads"
+  },
+  "settings.shortcuts.command.showHistory": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Show History"
+  },
+  "settings.shortcuts.command.toggleBookmarkBar": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Toggle Bookmark Bar"
+  },
+  "settings.shortcuts.command.toggleReaderView": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Toggle Reader View"
+  },
+  "settings.shortcuts.command.toggleSidebar": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Toggle Sidebar"
+  },
+  "settings.shortcuts.command.viewPageSource": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "View Page Source"
+  },
+  "settings.shortcuts.command.zoomIn": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Zoom Plus"
+  },
+  "settings.shortcuts.command.zoomOut": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Zoom Minus"
+  },
+  "settings.shortcuts.detail.recordingHelp": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane, the chord recorder's help line under the prompt (phi_settings_window.cc)",
+   "en": "Press Escape to cancel, or Delete to remove the shortcut."
   },
   "settings.shortcuts.group.app": {
-   "comment": "settings — used at phi_settings_window.cc:1238",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "App"
   },
+  "settings.shortcuts.group.bookmarks": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
+   "en": "Bookmarks"
+  },
   "settings.shortcuts.group.edit": {
-   "comment": "app — used at phi_coordinator.cc:87",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "Edit"
   },
   "settings.shortcuts.group.file": {
-   "comment": "app — used at phi_coordinator.cc:74",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "File"
   },
   "settings.shortcuts.group.help": {
-   "comment": "menuBar — used at phi_menu_bar.cc:206",
-   "en": "&Help"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (no Windows group yet)",
+   "en": "Help"
   },
   "settings.shortcuts.group.history": {
-   "comment": "app — used at phi_coordinator.cc:97",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "History"
   },
   "settings.shortcuts.group.spaces": {
-   "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc)",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "Spaces"
   },
   "settings.shortcuts.group.tab": {
-   "comment": "app — used at phi_coordinator.cc:2066",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "Tab"
   },
   "settings.shortcuts.group.view": {
-   "comment": "app — used at phi_coordinator.cc:89",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "View"
   },
   "settings.shortcuts.group.window": {
-   "comment": "app — used at phi_coordinator.cc:103",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane group heading (phi_settings_window.cc BuildShortcuts composes settings.shortcuts.group.<id>)",
    "en": "Window"
   },
   "settings.shortcuts.inUse.fixedMessage": {
@@ -7877,9 +8001,29 @@
     "zh-Hant": "請按下「{0}」的新按鍵。"
    }
   },
+  "settings.shortcuts.restoreConfirmation.cancelButton": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane, the Reset All confirmation's cancel button (phi_settings_window.cc)",
+   "en": "Cancel"
+  },
+  "settings.shortcuts.restoreConfirmation.confirmButton": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane, the Reset All confirmation's destructive button (phi_settings_window.cc)",
+   "en": "Reset All to Defaults"
+  },
+  "settings.shortcuts.restoreConfirmation.message": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane, the Reset All confirmation's body (phi_settings_window.cc)",
+   "en": "All shortcuts will be reset to their defaults. This action cannot be undone."
+  },
+  "settings.shortcuts.restoreConfirmation.title": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane, the Reset All confirmation's title (phi_settings_window.cc)",
+   "en": "Reset All to Defaults?"
+  },
   "settings.shortcuts.restoreDefaultsButton": {
-   "comment": "settings — used at phi_settings_window.cc:2002",
-   "en": "Restore all shortcuts"
+   "comment": "Mac key (translations by key); settings — Shortcuts pane header button (phi_settings_window.cc BuildShortcuts)",
+   "en": "Reset All to Defaults"
+  },
+  "settings.shortcuts.restoreShortcutButton": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane, a customised row's per-row reset button (phi_settings_window.cc BuildShortcuts)",
+   "en": "Reset"
   },
   "settings.shortcuts.searchField.placeholder": {
    "comment": "settings — used at phi_settings_window.cc:2882",
@@ -8141,18 +8285,6 @@
     "zh-Hant": "這部電腦已開啟同步"
    }
   },
-  "settings.sync.recoveryBody": {
-   "comment": "settings — Sync pane (Mac DevicesSettingView)",
-   "en": "To join on another device, approve its request here or use your saved recovery code. The code is shown only when sync is first set up."
-  },
-  "settings.sync.recoveryTitle": {
-   "comment": "settings — Sync pane (Mac DevicesSettingView)",
-   "en": "Recovery and removal"
-  },
-  "settings.sync.remove": {
-   "comment": "settings — Sync pane (Mac DevicesSettingView)",
-   "en": "Remove this device from sync…"
-  },
   "settings.sync.remove.body": {
    "comment": "settings — Sync pane (Mac DevicesSettingView)",
    "en": "This PC will stop syncing. Your local browsing data stays on this PC. To join again, use approval from another device or your saved recovery code.",
@@ -8170,20 +8302,6 @@
   "settings.sync.remove.confirm": {
    "comment": "settings — Sync pane (Mac DevicesSettingView)",
    "en": "Remove This Device"
-  },
-  "settings.sync.remove.lastDevice": {
-   "comment": "settings — Sync pane (Mac DevicesSettingView)",
-   "en": "This is the last authorized device and can’t be removed yet. Set up sync on another device first.",
-   "translations": {
-    "de": "Dies ist das letzte autorisierte Gerät und kann noch nicht entfernt werden. Richte die Synchronisierung zuerst auf einem anderen Gerät ein.",
-    "es": "Este es el último dispositivo autorizado y aún no se puede eliminar. Configura primero la sincronización en otro dispositivo.",
-    "fr": "Ceci est le dernier appareil autorisé et il ne peut pas encore être supprimé. Configurez d'abord la synchronisation sur un autre appareil.",
-    "ja": "これは最後の承認済みデバイスのため、まだ削除できません。先に別のデバイスで同期を設定してください。",
-    "ko": "이 기기는 마지막 승인된 기기라서 아직 제거할 수 없어요. 먼저 다른 기기에서 동기화를 설정하세요.",
-    "nl": "Dit is het laatste geautoriseerde apparaat en kan nog niet worden verwijderd. Stel eerst synchronisatie in op een ander apparaat.",
-    "zh-Hans": "这是最后一台已授权的设备，目前还无法移除。请先在另一台设备上设置同步。",
-    "zh-Hant": "這是最後一部已授權的裝置，目前無法移除。請先在另一部裝置上設定同步。"
-   }
   },
   "settings.sync.remove.title": {
    "comment": "settings — Sync pane (Mac DevicesSettingView)",
@@ -8967,6 +9085,10 @@
     "zh-Hant": "請修正或移除醒目標示的規則，然後再儲存一次。"
    }
   },
+  "sidebar.urlRulesEditor.matchType.app": {
+   "comment": "Mac key (translations by key); URL rule match type: links opened from another Mac app, identified by its bundle ID — Windows shows synced App rules but cannot create or match them (phi_url_rules_window.cc)",
+   "en": "App"
+  },
   "sidebar.urlRulesEditor.matchType.domain": {
    "comment": "settings — used in phi_url_rules_window.cc",
    "en": "Domain"
@@ -8982,6 +9104,10 @@
   "sidebar.urlRulesEditor.matchType.url": {
    "comment": "URL rule match type: exact host plus a path prefix (phi_url_rules_window.cc)",
    "en": "URL"
+  },
+  "sidebar.urlRulesEditor.matchValue.appPlaceholder": {
+   "comment": "Mac key (translations by key); URL rule value placeholder for App match: an example Mac app bundle ID (phi_url_rules_window.cc)",
+   "en": "com.tinyspeck.slackmacgap"
   },
   "sidebar.urlRulesEditor.matchValue.domainContainsPlaceholder": {
    "comment": "URL rule value placeholder for Domain contains match (phi_url_rules_window.cc)",
@@ -9203,6 +9329,10 @@
     "zh-Hant": "無法完成清除這部電腦的同步設定。同步仍維持暫停。請再次嘗試設定同步。"
    }
   },
+  "sync.reconfigure.resumeResetBody.windows": {
+   "comment": "Windows wording of Mac key sync.reconfigure.resumeResetBody (the Mac says “this Mac”); confirmation before Set up sync again finishes an account reset the user confirmed earlier but that did not complete (phi_settings_window.cc). English only until the translation repo carries it.",
+   "en": "This finishes the reset you confirmed earlier: this PC is removed from sync and all sync data stored for this account is deleted. Your local browsing data stays on this PC."
+  },
   "sync.reconfigure.returnToSettings": {
    "comment": "Sync recovery after a server reset or incomplete local cleanup.",
    "en": "Sync needs to be set up again. Finish later, then choose Set up sync again in Settings → Sync. Your local browsing data is kept."
@@ -9210,6 +9340,50 @@
   "sync.reconfigure.title": {
    "comment": "Sync recovery after a server reset or incomplete local cleanup.",
    "en": "Set up sync again"
+  },
+  "sync.removal.resetConfirmAction": {
+   "comment": "Mac key (translations by key); Delete all sync data — confirmation dialog button that removes this device and deletes the account's sync data (phi_settings_window.cc)",
+   "en": "Delete All Sync Data"
+  },
+  "sync.removal.resetConfirmBody.windows": {
+   "comment": "Windows wording of Mac key sync.removal.resetConfirmBody (the Mac says “this Mac”); Delete all sync data — confirmation dialog message explaining what deleting the account's sync data does (phi_settings_window.cc). English only until the translation repo carries it.",
+   "en": "Every device will be removed from sync, and all data stored on the sync server for this account will be deleted. Your local browsing data stays on this PC. To use sync again, you’ll need to set it up from scratch."
+  },
+  "sync.removal.resetConfirmTitle": {
+   "comment": "Mac key (translations by key); Delete all sync data — confirmation dialog title, shown before the last device removes itself and deletes the account's sync data (phi_settings_window.cc)",
+   "en": "Delete all sync data for this account?"
+  },
+  "sync.removal.resetRefusedNotLastDevice.windows": {
+   "comment": "Windows wording of Mac key sync.removal.resetRefusedNotLastDevice (the Mac says “this Mac”); Reset sync — error shown when the server refused the reset because another device joined the account in the meantime (phi_settings_window.cc). English only until the translation repo carries it.",
+   "en": "Another device has joined this account since, so nothing was deleted. You can remove this PC from sync instead."
+  },
+  "sync.removal.resetRowAction": {
+   "comment": "Mac key (translations by key); Sync settings — destructive button on the Reset sync row; opens the delete-all-sync-data confirmation (phi_settings_window.cc)",
+   "en": "Reset…"
+  },
+  "sync.removal.resetRowDescription.windows": {
+   "comment": "Windows wording of Mac key sync.removal.resetRowDescription (the Mac says “this Mac”); Sync settings — description under the Reset sync row (phi_settings_window.cc). English only until the translation repo carries it.",
+   "en": "This is the only device set up for sync. Resetting removes this PC from sync and deletes all sync data stored for this account. Your local browsing data stays on this PC."
+  },
+  "sync.removal.resetRowTitle": {
+   "comment": "Mac key (translations by key); Sync settings — title of the row, shown when this PC is the account's only active device, that removes it and deletes all of the account's sync data (phi_settings_window.cc)",
+   "en": "Reset sync"
+  },
+  "sync.removal.rowAction": {
+   "comment": "Mac key (translations by key); Sync settings — button on the row that removes this PC from sync; opens a confirmation (phi_settings_window.cc)",
+   "en": "Remove…"
+  },
+  "sync.removal.rowDescription.windows": {
+   "comment": "Windows wording of Mac key sync.removal.rowDescription (the Mac says “this Mac”); Sync settings — description under the row that removes this PC from sync (phi_settings_window.cc). English only until the translation repo carries it.",
+   "en": "This PC will stop syncing. Your local browsing data stays on this PC."
+  },
+  "sync.removal.rowTitle.windows": {
+   "comment": "Windows wording of Mac key sync.removal.rowTitle (the Mac says “this Mac”); Sync settings — title of the row that removes this PC from sync (phi_settings_window.cc). English only until the translation repo carries it.",
+   "en": "Remove this PC from sync"
+  },
+  "sync.removal.sectionTitle": {
+   "comment": "Mac key (translations by key); Sync settings — header of the section that removes this PC from sync (phi_settings_window.cc)",
+   "en": "Removal"
   },
   "sync.setup.applying": {
    "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",

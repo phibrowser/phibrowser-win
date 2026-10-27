@@ -787,3 +787,72 @@ with the session.
   (one real `vk,32` = one space, one `edit,space` = two), and a relaunched
   Phi starts with that IME in Chinese mode — `edit,ime,eng` first, then
   drive keyword tests with `keys`/`vk`; `edit,chars` only for letters.
+
+## Round I — Mac parity: hover card, Space order, fullscreen sidebar (2026-10-27)
+
+* Space hover card (§5.6) restyled neutral after the Mac's 5588d798: the
+  icon tile and the Ctrl+N keycap sit on an ink 8 % wash (`BlendOver(ink,
+  flyout, 20)`), no Space / theme accent anywhere; `card_accent_` and its
+  theme lookup in `ResolveHoverCard` are gone. Geometry, the agent status
+  line and the `label_dim` hint are unchanged (the Mac's 30 % profile line
+  and forced light scheme were not adopted — the card follows the app
+  appearance).
+* A new Space lands right after the Space its form opened from (the Mac's
+  `afterSpaceId`): `PhiNewSpaceSpec::after_space_id`, captured by
+  `PhiCreateSpacePanel::Show` from the controller's active Space (inline
+  form, §5.5 flyout and the standalone window alike), applied in
+  `RequestCreateSpaceWithOptions` as `ReorderSpace(new, index(source) + 1)`
+  before the switch; sync-created Spaces and the verb keep appending. The
+  strip's dashed placeholder pip occupies that slot (`creating_source_`,
+  `PhiSpacesStrip::Rebuild`): the following pips shift over, the viewport
+  keeps the source pip in place and scrolls only when the slot would fall
+  outside. No shift animation (the Mac's 0.2 s neighbour slide).
+* Floating sidebar over content fullscreen (the Mac's acd6b265 / 189babda /
+  86a43c0e): `RelayoutShell` no longer tears the panel down in content
+  fullscreen (the shell is the fullscreen window, the panel its owned
+  popup); `FloatingPanelRect` drops the address-row offset there (y 8);
+  `ComputeLayoutInputs` clears `content_fullscreen` for the panel's
+  expanded layout so it still has a sidebar to paint; `HideFloatingSidebar`
+  posts `kPhiFocusPage` while a page is fullscreen, so Esc after a panel
+  click leaves fullscreen through the page.
+* Shortcuts pane (the Mac's 60dfd31a / c89c05cb / 896b36d0): every row
+  title and group heading resolves a Mac `settings.shortcuts.*` key
+  (`kRebindableShortcuts[].label_key`, `settings.shortcuts.group.<id>`);
+  "Reset All to Defaults" asks first (`PhiAlert`, destructive button, no
+  Return default); customised rows get a per-row Reset button; Delete or
+  Backspace while recording UNBINDS (a `vk 0` override, drawn "—"); Open
+  File, Print, Find, zoom, View Source, DevTools, Console, Back / Forward /
+  Home and Settings are rebindable rows now — the hook's fixed table keeps
+  Quit, F5, the numpad zoom twins, F10 / Alt+F / Alt+E and Ctrl+1..9; a
+  default chord the user moved away from is swallowed
+  (`PhiPreferences::IsDisplacedDefaultChord`) so Chromium's own accelerator
+  cannot fire it; the ⋯ menu shows the effective chord
+  (`PhiAppMenu::Label` + `ChromePrefsHost::RebindableChordLabel`, rebuilt on
+  `PreferenceChange::kShortcuts`). General's inline profile card hides its
+  Folio Folder row (`show_folio_folder = false`, the Mac's d509f24d).
+* Peek as the page-command target (the Mac's a19624bb + c11849cf,
+  PHI-1745): `PhiShellWindow::PageCommandBrowser()` (the Peek presented
+  over the active tab — `PhiSurfaceCoordinator::PresentedPeek` — else the
+  tab) drives Reload / Stop / zoom / print / save / view source / DevTools /
+  Find / Copy URL / Bookmark / Folio in `PhiAppMenu` and seeds the address
+  field (`PhiOmniboxShell::OmniboxPageBrowser`, `RebuildNavState(nav,
+  page_browser)`): Ctrl+L shows the Peek's URL, a commit navigates the Peek
+  in place (no `OmniboxLeaveReader`), a suggestion row's URL is navigated
+  directly on it, and a Peek closing under a focused field re-seeds the
+  field and drops a late Enter (`CurrentTabTarget`). Back / Forward and the
+  Reader toggle stay on the opener (reader-over-peek is not wired here).
+* Omnibox new-tab behaviour in empty windows (the Mac's 936d090e): the
+  preference is pushed to the framework (`SetNewTabOpensOmnibox`); under it
+  the fork's `Browser::TabStripEmpty` skips the refill tab and shows the
+  placeholder at once, and a user / Space window is created WITHOUT a seed
+  tab and put into placeholder mode (`CreateUserBrowserIn`,
+  `Browser::PhiEnterPlaceholderModeIfEmpty`) before `Show()`, so the
+  client's existing placeholder path (content hidden, native NTP + focused
+  field, tab born on commit) is the omnibox over the empty window.
+  Off-the-record windows keep their blank tab. Alt+Shift+N no longer opens
+  a split tab (the Mac's ce059932: a menu action only).
+* Sign-out closes every auxiliary window before the Login page (the Mac's
+  3a4469a3): `RequireLogin` posts WM_CLOSE to each Kiosk
+  (`PhiWindowRegistry::Kiosks()`), and `CloseForSignOut()` on the Feedback,
+  URL-rules and Create-Space windows (a WM_CLOSE with `kCloseWithoutPrompt`
+  skips the discard prompt), the Sync setup window and the Import window.

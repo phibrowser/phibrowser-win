@@ -344,6 +344,23 @@ std::string RuleHostForRouting(std::string_view host) {
   return out;
 }
 
+bool IsSourceAppRuleHost(std::string_view host) {
+  const size_t n = kSourceAppRuleHostPrefix.size();
+  if (host.size() <= n) {
+    return false;
+  }
+  for (size_t i = 0; i < n; ++i) {
+    char c = host[i];
+    if (c >= 'A' && c <= 'Z') {
+      c = static_cast<char>(c - 'A' + 'a');
+    }
+    if (c != kSourceAppRuleHostPrefix[i]) {
+      return false;
+    }
+  }
+  return host.find(':', n) == std::string_view::npos;
+}
+
 std::string NewRuleId() {
   static thread_local std::mt19937_64 rng([] {
     std::random_device device;

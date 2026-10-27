@@ -90,6 +90,9 @@ constexpr char kPrivacyUrl[] = "https://phibrowser.com/privacy/";
 constexpr char kTermsUrl[] = "https://phibrowser.com/terms-of-service/";
 
 PhiFeedbackWindow* g_window = nullptr;
+// WM_CLOSE's wParam (unused by the system) marking a close that skips the
+// discard prompt: CloseForSignOut.
+constexpr WPARAM kCloseWithoutPrompt = 1;
 int g_next_request = 0;
 
 std::wstring Widen(const std::string& utf8) {
@@ -410,6 +413,13 @@ void PhiFeedbackWindow::OnSystemLogs(int request_id, const char* text) {
 // static
 HWND PhiFeedbackWindow::Handle() {
   return g_window ? g_window->hwnd() : nullptr;
+}
+
+// static
+void PhiFeedbackWindow::CloseForSignOut() {
+  if (const HWND hwnd = Handle()) {
+    ::PostMessageW(hwnd, WM_CLOSE, kCloseWithoutPrompt, 0);
+  }
 }
 
 // static
@@ -2200,7 +2210,7 @@ LRESULT PhiFeedbackWindow::OnWindowMessage(UINT msg,
       // other messages, so the window is re-checked before it is touched.
       *handled = true;
       const HWND self = hwnd();
-      if (!ConfirmDiscard()) {
+      if (wparam != kCloseWithoutPrompt && !ConfirmDiscard()) {
         return 0;
       }
       if (::IsWindow(self) && g_window == this) {

@@ -80,6 +80,9 @@ enum : UINT_PTR {
 };
 
 PhiUrlRulesWindow* g_window = nullptr;
+// WM_CLOSE's wParam (unused by the system) marking a close that skips the
+// discard prompt: CloseForSignOut.
+constexpr WPARAM kCloseWithoutPrompt = 1;
 
 std::wstring Widen(const std::string& utf8) {
   return base::UTF8ToWide(utf8);
@@ -635,6 +638,13 @@ HWND PhiUrlRulesWindow::Handle() {
   return g_window && g_window->alive() ? g_window->hwnd() : nullptr;
 }
 
+// static
+void PhiUrlRulesWindow::CloseForSignOut() {
+  if (const HWND hwnd = Handle()) {
+    ::PostMessageW(hwnd, WM_CLOSE, kCloseWithoutPrompt, 0);
+  }
+}
+
 PhiUrlRulesWindow::PhiUrlRulesWindow(PhiSettingsHost* host) : host_(host) {}
 
 PhiUrlRulesWindow::~PhiUrlRulesWindow() {
@@ -899,6 +909,8 @@ const wchar_t* PhiUrlRulesWindow::MatchTypeLabel(UrlRuleMatchType type) const {
       return PhiStr("sidebar.urlRulesEditor.matchType.domainContains");
     case UrlRuleMatchType::kUrl:
       return PhiStr("sidebar.urlRulesEditor.matchType.url");
+    case UrlRuleMatchType::kSourceApp:
+      return PhiStr("sidebar.urlRulesEditor.matchType.app");
   }
   return L"";
 }
@@ -915,6 +927,8 @@ const wchar_t* PhiUrlRulesWindow::MatchValuePlaceholder(
           "sidebar.urlRulesEditor.matchValue.domainContainsPlaceholder");
     case UrlRuleMatchType::kUrl:
       return PhiStr("sidebar.urlRulesEditor.matchValue.urlPlaceholder");
+    case UrlRuleMatchType::kSourceApp:
+      return PhiStr("sidebar.urlRulesEditor.matchValue.appPlaceholder");
   }
   return L"";
 }
@@ -1246,7 +1260,7 @@ LRESULT PhiUrlRulesWindow::OnWindowMessage(UINT msg,
       }
       break;
     case WM_CLOSE:
-      if (ConfirmDiscard()) {
+      if (wparam == kCloseWithoutPrompt || ConfirmDiscard()) {
         Destroy();
       }
       *handled = true;

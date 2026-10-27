@@ -359,6 +359,12 @@ void PhiUrlRouter::PushRoutingTableNow() {
     if (!UrlRuleIsLive(rule)) {
       continue;
     }
+    // App rules ("app:<bundle id>") match a sending Mac app, never a URL:
+    // the framework's matcher compares GURL hosts, so one would be inert
+    // anyway, but it has no business in the routing table.
+    if (store::IsSourceAppRuleHost(rule.host)) {
+      continue;
+    }
     base::DictValue d;
     d.Set("spaceId", rule.space_id);
     d.Set("host", store::RuleHostForRouting(rule.host));

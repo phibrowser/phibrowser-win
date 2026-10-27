@@ -424,6 +424,13 @@ PhiVerbResult PhiControlDispatcher::VerbSyncKeyOp(const PhiVerbContext& ctx) {
     layer->RemoveThisDevice([finish](keys::KeyStatus status) {
       finish(status, base::DictValue());
     });
+  } else if (op == "resetAccount") {
+    // The last active device's account reset: deletes every server-side
+    // sync row of the account, then removes this device (test rigs only; the
+    // Settings pane confirms twice before sending this).
+    layer->ResetSyncAndRemoveThisDevice([finish](keys::KeyStatus status) {
+      finish(status, base::DictValue());
+    });
   } else {
     return PhiVerbResult::Fail(PhiErrorCode::kInvalidPayload, "op");
   }

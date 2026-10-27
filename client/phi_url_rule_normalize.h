@@ -34,6 +34,16 @@ std::string NewRuleId();
 std::optional<std::string> NormalizedRulePathPrefix(
     const std::optional<std::string>& raw);
 
+// An App rule's host (phibrowser-mac 48d4c4a6, SpaceRoutingRule.
+// sourceAppHostPrefix): "app:" + the lowercased bundle id of the Mac app
+// that sent the URL, path prefix empty, the same sync columns as any rule.
+// The prefix compares case-insensitively, the remainder must be non-empty
+// and hold no further ':'. Only the Mac matches these (it knows which app
+// opened a URL); Windows accepts, stores, syncs and shows them, and keeps
+// them out of the framework's routing table.
+inline constexpr std::string_view kSourceAppRuleHostPrefix = "app:";
+bool IsSourceAppRuleHost(std::string_view host);
+
 // The ROUTING-TABLE form of a stored (canonical, Unicode) rule host: the
 // fork matches against GURL::host(), which spells an internationalised
 // domain in its ASCII form, so a Unicode host would never match. Each

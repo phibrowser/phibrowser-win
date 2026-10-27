@@ -512,6 +512,40 @@ void PhiSurfaceCoordinator::UpdateReaderPanelsForWindow(BrowserId window_id) {
   }
 }
 
+BrowserId PhiSurfaceCoordinator::PresentedPeek(BrowserId window_id) const {
+  const phi_framework::TabSnapshot* active_snapshot =
+      window_model_.ActiveTab(window_id);
+  if (!active_snapshot) {
+    return BrowserId();
+  }
+  const TabId active_tab = active_snapshot->id;
+  // The same picture UpdateReaderPanelsForWindow shows the panels by: the
+  // live peeks over this window, opener tab -> the peek's own tab, with the
+  // panel browser kept beside it. A replaced peek awaiting its deferred
+  // close is hidden already and must not be the answer.
+  std::map<int, int> peeks;
+  std::map<int, BrowserId> browsers;  // Opener tab -> the peek's browser.
+  for (PhiSurfacePanel* panel : surfaces_.OverWindow(window_id)) {
+    const BrowserId panel_id{panel->window_id()};
+    if (panel->kind() != SidebarSurface::kPeek || PendingClose(panel_id)) {
+      continue;
+    }
+    const int origin = static_cast<int>(panel->origin_tab_id());
+    peeks[origin] = static_cast<int>(panel->surface_tab_id());
+    browsers[origin] = panel_id;
+  }
+  if (peeks.empty()) {
+    return BrowserId();
+  }
+  const PhiVisiblePeek peek = PhiVisiblePeekFor(
+      active_tab.value, SplitPartnerOf(window_id, active_tab).value, peeks);
+  if (!peek.valid()) {
+    return BrowserId();
+  }
+  const auto it = browsers.find(peek.opener);
+  return it != browsers.end() ? it->second : BrowserId();
+}
+
 TabId PhiSurfaceCoordinator::SplitPartnerOf(BrowserId window,
                                             TabId tab) const {
   const phi_framework::SplitSnapshot* split =

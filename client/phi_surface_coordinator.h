@@ -196,6 +196,12 @@ class PhiSurfaceCoordinator {
   // bound to its split partner, which covers this pane too. False when
   // there is none.
   bool ClosePartnerPeek(BrowserId window_id, TabId tab_id);
+  // The Peek on screen over `window_id`'s active tab — its own, else its
+  // split partner's (PhiVisiblePeekFor, the rule UpdateReaderPanelsForWindow
+  // shows panels by) — as its own browser, or an invalid id. The Mac's
+  // BrowserState.visiblePeek, which pageCommandTarget and the omnibox seed
+  // from. A peek marked for a deferred close is already out of the picture.
+  BrowserId PresentedPeek(BrowserId window_id) const;
   // A mouse button went down in `target`: when that is inside a reader over
   // a split pane other than the focused one, focus that pane (the Mac's
   // activateOriginPaneIfClicked) — Chromium's pane under the reader never

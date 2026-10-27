@@ -1018,13 +1018,54 @@ void PhiSettingsWindow::BuildSync(int* y) {
   }
   EndSection(y);
 
-  BeginSection(y, PhiStr("settings.sync.recoveryTitle"));
-  const RECT area = AddRow(y, PhiStr("settings.sync.recoveryBody"),
-                           kPillHeight, 230, sync_remove_note_.empty()
-                                                 ? nullptr
-                                                 : sync_remove_note_.c_str());
-  button_in(area, PhiStr("settings.sync.remove"), "syncremove", false, true,
-            !sync_last_device_, std::string());
+  // Removal (the Mac's removeDeviceSection, phibrowser-mac 055df916): ONE
+  // row in one of two variants. When the loaded device list shows this PC as
+  // the account's only active device, or after the server's 409 last_device
+  // refusal of a removal sent from a stale list, the row is "Reset sync"
+  // with a destructive button that also deletes the account's sync data;
+  // otherwise it is "Remove this PC from sync". The list is a hint: the
+  // server re-checks at reset time, and its 409 not_last_device shows a
+  // fixed error and reloads the list, which flips the row back.
+  int active_devices = 0;
+  bool only_this_device = false;
+  for (const keys::AccountDevice& device : sync_devices_) {
+    if (device.status == "active" && !device.revoked_at_ms) {
+      ++active_devices;
+      only_this_device = device.device_key_id == snap.device_key_id;
+    }
+  }
+  const bool shows_reset =
+      sync_last_device_ || (active_devices == 1 && only_this_device);
+  BeginSection(y, PhiStr("sync.removal.sectionTitle"));
+  const wchar_t* row_title = shows_reset
+                                 ? PhiStr("sync.removal.resetRowTitle")
+                                 : PhiStr("sync.removal.rowTitle.windows");
+  const wchar_t* row_hint =
+      shows_reset ? PhiStr("sync.removal.resetRowDescription.windows")
+                  : PhiStr("sync.removal.rowDescription.windows");
+  const RECT area = AddRow(y, row_title, kPillHeight, 120, row_hint);
+  if (shows_reset) {
+    button_in(area, PhiStr("sync.removal.resetRowAction"), "syncreset", false,
+              true, !sync_removing_, std::string());
+  } else {
+    button_in(area, PhiStr("sync.removal.rowAction"), "syncremove", false,
+              true, !sync_removing_, std::string());
+  }
+  // A removal or reset failure, under the row: red like every other error on
+  // this pane (the Mac's removalErrorNote).
+  if (!sync_remove_note_.empty()) {
+    Item error;
+    error.kind = ItemKind::kHint;
+    error.danger = true;
+    error.wrap = true;
+    error.text = sync_remove_note_;
+    const int left = content_left_ + Scaled(kCardPadding);
+    const int right = content_right_ - Scaled(kCardPadding);
+    const int h = WrappedHeight(hint_font_, error.text.c_str(), right - left);
+    error.bounds = {left, *y, right, *y + h};
+    items_.push_back(std::move(error));
+    *y += h + Scaled(kRowPadding);
+  }
   EndSection(y);
 }
 
@@ -1420,8 +1461,10 @@ void PhiSettingsWindow::BuildGeneral(int* y) {
     const std::vector<PhiProfileSummary> profiles = profiles_->Profiles();
     const std::string profile_id =
         profiles.empty() ? std::string() : profiles.front().id;
-    BuildProfileDetail(y, content_left_, content_right_,
-                       profile_id);
+    // Without the Folio Folder row: General's own Folio section above
+    // already shows the folder (Mac d509f24d).
+    BuildProfileDetail(y, content_left_, content_right_, profile_id,
+                       /*show_folio_folder=*/false);
     *y += Scaled(kSectionGap) - Scaled(kDetailCardGap);
   }
 }
@@ -2862,7 +2905,8 @@ void PhiSettingsWindow::BuildProfiles(int* y) {
 }
 
 void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
-                                           const std::string& profile_id) {
+                                           const std::string& profile_id,
+                                           bool show_folio_folder) {
   // The design's card row: the bare 20 glyph in the gutter, the 14 label
   // 16 after it, the trailing control; 68 tall.
   const int row_h = Scaled(kRowMinHeight + 2 * kRowPadding);
@@ -2934,7 +2978,8 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
                                    : download_dir.substr(cut + 1));
     }
 
-    const int rows = PhiFolio::Enabled() ? 3 : 2;
+    const bool folio_row = show_folio_folder && PhiFolio::Enabled();
+    const int rows = folio_row ? 3 : 2;
     Item card;
     card.kind = ItemKind::kCard;
     card.bounds = {left, *y, right, *y + rows * row_h};
@@ -2951,7 +2996,7 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
                !download_dir.empty());
     trailing_pill(*y + row_h, download_leaf, !download_dir.empty(),
                   "downloadfolder");
-    if (PhiFolio::Enabled()) {
+    if (folio_row) {
       // Folio Folder: this profile's override, or "Same as General".
       Item folio_divider;
       folio_divider.kind = ItemKind::kDivider;
@@ -3328,24 +3373,21 @@ void PhiSettingsWindow::BuildShortcuts(int* y) {
     bool customized = false;
   };
   std::vector<ShortcutRowDef> rows;
-  // The "Go to Space" rows join the table's own Spaces group, under the
-  // heading it already spells (so the two never part over a translation).
-  std::wstring spaces_group = PhiStr("settings.shortcuts.group.spaces");
+  // `group` is the table's ASCII group id (kPhiShortcutGroups); the heading
+  // spells it through the Mac's settings.shortcuts.group.<id> key below.
   for (const PhiShortcutRow& row : prefs_->ShortcutRows()) {
     rows.push_back({base::UTF8ToWide(row.group), base::UTF8ToWide(row.label),
                     base::UTF8ToWide(row.keys), row.name, row.customized});
-    if (row.name == "nextSpace") {
-      spaces_group = rows.back().group;
-    }
   }
   {
+    // The "Go to Space" rows join the table's own Spaces group.
     int at = 0;
     for (const PhiSpaceSummary& space : spaces_->Summaries()) {
       if (++at > 9) {
         break;
       }
       rows.push_back(
-          {spaces_group,
+          {L"Spaces",
            PhiStrF("settings.shortcuts.activateSpaceCommandTitle",
                    {base::UTF8ToWide(space.name)}),
            std::wstring(PhiStr("sidebar.ctrl")) + L"+" +
@@ -3383,10 +3425,18 @@ void PhiSettingsWindow::BuildShortcuts(int* y) {
     any = true;
     if (group != row.group) {
       group = row.group;
-      // Category title (12pt semibold secondary, 35pt band) over a rule.
+      // Category title (12pt semibold secondary, 35pt band) over a rule —
+      // the Mac's group key, so every heading is translated.
+      std::string group_id = base::WideToUTF8(row.group);
+      for (char& c : group_id) {
+        if (c >= 'A' && c <= 'Z') {
+          c = static_cast<char>(c - 'A' + 'a');
+        }
+      }
       Item heading;
       heading.kind = ItemKind::kSectionTitle;
-      heading.text = row.group;
+      heading.text =
+          PhiStr(("settings.shortcuts.group." + group_id).c_str());
       heading.bounds = {(content_left_ + Scaled(kCardPadding)), *y,
                         (content_right_ - Scaled(kCardPadding)),
                         *y + Scaled(35)};
@@ -3399,13 +3449,6 @@ void PhiSettingsWindow::BuildShortcuts(int* y) {
       items_.push_back(std::move(rule));
       *y += 1;
     }
-    Item label;
-    label.kind = ItemKind::kRowLabel;
-    label.text = row.name;
-    label.bounds = {(content_left_ + Scaled(kCardPadding)), *y,
-                    (content_right_ - Scaled(kCardPadding)) - Scaled(150),
-                    *y + row_h};
-    items_.push_back(std::move(label));
     // One pill holding the whole chord (min width 80), the Mac's keycap.
     // A rebindable row's keycap opens the chord recorder; `detail` carries
     // the label for the prompt's message, `on` marks a customised chord.
@@ -3425,6 +3468,32 @@ void PhiSettingsWindow::BuildShortcuts(int* y) {
                   *y + (row_h - Scaled(22)) / 2,
                   (content_right_ - Scaled(kCardPadding)),
                   *y + (row_h + Scaled(22)) / 2};
+    int label_right = cap.bounds.left - Scaled(12);
+    // A customised row's "Reset" before its keycap — the Mac's per-row
+    // button: erases that one override, no confirmation.
+    std::optional<Item> reset;
+    if (row.customized && !row.id.empty()) {
+      reset.emplace();
+      reset->kind = ItemKind::kButton;
+      reset->text = PhiStr("settings.shortcuts.restoreShortcutButton");
+      reset->action = "restoreshortcut";
+      reset->payload = row.id;
+      const int reset_w = std::max(
+          Scaled(56),
+          Scaled(static_cast<int>(reset->text.size()) * 7 + 24));
+      reset->bounds = {cap.bounds.left - Scaled(8) - reset_w, cap.bounds.top,
+                       cap.bounds.left - Scaled(8), cap.bounds.bottom};
+      label_right = reset->bounds.left - Scaled(12);
+    }
+    Item label;
+    label.kind = ItemKind::kRowLabel;
+    label.text = row.name;
+    label.bounds = {(content_left_ + Scaled(kCardPadding)), *y, label_right,
+                    *y + row_h};
+    items_.push_back(std::move(label));
+    if (reset) {
+      items_.push_back(std::move(*reset));
+    }
     items_.push_back(std::move(cap));
     *y += row_h;
     Item rule;
@@ -6286,10 +6355,20 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->RequestUrlRulesEditor(hwnd());
   } else if (item.action == "shortcut") {
     PhiShortcutChord chord;
+    // The prompt, then the Mac recorder's help line: Escape cancels,
+    // Delete removes the shortcut.
     const std::wstring message =
-        PhiStrF("settings.shortcuts.recordPrompt.message", {item.detail});
+        PhiStrF("settings.shortcuts.recordPrompt.message", {item.detail}) +
+        L"\n" + PhiStr("settings.shortcuts.detail.recordingHelp");
     if (!PhiPromptShortcut(hwnd(), PhiStr("settings.changeShortcut"),
                            message.c_str(), &chord)) {
+      return;
+    }
+    if (!chord.vk) {
+      // Delete while recording: the shortcut goes UNBOUND (a stored
+      // override, so it stays off across restarts). Nothing to check it
+      // against — no chord is taken from anyone.
+      host_->RebindShortcut(item.payload, 0, false, false, false);
       return;
     }
     // A chord another shortcut answers to is never taken silently. A fixed
@@ -6337,7 +6416,21 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->RebindShortcut(item.payload, chord.vk, chord.ctrl, chord.shift,
                           chord.alt);
   } else if (item.action == "restoreshortcuts") {
-    host_->RestoreAllShortcuts();
+    // Asked first (Mac 60dfd31a): the reset is irreversible, so the
+    // destructive button is never the default — Return is inert, Escape
+    // cancels.
+    if (PhiAlert(
+            hwnd(), PhiStr("settings.shortcuts.restoreConfirmation.title"),
+            PhiStr("settings.shortcuts.restoreConfirmation.message"),
+            {{PhiStr("settings.shortcuts.restoreConfirmation.confirmButton"),
+              PhiAlertRole::kDestructive},
+             {PhiStr("settings.shortcuts.restoreConfirmation.cancelButton"),
+              PhiAlertRole::kSecondary}},
+            /*default_index=*/-1, /*cancel_index=*/1) == 0) {
+      host_->RestoreAllShortcuts();
+    }
+  } else if (item.action == "restoreshortcut") {
+    host_->RestoreShortcut(item.payload);
   } else if (item.action == "goprofiles") {
     section_ = "profiles";
     scroll_ = 0;
@@ -6407,9 +6500,14 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
   } else if (item.action == "syncreconfigure") {
     PhiSyncKeyService* keys = host_ ? host_->SyncKeys() : nullptr;
+    // When a journaled account reset is what Set up sync again finishes, the
+    // confirmation must not promise that the synced data is kept.
+    const wchar_t* confirmation =
+        keys && keys->snapshot().reset_resume_pending
+            ? PhiStr("sync.reconfigure.resumeResetBody.windows")
+            : PhiStr("sync.reconfigure.confirmation.windows");
     if (keys && PhiConfirm(hwnd(), PhiStr("sync.reconfigure.title"),
-                           PhiStr("sync.reconfigure.confirmation.windows"),
-                           PhiStr("sync.reconfigure.title"))) {
+                           confirmation, PhiStr("sync.reconfigure.title"))) {
       sync_action_error_.clear();
       std::weak_ptr<int> alive = sync_alive_;
       keys->ReconfigureSync([this, alive](keys::KeyStatus status) {
@@ -6460,18 +6558,57 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
   } else if (item.action == "syncremove") {
     PhiSyncKeyService* keys = host_ ? host_->SyncKeys() : nullptr;
-    if (keys && PhiConfirm(hwnd(), PhiStr("settings.sync.remove.title"),
-                           PhiStr("settings.sync.remove.body"),
-                           PhiStr("settings.sync.remove.confirm"))) {
+    if (keys && !sync_removing_ &&
+        PhiConfirm(hwnd(), PhiStr("settings.sync.remove.title"),
+                   PhiStr("settings.sync.remove.body"),
+                   PhiStr("settings.sync.remove.confirm"))) {
       sync_remove_note_.clear();
+      sync_removing_ = true;
+      ScheduleRebuild();
       std::weak_ptr<int> alive = sync_alive_;
       keys->RemoveThisDevice([this, alive](keys::KeyStatus status) {
         if (alive.expired()) {
           return;
         }
+        sync_removing_ = false;
         if (status.kind == keys::KeyErrorKind::kLastActiveDevice) {
+          // The device list was stale: the row flips to the account reset,
+          // whose description says why; nothing else to note.
           sync_last_device_ = true;
-          sync_remove_note_ = PhiStr("settings.sync.remove.lastDevice");
+        } else if (!status.ok()) {
+          sync_remove_note_ = PhiStr("settings.sync.remove.unavailable");
+        }
+        ScheduleRebuild();
+      });
+    }
+  } else if (item.action == "syncreset") {
+    // The account reset's own confirmation (the Mac's confirmReset), after
+    // the row already said what it does; destructive by default.
+    PhiSyncKeyService* keys = host_ ? host_->SyncKeys() : nullptr;
+    if (keys && !sync_removing_ &&
+        PhiConfirm(hwnd(), PhiStr("sync.removal.resetConfirmTitle"),
+                   PhiStr("sync.removal.resetConfirmBody.windows"),
+                   PhiStr("sync.removal.resetConfirmAction"))) {
+      sync_remove_note_.clear();
+      sync_removing_ = true;
+      ScheduleRebuild();
+      std::weak_ptr<int> alive = sync_alive_;
+      keys->ResetSyncAndRemoveThisDevice([this, alive](keys::KeyStatus status) {
+        if (alive.expired()) {
+          return;
+        }
+        sync_removing_ = false;
+        if (status.kind == keys::KeyErrorKind::kNotLastDevice ||
+            status.kind == keys::KeyErrorKind::kDeviceNotFound) {
+          // The server refused and deleted nothing: another device joined
+          // since the list was loaded, or this PC is no longer enrolled.
+          // The reloaded list flips the row back to the removal.
+          sync_last_device_ = false;
+          sync_remove_note_ =
+              status.kind == keys::KeyErrorKind::kNotLastDevice
+                  ? PhiStr("sync.removal.resetRefusedNotLastDevice.windows")
+                  : PhiStr("settings.sync.remove.unavailable");
+          RefreshSyncDevices(/*force=*/true);
         } else if (!status.ok()) {
           sync_remove_note_ = PhiStr("settings.sync.remove.unavailable");
         }

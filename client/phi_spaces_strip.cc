@@ -236,17 +236,34 @@ void PhiSpacesStrip::Rebuild() {
   const auto width = [&](int pips) {
     return pips <= 0 ? 0 : pips * item + (pips - 1) * gap;
   };
-  const int total = static_cast<int>(row.size());
-  const bool reserve_placeholder = creating_ && !rects.horizontal_tabs;
-  // visiblePipCount: the room left of the trailing slot (`chips_limit`
-  // already keeps the gap before it). While the create form is up the row's
-  // end holds the dashed placeholder pip (the Mac's
-  // creatingSpacePlaceholderPip): reserve its slot so the real pips can
-  // never collide with it.
-  int budget = rects.chips_limit - rects.chips_left;
-  if (reserve_placeholder) {
-    budget -= item + gap;
+  const int pips = static_cast<int>(row.size());
+  // While the create form is up the row holds the dashed placeholder pip
+  // (the Mac's creatingSpacePlaceholderPip) as a slot of its own, right
+  // after the Space the form opened from — where the new Space lands — or
+  // after the last pip once that Space has gone. The slot is laid out like
+  // a pip's, so the real pips can never collide with it.
+  int placeholder = -1;
+  if (creating_ && !rects.horizontal_tabs) {
+    placeholder = pips;
+    for (int i = 0; i < pips; ++i) {
+      if (row[static_cast<size_t>(i)].id == creating_source_) {
+        placeholder = i + 1;
+        break;
+      }
+    }
   }
+  const int total = pips + (placeholder >= 0 ? 1 : 0);
+  // The pip in a slot; the placeholder's slot has none.
+  const auto pip_at = [&](int slot) -> PhiSpaceChip* {
+    if (slot == placeholder) {
+      return nullptr;
+    }
+    const int index = placeholder >= 0 && slot > placeholder ? slot - 1 : slot;
+    return &row[static_cast<size_t>(index)];
+  };
+  // visiblePipCount: the room left of the trailing slot (`chips_limit`
+  // already keeps the gap before it).
+  const int budget = rects.chips_limit - rects.chips_left;
   // 65% of a pip (plus its gap) of a hidden neighbour shows past an edge
   // that hides pips — enough of the icon to read; the peeked pip is laid
   // out whole and clipped.
@@ -270,11 +287,15 @@ void PhiSpacesStrip::Rebuild() {
     }
   }
   const int max_start = std::max(0, total - count_edge);
-  if (reserve_placeholder) {
-    // slideViewportToEnd: the placeholder stands after the last pip, so an
-    // overflowing row shows its tail for the placeholder to read as
-    // continuing it.
-    start_ = max_start;
+  if (placeholder >= 0) {
+    // The viewport keeps the source pip where it stands and scrolls only
+    // when the placeholder's slot would fall outside it (the Mac keeps the
+    // source in place the same way).
+    if (placeholder < start_) {
+      start_ = placeholder;
+    } else if (placeholder >= start_ + count_mid) {
+      start_ = placeholder - count_mid + 1;
+    }
   } else if (anchor_space_ != active || anchor_visible_ != count_mid) {
     // ensureActivePipVisible: centre the active pip in the window, clamped
     // at the row's ends so the first/last few pips still fill it. Wheel
@@ -297,12 +318,21 @@ void PhiSpacesStrip::Rebuild() {
   const int trailing_peek = start_ + visible < total ? peek : 0;
   const int first = start_ - (leading_peek ? 1 : 0);
   const int end = std::min(total, start_ + visible + (trailing_peek ? 1 : 0));
-  first_index_ = first;
+  // chips_[0]'s row index: a placeholder slot before the window holds no pip.
+  first_index_ = first - (placeholder >= 0 && first > placeholder ? 1 : 0);
   const int origin = rects.chips_left + leading_peek - start_ * (item + gap);
   for (int i = first; i < end; ++i) {
-    PhiSpaceChip chip = std::move(row[static_cast<size_t>(i)]);
     const int x = origin + i * (item + gap);
-    chip.bounds = {x, rects.chips_top, x + item, rects.chips_top + item};
+    const RECT cell = {x, rects.chips_top, x + item, rects.chips_top + item};
+    PhiSpaceChip* pip = pip_at(i);
+    if (!pip) {
+      // The same CELL a real pip gets; the dashed ring is painted inside it
+      // at the chip size, exactly as a pip's card is.
+      creating_pip_ = cell;
+      continue;
+    }
+    PhiSpaceChip chip = std::move(*pip);
+    chip.bounds = cell;
     if (rects.horizontal_tabs) {
       // The Space chip (§5.2): the one chip fills the width the layout
       // measured for its icon, name and chevron.
@@ -316,12 +346,6 @@ void PhiSpacesStrip::Rebuild() {
   if (leading_peek || trailing_peek) {
     clip_ = {rects.chips_left, rects.chips_top, viewport_right,
              rects.chips_top + item};
-  }
-  if (reserve_placeholder) {
-    const int x = total > 0 ? viewport_right + gap : rects.chips_left;
-    // The same CELL a real pip gets; the dashed ring is painted inside it at
-    // the chip size, exactly as a pip's card is.
-    creating_pip_ = {x, rects.chips_top, x + item, rects.chips_top + item};
   }
 }
 
@@ -530,11 +554,7 @@ void PhiSpacesStrip::DismissHoverCard(const std::string& suppress_space_id) {
 }
 
 void PhiSpacesStrip::ResolveHoverCard(const std::string& space_id) {
-  const SlotId slot = shell_->SpacesSlot();
   card_profile_.clear();
-  card_accent_ = spaces_host_
-                     ? spaces_host_->PaletteForSlot(slot.value).accent
-                     : RGB(0x3A, 0xA4, 0xD5);
   card_shortcut_ = 0;
   if (!spaces_host_) {
     return;
@@ -565,16 +585,6 @@ void PhiSpacesStrip::ResolveHoverCard(const std::string& space_id) {
   const int position = StripPosition(space_id) + 1;
   if (listed && position <= 9) {
     card_shortcut_ = position;
-  }
-  // The pill and keycaps tint with the SPACE's own theme where it pins one
-  // (the Mac card resolves the pip's theme color the same way).
-  const std::string theme_id = spaces_host_->SpaceThemeId(space_id);
-  if (!theme_id.empty()) {
-    const bool dark = spaces_host_->PaletteForSlot(slot.value).dark;
-    card_accent_ =
-        PhiResolvePalette(PhiThemeById(theme_id),
-                          dark ? PhiAppearance::kDark : PhiAppearance::kLight)
-            .accent;
   }
   // The bound profile's display name, from the same summaries the create
   // form and the tab-area menu read ("id\tname"); the raw id stands in
@@ -655,6 +665,7 @@ void PhiSpacesStrip::ShowCreateForm() {
     form_ = std::make_unique<PhiCreateSpacePanel>(shell_->SpacesOwner());
   }
   creating_ = true;
+  creating_source_ = active;  // The placeholder pip stands after this one.
   preview_until_switch_ = false;
   DismissHoverCard(std::string());
   form_->Show(form, profile_id, theme_id, prefs_host_->Saturation());
@@ -669,6 +680,7 @@ void PhiSpacesStrip::CommitCreateForm(const PhiNewSpaceSpec& spec) {
   }
   creating_ = false;
   creating_icon_.clear();
+  creating_source_.clear();
   if (form_) {
     // Instant: the new Space presents over this window (the Mac's
     // `animated: false` activation after the sidebar flow).
@@ -695,6 +707,7 @@ void PhiSpacesStrip::CancelCreateForm() {
   }
   creating_ = false;
   creating_icon_.clear();
+  creating_source_.clear();
   if (form_) {
     form_->Hide(/*animated=*/true);
   }
@@ -1387,11 +1400,11 @@ void PhiSpacesStrip::PaintHoverCard(HDC dc,
   const auto scaled = [this](int units) { return shell_->SpacesScaled(units); };
   EnsureCardFonts();
   const COLORREF ground = palette.flyout;
-  const COLORREF accent = card_accent_;
   StrokeRounded(dc, g.card, ground, palette.border, scaled(kHoverCardRadius));
 
-  // The icon in its Space-colour tile (accent at 14 %, radius 4).
-  FillRounded(dc, g.tile, BlendOver(accent, ground, 36), scaled(4));
+  // Neutral throughout (the Mac card carries no Space tint): the icon in an
+  // ink 8 % tile, radius 4.
+  FillRounded(dc, g.tile, BlendOver(palette.ink, ground, 20), scaled(4));
   RECT icon_rc = g.tile;
   ::InflateRect(&icon_rc, -scaled(2), -scaled(2));
   const COLORREF icon_ink = palette.label;
@@ -1416,7 +1429,8 @@ void PhiSpacesStrip::PaintHoverCard(HDC dc,
   PhiDrawTextAA(dc, g.name_text.c_str(), -1, &name_rc,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
   if (g.keycap.right > g.keycap.left) {
-    StrokeRounded(dc, g.keycap, BlendOver(palette.ink, ground, 11),
+    // The keycap on the same ink 8 % wash as the tile.
+    StrokeRounded(dc, g.keycap, BlendOver(palette.ink, ground, 20),
                   palette.stroke_strong, scaled(4));
     if (card_key_font_) {
       ::SelectObject(dc, card_key_font_);

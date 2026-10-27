@@ -8,6 +8,7 @@
 #include <windows.h>
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -128,6 +129,7 @@ class PhiPreferences : public ChromePrefsHost {
   std::string ThemeId() const override;
   PhiAppearance Appearance() const override;
   int Saturation() const override;
+  std::optional<std::wstring> RebindableChordLabel(UINT command) const override;
 
   // --- Theme ---------------------------------------------------------------
   // An unknown id normalises to the default theme (PhiThemeById).
@@ -234,12 +236,16 @@ class PhiPreferences : public ChromePrefsHost {
   // Rebinds the named rebindable shortcut to the chord's raw parts; a chord
   // already held by another rebindable shortcut is STOLEN (that one goes
   // unbound), as the Mac pane does. Rebinding back to the default is a
-  // restore, not an override.
+  // restore, not an override; vk 0 UNBINDS the shortcut (the recorder's
+  // Delete), stored so the row stays inert across restarts.
   void RebindShortcut(const std::string& name,
                       UINT vk,
                       bool ctrl,
                       bool shift,
                       bool alt);
+  // Erases one shortcut's override (the pane's per-row Reset); a no-op for
+  // a row at its default.
+  void RestoreShortcut(const std::string& name);
   void RestoreAllShortcuts();
   bool AnyShortcutCustomized() const;
   // The chord a rebindable shortcut currently answers to: its override when
@@ -249,6 +255,12 @@ class PhiPreferences : public ChromePrefsHost {
   // Checked by the keyboard hook before the fixed table, so a custom chord
   // wins.
   UINT MatchRebindableChord(UINT vk, bool ctrl, bool shift, bool alt) const;
+  // True when this chord is some rebindable shortcut's DEFAULT but not what
+  // that shortcut answers to now (rebound, or unbound). The hook swallows
+  // such a chord: the Mac replaces Chromium's key equivalent, so a moved
+  // default is dead there, and the hosted browser's own accelerator must
+  // not revive it here.
+  bool IsDisplacedDefaultChord(UINT vk, bool ctrl, bool shift, bool alt) const;
 
   // --- Mirrors of state owned elsewhere ------------------------------------
   // The reader's live style is PhiReaderBridge's; the model carries a copy

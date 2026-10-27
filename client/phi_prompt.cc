@@ -977,6 +977,10 @@ std::wstring PhiFormatChord(const PhiShortcutChord& chord) {
     case VK_DELETE: return text + L"Delete";
     case VK_INSERT: return text + L"Insert";
     case VK_TAB:    return text + L"Tab";
+    // The zoom keys as the ⋯ menu spells them ("Ctrl++"), not the US
+    // layout's unshifted "=".
+    case VK_OEM_PLUS:  return text + L"+";
+    case VK_OEM_MINUS: return text + L"-";
   }
   // Punctuation and everything else — the layout's character for the key.
   const UINT ch = ::MapVirtualKeyW(vk, MAPVK_VK_TO_CHAR) & 0xFFFF;
@@ -1065,6 +1069,14 @@ bool PhiPromptShortcut(HWND owner,
       }
       if (vk == VK_ESCAPE && !ctrl && !alt) {
         alert.Finish(0);
+        return true;
+      }
+      if ((vk == VK_DELETE || vk == VK_BACK) && !ctrl && !alt) {
+        // Bare Delete (or Backspace) REMOVES the shortcut — the Mac
+        // recorder's Delete; the caller stores the unbound chord (vk 0).
+        captured = {};
+        accepted = true;
+        alert.Finish(-1);
         return true;
       }
       if (ctrl || alt || (vk >= VK_F1 && vk <= VK_F24)) {

@@ -180,6 +180,7 @@ class PhiCreateSpacePanel : public PhiPanel {
   std::string profile_id_;
   std::string icon_;      // Storage form ("phi:<id>" / "emoji:<id>").
   std::string theme_id_;
+  std::string source_space_id_;  // Active at Show: the new Space follows it.
   int slider_ = 50;
   bool user_adjusted_slider_ = false;
   Tab tab_ = Tab::kIcon;

@@ -9285,16 +9285,60 @@
    "zh-Hans": "前往空间「{0}」",
    "zh-Hant": "前往空間「{0}」"
   },
+  "settings.shortcuts.command.bookmarkAllTabs": {
+   "de": "Lesezeichen für alle Tabs hinzufügen",
+   "en": "Bookmark All Tabs",
+   "es": "Agregar todas las pestañas a marcadores",
+   "fr": "Ajouter tous les onglets aux favoris",
+   "ja": "すべてのタブをブックマークに追加",
+   "ko": "모든 탭을 북마크에 추가",
+   "nl": "Maak bladwijzers van alle tabbladen",
+   "zh-Hans": "为所有标签页添加书签",
+   "zh-Hant": "將所有分頁加入書籤"
+  },
+  "settings.shortcuts.command.bookmarkTab": {
+   "de": "Lesezeichen für diesen Tab hinzufügen",
+   "en": "Bookmark Tab",
+   "es": "Agregar pestaña a marcadores",
+   "fr": "Ajouter l'onglet aux favoris",
+   "ja": "タブをブックマークに追加",
+   "ko": "탭을 북마크에 추가",
+   "nl": "Maak bladwijzer van tabblad",
+   "zh-Hans": "为标签页添加书签",
+   "zh-Hant": "將分頁加入書籤"
+  },
+  "settings.shortcuts.command.closeTab": {
+   "de": "Tab schließen",
+   "en": "Close Tab",
+   "es": "Cerrar pestaña",
+   "fr": "Fermer l'onglet",
+   "ja": "タブを閉じる",
+   "ko": "탭 닫기",
+   "nl": "Sluit tabblad",
+   "zh-Hans": "关闭标签页",
+   "zh-Hant": "關閉分頁"
+  },
   "settings.shortcuts.command.closeWindow": {
-   "de": "Fenster schließen\tCtrl+Shift+W",
-   "en": "Close Window\tCtrl+Shift+W",
-   "es": "Cerrar ventana\tCtrl+Shift+W",
-   "fr": "Fermer la fenêtre\tCtrl+Shift+W",
-   "ja": "ウインドウを閉じる\tCtrl+Shift+W",
-   "ko": "윈도우 닫기\tCtrl+Shift+W",
-   "nl": "Sluit venster\tCtrl+Shift+W",
-   "zh-Hans": "关闭窗口\tCtrl+Shift+W",
-   "zh-Hant": "關閉視窗\tCtrl+Shift+W"
+   "de": "Fenster schließen",
+   "en": "Close Window",
+   "es": "Cerrar ventana",
+   "fr": "Fermer la fenêtre",
+   "ja": "ウインドウを閉じる",
+   "ko": "윈도우 닫기",
+   "nl": "Sluit venster",
+   "zh-Hans": "关闭窗口",
+   "zh-Hant": "關閉視窗"
+  },
+  "settings.shortcuts.command.copyURL": {
+   "de": "URL kopieren",
+   "en": "Copy URL",
+   "es": "Copiar URL",
+   "fr": "Copier l'URL",
+   "ja": "URLをコピー",
+   "ko": "URL 복사",
+   "nl": "Kopieer URL",
+   "zh-Hans": "拷贝网址",
+   "zh-Hant": "拷貝網址"
   },
   "settings.shortcuts.command.duplicateTab": {
    "de": "Tab duplizieren",
@@ -9308,15 +9352,15 @@
    "zh-Hant": "複製分頁"
   },
   "settings.shortcuts.command.findNextMatch": {
-   "de": "Weitersuchen (vorwärts)\tCtrl+G",
-   "en": "Find Next\tCtrl+G",
-   "es": "Buscar siguiente\tCtrl+G",
-   "fr": "Rechercher le suivant\tCtrl+G",
-   "ja": "次を検索\tCtrl+G",
-   "ko": "다음 찾기\tCtrl+G",
-   "nl": "Zoek volgende\tCtrl+G",
-   "zh-Hans": "查找下一个\tCtrl+G",
-   "zh-Hant": "尋找下一個\tCtrl+G"
+   "de": "Weitersuchen (vorwärts)",
+   "en": "Find Next",
+   "es": "Buscar siguiente",
+   "fr": "Rechercher le suivant",
+   "ja": "次を検索",
+   "ko": "다음 찾기",
+   "nl": "Zoek volgende",
+   "zh-Hans": "查找下一个",
+   "zh-Hant": "尋找下一個"
   },
   "settings.shortcuts.command.findOnPage": {
    "de": "Suchen",
@@ -9330,26 +9374,70 @@
    "zh-Hant": "尋找"
   },
   "settings.shortcuts.command.findPreviousMatch": {
-   "de": "Weitersuchen (rückwärts)\tCtrl+Shift+G",
-   "en": "Find Previous\tCtrl+Shift+G",
-   "es": "Buscar anterior\tCtrl+Shift+G",
-   "fr": "Rechercher le précédent\tCtrl+Shift+G",
-   "ja": "前を検索\tCtrl+Shift+G",
-   "ko": "이전 찾기\tCtrl+Shift+G",
-   "nl": "Zoek vorige\tCtrl+Shift+G",
-   "zh-Hans": "查找上一个\tCtrl+Shift+G",
-   "zh-Hant": "尋找上一個\tCtrl+Shift+G"
+   "de": "Weitersuchen (rückwärts)",
+   "en": "Find Previous",
+   "es": "Buscar anterior",
+   "fr": "Rechercher le précédent",
+   "ja": "前を検索",
+   "ko": "이전 찾기",
+   "nl": "Zoek vorige",
+   "zh-Hans": "查找上一个",
+   "zh-Hant": "尋找上一個"
+  },
+  "settings.shortcuts.command.focusAddressBar": {
+   "de": "Adressleiste fokussieren",
+   "en": "Focus Address Bar",
+   "es": "Ir a la barra de direcciones",
+   "fr": "Sélectionner la barre d'adresse",
+   "ja": "アドレスバーにフォーカス",
+   "ko": "주소 표시줄로 이동",
+   "nl": "Verplaats focus naar adresbalk",
+   "zh-Hans": "聚焦地址栏",
+   "zh-Hant": "選取網址列"
+  },
+  "settings.shortcuts.command.forceReload": {
+   "de": "Seite ohne Cache neu laden",
+   "en": "Force Reload Page",
+   "es": "Forzar recarga de la página",
+   "fr": "Forcer l'actualisation de la page",
+   "ja": "ページを強制的に再読み込み",
+   "ko": "페이지 강제 새로고침",
+   "nl": "Laad pagina geforceerd opnieuw",
+   "zh-Hans": "强制重新加载页面",
+   "zh-Hant": "強制重新載入頁面"
+  },
+  "settings.shortcuts.command.goBack": {
+   "de": "Zurück",
+   "en": "Back",
+   "es": "Atrás",
+   "fr": "Retour",
+   "ja": "戻る",
+   "ko": "뒤로",
+   "nl": "Terug",
+   "zh-Hans": "返回",
+   "zh-Hant": "上一頁"
+  },
+  "settings.shortcuts.command.goForward": {
+   "de": "Vorwärts",
+   "en": "Forward",
+   "es": "Adelante",
+   "fr": "Suivant",
+   "ja": "進む",
+   "ko": "앞으로",
+   "nl": "Vooruit",
+   "zh-Hans": "前进",
+   "zh-Hant": "前進"
   },
   "settings.shortcuts.command.goHome": {
-   "de": "Startseite\tAlt+Home",
-   "en": "Home\tAlt+Home",
-   "es": "Página principal\tAlt+Home",
-   "fr": "Page d'accueil\tAlt+Home",
-   "ja": "ホーム\tAlt+Home",
-   "ko": "홈\tAlt+Home",
-   "nl": "Startpagina\tAlt+Home",
-   "zh-Hans": "主页\tAlt+Home",
-   "zh-Hant": "首頁\tAlt+Home"
+   "de": "Startseite",
+   "en": "Home",
+   "es": "Página principal",
+   "fr": "Page d'accueil",
+   "ja": "ホーム",
+   "ko": "홈",
+   "nl": "Startpagina",
+   "zh-Hans": "主页",
+   "zh-Hant": "首頁"
   },
   "settings.shortcuts.command.muteSite": {
    "de": "Website stummschalten",
@@ -9363,37 +9451,158 @@
    "zh-Hant": "關閉網站音訊"
   },
   "settings.shortcuts.command.newIncognitoWindow": {
-   "de": "Neues Inkognitofenster\tCtrl+Shift+N",
-   "en": "New Incognito Window\tCtrl+Shift+N",
-   "es": "Nueva ventana de incógnito\tCtrl+Shift+N",
-   "fr": "Nouvelle fenêtre de navigation privée\tCtrl+Shift+N",
-   "ja": "新しいシークレットウインドウ\tCtrl+Shift+N",
-   "ko": "새 시크릿 윈도우\tCtrl+Shift+N",
-   "nl": "Nieuw incognitovenster\tCtrl+Shift+N",
-   "zh-Hans": "新建无痕式窗口\tCtrl+Shift+N",
-   "zh-Hant": "新增無痕視窗\tCtrl+Shift+N"
+   "de": "Neues Inkognitofenster",
+   "en": "New Incognito Window",
+   "es": "Nueva ventana de incógnito",
+   "fr": "Nouvelle fenêtre de navigation privée",
+   "ja": "新しいシークレットウインドウ",
+   "ko": "새 시크릿 윈도우",
+   "nl": "Nieuw incognitovenster",
+   "zh-Hans": "新建无痕式窗口",
+   "zh-Hant": "新增無痕視窗"
+  },
+  "settings.shortcuts.command.newTab": {
+   "de": "Neuer Tab",
+   "en": "New Tab",
+   "es": "Nueva pestaña",
+   "fr": "Nouvel onglet",
+   "ja": "新しいタブ",
+   "ko": "새 탭",
+   "nl": "Nieuw tabblad",
+   "zh-Hans": "新建标签页",
+   "zh-Hant": "新增分頁"
   },
   "settings.shortcuts.command.newWindow": {
-   "de": "Neues Fenster\tCtrl+N",
-   "en": "New Window\tCtrl+N",
-   "es": "Nueva ventana\tCtrl+N",
-   "fr": "Nouvelle fenêtre\tCtrl+N",
-   "ja": "新しいウインドウ\tCtrl+N",
-   "ko": "새 윈도우\tCtrl+N",
-   "nl": "Nieuw venster\tCtrl+N",
-   "zh-Hans": "新建窗口\tCtrl+N",
-   "zh-Hant": "新增視窗\tCtrl+N"
+   "de": "Neues Fenster",
+   "en": "New Window",
+   "es": "Nueva ventana",
+   "fr": "Nouvelle fenêtre",
+   "ja": "新しいウインドウ",
+   "ko": "새 윈도우",
+   "nl": "Nieuw venster",
+   "zh-Hans": "新建窗口",
+   "zh-Hant": "新增視窗"
+  },
+  "settings.shortcuts.command.openDeveloperConsole": {
+   "de": "Entwicklertools-Konsole",
+   "en": "Dev Tools Console",
+   "es": "Consola de DevTools",
+   "fr": "Console des Outils de développement",
+   "ja": "デベロッパーツールのコンソール",
+   "ko": "개발자 도구 콘솔",
+   "nl": "DevTools-console",
+   "zh-Hans": "开发者工具控制台",
+   "zh-Hant": "開發人員工具控制台"
+  },
+  "settings.shortcuts.command.openDeveloperTools": {
+   "de": "Entwicklertools öffnen",
+   "en": "Open DevTools",
+   "es": "Abrir DevTools",
+   "fr": "Ouvrir les Outils de développement",
+   "ja": "デベロッパーツールを開く",
+   "ko": "개발자 도구 열기",
+   "nl": "Open DevTools",
+   "zh-Hans": "打开开发者工具",
+   "zh-Hant": "開啟開發人員工具"
+  },
+  "settings.shortcuts.command.openFile": {
+   "de": "Datei öffnen…",
+   "en": "Open File…",
+   "es": "Abrir archivo…",
+   "fr": "Ouvrir un fichier…",
+   "ja": "ファイルを開く…",
+   "ko": "파일 열기…",
+   "nl": "Open bestand…",
+   "zh-Hans": "打开文件…",
+   "zh-Hant": "打開檔案…"
+  },
+  "settings.shortcuts.command.openSettings": {
+   "de": "Einstellungen",
+   "en": "Settings",
+   "es": "Configuración",
+   "fr": "Paramètres",
+   "ja": "設定",
+   "ko": "설정",
+   "nl": "Instellingen",
+   "zh-Hans": "设置",
+   "zh-Hant": "設定"
   },
   "settings.shortcuts.command.printPage": {
-   "de": "Drucken…\tCtrl+P",
-   "en": "Print...\tCtrl+P",
-   "es": "Imprimir…\tCtrl+P",
-   "fr": "Imprimer…\tCtrl+P",
-   "ja": "プリント…\tCtrl+P",
-   "ko": "프린트…\tCtrl+P",
-   "nl": "Druk af…\tCtrl+P",
-   "zh-Hans": "打印…\tCtrl+P",
-   "zh-Hant": "列印…\tCtrl+P"
+   "de": "Drucken…",
+   "en": "Print…",
+   "es": "Imprimir…",
+   "fr": "Imprimer…",
+   "ja": "プリント…",
+   "ko": "프린트…",
+   "nl": "Druk af…",
+   "zh-Hans": "打印…",
+   "zh-Hant": "列印…"
+  },
+  "settings.shortcuts.command.quitApp": {
+   "de": "Phi beenden",
+   "en": "Quit Phi",
+   "es": "Salir de Phi",
+   "fr": "Quitter Phi",
+   "ja": "Phiを終了",
+   "ko": "Phi 종료",
+   "nl": "Stop Phi",
+   "zh-Hans": "退出 Phi",
+   "zh-Hant": "結束 Phi"
+  },
+  "settings.shortcuts.command.reloadPage": {
+   "de": "Seite neu laden",
+   "en": "Reload Page",
+   "es": "Recargar página",
+   "fr": "Actualiser la page",
+   "ja": "ページを再読み込み",
+   "ko": "페이지 새로고침",
+   "nl": "Laad pagina opnieuw",
+   "zh-Hans": "重新加载页面",
+   "zh-Hant": "重新載入頁面"
+  },
+  "settings.shortcuts.command.reopenClosedTab": {
+   "de": "Geschlossenen Tab wieder öffnen",
+   "en": "Reopen Closed Tab",
+   "es": "Volver a abrir pestaña cerrada",
+   "fr": "Rouvrir l'onglet fermé",
+   "ja": "閉じたタブを再度開く",
+   "ko": "닫은 탭 다시 열기",
+   "nl": "Open gesloten tabblad opnieuw",
+   "zh-Hans": "重新打开关闭的标签页",
+   "zh-Hant": "重新開啟已關閉的分頁"
+  },
+  "settings.shortcuts.command.resetZoom": {
+   "de": "Tatsächliche Größe",
+   "en": "Zoom Normal",
+   "es": "Tamaño real",
+   "fr": "Taille réelle",
+   "ja": "実際のサイズ",
+   "ko": "실제 크기",
+   "nl": "Ware grootte",
+   "zh-Hans": "实际大小",
+   "zh-Hant": "實際大小"
+  },
+  "settings.shortcuts.command.saveToFolio": {
+   "de": "In Folio sichern",
+   "en": "Save to Folio",
+   "es": "Guardar en Folio",
+   "fr": "Enregistrer dans Folio",
+   "ja": "Folioに保存",
+   "ko": "Folio에 저장",
+   "nl": "Bewaar in Folio",
+   "zh-Hans": "存储到 Folio",
+   "zh-Hant": "儲存到 Folio"
+  },
+  "settings.shortcuts.command.searchTabs": {
+   "de": "Tabs durchsuchen",
+   "en": "Tab Search",
+   "es": "Buscar pestañas",
+   "fr": "Rechercher dans les onglets",
+   "ja": "タブを検索",
+   "ko": "탭 검색",
+   "nl": "Zoek in tabbladen",
+   "zh-Hans": "搜索标签页",
+   "zh-Hant": "搜尋分頁"
   },
   "settings.shortcuts.command.searchTheWeb": {
    "de": "Im Web suchen...",
@@ -9406,27 +9615,148 @@
    "zh-Hans": "搜索网页…",
    "zh-Hant": "搜尋網路…"
   },
+  "settings.shortcuts.command.selectNextSpace": {
+   "de": "Nächster Space",
+   "en": "Next Space",
+   "es": "Espacio siguiente",
+   "fr": "Espace suivant",
+   "ja": "次のスペース",
+   "ko": "다음 스페이스",
+   "nl": "Volgende Space",
+   "zh-Hans": "下一个空间",
+   "zh-Hant": "下一個空間"
+  },
   "settings.shortcuts.command.selectNextTab": {
-   "de": "Nächsten Tab auswählen\tCtrl+Tab",
-   "en": "Select Next Tab\tCtrl+Tab",
-   "es": "Seleccionar pestaña siguiente\tCtrl+Tab",
-   "fr": "Sélectionner l'onglet suivant\tCtrl+Tab",
-   "ja": "次のタブを選択\tCtrl+Tab",
-   "ko": "다음 탭 선택\tCtrl+Tab",
-   "nl": "Selecteer volgend tabblad\tCtrl+Tab",
-   "zh-Hans": "选择下一个标签页\tCtrl+Tab",
-   "zh-Hant": "選取下一個分頁\tCtrl+Tab"
+   "de": "Nächsten Tab auswählen",
+   "en": "Select Next Tab",
+   "es": "Seleccionar pestaña siguiente",
+   "fr": "Sélectionner l'onglet suivant",
+   "ja": "次のタブを選択",
+   "ko": "다음 탭 선택",
+   "nl": "Selecteer volgend tabblad",
+   "zh-Hans": "选择下一个标签页",
+   "zh-Hant": "選取下一個分頁"
+  },
+  "settings.shortcuts.command.selectPreviousSpace": {
+   "de": "Vorheriger Space",
+   "en": "Previous Space",
+   "es": "Espacio anterior",
+   "fr": "Espace précédent",
+   "ja": "前のスペース",
+   "ko": "이전 스페이스",
+   "nl": "Vorige Space",
+   "zh-Hans": "上一个空间",
+   "zh-Hant": "上一個空間"
   },
   "settings.shortcuts.command.selectPreviousTab": {
-   "de": "Vorherigen Tab auswählen\tCtrl+Shift+Tab",
-   "en": "Select Previous Tab\tCtrl+Shift+Tab",
-   "es": "Seleccionar pestaña anterior\tCtrl+Shift+Tab",
-   "fr": "Sélectionner l'onglet précédent\tCtrl+Shift+Tab",
-   "ja": "前のタブを選択\tCtrl+Shift+Tab",
-   "ko": "이전 탭 선택\tCtrl+Shift+Tab",
-   "nl": "Selecteer vorig tabblad\tCtrl+Shift+Tab",
-   "zh-Hans": "选择上一个标签页\tCtrl+Shift+Tab",
-   "zh-Hant": "選取上一個分頁\tCtrl+Shift+Tab"
+   "de": "Vorherigen Tab auswählen",
+   "en": "Select Previous Tab",
+   "es": "Seleccionar pestaña anterior",
+   "fr": "Sélectionner l'onglet précédent",
+   "ja": "前のタブを選択",
+   "ko": "이전 탭 선택",
+   "nl": "Selecteer vorig tabblad",
+   "zh-Hans": "选择上一个标签页",
+   "zh-Hant": "選取上一個分頁"
+  },
+  "settings.shortcuts.command.showDownloads": {
+   "de": "Downloads",
+   "en": "Downloads",
+   "es": "Descargas",
+   "fr": "Téléchargements",
+   "ja": "ダウンロード",
+   "ko": "다운로드",
+   "nl": "Downloads",
+   "zh-Hans": "下载",
+   "zh-Hant": "下載項目"
+  },
+  "settings.shortcuts.command.showHistory": {
+   "de": "Verlauf anzeigen",
+   "en": "Show History",
+   "es": "Mostrar historial",
+   "fr": "Afficher l'historique",
+   "ja": "履歴を表示",
+   "ko": "방문 기록 보기",
+   "nl": "Toon geschiedenis",
+   "zh-Hans": "显示历史记录",
+   "zh-Hant": "顯示歷史記錄"
+  },
+  "settings.shortcuts.command.toggleBookmarkBar": {
+   "de": "Lesezeichenleiste ein-/ausblenden",
+   "en": "Toggle Bookmark Bar",
+   "es": "Mostrar u ocultar la barra de marcadores",
+   "fr": "Afficher/masquer la barre de favoris",
+   "ja": "ブックマークバーの表示/非表示",
+   "ko": "북마크 바 보기/가리기",
+   "nl": "Toon of verberg bladwijzerbalk",
+   "zh-Hans": "显示或隐藏书签栏",
+   "zh-Hant": "顯示或隱藏書籤列"
+  },
+  "settings.shortcuts.command.toggleReaderView": {
+   "de": "Lesemodus ein-/ausschalten",
+   "en": "Toggle Reader View",
+   "es": "Mostrar u ocultar el Lector",
+   "fr": "Activer/désactiver le mode Lecture",
+   "ja": "リーダー表示を切り替え",
+   "ko": "읽기 모드 전환",
+   "nl": "Schakel Reader-weergave in of uit",
+   "zh-Hans": "切换阅读模式",
+   "zh-Hant": "切換閱讀模式"
+  },
+  "settings.shortcuts.command.toggleSidebar": {
+   "de": "Seitenleiste ein-/ausblenden",
+   "en": "Toggle Sidebar",
+   "es": "Mostrar u ocultar la barra lateral",
+   "fr": "Afficher/masquer la barre latérale",
+   "ja": "サイドバーの表示/非表示",
+   "ko": "사이드바 보기/가리기",
+   "nl": "Toon of verberg zijbalk",
+   "zh-Hans": "显示或隐藏侧边栏",
+   "zh-Hant": "顯示或隱藏側邊欄"
+  },
+  "settings.shortcuts.command.viewPageSource": {
+   "de": "Seitenquelltext anzeigen",
+   "en": "View Page Source",
+   "es": "Ver código fuente de la página",
+   "fr": "Afficher le code source de la page",
+   "ja": "ページのソースを表示",
+   "ko": "페이지 소스 보기",
+   "nl": "Toon paginabron",
+   "zh-Hans": "查看网页源代码",
+   "zh-Hant": "檢視網頁原始碼"
+  },
+  "settings.shortcuts.command.zoomIn": {
+   "de": "Vergrößern",
+   "en": "Zoom Plus",
+   "es": "Acercar",
+   "fr": "Zoom avant",
+   "ja": "拡大",
+   "ko": "확대",
+   "nl": "Zoom in",
+   "zh-Hans": "放大",
+   "zh-Hant": "放大"
+  },
+  "settings.shortcuts.command.zoomOut": {
+   "de": "Verkleinern",
+   "en": "Zoom Minus",
+   "es": "Alejar",
+   "fr": "Zoom arrière",
+   "ja": "縮小",
+   "ko": "축소",
+   "nl": "Zoom uit",
+   "zh-Hans": "缩小",
+   "zh-Hant": "縮小"
+  },
+  "settings.shortcuts.detail.recordingHelp": {
+   "de": "Drücke die Escape-Taste zum Abbrechen oder die Rückschritttaste, um den Tastaturkurzbefehl zu entfernen.",
+   "en": "Press Escape to cancel, or Delete to remove the shortcut.",
+   "es": "Pulsa Escape para cancelar o Suprimir para quitar el atajo.",
+   "fr": "Appuyez sur Échap pour annuler, ou sur Supprimer pour retirer le raccourci.",
+   "ja": "キャンセルするにはEscapeキーを、ショートカットを削除するにはDeleteキーを押します。",
+   "ko": "취소하려면 Escape 키를, 단축키를 제거하려면 Delete 키를 누르세요.",
+   "nl": "Druk op Escape om te annuleren of op Delete om de toetscombinatie te verwijderen.",
+   "zh-Hans": "按 Escape 键取消，或按 Delete 键移除该快捷键。",
+   "zh-Hant": "按 Esc 鍵取消，或按 Delete 鍵移除快速鍵。"
   },
   "settings.shortcuts.group.app": {
    "de": "App",
@@ -9438,6 +9768,17 @@
    "nl": "App",
    "zh-Hans": "App",
    "zh-Hant": "App"
+  },
+  "settings.shortcuts.group.bookmarks": {
+   "de": "Lesezeichen",
+   "en": "Bookmarks",
+   "es": "Marcadores",
+   "fr": "Favoris",
+   "ja": "ブックマーク",
+   "ko": "북마크",
+   "nl": "Bladwijzers",
+   "zh-Hans": "书签",
+   "zh-Hant": "書籤"
   },
   "settings.shortcuts.group.edit": {
    "de": "Bearbeiten",
@@ -9462,15 +9803,15 @@
    "zh-Hant": "檔案"
   },
   "settings.shortcuts.group.help": {
-   "de": "&Hilfe",
-   "en": "&Help",
-   "es": "&Ayuda",
-   "fr": "&Aide",
-   "ja": "&ヘルプ",
-   "ko": "&도움말",
-   "nl": "&Help",
-   "zh-Hans": "&帮助",
-   "zh-Hant": "&說明"
+   "de": "Hilfe",
+   "en": "Help",
+   "es": "Ayuda",
+   "fr": "Aide",
+   "ja": "ヘルプ",
+   "ko": "도움말",
+   "nl": "Help",
+   "zh-Hans": "帮助",
+   "zh-Hant": "說明"
   },
   "settings.shortcuts.group.history": {
    "de": "Verlauf",
@@ -9593,16 +9934,71 @@
    "zh-Hans": "请按下「{0}」的新按键。",
    "zh-Hant": "請按下「{0}」的新按鍵。"
   },
+  "settings.shortcuts.restoreConfirmation.cancelButton": {
+   "de": "Abbrechen",
+   "en": "Cancel",
+   "es": "Cancelar",
+   "fr": "Annuler",
+   "ja": "キャンセル",
+   "ko": "취소",
+   "nl": "Annuleer",
+   "zh-Hans": "取消",
+   "zh-Hant": "取消"
+  },
+  "settings.shortcuts.restoreConfirmation.confirmButton": {
+   "de": "Alle auf Standardwerte zurücksetzen",
+   "en": "Reset All to Defaults",
+   "es": "Restablecer todo a los valores predeterminados",
+   "fr": "Tout réinitialiser aux valeurs par défaut",
+   "ja": "すべてをデフォルトにリセット",
+   "ko": "모두 기본값으로 재설정",
+   "nl": "Stel alles opnieuw in op de standaardwaarden",
+   "zh-Hans": "全部重置为默认",
+   "zh-Hant": "全部重設為預設值"
+  },
+  "settings.shortcuts.restoreConfirmation.message": {
+   "de": "Alle Tastaturkurzbefehle werden auf ihre Standardwerte zurückgesetzt. Diese Aktion kann nicht widerrufen werden.",
+   "en": "All shortcuts will be reset to their defaults. This action cannot be undone.",
+   "es": "Todos los atajos se restablecerán a sus valores predeterminados. Esta acción no se puede deshacer.",
+   "fr": "Tous les raccourcis seront réinitialisés à leurs valeurs par défaut. Cette action est irréversible.",
+   "ja": "すべてのショートカットがデフォルトにリセットされます。この操作は取り消せません。",
+   "ko": "모든 단축키가 기본값으로 재설정돼요. 이 동작은 취소할 수 없어요.",
+   "nl": "Alle toetscombinaties worden opnieuw ingesteld op de standaardwaarden. Deze actie kan niet ongedaan worden gemaakt.",
+   "zh-Hans": "所有快捷键都将重置为默认设置。此操作无法撤销。",
+   "zh-Hant": "所有快速鍵將重設為預設值。此動作無法復原。"
+  },
+  "settings.shortcuts.restoreConfirmation.title": {
+   "de": "Alle auf Standardwerte zurücksetzen?",
+   "en": "Reset All to Defaults?",
+   "es": "¿Restablecer todo a los valores predeterminados?",
+   "fr": "Tout réinitialiser aux valeurs par défaut ?",
+   "ja": "すべてをデフォルトにリセットしますか？",
+   "ko": "모두 기본값으로 재설정할까요?",
+   "nl": "Stel alles opnieuw in op de standaardwaarden?",
+   "zh-Hans": "全部重置为默认？",
+   "zh-Hant": "要全部重設為預設值嗎？"
+  },
   "settings.shortcuts.restoreDefaultsButton": {
-   "de": "Alle Tastaturkurzbefehle zurücksetzen",
-   "en": "Restore all shortcuts",
-   "es": "Restablecer todos los atajos",
-   "fr": "Rétablir tous les raccourcis",
-   "ja": "すべてのショートカットをデフォルトに戻す",
-   "ko": "모든 단축키 복원",
-   "nl": "Herstel alle toetscombinaties",
-   "zh-Hans": "恢复所有快捷键",
-   "zh-Hant": "還原所有快速鍵"
+   "de": "Alle auf Standardwerte zurücksetzen",
+   "en": "Reset All to Defaults",
+   "es": "Restablecer todo a los valores predeterminados",
+   "fr": "Tout réinitialiser aux valeurs par défaut",
+   "ja": "すべてをデフォルトにリセット",
+   "ko": "모두 기본값으로 재설정",
+   "nl": "Stel alles opnieuw in op de standaardwaarden",
+   "zh-Hans": "全部重置为默认",
+   "zh-Hant": "全部重設為預設值"
+  },
+  "settings.shortcuts.restoreShortcutButton": {
+   "de": "Zurücksetzen",
+   "en": "Reset",
+   "es": "Restablecer",
+   "fr": "Réinitialiser",
+   "ja": "リセット",
+   "ko": "재설정",
+   "nl": "Stel opnieuw in",
+   "zh-Hans": "重置",
+   "zh-Hant": "重設"
   },
   "settings.shortcuts.searchField.placeholder": {
    "de": "Tastaturkurzbefehle suchen",
@@ -10044,39 +10440,6 @@
    "zh-Hans": "这台电脑已开启同步",
    "zh-Hant": "這部電腦已開啟同步"
   },
-  "settings.sync.recoveryBody": {
-   "de": "Um auf einem anderen Gerät beizutreten, genehmige dessen Anfrage hier oder verwende deinen gesicherten Wiederherstellungscode. Der Code wird nur bei der ersten Einrichtung der Synchronisierung angezeigt.",
-   "en": "To join on another device, approve its request here or use your saved recovery code. The code is shown only when sync is first set up.",
-   "es": "Para unirte desde otro dispositivo, aprueba aquí su solicitud o usa tu código de recuperación guardado. El código se muestra solo la primera vez que se configura la sincronización.",
-   "fr": "Pour rejoindre depuis un autre appareil, approuvez sa demande ici ou utilisez votre code de récupération enregistré. Le code n'est affiché que lors de la première configuration de la synchronisation.",
-   "ja": "別のデバイスで参加するには、そのデバイスからのリクエストをここで承認するか、保存した復旧コードを使用してください。復旧コードは、同期を最初に設定したときにのみ表示されます。",
-   "ko": "다른 기기에서 참여하려면 여기에서 그 기기의 요청을 승인하거나 저장해 둔 복구 코드를 사용하세요. 복구 코드는 동기화를 처음 설정할 때만 표시돼요.",
-   "nl": "Om een ander apparaat toe te voegen keur je hier het verzoek van dat apparaat goed, of gebruik je je bewaarde herstelcode. De code wordt alleen getoond wanneer synchronisatie voor het eerst wordt ingesteld.",
-   "zh-Hans": "若要在另一台设备上加入，请在此处批准该设备的请求，或使用你保存的恢复代码。该代码仅在首次设置同步时显示。",
-   "zh-Hant": "若要在另一部裝置上加入，請在這裡核准其請求，或使用你先前儲存的復原代碼。該代碼只會在初次設定同步時顯示。"
-  },
-  "settings.sync.recoveryTitle": {
-   "de": "Wiederherstellung und Entfernung",
-   "en": "Recovery and removal",
-   "es": "Recuperación y eliminación",
-   "fr": "Récupération et suppression",
-   "ja": "復旧と削除",
-   "ko": "복구 및 제거",
-   "nl": "Herstel en verwijdering",
-   "zh-Hans": "恢复与移除",
-   "zh-Hant": "復原與移除"
-  },
-  "settings.sync.remove": {
-   "de": "Dieses Gerät aus der Synchronisierung entfernen…",
-   "en": "Remove this device from sync…",
-   "es": "Eliminar este dispositivo de la sincronización…",
-   "fr": "Supprimer cet appareil de la synchronisation…",
-   "ja": "このデバイスを同期から削除…",
-   "ko": "동기화에서 이 기기 제거…",
-   "nl": "Verwijder dit apparaat uit synchronisatie…",
-   "zh-Hans": "将此设备从同步中移除…",
-   "zh-Hant": "從同步中移除此裝置…"
-  },
   "settings.sync.remove.body": {
    "de": "Dieser PC stellt die Synchronisierung ein. Deine lokalen Browserdaten bleiben auf diesem PC erhalten. Um wieder beizutreten, verwende die Genehmigung eines anderen Geräts oder deinen gesicherten Wiederherstellungscode.",
    "en": "This PC will stop syncing. Your local browsing data stays on this PC. To join again, use approval from another device or your saved recovery code.",
@@ -10098,17 +10461,6 @@
    "nl": "Verwijder dit apparaat",
    "zh-Hans": "移除此设备",
    "zh-Hant": "移除此裝置"
-  },
-  "settings.sync.remove.lastDevice": {
-   "de": "Dies ist das letzte autorisierte Gerät und kann noch nicht entfernt werden. Richte die Synchronisierung zuerst auf einem anderen Gerät ein.",
-   "en": "This is the last authorized device and can’t be removed yet. Set up sync on another device first.",
-   "es": "Este es el último dispositivo autorizado y aún no se puede eliminar. Configura primero la sincronización en otro dispositivo.",
-   "fr": "Ceci est le dernier appareil autorisé et il ne peut pas encore être supprimé. Configurez d'abord la synchronisation sur un autre appareil.",
-   "ja": "これは最後の承認済みデバイスのため、まだ削除できません。先に別のデバイスで同期を設定してください。",
-   "ko": "이 기기는 마지막 승인된 기기라서 아직 제거할 수 없어요. 먼저 다른 기기에서 동기화를 설정하세요.",
-   "nl": "Dit is het laatste geautoriseerde apparaat en kan nog niet worden verwijderd. Stel eerst synchronisatie in op een ander apparaat.",
-   "zh-Hans": "这是最后一台已授权的设备，目前还无法移除。请先在另一台设备上设置同步。",
-   "zh-Hant": "這是最後一部已授權的裝置，目前無法移除。請先在另一部裝置上設定同步。"
   },
   "settings.sync.remove.title": {
    "de": "Diesen PC aus der Account-Synchronisierung entfernen?",
@@ -11180,6 +11532,17 @@
    "zh-Hans": "请修正或移除突出显示的规则，然后再次保存。",
    "zh-Hant": "請修正或移除醒目標示的規則，然後再儲存一次。"
   },
+  "sidebar.urlRulesEditor.matchType.app": {
+   "de": "App",
+   "en": "App",
+   "es": "App",
+   "fr": "App",
+   "ja": "アプリ",
+   "ko": "앱",
+   "nl": "App",
+   "zh-Hans": "App",
+   "zh-Hant": "App"
+  },
   "sidebar.urlRulesEditor.matchType.domain": {
    "de": "Domain",
    "en": "Domain",
@@ -11223,6 +11586,17 @@
    "nl": "URL",
    "zh-Hans": "网址",
    "zh-Hant": "網址"
+  },
+  "sidebar.urlRulesEditor.matchValue.appPlaceholder": {
+   "de": "com.tinyspeck.slackmacgap",
+   "en": "com.tinyspeck.slackmacgap",
+   "es": "com.tinyspeck.slackmacgap",
+   "fr": "com.tinyspeck.slackmacgap",
+   "ja": "com.tinyspeck.slackmacgap",
+   "ko": "com.tinyspeck.slackmacgap",
+   "nl": "com.tinyspeck.slackmacgap",
+   "zh-Hans": "com.tinyspeck.slackmacgap",
+   "zh-Hant": "com.tinyspeck.slackmacgap"
   },
   "sidebar.urlRulesEditor.matchValue.domainContainsPlaceholder": {
    "de": "example",
@@ -11554,6 +11928,9 @@
    "zh-Hans": "无法完成清除这台电脑的同步设置。同步仍处于暂停状态。请尝试重新设置同步。",
    "zh-Hant": "無法完成清除這部電腦的同步設定。同步仍維持暫停。請再次嘗試設定同步。"
   },
+  "sync.reconfigure.resumeResetBody.windows": {
+   "en": "This finishes the reset you confirmed earlier: this PC is removed from sync and all sync data stored for this account is deleted. Your local browsing data stays on this PC."
+  },
   "sync.reconfigure.returnToSettings": {
    "de": "Die Synchronisierung muss erneut eingerichtet werden. Wähle „Später abschließen“ und dann in Einstellungen → Synchronisierung „Synchronisierung erneut einrichten“. Deine lokalen Browserdaten bleiben erhalten.",
    "en": "Sync needs to be set up again. Finish later, then choose Set up sync again in Settings → Sync. Your local browsing data is kept.",
@@ -11575,6 +11952,87 @@
    "nl": "Stel synchronisatie opnieuw in",
    "zh-Hans": "重新设置同步",
    "zh-Hant": "重新設定同步"
+  },
+  "sync.removal.resetConfirmAction": {
+   "de": "Alle Synchronisierungsdaten löschen",
+   "en": "Delete All Sync Data",
+   "es": "Eliminar todos los datos de sincronización",
+   "fr": "Supprimer toutes les données de synchronisation",
+   "ja": "同期データをすべて削除",
+   "ko": "모든 동기화 데이터 삭제",
+   "nl": "Verwijder alle synchronisatiegegevens",
+   "zh-Hans": "删除所有同步数据",
+   "zh-Hant": "刪除所有同步資料"
+  },
+  "sync.removal.resetConfirmBody.windows": {
+   "en": "Every device will be removed from sync, and all data stored on the sync server for this account will be deleted. Your local browsing data stays on this PC. To use sync again, you’ll need to set it up from scratch."
+  },
+  "sync.removal.resetConfirmTitle": {
+   "de": "Alle Synchronisierungsdaten für diesen Account löschen?",
+   "en": "Delete all sync data for this account?",
+   "es": "¿Eliminar todos los datos de sincronización de esta cuenta?",
+   "fr": "Supprimer toutes les données de synchronisation de ce compte ?",
+   "ja": "このアカウントの同期データをすべて削除しますか？",
+   "ko": "이 계정의 모든 동기화 데이터를 삭제할까요?",
+   "nl": "Alle synchronisatiegegevens voor dit account verwijderen?",
+   "zh-Hans": "要删除此账户的所有同步数据吗？",
+   "zh-Hant": "要刪除此帳號的所有同步資料嗎？"
+  },
+  "sync.removal.resetRefusedNotLastDevice.windows": {
+   "en": "Another device has joined this account since, so nothing was deleted. You can remove this PC from sync instead."
+  },
+  "sync.removal.resetRowAction": {
+   "de": "Zurücksetzen…",
+   "en": "Reset…",
+   "es": "Restablecer…",
+   "fr": "Réinitialiser…",
+   "ja": "リセット…",
+   "ko": "재설정…",
+   "nl": "Reset…",
+   "zh-Hans": "重置…",
+   "zh-Hant": "重設…"
+  },
+  "sync.removal.resetRowDescription.windows": {
+   "en": "This is the only device set up for sync. Resetting removes this PC from sync and deletes all sync data stored for this account. Your local browsing data stays on this PC."
+  },
+  "sync.removal.resetRowTitle": {
+   "de": "Synchronisierung zurücksetzen",
+   "en": "Reset sync",
+   "es": "Restablecer la sincronización",
+   "fr": "Réinitialiser la synchronisation",
+   "ja": "同期をリセット",
+   "ko": "동기화 재설정",
+   "nl": "Reset synchronisatie",
+   "zh-Hans": "重置同步",
+   "zh-Hant": "重設同步"
+  },
+  "sync.removal.rowAction": {
+   "de": "Entfernen…",
+   "en": "Remove…",
+   "es": "Eliminar…",
+   "fr": "Supprimer…",
+   "ja": "削除…",
+   "ko": "제거…",
+   "nl": "Verwijder…",
+   "zh-Hans": "移除…",
+   "zh-Hant": "移除…"
+  },
+  "sync.removal.rowDescription.windows": {
+   "en": "This PC will stop syncing. Your local browsing data stays on this PC."
+  },
+  "sync.removal.rowTitle.windows": {
+   "en": "Remove this PC from sync"
+  },
+  "sync.removal.sectionTitle": {
+   "de": "Entfernen",
+   "en": "Removal",
+   "es": "Eliminación",
+   "fr": "Suppression",
+   "ja": "削除",
+   "ko": "제거",
+   "nl": "Verwijdering",
+   "zh-Hans": "移除",
+   "zh-Hant": "移除"
   },
   "sync.setup.applying": {
    "de": "Deine Auswahl wird angewendet…",
@@ -11618,7 +12076,7 @@
    "ko": "복사",
    "nl": "Kopieer",
    "zh-Hans": "拷贝",
-   "zh-Hant": "複製"
+   "zh-Hant": "拷貝"
   },
   "sync.setup.code.saved": {
    "de": "Ich habe ihn gesichert",

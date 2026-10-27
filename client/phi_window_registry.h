@@ -170,6 +170,8 @@ class PhiWindowRegistry {
   }
   bool RemoveKiosk(BrowserId browser);
   PhiKioskWindow* Kiosk(BrowserId browser) const;
+  // Every kiosk window, in browser-id order.
+  std::vector<PhiKioskWindow*> Kiosks() const;
 
   // --- Pending creations -------------------------------------------------
   // Files a RequestBrowser request under its token. A second request under

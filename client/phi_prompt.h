@@ -147,7 +147,9 @@ std::wstring PhiFormatChord(const PhiShortcutChord& chord);
 // A modal chord recorder — the Mac Shortcuts pane's inline capture. Shows
 // `message` over a live preview of the held modifiers and waits for one
 // complete chord (Ctrl or Alt required, except for function keys). Escape
-// or Cancel returns false; a captured chord lands in `out`.
+// or Cancel returns false; a captured chord lands in `out`. A bare Delete
+// (or Backspace) returns true with the UNBOUND chord (vk 0): the caller
+// removes the shortcut, as the Mac recorder's Delete does.
 bool PhiPromptShortcut(HWND owner,
                        const wchar_t* title,
                        const wchar_t* message,

@@ -69,6 +69,13 @@ void PhiCreateSpaceWindow::CloseIfBoundTo(PhiShellWindow* controller) {
 }
 
 // static
+void PhiCreateSpaceWindow::CloseForSignOut() {
+  if (g_window && g_window->alive()) {
+    g_window->CloseFromForm();  // Hidden now, destroyed on a posted turn.
+  }
+}
+
+// static
 void PhiCreateSpaceWindow::NoteProfileCreated(PhiShellWindow* controller,
                                               const std::string& profile_id) {
   if (g_window && g_window->alive() && g_window->controller_ == controller &&

@@ -505,6 +505,14 @@ std::optional<OwnedRefusal> UrlRuleKind::Refuses(const Entity& entity,
   if (host.find('/') != std::string::npos) {
     return OwnedRefusal::kMalformedHost;
   }
+  // An App rule host ("app:<bundle id>", phibrowser-mac 48d4c4a6) carries
+  // the one colon this predicate accepts besides a bracketed IPv6 literal.
+  // Windows stores and shows it but never matches it (docs/url-rules.md on
+  // the Mac: only the Mac knows which app sent a URL). Like the IPv6 case,
+  // a refusal here would recur on every peer every round.
+  if (store::IsSourceAppRuleHost(host)) {
+    return std::nullopt;
+  }
   if (host.find(':') != std::string::npos &&
       !(host.front() == '[' && host.back() == ']')) {
     return OwnedRefusal::kMalformedHost;

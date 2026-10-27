@@ -72,6 +72,15 @@ struct OwnedCursor {
   std::optional<std::string> owner_uuid;
   std::optional<std::string> pending_apply;
   std::optional<std::string> pending_owner_uuid;
+  // True when pin landing parked pending_apply only because its owner
+  // resolves locally but in another pinned-tab scope (a dormant copy of an
+  // app, Profile or Space shape the current scope does not use). It is still
+  // replanned every round and lands if the scope changes, but status counts
+  // it neither as pending inbound nor as held. Set only by pin landing;
+  // cleared whenever the cursor lands, is deleted, or is parked for any other
+  // reason. Stored as "parkedForScope"; absent reads false, so older cursor
+  // files decode unchanged.
+  bool parked_for_scope = false;
   bool pending_tombstone = false;
   std::optional<std::string> pending_partner_lineage;
   bool pending_delete = false;
@@ -526,6 +535,7 @@ OwnedTombstoneResult OwnedTombstones(
     OwnedCursor updated = cursor;
     updated.pending_apply.reset();
     updated.pending_owner_uuid.reset();
+    updated.parked_for_scope = false;
     updated.pending_delete = true;
     if (!cursor.pending_delete) {
       updated.delete_decided_at_ms = now_ms;

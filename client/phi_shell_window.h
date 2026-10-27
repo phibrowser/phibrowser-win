@@ -86,6 +86,9 @@ struct PhiNewSpaceSpec {
   std::string theme_id;    // A built-in theme, pinned to the new Space.
   int saturation = -1;     // The slider once dragged; -1 = follow the app.
   std::string color_hex;   // The theme overlay, "#RRGGBB" (the Mac's colorHex).
+  // The Space the form opened from (the Mac's afterSpaceId): the new Space
+  // lands right after it in the order; empty appends.
+  std::string after_space_id;
 };
 
 // A live agent Space as a pip in the switcher — the Mac's robot Space pip.
@@ -205,6 +208,12 @@ class SidebarHost {
   // kind. The model puts the indicator on whichever row owns the origin.
   virtual std::map<int, SidebarSurface> AttachedSurfaces(
       int64_t browser) const = 0;
+  // The browser of the Peek on screen over `browser`'s active tab — its own,
+  // or its split partner's, which covers the whole split (the Mac's
+  // visiblePeek) — or an invalid id when none is presented. What page
+  // commands and the address field aim at (PhiShellWindow::
+  // PageCommandBrowser).
+  virtual BrowserId PresentedPeekBrowser(int64_t browser) const = 0;
   // Bookmark rows under `parent_guid` (empty = the root), so the menu bar can
   // descend into folders the way the Mac's Bookmarks menu does.
   virtual std::vector<PhiStoredRowView> BookmarkRows(
@@ -218,8 +227,11 @@ class SidebarHost {
                                      const std::string& parent_guid,
                                      const std::string& title,
                                      const std::string& url) = 0;
-  // Bookmarks the slot's active tab — the menu bar's Bookmark This Tab.
-  virtual void RequestBookmarkActiveTab(int64_t slot) = 0;
+  // Bookmarks the page `browser` shows — the slot's own browser, or the
+  // Peek presented over it (the Mac's pageCommandTarget) — into the slot's
+  // Space: the menu bar's Bookmark This Tab / Ctrl+D. `browser` 0 falls
+  // back to the slot's shown browser.
+  virtual void RequestBookmarkActiveTab(int64_t slot, int64_t browser) = 0;
   // Creates a bookmark folder under `parent_guid` (empty = the root) in the
   // slot's Space — the sidebar's New Folder entries. Returns the new guid
   // (empty on refusal).
@@ -389,6 +401,13 @@ class ChromePrefsHost {
   virtual std::string ThemeId() const = 0;  // The app-wide theme.
   virtual PhiAppearance Appearance() const = 0;
   virtual int Saturation() const = 0;  // 0..100.
+  // The ⋯ menu's chord column for a menu command: the EFFECTIVE chord of a
+  // rebindable one (PhiPreferences' table, with the user's overrides),
+  // formatted as the catalogue spells chords; an empty string when the user
+  // unbound it (no chord shown); nullopt when the command is not rebindable
+  // at all, so the catalogue string's own "\tChord" stands.
+  virtual std::optional<std::wstring> RebindableChordLabel(
+      UINT command) const = 0;
 };
 
 // Agent Spaces as pips, watching, and the operating mask over the user's
@@ -900,6 +919,18 @@ class PhiShellWindow : public PhiHitSource,
   // Legacy spelling of active_browser_id() for the coordinator's int64_t
   // paths; 0 when no browser is attached. Goes with the phase 2 signatures.
   int64_t active_browser() const { return active_browser_id().value; }
+  // The page in front of the user, for PAGE commands and the address field
+  // (the Mac's BrowserState.pageCommandTarget, a19624bb / c11849cf): the
+  // browser of the Peek presented over the active tab — its own, or its
+  // split partner's — else active_browser_id(). A peek's page is never the
+  // strip-active tab (its opener stays active beneath the panel), so a
+  // command resolved through active_browser_id() would act on the page
+  // hidden behind the card. Window-scoped commands (new tab, close tab,
+  // Back/Forward, history) keep reading active_browser_id().
+  BrowserId PageCommandBrowser() const;
+  // That page's tab: the presented Peek's own (invalid while its browser
+  // is not in the model yet), else active_tab_id().
+  TabId PageCommandTab() const;
   // The browser this slot holds for `space_id`, or invalid — feeds the page
   // context menu's Space list (its current-Space exclusion).
   BrowserId BrowserIdForSpace(const std::string& space_id) const {
@@ -938,6 +969,11 @@ class PhiShellWindow : public PhiHitSource,
   void RequestClose();
   // Gives the currently shown browser Win32 focus and Chromium activation.
   void FocusActiveBrowser();
+  // The same for the page in front of the user (PageCommandBrowser): a
+  // presented Peek is a hosted child whose Aura FocusManager only Chromium's
+  // own activation reaches, so its browser is focused through the framework;
+  // with no peek this is FocusActiveBrowser.
+  void FocusPageBrowser();
   // --- Native new-tab page (phi_new_tab_page.cc) ---------------------------
   // The page's omnibox joins this window's ONE omnibox session: `edit` gets
   // the address field's subclass (Enter / Escape / arrows, the suggestion
@@ -1662,6 +1698,8 @@ class PhiShellWindow : public PhiHitSource,
   const PhiWindowModel* MenuModel() const override;
   BrowserId MenuActiveBrowser() const override;
   TabId MenuActiveTab() const override;
+  BrowserId MenuPageCommandBrowser() const override;
+  TabId MenuPageCommandTab() const override;
   std::string MenuActiveSpace() const override;
   PhiPalette MenuPalette() const override;
   int MenuScaled(int design_units) const override;
@@ -1735,6 +1773,7 @@ class PhiShellWindow : public PhiHitSource,
   PhiOmniboxCapsule OmniboxCapsule() override;
   phi_framework::PhiFramework* OmniboxFramework() const override;
   BrowserId OmniboxBrowser() const override;
+  BrowserId OmniboxPageBrowser() const override;
   bool OmniboxBrowserPlaceholding() const override;
   bool OmniboxNewTabFocusesField() const override;
   void OmniboxFocusContent() override;

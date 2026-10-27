@@ -80,6 +80,9 @@ class PhiFeedbackWindow : public PhiSecondaryWindow {
   static void OnSystemLogs(int request_id, const char* text);
   // The open window, or null.
   static HWND Handle();
+  // Sign-out closes the window without the discard prompt (the Mac's
+  // closeNonBrowserWindows: the sign-out is confirmed already). Posted.
+  static void CloseForSignOut();
   // The account behind feedback changed (signed in or out): the window
   // swaps its "Sending as" line and the sign-in InfoBar.
   static void OnAccountChanged();

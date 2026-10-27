@@ -11,6 +11,7 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -352,11 +353,12 @@ class PhiCoordinator : public SidebarHost,
              const SidebarCommand& command,
              const SidebarTree& tree) override;
   std::map<int, SidebarSurface> AttachedSurfaces(int64_t browser) const override;
+  BrowserId PresentedPeekBrowser(int64_t browser) const override;
   std::vector<PhiStoredRowView> BookmarkRows(
       int64_t slot,
       const std::string& parent_guid) const override;
   void RequestOpen(int64_t slot, const std::string& url) override;
-  void RequestBookmarkActiveTab(int64_t slot) override;
+  void RequestBookmarkActiveTab(int64_t slot, int64_t browser) override;
   std::string AddBookmarkFolder(int64_t slot,
                                 const std::string& parent_guid,
                                 const std::string& title) override;
@@ -380,6 +382,7 @@ class PhiCoordinator : public SidebarHost,
   std::string ThemeId() const override;
   PhiAppearance Appearance() const override;
   int Saturation() const override;
+  std::optional<std::wstring> RebindableChordLabel(UINT command) const override;
   void SetThemeId(const std::string& id) override;
   void SetAppearance(PhiAppearance appearance) override;
   void SetSaturation(int value) override;
@@ -454,6 +457,10 @@ class PhiCoordinator : public SidebarHost,
   // Pushes the Ctrl+Alt-click Kiosk switch the same way: the framework's
   // Browser::OpenURLFromTab is where the click is remapped.
   void PushKioskPreferences();
+  // Pushes the "New tab behavior" switch the same way: the framework's
+  // Browser::TabStripEmpty (refill tab or placeholder) and RequestBrowser
+  // (blank tab or an empty window in placeholder mode) read it there.
+  void PushNewTabPreferences();
   bool AnalyticsEnabled() const;
   void SetAnalyticsEnabled(bool enabled) override;
   PhiPinScope PinScope() const override;
@@ -491,6 +498,7 @@ class PhiCoordinator : public SidebarHost,
                       bool shift,
                       bool alt) override;
   void RestoreAllShortcuts() override;
+  void RestoreShortcut(const std::string& name) override;
   bool DeveloperMode() const;
   void SetDeveloperMode(bool enabled) override;
   bool AllowAgentControl() const override;
@@ -707,6 +715,9 @@ class PhiCoordinator : public SidebarHost,
   // The active tab's favicon as base64 BGRA, for storing on a pinned/bookmark
   // row. A pinned tab has no live tab to ask later.
   std::string CaptureFavicon(SlotId slot, int* width, int* height);
+  // The same for the active tab of `browser` — the slot's own, or a Peek's
+  // (whose page Bookmark This Tab stores while the peek is presented).
+  std::string CaptureFavicon(BrowserId browser, int* width, int* height);
   // The url the slot is showing right now (the model's nav state).
   std::string LiveUrl(SlotId slot) const;
   void StoreSplitInternal(SlotId slot, TabId tab_a, TabId tab_b,

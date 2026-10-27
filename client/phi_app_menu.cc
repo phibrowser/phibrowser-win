@@ -69,29 +69,34 @@ constexpr int kRootWidth = 320;
 // command wire — features Chromium already implements; the hollowed chrome
 // only lacked the wire. Enablement mirrors the live command state on every
 // menu open, so these behave exactly like Chromium's own menu items.
+// `page` marks a PAGE command — one that acts on the page in front of the
+// user, the presented Peek's when one is up (MenuPageCommandBrowser, the
+// Mac's pageCommandTarget); the rest are tab and window commands and stay on
+// the strip's browser (MenuActiveBrowser).
 struct IdcRoute {
   UINT cmd;
   int idc;
+  bool page = false;
 };
 constexpr IdcRoute kIdcRoutes[] = {
     {kCmdDeleteBrowsingData, IDC_CLEAR_BROWSING_DATA},
     {kCmdNewIncognitoWindow, IDC_NEW_INCOGNITO_WINDOW},
     {kCmdReopenClosedTab, IDC_RESTORE_TAB},
     {kCmdOpenFile, IDC_OPEN_FILE},
-    {kCmdSavePageAs, IDC_SAVE_PAGE},
-    {kCmdPrint, IDC_PRINT},
-    {kCmdFind, IDC_FIND},
+    {kCmdSavePageAs, IDC_SAVE_PAGE, true},
+    {kCmdPrint, IDC_PRINT, true},
+    {kCmdFind, IDC_FIND, true},
     // IDC_FULLSCREEN is NOT routed: BrowserView fullscreens the reparented
     // CHILD inside the shell (chrome vanishes, nothing truly fullscreens)
     // and the exit leaves the child mispositioned. Fullscreen needs the
     // SHELL to drive it (monitor-sized borderless shell + child relayout).
-    {kCmdActualSize, IDC_ZOOM_NORMAL},
-    {kCmdZoomIn, IDC_ZOOM_PLUS},
-    {kCmdZoomOut, IDC_ZOOM_MINUS},
-    {kCmdViewSource, IDC_VIEW_SOURCE},
-    {kCmdDevTools, IDC_DEV_TOOLS},
-    {kCmdInspect, IDC_DEV_TOOLS_INSPECT},
-    {kCmdJsConsole, IDC_DEV_TOOLS_CONSOLE},
+    {kCmdActualSize, IDC_ZOOM_NORMAL, true},
+    {kCmdZoomIn, IDC_ZOOM_PLUS, true},
+    {kCmdZoomOut, IDC_ZOOM_MINUS, true},
+    {kCmdViewSource, IDC_VIEW_SOURCE, true},
+    {kCmdDevTools, IDC_DEV_TOOLS, true},
+    {kCmdInspect, IDC_DEV_TOOLS_INSPECT, true},
+    {kCmdJsConsole, IDC_DEV_TOOLS_CONSOLE, true},
     {kCmdHome, IDC_HOME},
     {kCmdShowFullHistory, IDC_SHOW_HISTORY},
     {kCmdDuplicateTab, IDC_DUPLICATE_TAB},
@@ -99,13 +104,13 @@ constexpr IdcRoute kIdcRoutes[] = {
     {kCmdTaskManager, IDC_TASK_MANAGER},
 };
 
-int IdcForCommand(UINT id) {
+const IdcRoute* RouteForCommand(UINT id) {
   for (const IdcRoute& route : kIdcRoutes) {
     if (route.cmd == id) {
-      return route.idc;
+      return &route;
     }
   }
-  return 0;
+  return nullptr;
 }
 
 }  // namespace
@@ -176,12 +181,32 @@ void PhiAppMenu::Show(int screen_x, int screen_y, bool right_align) {
   open_ = false;
 }
 
+std::wstring PhiAppMenu::Label(UINT id, const char* key) const {
+  std::wstring text = PhiStr(key);
+  ChromePrefsHost* prefs = services_->MenuPrefsHost();
+  const std::optional<std::wstring> chord =
+      prefs ? prefs->RebindableChordLabel(id) : std::nullopt;
+  if (!chord) {
+    return text;  // Not rebindable: the catalogue's own chord stands.
+  }
+  const size_t tab = text.find(L'\t');
+  if (tab != std::wstring::npos) {
+    text.erase(tab);
+  }
+  if (!chord->empty()) {
+    text += L'\t' + *chord;
+  }
+  return text;
+}
+
 void PhiAppMenu::BuildStatic() {
   // The root, top to bottom (docs/windows-native-ui.md §3.1). Chords ride
-  // the catalogue strings ("\tCtrl+T") and the painter right-aligns them.
+  // the catalogue strings ("\tCtrl+T") and the painter right-aligns them;
+  // Label() swaps in the user's chord for a rebindable command.
   auto row = [&](HMENU menu, UINT id, const char* key, const wchar_t* icon,
                  bool enabled = true) {
-    PhiMenuRow* r = rows_.AppendCommand(menu, id, PhiStr(key), icon, enabled);
+    PhiMenuRow* r =
+        rows_.AppendCommand(menu, id, Label(id, key), icon, enabled);
     if (menu == root_) {
       r->min_width_dip = kRootWidth;
     }
@@ -321,10 +346,14 @@ void PhiAppMenu::OnMenuOpening(HMENU menu) {
 }
 
 void PhiAppMenu::RefreshChromiumCommands() {
-  const BrowserId target = services_->MenuActiveBrowser();
+  const BrowserId window = services_->MenuActiveBrowser();
+  const BrowserId page = services_->MenuPageCommandBrowser();
   for (const IdcRoute& route : kIdcRoutes) {
     // MF_BYCOMMAND searches submenus, so one call from the root reaches
     // items inside Zoom / More tools. No browser attached: everything off.
+    // A page command's state is the page in front of the user's (the
+    // presented peek's, when one is up) — the one it will run on.
+    const BrowserId target = route.page ? page : window;
     const bool on = services_->MenuFramework() && target.valid() &&
                     services_->MenuFramework()->IsChromiumCommandEnabled(
                         target.value, route.idc);
@@ -343,9 +372,10 @@ void PhiAppMenu::RefreshRoot() {
   SetEnabled(root_, kCmdToggleReader,
              reader_active || services_->MenuReaderOfferable());
   SetChecked(root_, kCmdToggleReader, reader_active);
-  // Save to Folio: an http(s) page with no save of it in flight.
+  // Save to Folio: an http(s) page with no save of it in flight — the page
+  // in front of the user (the presented peek's, when one is up).
   SidebarHost* sidebar = services_->MenuSidebarHost();
-  const TabId tab = services_->MenuActiveTab();
+  const TabId tab = services_->MenuPageCommandTab();
   SetEnabled(root_, kCmdSaveToFolio,
              sidebar && tab.valid() && sidebar->CanSaveToFolio(tab.value));
 }
@@ -518,10 +548,12 @@ void PhiAppMenu::RefreshSpaces() {
   rows_.AppendSeparator(spaces_);
   const std::vector<SpaceEntry> spaces = SpaceList();
   const bool several = spaces.size() > 1;
-  rows_.AppendCommand(spaces_, kCmdNextSpace, PhiStr("appMenu.nextSpace"),
-                      nullptr, several);
+  rows_.AppendCommand(spaces_, kCmdNextSpace,
+                      Label(kCmdNextSpace, "appMenu.nextSpace"), nullptr,
+                      several);
   rows_.AppendCommand(spaces_, kCmdPreviousSpace,
-                      PhiStr("appMenu.previousSpace"), nullptr, several);
+                      Label(kCmdPreviousSpace, "appMenu.previousSpace"),
+                      nullptr, several);
   rows_.AppendSeparator(spaces_);
   bool agent_divider = false;
   for (size_t i = 0; i < spaces.size() && kSpaceFirst + i <= kSpaceLast;
@@ -601,11 +633,13 @@ void PhiAppMenu::RefreshBookmarks() {
   const bool has_rows = !services_->MenuTabRows().empty();
   const bool store = services_->MenuSidebarHost() != nullptr;
   rows_.AppendCommand(bookmarks_, kCmdBookmarkThisTab,
-                      PhiStr("appMenu.bookmarkThisTab"), fluent::kFavoriteStar,
+                      Label(kCmdBookmarkThisTab, "appMenu.bookmarkThisTab"),
+                      fluent::kFavoriteStar,
                       store && !services_->MenuNavState().url.empty() &&
                           !services_->MenuIncognito());
   rows_.AppendCommand(bookmarks_, kCmdBookmarkAllTabs,
-                      PhiStr("appMenu.bookmarkAllTabs"), nullptr,
+                      Label(kCmdBookmarkAllTabs, "appMenu.bookmarkAllTabs"),
+                      nullptr,
                       store && has_rows && !services_->MenuIncognito());
   rows_.AppendSeparator(bookmarks_);
   PhiLayoutMode mode = PhiLayoutMode::kBalanced;
@@ -615,8 +649,9 @@ void PhiAppMenu::RefreshBookmarks() {
   if (mode == PhiLayoutMode::kComfortable) {
     // The bookmarks bar is a horizontal-layout feature: the vertical layout
     // keeps bookmarks in the sidebar.
-    rows_.AppendCommand(bookmarks_, kCmdAlwaysShowBookmarkBar,
-                        PhiStr("appMenu.showBookmarksBar"), nullptr);
+    rows_.AppendCommand(
+        bookmarks_, kCmdAlwaysShowBookmarkBar,
+        Label(kCmdAlwaysShowBookmarkBar, "appMenu.showBookmarksBar"), nullptr);
     SetChecked(bookmarks_, kCmdAlwaysShowBookmarkBar,
                services_->MenuPrefsHost() &&
                    services_->MenuPrefsHost()->AlwaysShowBookmarkBar());
@@ -905,12 +940,16 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
     return true;
   }
 
-  if (const int idc = IdcForCommand(id)) {
-    if (c->MenuFramework() && target.valid()) {
+  if (const IdcRoute* route = RouteForCommand(id)) {
+    // A page command (Zoom, Print, Save Page, View Source, DevTools, Find)
+    // acts on the page in front of the user — the presented peek's, when
+    // one is up (the Mac's pageCommandTarget); the rest on the strip's.
+    const BrowserId page = route->page ? c->MenuPageCommandBrowser() : target;
+    if (c->MenuFramework() && page.valid()) {
       if (id == kCmdFind) {
         c->MenuFocusPageForFind();
       }
-      c->MenuFramework()->ExecuteChromiumCommand(target.value, idc);
+      c->MenuFramework()->ExecuteChromiumCommand(page.value, route->idc);
     }
     return true;
   }
@@ -1014,6 +1053,8 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     }
     case kCmdCopyUrl: {
+      // The nav state's url is the page in front of the user — the presented
+      // peek's, when one is up (PhiShellWindow::RebuildNavState).
       const std::wstring url = c->MenuNavState().url;
       if (url.empty() || !::OpenClipboard(c->MenuShellWindow())) {
         return true;
@@ -1037,8 +1078,11 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     }
     case kCmdStop:
-      if (c->MenuFramework() && target.valid()) {
-        c->MenuFramework()->StopLoading(target.value);
+      // Stop and Reload are page commands: the presented peek's page when
+      // one is up (MenuPageCommandBrowser), else the active tab's.
+      if (const BrowserId page = c->MenuPageCommandBrowser();
+          c->MenuFramework() && page.valid()) {
+        c->MenuFramework()->StopLoading(page.value);
       }
       return true;
     case kCmdAlwaysShowBookmarkBar:
@@ -1065,8 +1109,9 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     case kCmdReload:
     case kCmdForceReload:
-      if (c->MenuFramework() && target.valid()) {
-        c->MenuFramework()->Reload(target.value, id == kCmdForceReload);
+      if (const BrowserId page = c->MenuPageCommandBrowser();
+          c->MenuFramework() && page.valid()) {
+        c->MenuFramework()->Reload(page.value, id == kCmdForceReload);
       }
       return true;
     case kCmdAgentAutoview:
@@ -1091,9 +1136,10 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     case kCmdSaveToFolio:
       // Re-checked there: the chord arrives without the menu's enable pass.
+      // The page in front of the user — the presented peek's, when one is up.
       if (SidebarHost* sidebar = c->MenuSidebarHost();
-          sidebar && c->MenuActiveTab().valid()) {
-        sidebar->RequestSaveToFolio(c->MenuActiveTab().value);
+          sidebar && c->MenuPageCommandTab().valid()) {
+        sidebar->RequestSaveToFolio(c->MenuPageCommandTab().value);
       }
       return true;
     case kCmdOpenFolio:
@@ -1173,8 +1219,11 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
     case kCmdBookmarkThisTab:
       // Ctrl+D reaches here even though the row is greyed off the record:
       // an incognito page never becomes a regular (synced) bookmark.
+      // The page in front of the user: the presented peek's page when one
+      // is up, else the active tab's (the Mac's pageCommandTarget).
       if (c->MenuSidebarHost() && !c->MenuIncognito()) {
-        c->MenuSidebarHost()->RequestBookmarkActiveTab(c->MenuSlot().value);
+        c->MenuSidebarHost()->RequestBookmarkActiveTab(
+            c->MenuSlot().value, c->MenuPageCommandBrowser().value);
       }
       return true;
     case kCmdBookmarkAllTabs: {

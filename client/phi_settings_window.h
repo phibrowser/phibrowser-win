@@ -244,6 +244,8 @@ class PhiSettingsHost {
                               bool ctrl,
                               bool shift,
                               bool alt) = 0;
+  // A customised row's Reset: erases that one override.
+  virtual void RestoreShortcut(const std::string& name) = 0;
   virtual void RestoreAllShortcuts() = 0;
 
   // --- Developer ------------------------------------------------------------
@@ -443,8 +445,12 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   // The Mac's ProfileDetailSettingsView: the Search Engine / Download
   // Location card, then "Your Data and Settings" links. Shared by the
   // Profiles detail column and the General pane's single-profile case.
+  // `show_folio_folder` (the Mac's showsFolioFolder) adds the profile's
+  // Folio Folder row to the card; General passes false, since its own
+  // Folio section above already shows the folder.
   void BuildProfileDetail(int* y, int left, int right,
-                          const std::string& profile_id);
+                          const std::string& profile_id,
+                          bool show_folio_folder);
   // One expander card's header row (windows-native-ui.md §7.1 / §7.2):
   // a tile (a Space icon, or a profile avatar when `avatar`, a filled
   // circle with `icon` as its initial), the 14 name, the 12 hint, an
@@ -774,7 +780,11 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   std::vector<keys::PendingApproval> sync_pending_;
   std::wstring sync_action_error_;
   std::wstring sync_remove_note_;
+  // The server refused a removal with 409 last_device: the Removal row shows
+  // the account reset even when the device list has not caught up.
   bool sync_last_device_ = false;
+  // A removal or account reset is in flight: the row's button is disabled.
+  bool sync_removing_ = false;
 };
 
 }  // namespace phi_client

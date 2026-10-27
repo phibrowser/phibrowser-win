@@ -166,7 +166,8 @@ const char* RoundOutcomeName(RoundOutcome outcome) {
 bool MarkerFile::operator==(const MarkerFile& other) const {
   return marker == other.marker && store_birthday == other.store_birthday &&
          removal_pending == other.removal_pending &&
-         requires_reconfiguration == other.requires_reconfiguration;
+         requires_reconfiguration == other.requires_reconfiguration &&
+         reset_operation_id == other.reset_operation_id;
 }
 
 // --- Settings ---------------------------------------------------------------------------
@@ -454,7 +455,10 @@ void PhiSyncEngine::FinishStatusRound(uint64_t revision) {
     const OwnedTable table =
         kind->store().Load(HadRecordsFlag(spaces, kind->kind_id()), &loss);
     for (const auto& [identity, cursor] : table.cursors) {
-      pending_inbound = pending_inbound || cursor.pending_apply ||
+      // A pin parked only because its owner shape belongs to another
+      // pinned-tab scope is a dormant copy, not held work.
+      pending_inbound = pending_inbound ||
+                        (cursor.pending_apply && !cursor.parked_for_scope) ||
                         cursor.pending_tombstone ||
                         cursor.pending_partner_lineage;
       pending_outbound = pending_outbound || cursor.pending_delete;
@@ -1075,7 +1079,16 @@ void PhiSyncEngine::ApplySpaceGate(bool enabled) {
 // Space entity while the gate was shut. Nil marker FIRST, then the latch.
 bool PhiSyncEngine::ArmSpaceReplayIfNeeded() {
   const SpaceSyncTable table = LoadSpaceTable();
-  if (!table.marker_moved_while_gate_shut &&
+  // Third trigger (phibrowser-mac 48d4c4a6): a build that predates a relaxed
+  // refusal predicate walked the shared marker past every entity it refused,
+  // and refusals record nothing, so only a replay from a nil marker delivers
+  // them again. The version is latched in the same write as the drain flags,
+  // after the nil marker, so a failed write leaves it unlatched and the next
+  // live pull replays again.
+  const bool acceptance_stale =
+      table.inbound_acceptance_version <
+      SpaceSyncTable::kCurrentInboundAcceptanceVersion;
+  if (!table.marker_moved_while_gate_shut && !acceptance_stale &&
       (table.has_drained_full_replay || table.drain_in_progress)) {
     return true;
   }
@@ -1086,6 +1099,8 @@ bool PhiSyncEngine::ArmSpaceReplayIfNeeded() {
     t.marker_moved_while_gate_shut = false;
     t.has_drained_full_replay = false;
     t.drain_in_progress = true;
+    t.inbound_acceptance_version =
+        SpaceSyncTable::kCurrentInboundAcceptanceVersion;
   });
 }
 
@@ -2332,6 +2347,7 @@ void PhiSyncEngine::RetryParkedOwnedClaims(OwnedKindAdapter& kind,
     }
     it->second.pending_apply.reset();
     it->second.pending_owner_uuid.reset();
+    it->second.parked_for_scope = false;
     changed = true;
   }
   if (changed) {
@@ -2380,6 +2396,7 @@ void PhiSyncEngine::ApplyOwnedKind(OwnedKindAdapter& kind,
         const std::vector<std::string> owners = kind.Owners(item.payload);
         cursor.pending_owner_uuid =
             owners.empty() ? std::nullopt : std::optional<std::string>(owners[0]);
+        cursor.parked_for_scope = false;
       }
     }
     if (!batch.arrivals.empty() || !batch.tombstones.empty()) {
@@ -2543,6 +2560,7 @@ void PhiSyncEngine::ApplyOwnedKind(OwnedKindAdapter& kind,
     }
     cursor.pending_apply.reset();
     cursor.pending_owner_uuid.reset();
+    cursor.parked_for_scope = false;
     cursor.pending_tombstone = false;
     if (const auto it = outcome.pending_partner_lineages.find(identity);
         it != outcome.pending_partner_lineages.end()) {
@@ -2566,6 +2584,7 @@ void PhiSyncEngine::ApplyOwnedKind(OwnedKindAdapter& kind,
     harvest_server_triple(&cursor, identity);
     cursor.pending_apply = item.payload;
     cursor.pending_owner_uuid = item.pending_owner_uuid;
+    cursor.parked_for_scope = false;
   }
   for (const std::string& identity : output.plan.parked_tombstones) {
     OwnedCursor& cursor = table.cursors[identity];
@@ -2583,6 +2602,7 @@ void PhiSyncEngine::ApplyOwnedKind(OwnedKindAdapter& kind,
     cursor.pending_tombstone = false;
     cursor.pending_apply.reset();
     cursor.pending_owner_uuid.reset();
+    cursor.parked_for_scope = false;
     cursor.pending_delete = false;
   }
   for (const std::string& identity : outcome.deferred_tombstones) {
@@ -2599,10 +2619,31 @@ void PhiSyncEngine::ApplyOwnedKind(OwnedKindAdapter& kind,
         break;
       }
     }
+    // Scope-mismatch parking is a dormant copy; any other parking reason is
+    // held work.
+    cursor.parked_for_scope = outcome.parked_for_scope.count(identity) > 0;
     if (tombstoned.count(identity)) {
       cursor.pending_tombstone = true;
     }
   }
+  // Every identity this round attempted to land was decided under the
+  // current scope. Unless this round parked it for another pinned-tab scope
+  // again, it is no longer a dormant copy: a refused attempt keeps its
+  // earlier pending_apply and must count as held.
+  for (const OwnedApplyStep& step : output.plan.steps) {
+    if (outcome.parked_for_scope.count(step.identity)) {
+      continue;
+    }
+    auto cursor = table.cursors.find(step.identity);
+    if (cursor != table.cursors.end()) {
+      cursor->second.parked_for_scope = false;
+    }
+  }
+  int dormant = 0;
+  for (const auto& [identity, cursor] : table.cursors) {
+    dormant += cursor.pending_apply && cursor.parked_for_scope;
+  }
+  counters.parked_for_scope = dormant;
   counters.refused += static_cast<int>(outcome.refused.size());
   for (const std::string& identity : output.plan.cancelled_deletes) {
     auto cursor = table.cursors.find(identity);
@@ -3068,6 +3109,7 @@ void PhiSyncEngine::PublishOwnedKind(
       }
       OwnedCursor& cursor = table.cursors[identity];
       cursor.pending_apply = cursor.reconciled;
+      cursor.parked_for_scope = false;
       if (!cursor.owner_uuid) {
         if (const auto owner = snapshot.owner_uuids.find(identity);
             owner != snapshot.owner_uuids.end()) {

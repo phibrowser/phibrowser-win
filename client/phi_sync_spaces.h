@@ -53,6 +53,20 @@ struct SpaceCursor {
 struct SpaceSyncTable {
   static constexpr int kFormatVersion = 2;
   int format_version = kFormatVersion;
+  // Inbound acceptance version (the Mac's PhiSpaceSyncTable.
+  // currentInboundAcceptanceVersion). Bump it whenever an inbound refusal
+  // predicate of any kind is relaxed, so every entity an older build refused
+  // is pulled once more: a refusal records nothing and the shared data-type
+  // 2000 marker walks past it, so without a replay it never lands after an
+  // upgrade. History: 1 (2026-10) URL rule hosts of the "app:<bundle id>"
+  // form (App rules).
+  static constexpr int kCurrentInboundAcceptanceVersion = 1;
+  // The acceptance version of the build that last replayed data type 2000
+  // for this account. A table an older build wrote lacks the key and reads
+  // as 0, which arms one marker-first replay (ArmSpaceReplayIfNeeded); a
+  // fresh table starts current — its first live pull is already a full
+  // replay from a nil marker.
+  int inbound_acceptance_version = kCurrentInboundAcceptanceVersion;
   std::map<std::string, SpaceCursor> cursors;
 
   bool drain_in_progress = false;

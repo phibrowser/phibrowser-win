@@ -210,6 +210,14 @@ class PhiAppMenuShell {
   // The TREE's active tab, not the active ROW: a tab bound to a pinned cell
   // or a bookmark is no row in the list, and Ctrl+W must still close it.
   virtual TabId MenuActiveTab() const = 0;
+  // The page PAGE commands act on — Reload, Stop, Zoom, Print, Save Page,
+  // View Source, DevTools, Find, Copy URL, Bookmark, Save to Folio: the
+  // browser of the Peek presented over the active tab, else
+  // MenuActiveBrowser() (the Mac's pageCommandTarget; PhiShellWindow::
+  // PageCommandBrowser). Tab and window commands stay on MenuActiveBrowser.
+  virtual BrowserId MenuPageCommandBrowser() const = 0;
+  // That page's tab — the presented Peek's own, else MenuActiveTab().
+  virtual TabId MenuPageCommandTab() const = 0;
   virtual std::string MenuActiveSpace() const = 0;
   virtual PhiPalette MenuPalette() const = 0;
   virtual int MenuScaled(int design_units) const = 0;
@@ -372,6 +380,11 @@ class PhiAppMenu {
     bool agent = false;
   };
   std::vector<SpaceEntry> SpaceList() const;
+  // A command row's text: the catalogue string for `key`, its "\tChord"
+  // suffix replaced by the command's EFFECTIVE chord when `id` is a
+  // rebindable shortcut (ChromePrefsHost::RebindableChordLabel) — the Mac
+  // rebuilds its menu after every change; dropped while it is unbound.
+  std::wstring Label(UINT id, const char* key) const;
   void SetEnabled(HMENU menu, UINT id, bool enabled);
   void SetChecked(HMENU menu, UINT id, bool checked);
 

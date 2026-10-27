@@ -58,6 +58,10 @@ class PhiSyncKeyService {
     std::string native_sync_outcome;  // the last round's outcome
     int native_sync_pages = 0;
     bool native_sync_needs_reconfiguration = false;
+    // An account reset is journaled (marker.json resetOperationId): Set up
+    // sync again will finish it and delete the account's sync data, so the
+    // confirmation copy must say so (the Mac's resetResumePending).
+    bool reset_resume_pending = false;
     bool invalidation_stream_healthy = false;
     // The status card's "Phi data" context (the engine's SyncStatus).
     sync::SyncStatus native_sync_status;
@@ -170,7 +174,19 @@ class PhiSyncKeyService {
   void Deny(const std::string& request_id,
             std::function<void(keys::KeyStatus)> done);
   void RemoveThisDevice(std::function<void(keys::KeyStatus)> done);
+  // The account reset (the Mac's resetSyncAndRemoveThisDevice), offered on
+  // the account's only active device: the engine stops, the operation UUID
+  // is journaled in marker.json (an existing one is reused), the server
+  // deletes every sync row of the account, and only then does the shared
+  // removal cleanup run. kNotLastDevice / kDeviceNotFound: the server
+  // deleted nothing, the journal forgets the operation and local state
+  // stays. Any other failure keeps the UUID; from the moment it is
+  // journaled the snapshot reports native_sync_needs_reconfiguration and
+  // ReconfigureSync resumes the operation first.
+  void ResetSyncAndRemoveThisDevice(std::function<void(keys::KeyStatus)> done);
   // Explicitly confirmed reset; ordinary setup/retry never clears metadata.
+  // A journaled account reset is retried first with the same UUID (`reset`
+  // → cleanup with removal; a refusal → ordinary reconfiguration).
   void ReconfigureSync(std::function<void(keys::KeyStatus)> done);
 
   // --- Phi native sync (S5) -------------------------------------------------

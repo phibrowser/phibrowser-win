@@ -387,8 +387,15 @@ class PhiOmniboxShell {
   virtual PhiOmniboxCapsule OmniboxCapsule() = 0;
 
   virtual phi_framework::PhiFramework* OmniboxFramework() const = 0;
-  // The browser the slot shows — what typed text navigates.
+  // The browser the slot shows — where the suggestion query runs and a
+  // new tab is born.
   virtual BrowserId OmniboxBrowser() const = 0;
+  // The page the field DESCRIBES and a current-tab commit navigates: the
+  // browser of the Peek presented over the active tab, else OmniboxBrowser()
+  // (the Mac's pageCommandTarget seeding the omnibox, PHI-1745). A peek's
+  // page is never the strip-active tab, so a commit sent to OmniboxBrowser()
+  // would load behind the card.
+  virtual BrowserId OmniboxPageBrowser() const = 0;
   // That browser is in placeholder mode: its strip is EMPTY, so a commit
   // must birth the tab before it navigates.
   virtual bool OmniboxBrowserPlaceholding() const = 0;
@@ -504,9 +511,13 @@ class PhiOmniboxSession {
   void PaintKeyword(HDC dc);
 
   // --- Navigation state ----------------------------------------------------
-  // Re-reads the toolbar's navigation state from the active browser's
-  // snapshot (null = no browser, which clears it).
-  void RebuildNavState(const phi_framework::NavState* nav);
+  // Re-reads the toolbar's navigation state from the snapshot of
+  // `page_browser` — the page the field describes (OmniboxPageBrowser); null
+  // `nav` = no browser, which clears it. A Peek presented or closed under a
+  // focused field retargets it: the edit is dismissed (re-seeded, keys back
+  // to the page) so Enter cannot land on the page behind the vanished card.
+  void RebuildNavState(const phi_framework::NavState* nav,
+                       BrowserId page_browser);
   // Const references for the same reason as field().
   const std::wstring& nav_url() const { return nav_url_; }
   const bool& can_go_back() const { return can_go_back_; }
@@ -575,6 +586,13 @@ class PhiOmniboxSession {
   void NavigateCommitted(phi_framework::PhiFramework* framework,
                          BrowserId browser,
                          const std::string& url);
+  // The browser a CURRENT-TAB commit navigates: the page the field describes
+  // (OmniboxPageBrowser — a presented Peek's, else the window's). Invalid,
+  // with the edit dismissed, when the field was aimed at a Peek that has
+  // since closed (page JS window.close(), teardown) and the dismissal has not
+  // caught up: the submission is dropped rather than landing on the opener
+  // behind the vanished card (the Mac's navigateCurrentTab guard).
+  BrowserId CurrentTabTarget();
   // Recomputes the hint from the rows, the armed row and the typed text;
   // re-seats the EDIT and repaints the capsule when it changed.
   void UpdateKeywordHint();
@@ -607,6 +625,13 @@ class PhiOmniboxSession {
 
   // Navigation state for the client toolbar, refreshed with the tab list.
   std::wstring nav_url_;
+  // The browser nav_url_ describes (RebuildNavState's page_browser), and
+  // whether that was a presented Peek rather than the window's own browser.
+  BrowserId nav_browser_;
+  bool nav_peek_ = false;
+  // The window's own browser at that rebuild: a peek transition counts only
+  // within one window (a Space switch is not one).
+  BrowserId nav_window_;
   bool can_go_back_ = false;
   bool can_go_forward_ = false;
   bool nav_loading_ = false;

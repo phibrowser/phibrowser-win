@@ -83,6 +83,10 @@ base::DictValue CursorToDict(const sync::OwnedCursor& cursor) {
   if (cursor.pending_owner_uuid) {
     dict.Set("pendingOwnerUuid", *cursor.pending_owner_uuid);
   }
+  // Written only when set, like the Mac's optional: older files read false.
+  if (cursor.parked_for_scope) {
+    dict.Set("parkedForScope", true);
+  }
   dict.Set("pendingTombstone", cursor.pending_tombstone);
   if (cursor.pending_partner_lineage) {
     dict.Set("pendingPartnerLineage", *cursor.pending_partner_lineage);
@@ -108,6 +112,7 @@ sync::OwnedCursor CursorFromDict(const base::DictValue& dict) {
   cursor.owner_uuid = FindText(dict, "ownerUuid");
   cursor.pending_apply = FindBytes(dict, "pendingApply");
   cursor.pending_owner_uuid = FindText(dict, "pendingOwnerUuid");
+  cursor.parked_for_scope = dict.FindBool("parkedForScope").value_or(false);
   cursor.pending_tombstone = dict.FindBool("pendingTombstone").value_or(false);
   cursor.pending_partner_lineage = FindText(dict, "pendingPartnerLineage");
   cursor.pending_delete = dict.FindBool("pendingDelete").value_or(false);

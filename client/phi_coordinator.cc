@@ -646,13 +646,14 @@ void PhiCoordinator::OnProfileLoaded(const char* profile_id) {
     return;
   }
   global_mirrors_pushed_ = true;
-  // Global, once: the peek and Kiosk switches live on the framework, not a
-  // profile; the display language reconciles a PhiPreferences.json edited while
-  // the browser was closed — Chromium read its own locale pref long before
-  // this, and the first window is still to come, so it comes up in the
-  // chosen language rather than flashing the old one.
+  // Global, once: the peek, Kiosk and new-tab switches live on the framework,
+  // not a profile; the display language reconciles a PhiPreferences.json
+  // edited while the browser was closed — Chromium read its own locale pref
+  // long before this, and the first window is still to come, so it comes up
+  // in the chosen language rather than flashing the old one.
   PushPeekPreferences();
   PushKioskPreferences();
+  PushNewTabPreferences();
   PushDisplayLanguageToChromium();
 }
 
@@ -824,12 +825,16 @@ std::string PhiCoordinator::LiveUrl(SlotId slot) const {
 
 std::string PhiCoordinator::CaptureFavicon(SlotId slot, int* width,
                                            int* height) {
+  return CaptureFavicon(ResolveBrowser(slot), width, height);
+}
+
+std::string PhiCoordinator::CaptureFavicon(BrowserId browser, int* width,
+                                           int* height) {
   *width = 0;
   *height = 0;
   if (!framework_) {
     return std::string();
   }
-  const BrowserId browser = ResolveBrowser(slot);
   const TabId active = ActiveTabId(browser);
   if (!active.valid()) {
     return std::string();
@@ -983,6 +988,10 @@ std::vector<SidebarStoredItem> PhiCoordinator::SidebarStoredItems(
 std::map<int, SidebarSurface> PhiCoordinator::AttachedSurfaces(
     int64_t browser) const {
   return surface_coordinator_.registry().Surfaces(BrowserId{browser});
+}
+
+BrowserId PhiCoordinator::PresentedPeekBrowser(int64_t browser) const {
+  return surface_coordinator_.PresentedPeek(BrowserId{browser});
 }
 
 // ---- The sidebar's one mutator (docs/sidebar-architecture.md §5) ---------
@@ -2725,15 +2734,21 @@ void PhiCoordinator::ReorderSpace(const std::string& space_id, int new_index) {
   space_manager_->ReorderSpace(space_id, new_index);
 }
 
-void PhiCoordinator::RequestBookmarkActiveTab(int64_t slot_number) {
+void PhiCoordinator::RequestBookmarkActiveTab(int64_t slot_number,
+                                              int64_t browser_number) {
   const SlotId slot{slot_number};
   std::string profile_id, space_id;
   if (!framework_ || !OwnerForSlot(slot, &profile_id, &space_id)) {
     return;
   }
+  // The page in front of the user: the slot's shown browser, or the Peek
+  // presented over it, whose own browser the caller names (the Mac's
+  // pageCommandTarget — a peek's page is never the strip-active tab).
+  const BrowserId browser =
+      browser_number ? BrowserId{browser_number} : ResolveBrowser(slot);
   std::string title, url;
   if (const phi_framework::WindowSnapshot* window =
-          window_model_.Get(ResolveBrowser(slot))) {
+          window_model_.Get(browser)) {
     url = window->nav.url;
     title = window->nav.title;
   }
@@ -2741,7 +2756,7 @@ void PhiCoordinator::RequestBookmarkActiveTab(int64_t slot_number) {
     return;  // Nothing to bookmark (the Mac disables the item then).
   }
   int fw = 0, fh = 0;
-  const std::string favicon = CaptureFavicon(slot, &fw, &fh);
+  const std::string favicon = CaptureFavicon(browser, &fw, &fh);
   const std::string guid =
       tab_store_.AddBookmark(profile_id, space_id, std::string(), title, url,
                              /*folder=*/false, favicon, fw, fh);
@@ -2927,6 +2942,15 @@ void PhiCoordinator::RebindShortcut(const std::string& name,
 
 void PhiCoordinator::RestoreAllShortcuts() {
   preferences_.RestoreAllShortcuts();
+}
+
+void PhiCoordinator::RestoreShortcut(const std::string& name) {
+  preferences_.RestoreShortcut(name);
+}
+
+std::optional<std::wstring> PhiCoordinator::RebindableChordLabel(
+    UINT command) const {
+  return preferences_.RebindableChordLabel(command);
 }
 
 void PhiCoordinator::FocusWindowForBrowser(int64_t browser_window_id) {
@@ -3126,6 +3150,12 @@ void PhiCoordinator::SetOpenKioskOnCtrlAltClick(bool enabled) {
 void PhiCoordinator::PushKioskPreferences() {
   if (framework_) {
     framework_->SetKioskPreferences(preferences_.OpenKioskOnCtrlAltClick());
+  }
+}
+
+void PhiCoordinator::PushNewTabPreferences() {
+  if (framework_) {
+    framework_->SetNewTabOpensOmnibox(preferences_.NewTabOpensOmnibox());
   }
 }
 
@@ -3592,8 +3622,17 @@ void PhiCoordinator::OnPreferencesChanged(
       }
       break;
     case PreferenceChange::kShortcuts:
-      return;  // The keyboard hook reads the effective chords live.
+      // The keyboard hook reads the effective chords live; the ⋯ menus
+      // spell them in their chord column, so each is rebuilt (the Mac
+      // rebuilds its menu after every change).
+      for (PhiShellWindow* controller : registry_.Controllers()) {
+        controller->RebuildAppMenu();
+      }
+      return;
     case PreferenceChange::kNewTab:
+      // Likewise: the refill / seed tab of an empty window is decided there.
+      PushNewTabPreferences();
+      break;
     case PreferenceChange::kPreviews:
     case PreferenceChange::kAgentControl:
       // A "Deny" at the connection prompt stands only until the user next
@@ -4033,6 +4072,26 @@ void PhiCoordinator::RequireLogin() {
   // hides it; reopening after the sign-in is instant.
   if (const HWND settings = PhiSettingsWindow::Handle()) {
     ::PostMessageW(settings, WM_CLOSE, 0, 0);
+  }
+  // The session's other auxiliary windows — the Mac's closeNonBrowserWindows,
+  // which takes every non-browser window down before the login window
+  // shows, prompts and all (the sign-out is confirmed already). Kiosks
+  // close through their own WM_CLOSE, which asks the framework to close
+  // the browser (OnBrowserWindowClosing drops the window; a kiosk whose
+  // browser is gone is gone with it). Feedback and URL rules skip their
+  // discard prompts. Peek panels and the floating sidebar went with their
+  // hidden shells.
+  for (PhiKioskWindow* kiosk : registry_.Kiosks()) {
+    if (const HWND hwnd = kiosk->hwnd()) {
+      ::PostMessageW(hwnd, WM_CLOSE, 0, 0);
+    }
+  }
+  PhiFeedbackWindow::CloseForSignOut();
+  PhiUrlRulesWindow::CloseForSignOut();
+  PhiCreateSpaceWindow::CloseForSignOut();
+  PhiSyncSetupWindow::CloseForAccountChange();  // Usually gone already.
+  if (PhiImportWindow* import = PhiImportWindow::Current()) {
+    ::PostMessageW(import->hwnd(), WM_CLOSE, 0, 0);
   }
   OpenOnboarding(PhiOnboardingWindow::Page::kLogin);
 }
@@ -4895,6 +4954,21 @@ std::string PhiCoordinator::RequestCreateSpaceWithOptions(
   if (!spec.theme_id.empty()) {
     space_manager_->PinSpaceTheme(new_id, spec.theme_id, spec.saturation);
   }
+  // The Mac's afterSpaceId: the new Space lands right after the one the
+  // form opened from rather than at the row's end — while that Space still
+  // exists. Nothing else (sync, the verb) names one, so those keep
+  // appending.
+  if (!spec.after_space_id.empty()) {
+    const auto& spaces = space_manager_->model().spaces;
+    const auto source =
+        std::find_if(spaces.begin(), spaces.end(), [&](const auto& space) {
+          return space.id == spec.after_space_id;
+        });
+    if (source != spaces.end()) {
+      space_manager_->ReorderSpace(
+          new_id, static_cast<int>(source - spaces.begin()) + 1);
+    }
+  }
   RequestSwitchSpace(slot, new_id);
   return new_id;
 }
@@ -5229,6 +5303,10 @@ bool PhiCoordinator::HostSurfacePanel(
   surfaces().Attach(std::make_unique<PhiPeekPanel>(
       browser.value, hwnd, opener_window.value, opener_tab.value, opener,
       framework_, &window_model_, this));
+  // The opener's strip did not change, so nothing else re-reads its nav
+  // state — and the address field now describes the presented peek's page
+  // (PhiShellWindow::PageCommandBrowser): one coalesced rebuild.
+  opener->ScheduleRefresh();
   // The Mac's peek_view_opened: the panel actually presented. "restored"
   // never happens here — a peek is omitted from session restore.
   CaptureAnalytics(
@@ -5728,6 +5806,15 @@ void PhiCoordinator::NoteWindowSnapshot(
     // A surface's own browser: the only thing that can change in it is the
     // page (a reader's only page change that matters is leaving reader.html).
     panel->RefreshState();
+    // The origin window's address field describes a presented peek's page
+    // (PhiShellWindow::PageCommandBrowser): its nav state follows the
+    // peek's own pushes, coalesced like the window's.
+    if (panel->kind() == SidebarSurface::kPeek) {
+      if (PhiShellWindow* origin = registry_.ControllerForBrowser(
+              BrowserId{panel->origin_window_id()})) {
+        origin->ScheduleRefresh();
+      }
+    }
     return;
   }
   if (reason != phi_framework::WindowChangeReason::kFaviconReady &&

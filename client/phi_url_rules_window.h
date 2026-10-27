@@ -49,6 +49,9 @@ class PhiUrlRulesWindow : public PhiSecondaryWindow {
   static void Open(PhiSettingsHost* host, HWND anchor);
   // The open window, or null.
   static HWND Handle();
+  // Sign-out closes the window without the discard prompt (the Mac's
+  // closeNonBrowserWindows: the sign-out is confirmed already). Posted.
+  static void CloseForSignOut();
 
   ~PhiUrlRulesWindow() override;
 

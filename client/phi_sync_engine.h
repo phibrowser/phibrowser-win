@@ -86,6 +86,13 @@ struct MarkerFile {
   std::string store_birthday;
   bool removal_pending = false;
   bool requires_reconfiguration = false;
+  // The account reset's operation UUID (lowercase), journaled by the key
+  // service before the reset request so a crash, timeout or lost response
+  // retries the same operation. Set, it means an unfinished reconfiguration
+  // (the service's NeedsReconfiguration). The engine never writes it on its
+  // own: the service stops the engine before journaling and the engine does
+  // not start again while it is set, so the mirror below cannot clobber it.
+  std::optional<std::string> reset_operation_id;
   bool operator==(const MarkerFile& other) const;
 };
 
@@ -199,6 +206,10 @@ struct OwnedLandingInput {
 struct OwnedLandingOutcome {
   std::set<std::string> landed;
   std::set<std::string> parked;
+  // Subset of parked: pins whose owner resolves locally but belongs to
+  // another pinned-tab scope. Dormant copies, replanned every round but
+  // excluded from the status held / pending counts.
+  std::set<std::string> parked_for_scope;
   std::set<std::string> refused;
   std::map<std::string, std::string> reconciled;
   std::set<std::string> deleted;
@@ -361,6 +372,10 @@ struct OwnedRoundCounters {
   int excluded_unmapped_owner = 0;
   int collapsed = 0;
   int transferred = 0;
+  // Pins parked only because their owner shape belongs to another
+  // pinned-tab scope (cursor parked_for_scope): dormant copies, excluded
+  // from status, reported on their own log line.
+  int parked_for_scope = 0;
 };
 
 // §11's per-round Space counters.

@@ -539,7 +539,9 @@ ShellLayoutInputs PhiShellWindow::CurrentLayoutInputs(bool include_floating) con
     // The panel's own height: its bands (the bottom bar) fit the panel.
     in.client_height = floating_panel_h_;
   }
-  in.content_fullscreen = browsers_->content_fullscreen();
+  // The floating panel keeps its sidebar over a page in content fullscreen
+  // (the shell's own layout gives that page every pixel).
+  in.content_fullscreen = browsers_->content_fullscreen() && !floating;
   in.bookmark_bar = layout_bookmark_bar_;
   in.reader_offerable = layout_reader_;
   in.ai_enabled = kPhiAiEnabled;
@@ -1387,12 +1389,16 @@ BrowserId PhiShellWindow::OmniboxBrowser() const {
   return active_browser_id();
 }
 
+BrowserId PhiShellWindow::OmniboxPageBrowser() const {
+  return PageCommandBrowser();
+}
+
 void PhiShellWindow::OmniboxFieldPressed() {
   CloseExtensionPopup();
 }
 
 void PhiShellWindow::OmniboxFocusContent() {
-  FocusActiveBrowser();
+  FocusPageBrowser();  // The presented peek's page, when one is up.
 }
 
 void PhiShellWindow::OmniboxLeaveReader() {
@@ -1607,6 +1613,14 @@ TabId PhiShellWindow::MenuActiveTab() const {
   return active_tab_id();
 }
 
+BrowserId PhiShellWindow::MenuPageCommandBrowser() const {
+  return PageCommandBrowser();
+}
+
+TabId PhiShellWindow::MenuPageCommandTab() const {
+  return PageCommandTab();
+}
+
 std::string PhiShellWindow::MenuActiveSpace() const {
   return active_space();
 }
@@ -1625,6 +1639,13 @@ HWND PhiShellWindow::MenuAddressField() const {
 
 void PhiShellWindow::MenuFocusPageForFind() {
   const BrowserId browser = active_browser_id();
+  if (PageCommandBrowser() != browser) {
+    // Find opens inside the presented peek's own Views tree (the Mac's
+    // pageCommandTarget); its browser is a hosted child that only
+    // Chromium's activation reaches.
+    FocusPageBrowser();
+    return;
+  }
   const HWND page = browsers_->content_hwnd();
   if (!framework_ || !browser.valid() || !page || !::IsWindow(page)) {
     return;
@@ -2134,6 +2155,19 @@ bool PhiShellWindow::ForgetBrowser(BrowserId browser) {
 
 void PhiShellWindow::FocusActiveBrowser() {
   browsers_->FocusActiveBrowser();
+}
+
+void PhiShellWindow::FocusPageBrowser() {
+  const BrowserId page = PageCommandBrowser();
+  if (page == active_browser_id()) {
+    FocusActiveBrowser();
+    return;
+  }
+  // A presented Peek. As FocusActiveBrowser: never steal native focus from
+  // another application for a deferred switch or a background callback.
+  if (framework_ && page.valid() && ::GetForegroundWindow() == shell_hwnd_) {
+    framework_->FocusBrowserWindow(page.value);
+  }
 }
 
 void PhiShellWindow::RaiseCornerCaps() {
@@ -2796,10 +2830,32 @@ void PhiShellWindow::StartNewTab() {
 }
 
 void PhiShellWindow::RebuildNavState() {
+  // The field describes the page in front of the user: the Peek presented
+  // over the active tab, else the tab itself (PageCommandBrowser — the
+  // Mac's pageCommandTarget seeding the omnibox, PHI-1745). Back/Forward
+  // stay the strip tab's: over a peek they close it rather than navigate
+  // (LeaveReaderViewForNavigation), so their enablement is the opener's.
   const BrowserId browser = active_browser_id();
+  const BrowserId page = PageCommandBrowser();
   const phi_framework::WindowSnapshot* snapshot =
-      model_ && browser.valid() ? model_->Get(browser) : nullptr;
-  omnibox_->RebuildNavState(snapshot ? &snapshot->nav : nullptr);
+      model_ && page.valid() ? model_->Get(page) : nullptr;
+  phi_framework::WindowSnapshot pulled;
+  if (!snapshot && page != browser && page.valid() &&
+      PhiWindowModel::Pull(framework_, page, &pulled)) {
+    snapshot = &pulled;  // A peek presented before its first push.
+  }
+  if (!snapshot) {
+    omnibox_->RebuildNavState(nullptr, page);
+    return;
+  }
+  phi_framework::NavState nav = snapshot->nav;
+  if (page != browser) {
+    if (const phi_framework::WindowSnapshot* opener = model_->Get(browser)) {
+      nav.can_go_back = opener->nav.can_go_back;
+      nav.can_go_forward = opener->nav.can_go_forward;
+    }
+  }
+  omnibox_->RebuildNavState(&nav, page);
 }
 
 void PhiShellWindow::OpenFeedback() {
@@ -3024,9 +3080,11 @@ void PhiShellWindow::LayoutContents() {
   PlaceContentChildren(layout);
   PushSplitViewStyle();  // A layout-mode or Space change moves its inputs.
   // The tucked panel exists exactly while the sidebar is hidden in the
-  // vertical layout; a layout switch or fullscreen takes it down.
-  if (sidebar_collapsed_ && !layout.horizontal_tabs &&
-      !browsers_->content_fullscreen() && !shell_hidden_) {
+  // vertical layout; a layout switch takes it down. Content fullscreen
+  // keeps it (the Mac's floating sidebar works over a fullscreen video):
+  // the shell itself is the fullscreen window (SetShellFullscreen) and the
+  // panel its owned popup, so it stacks over the page's child.
+  if (sidebar_collapsed_ && !layout.horizontal_tabs && !shell_hidden_) {
     EnsureFloatingPanel();
     PositionFloatingPanel();
   } else {
@@ -5066,6 +5124,30 @@ const std::string& PhiShellWindow::active_tab_url() const {
   return sidebar_->active_tab_url();
 }
 
+BrowserId PhiShellWindow::PageCommandBrowser() const {
+  const BrowserId browser = active_browser_id();
+  if (services_.sidebar && browser.valid()) {
+    const BrowserId peek =
+        services_.sidebar->PresentedPeekBrowser(browser.value);
+    if (peek.valid()) {
+      return peek;
+    }
+  }
+  return browser;
+}
+
+TabId PhiShellWindow::PageCommandTab() const {
+  const BrowserId page = PageCommandBrowser();
+  if (page == active_browser_id()) {
+    return active_tab_id();
+  }
+  // A presented peek's one tab — none (rather than the opener's) while its
+  // browser's first snapshot is still on its way.
+  const phi_framework::TabSnapshot* tab =
+      model_ ? model_->ActiveTab(page) : nullptr;
+  return tab ? tab->id : TabId();
+}
+
 bool PhiShellWindow::ShowsTab(TabId tab_id) const {
   return sidebar_->ShowsTab(tab_id);
 }
@@ -5148,7 +5230,9 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
     return;
   }
   if (framework_ && ::PtInRect(&layout.reload, pt)) {
-    if (const BrowserId browser = active_browser_id(); browser.valid()) {
+    // The button describes the field's page — the presented peek's while
+    // one is up (RebuildNavState) — so it reloads that page.
+    if (const BrowserId browser = PageCommandBrowser(); browser.valid()) {
       framework_->Reload(browser.value, /*bypass_cache=*/false);
     }
     return;
@@ -6414,14 +6498,16 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
 
 RECT PhiShellWindow::FloatingPanelRect(bool expanded) const {
   // x 8, y 52 (below the 44 address row plus 8), the docked width, bottom
-  // at h − 8. The hidden endpoint is entirely outside the client area;
-  // the window is also hidden when the slide lands, removing its shadow.
+  // at h − 8; in content fullscreen there is no address row, so y 8. The
+  // hidden endpoint is entirely outside the client area; the window is
+  // also hidden when the slide lands, removing its shadow.
   RECT client = {};
   ::GetClientRect(shell_hwnd_, &client);
   POINT origin = {0, 0};
   ::ClientToScreen(shell_hwnd_, &origin);
   const int inset = Scaled(kEdgeInset);
-  const int row = Scaled(kAddressRowHeight);
+  const int row =
+      browsers_->content_fullscreen() ? 0 : Scaled(kAddressRowHeight);
   const int w = Scaled(sidebar_dip_);
   const int x = origin.x + (expanded ? inset : -w);
   const int top = origin.y + row + inset;
@@ -6892,6 +6978,13 @@ void PhiShellWindow::HideFloatingSidebar(bool animated) {
   if (!animated) {
     floating_slide_start_ = 0;
     PositionFloatingPanel();
+  }
+  if (browsers_->content_fullscreen()) {
+    // Over a fullscreen page the keyboard goes back to the page as the
+    // panel leaves (the Mac's returnKeyboardToFullscreenPage), so the next
+    // Esc leaves fullscreen through the page. Posted: Esc's own handler and
+    // the hover tick call in here.
+    ::PostMessageW(shell_hwnd_, kMsgPhiCycleFocus, kPhiFocusPage, 0);
   }
 }
 

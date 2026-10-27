@@ -40,6 +40,10 @@ std::string KeyStatusName(const KeyStatus& status) {
       return "decode";
     case KeyErrorKind::kLastActiveDevice:
       return "last_active_device";
+    case KeyErrorKind::kNotLastDevice:
+      return "not_last_device";
+    case KeyErrorKind::kDeviceNotFound:
+      return "device_not_found";
     case KeyErrorKind::kTooManyPending:
       return "too_many_pending";
     case KeyErrorKind::kNotPending:
@@ -786,6 +790,11 @@ KeyStatus ProfileKeyManager::RevokeDevice(const std::string& device_key_id) {
   return api_.RevokeDevice(device_key_id);
 }
 
+KeyStatus ProfileKeyManager::ResetAccount(const std::string& operation_id,
+                                          const std::string& device_key_id) {
+  return api_.ResetAccount(operation_id, device_key_id);
+}
+
 // --- DomainKeyManager ---------------------------------------------------------
 
 DomainKeyManager::DomainKeyManager(KeyApi& api,
@@ -1317,6 +1326,19 @@ KeyStatus SyncKeyCore::RevokeThisDevice() {
   // Remote first: a refusal (the last active device, or offline) leaves
   // everything local as it was.
   return profiles_.RevokeDevice(id);
+}
+
+KeyStatus SyncKeyCore::ResetAccountFromThisDevice(
+    const std::string& operation_id) {
+  if (retired_) {
+    return KeyStatus::Error(KeyErrorKind::kCancelled);
+  }
+  std::string id;
+  KeyStatus status = CurrentDeviceKeyId(&id);
+  if (!status.ok()) {
+    return status;
+  }
+  return profiles_.ResetAccount(operation_id, id);
 }
 
 KeyStatus SyncKeyCore::ClearLocalSyncState(bool removing_device) {

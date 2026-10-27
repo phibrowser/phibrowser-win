@@ -349,22 +349,33 @@ void PhiOmniboxSession::Commit(HWND edit) {
   shell_->OmniboxNativePageCommitting();
   // The framework resolves what was typed the way the omnibox would — a bare
   // host becomes a URL, free text becomes a search.
-  const BrowserId browser = shell_->OmniboxBrowser();
-  if (!browser.valid()) {
+  const BrowserId window = shell_->OmniboxBrowser();
+  if (!window.valid()) {
     return;  // No browser attached: nowhere for the text to go.
   }
+  BrowserId browser = window;
   if (new_tab_pending_ || shell_->OmniboxBrowserPlaceholding()) {
     // Omnibox new-tab mode — and a placeholder-mode browser, whose strip is
-    // EMPTY (Navigate alone would no-op): the tab is born on commit. The
-    // fresh tab is active, so Navigate applies the full typed-text
-    // resolution to it (NewTab itself loads URLs literally).
+    // EMPTY (Navigate alone would no-op): the tab is born on commit, in the
+    // WINDOW (never inside a peek). The fresh tab is active, so Navigate
+    // applies the full typed-text resolution to it (NewTab itself loads
+    // URLs literally).
     new_tab_pending_ = false;
-    framework->NewTab(browser.value, "");
+    framework->NewTab(window.value, "");
+  } else {
+    // The page the field describes: a presented Peek navigates in place and
+    // stays up (PHI-1745); the opener behind the card is never the target.
+    browser = CurrentTabTarget();
+    if (!browser.valid()) {
+      return;  // Aimed at a peek that closed meanwhile: dropped.
+    }
   }
-  // The typed URL replaces the ORIGIN tab's page, which the reader is
-  // covering — leave the reader, or what arrives loads unseen behind it
-  // (the Mac's closeReaderOverlayForAddressBarNavigation).
-  shell_->OmniboxLeaveReader();
+  if (browser == window) {
+    // The typed URL replaces the ORIGIN tab's page, which the reader (or a
+    // peek) is covering — leave it, or what arrives loads unseen behind it
+    // (the Mac's closeReaderOverlayForAddressBarNavigation).
+    shell_->OmniboxLeaveReader();
+  }
   framework->Navigate(browser.value, base::WideToUTF8(typed).c_str());
   shell_->OmniboxFocusContent();  // Keys belong to the page again.
 }
@@ -481,21 +492,60 @@ void PhiOmniboxSession::OnFieldChanged(HWND edit) {
 
 // --- Navigation state ----------------------------------------------------
 
-void PhiOmniboxSession::RebuildNavState(const phi_framework::NavState* nav) {
+void PhiOmniboxSession::RebuildNavState(const phi_framework::NavState* nav,
+                                        BrowserId page_browser) {
+  // A Peek presented over the page, or closed under it (its chip, Esc, page
+  // JS window.close(), teardown), moves the field to another browser. Only
+  // those two transitions count — a Space switch moves it too, and keeps
+  // its edit as before. The opener stays strip-active through a peek's
+  // close, so no focus change dismisses the edit: do it here (the Mac's
+  // omniBoxDidClear sink), or Enter lands on the opener behind the gone card.
+  const BrowserId window = shell_->OmniboxBrowser();
+  const bool peek = page_browser.valid() && page_browser != window;
+  // Same window only: a Space switch changes the window AND the page, and
+  // must keep a half-typed edit exactly as it did before peeks could seed
+  // the field.
+  const bool retargeted = window == nav_window_ && (peek || nav_peek_) &&
+                          page_browser != nav_browser_;
+  nav_window_ = window;
+  nav_browser_ = page_browser;
+  nav_peek_ = peek;
   nav_url_.clear();
   can_go_back_ = can_go_forward_ = nav_loading_ = false;
-  if (!nav) {
+  if (nav) {
+    // The NTP shows the PLACEHOLDER, not its chrome:// url (the Mac's
+    // updateDisplayedURL isNTP blank).
+    if (!PhiOmniboxHidesUrl(nav->url)) {
+      nav_url_ = base::UTF8ToWide(nav->url);
+    }
+    can_go_back_ = nav->can_go_back;
+    can_go_forward_ = nav->can_go_forward;
+    nav_loading_ = nav->loading;
+  }
+  if (retargeted && field_ && ::GetFocus() == field_) {
+    LOG(INFO) << "[PhiClient] omnibox: page target moved to browser "
+              << page_browser.value << " under the field — dismissing";
+    Sync(/*force=*/true);
+    shell_->OmniboxFocusContent();
     return;
   }
-  // The NTP shows the PLACEHOLDER, not its chrome:// url (the Mac's
-  // updateDisplayedURL isNTP blank).
-  if (!PhiOmniboxHidesUrl(nav->url)) {
-    nav_url_ = base::UTF8ToWide(nav->url);
-  }
-  can_go_back_ = nav->can_go_back;
-  can_go_forward_ = nav->can_go_forward;
-  nav_loading_ = nav->loading;
   Sync(/*force=*/false);
+}
+
+BrowserId PhiOmniboxSession::CurrentTabTarget() {
+  const BrowserId page = shell_->OmniboxPageBrowser();
+  if (nav_peek_ && page != nav_browser_) {
+    // The peek the field was seeded from is gone (or another took its place)
+    // and Enter landed before the retarget dismissed the edit: the page this
+    // submission was aimed at no longer exists, so drop it rather than
+    // navigate the opener behind the vanished card.
+    LOG(INFO) << "[PhiClient] omnibox: presented peek " << nav_browser_.value
+              << " is gone — dropping the submission";
+    Sync(/*force=*/true);
+    shell_->OmniboxFocusContent();
+    return BrowserId();
+  }
+  return page;
 }
 
 std::wstring PhiOmniboxSession::DisplayedUrl() const {
@@ -766,6 +816,24 @@ void PhiOmniboxSession::CommitRow(int index) {
   if (!browser.valid()) {
     return;
   }
+  if (!new_tab) {
+    const BrowserId page = CurrentTabTarget();
+    if (!page.valid()) {
+      ClosePopup(/*stop_query=*/true);
+      return;  // Aimed at a peek that closed meanwhile: dropped.
+    }
+    if (page != browser) {
+      // Chromium opens a CURRENT_TAB match in the browser the query ran in
+      // — the opener behind the card. The presented peek's page takes the
+      // row's destination directly instead (the Mac's rule); as any native
+      // navigation, the match skips Chromium's shortcut learning.
+      const std::wstring& url = row.url.empty() ? row.fill : row.url;
+      framework->Navigate(page.value, base::WideToUTF8(url).c_str());
+      ClosePopup(/*stop_query=*/true);
+      shell_->OmniboxFocusContent();
+      return;
+    }
+  }
   framework->OpenOmniboxMatch(browser.value, line, new_tab);
   ClosePopup(/*stop_query=*/false);
   shell_->OmniboxFocusContent();
@@ -1032,12 +1100,25 @@ void PhiOmniboxSession::NavigateCommitted(
     BrowserId browser,
     const std::string& url) {
   shell_->OmniboxNativePageCommitting();
+  // As Commit: `browser` is the WINDOW's, where a new tab is born; otherwise
+  // the page the field describes — a presented peek navigates in place.
+  BrowserId target = browser;
   if (new_tab_pending_ || shell_->OmniboxBrowserPlaceholding()) {
     new_tab_pending_ = false;  // As Commit: the tab is born on commit.
     framework->NewTab(browser.value, "");
+  } else {
+    target = CurrentTabTarget();
+    if (!target.valid()) {
+      // Aimed at a peek that closed meanwhile: dropped, the chip with it.
+      ExitKeyword(std::wstring(), /*requery=*/false);
+      Sync(/*force=*/true);
+      return;
+    }
   }
-  shell_->OmniboxLeaveReader();
-  framework->Navigate(browser.value, url.c_str());
+  if (target == browser) {
+    shell_->OmniboxLeaveReader();
+  }
+  framework->Navigate(target.value, url.c_str());
   // The chip (if up) comes down with the commit; the URL fills the field
   // once the navigation reports, as after any commit.
   ExitKeyword(std::wstring(), /*requery=*/false);

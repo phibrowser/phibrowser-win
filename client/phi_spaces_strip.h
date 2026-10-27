@@ -358,7 +358,6 @@ class PhiSpacesStrip {
   std::string pending_card_;     // Scheduled, awaiting the delay.
   std::string suppressed_card_;  // Clicked; no card until hover-off.
   std::wstring card_profile_;
-  COLORREF card_accent_ = 0;
   int card_shortcut_ = 0;  // 1-based Ctrl+N digit; 0 = past the ninth.
   // The flyout's type (name 12/600, hint 11, keycap 10), per DPI.
   HFONT card_name_font_ = nullptr;
@@ -375,6 +374,7 @@ class PhiSpacesStrip {
   std::unique_ptr<PhiCreateSpacePanel> form_;
   bool creating_ = false;
   std::wstring creating_icon_;
+  std::string creating_source_;  // The active Space as the form opened.
   std::optional<PhiPalette> preview_palette_;
   bool preview_until_switch_ = false;
 

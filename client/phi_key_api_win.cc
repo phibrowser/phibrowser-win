@@ -13,6 +13,7 @@
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/logging.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "phibrowser-win/client/phi_file_io.h"
@@ -82,6 +83,17 @@ std::optional<base::Value> ParseJson(const std::string& body) {
 
 KeyStatus Unexpected(int status, const std::string& body) {
   return KeyStatus::Http(status, BodyText(body));
+}
+
+// The `code` of a /keys/v1 error body ({"code": "...", "message": "..."}),
+// or "" when the body is not one (KeyEnvelopeAPIClient.errorCode). Refusals
+// that change what the client does next are matched on this code, never on
+// the status alone.
+std::string ErrorCode(const std::string& body) {
+  std::optional<base::Value> json = ParseJson(body);
+  const base::DictValue* dict = json ? json->GetIfDict() : nullptr;
+  const std::string* code = dict ? dict->FindString("code") : nullptr;
+  return code ? *code : std::string();
 }
 
 // KeyEnvelopeAPIClient.mapJoinError.
@@ -350,8 +362,45 @@ KeyStatus PhiKeyApiClient::RevokeDevice(const std::string& device_key_id) {
   if (r.status == 200 || r.status == 204) {
     return KeyStatus::Ok();
   }
-  if (r.status == 409) {
+  // 409 means the last active device ONLY with the body code `last_device`
+  // (the server's locked decision; the client never pre-probes the device
+  // count). Any other 409 is an ordinary failure.
+  if (r.status == 409 && ErrorCode(r.body) == "last_device") {
     return KeyStatus::Error(KeyErrorKind::kLastActiveDevice);
+  }
+  return Unexpected(r.status, r.body);
+}
+
+KeyStatus PhiKeyApiClient::ResetAccount(const std::string& operation_id,
+                                        const std::string& device_key_id) {
+  // The server keeps no receipt; a retry with the same operation id is
+  // answered from the account's state, so a retry after a lost success
+  // answers `reset` again. 409 not_last_device (another device is active)
+  // and 404 device_not_found (the account was re-enrolled without this
+  // device) deleted nothing.
+  base::DictValue body;
+  body.Set("device_key_id", device_key_id);
+  Response r;
+  KeyStatus status = Send(
+      L"PUT", "/keys/v1/reset-operations/" + base::ToLowerASCII(operation_id),
+      &body, &r);
+  if (!status.ok()) {
+    return status;
+  }
+  if (r.status == 200) {
+    std::optional<base::Value> json = ParseJson(r.body);
+    const base::DictValue* dict = json ? json->GetIfDict() : nullptr;
+    const std::string* outcome = dict ? dict->FindString("outcome") : nullptr;
+    return outcome && *outcome == "reset"
+               ? KeyStatus::Ok()
+               : KeyStatus::Error(KeyErrorKind::kDecode);
+  }
+  const std::string code = ErrorCode(r.body);
+  if (r.status == 409 && code == "not_last_device") {
+    return KeyStatus::Error(KeyErrorKind::kNotLastDevice);
+  }
+  if (r.status == 404 && code == "device_not_found") {
+    return KeyStatus::Error(KeyErrorKind::kDeviceNotFound);
   }
   return Unexpected(r.status, r.body);
 }

@@ -49,8 +49,13 @@ enum class KeyErrorKind {
   kTransport,  // offline, DNS, TLS
   kHttp,       // an unexpected status; http_status + detail (the body)
   kDecode,     // a response that does not parse
-  // Mapped statuses (KeyEnvelopeAPIClient's own mapping).
-  kLastActiveDevice,  // revoke: 409
+  // Mapped statuses (KeyEnvelopeAPIClient's own mapping). Refusals that
+  // change what the client does next are matched on the error body's
+  // `code`, never on the status alone.
+  kLastActiveDevice,  // revoke: 409 last_device
+  // The account reset's two refusals; neither deleted anything server-side.
+  kNotLastDevice,     // reset: 409 not_last_device
+  kDeviceNotFound,    // reset: 404 device_not_found
   kTooManyPending,    // join: 429
   kNotPending,        // join: 409
   kNotFound,          // join: 404
@@ -151,6 +156,13 @@ class KeyApi {
   virtual KeyStatus GetDeviceEnvelope(const std::string& device_key_id,
                                       std::optional<Bytes>* out) = 0;
   virtual KeyStatus RevokeDevice(const std::string& device_key_id) = 0;
+  // PUT /keys/v1/reset-operations/{operation_id}: the account's last active
+  // device deletes every server-side sync row of the account (keys
+  // included). Idempotent by operation id with no receipt: a retry after a
+  // lost success answers `reset` again. kNotLastDevice / kDeviceNotFound
+  // deleted nothing.
+  virtual KeyStatus ResetAccount(const std::string& operation_id,
+                                 const std::string& device_key_id) = 0;
   virtual KeyStatus PostJoinRequest(const Bytes& public_key,
                                     const std::string& name,
                                     const std::string& platform,
@@ -450,6 +462,11 @@ class ProfileKeyManager {
   bool RemoveAllMappings();
   std::map<std::string, std::string> AllMappings() const;
   KeyStatus RevokeDevice(const std::string& device_key_id);
+  // Account reset: THIS device, the last active one, deletes the account's
+  // server-side sync data. kNotLastDevice / kDeviceNotFound: the server
+  // refused and deleted nothing.
+  KeyStatus ResetAccount(const std::string& operation_id,
+                         const std::string& device_key_id);
 
   static std::optional<Bytes> SealPayload(const ProfilePayloadCodec& codec,
                                           const Bytes& key,
@@ -595,6 +612,11 @@ class SyncKeyCore {
   // Remote refusal leaves local state untouched. The service journals the
   // successful removal before calling ClearLocalSyncState.
   KeyStatus RevokeThisDevice();
+  // The account reset for THIS device under `operation_id` (journaled by
+  // the service before the call). Remote first, like RevokeThisDevice: a
+  // refusal (kNotLastDevice, kDeviceNotFound) or a transport failure leaves
+  // everything local as it was.
+  KeyStatus ResetAccountFromThisDevice(const std::string& operation_id);
   // Idempotent local cleanup, also used for confirmed reconfiguration.
   KeyStatus ClearLocalSyncState(bool removing_device);
 

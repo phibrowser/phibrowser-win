@@ -829,3 +829,78 @@ Not yet:
 - **Local data removal**: the Mac's UserDataRemoval runs for account
   deletion and the debug "Clear User Data"; Windows has neither flow, so
   nothing to port yet.
+
+### Mac parity ports (2026-10-27)
+
+- **Pins parked for another pinned-tab scope** (Mac 4d6a7bf2, #206):
+  `OwnedCursor.parked_for_scope` (file key `parkedForScope`, absent = false)
+  marks a pin landing parked only because its owner resolves locally but in
+  another scope (owner `app`, a mapped Space or a mapped Profile while the
+  device runs another scope — a dormant copy of another shape). Set from
+  `OwnedLandingOutcome.parked_for_scope` (PinOwnedKind::Land), cleared on
+  every other cursor write (arrival, land, tombstone, pending-delete,
+  minted write-back, any other parking) and for every identity a landing
+  round attempted without parking it for scope again. `FinishStatusRound`
+  folds `pending_apply` into pending inbound only when the flag is clear,
+  so such a device is not "Needs attention" forever; the copy is still
+  replanned every round and lands when the scope changes. The engine has no
+  logger, so the per-kind count travels as
+  `OwnedRoundCounters.parked_for_scope` and the key service logs
+  `[PhiSync] pins parked for another scope=N`.
+- **Full sync reset from the last device** (Mac 055df916, PHI-1797):
+  `KeyApi::ResetAccount` = `PUT /keys/v1/reset-operations/{uuid}` with
+  `{"device_key_id"}`; 200 `{"outcome":"reset"}` → ok, 409 `not_last_device`
+  → `kNotLastDevice`, 404 `device_not_found` → `kDeviceNotFound` (matched on
+  the body `code`; any other status is `kHttp`). `RevokeDevice` now maps 409
+  to `kLastActiveDevice` ONLY with code `last_device`. `MarkerFile.
+  reset_operation_id` (`resetOperationId`) is the journal:
+  `PhiSyncKeyService::ResetSyncAndRemoveThisDevice` stops the engine
+  (which writes marker.json from its mirror — no file lock needed because
+  the engine never starts while the UUID is set), journals the UUID
+  (reusing one left by an earlier attempt), PUTs, and on `reset` runs the
+  shared removal cleanup (`ClearLocalSyncState(true)` → marker deleted →
+  UUID gone). A refusal clears the UUID and leaves local state; any other
+  failure keeps it. `Worker::NeedsReconfiguration()` is true while the
+  UUID is set, so a relaunched device offers "Set up sync again";
+  `ReconfigureSync` retries the journaled PUT first (`reset` → cleanup with
+  removal; refusal → plain reconfiguration; other failure → reported, UUID
+  kept). `Snapshot.reset_resume_pending` picks the confirmation copy
+  (`sync.reconfigure.resumeResetBody.windows`); a journaled reset also
+  hides the exposed keys like a pending removal. Settings → Sync "Removal"
+  is ONE row: "Reset sync / Reset…" when the device list shows this PC as
+  the only active device or after a `last_device` refusal (two destructive
+  confirmations: the row, then `sync.removal.resetConfirm*`), otherwise
+  "Remove this PC from sync / Remove…"; `not_last_device` shows
+  `sync.removal.resetRefusedNotLastDevice.windows` and reloads the list.
+  Control pipe: `agentSpace.sync.keyOp` op `resetAccount`. The marker lives
+  under the account dir on Windows, so nothing about account switching
+  changes (the Mac's single marker store needed the keep-journal rule).
+  Strings: Mac `sync.removal.*` keys reused where the copy is device-neutral
+  (translations join by key); PC-worded variants carry a `.windows` suffix
+  and are English-only until the translation repo has them (the generator
+  joins by key, so reusing a Mac key would attach "this Mac" translations).
+  Retired keys: `settings.sync.recoveryTitle/Body`, `settings.sync.remove`,
+  `settings.sync.remove.lastDevice` (their Mac sources were deleted in
+  3b450442/055df916; a regen would have dropped them to English anyway).
+- **App URL rules** (Mac 48d4c4a6, #220): an App rule is an ordinary rule
+  whose host is `app:` + lowercased bundle id, path prefix empty
+  (`store::IsSourceAppRuleHost`: prefix case-insensitive, remainder
+  non-empty and colon-free). `UrlRuleKind::Refuses` accepts it before the
+  colon → `kMalformedHost` test. `SpaceSyncTable.inbound_acceptance_version`
+  (`inboundAcceptanceVersion`, absent = 0, fresh table = current = 1) is the
+  third `ArmSpaceReplayIfNeeded` trigger: a table an older build wrote
+  replays data type 2000 once (marker nil first, version latched in the same
+  write as the drain flags) so the rules that build refused — which recorded
+  nothing — arrive. `UrlRuleMatchType::kSourceApp` shows the row in the URL
+  rules editor as "App" with the bare bundle id (retargetable, ask-able,
+  deletable; the picker still offers the four Windows kinds, so none is
+  created here); `PushRoutingTableNow` skips App rules (Windows cannot know
+  which app opened a URL, matching stays Mac-only). The Mac's
+  `space gate open (… acceptance=a/b)` log line has no counterpart (pure
+  engine, no logger).
+- Host tests for these live outside the public repo (test/model was removed
+  in 4f538b2): the engine, key-layer and URL-router suites were restored from
+  that commit's parent, brought up to date with the current interfaces, and
+  extended (`TestPinParkedForAnotherScopeIsNotHeld`,
+  `TestAppRuleHostIsAccepted`, `TestStaleAcceptanceVersionReplaysOnce`,
+  App-rule cases in url_router_test); they pass against this tree.

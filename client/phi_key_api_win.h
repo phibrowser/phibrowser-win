@@ -49,6 +49,8 @@ class PhiKeyApiClient : public keys::KeyApi {
   keys::KeyStatus GetDeviceEnvelope(const std::string& device_key_id,
                                     std::optional<keys::Bytes>* out) override;
   keys::KeyStatus RevokeDevice(const std::string& device_key_id) override;
+  keys::KeyStatus ResetAccount(const std::string& operation_id,
+                               const std::string& device_key_id) override;
   keys::KeyStatus PostJoinRequest(const keys::Bytes& public_key,
                                   const std::string& name,
                                   const std::string& platform,

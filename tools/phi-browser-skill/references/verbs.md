@@ -2210,7 +2210,7 @@ Starts one sync key-layer operation (the setup window's and Settings ▸ Sync's 
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
-| `op` | string | yes | — | unlock, resolve, beginSetup, bootstrap, requestJoin, pollJoin, cancelJoin, recover, startPairing, applyDecisions, refresh, approve, deny, removeDevice, peek (read-only: the account's Phi sync data), syncNow (a Phi native sync round). |
+| `op` | string | yes | — | unlock, resolve, beginSetup, bootstrap, requestJoin, pollJoin, cancelJoin, recover, startPairing, applyDecisions, refresh, approve, deny, removeDevice, resetAccount (the last active device deletes the account's sync data, then removes itself), peek (read-only: the account's Phi sync data), syncNow (a Phi native sync round). |
 | `requestId` | string | no | — | pollJoin / cancelJoin / approve / deny: the join request. |
 | `code` | string | no | — | recover: the recovery code. |
 | `confirm` | string | no | — | bootstrap: must be "bootstrap" (it creates the account's keys). |

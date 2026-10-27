@@ -16,6 +16,7 @@
 
 #include "base/json/json_writer.h"
 #include "base/logging.h"
+#include "base/uuid.h"
 #include "base/values.h"
 #include "phibrowser-win/client/phi_auth.h"
 #include "phibrowser-win/client/phi_favicon_fetch.h"
@@ -445,9 +446,57 @@ struct PhiSyncKeyService::Worker {
     space_access.reset();
   }
 
+  // True while confirmed cleanup is unfinished. A journaled account reset
+  // counts: its resetOperationId is the durable mark of a reset whose
+  // outcome this PC has not recorded yet, so it must resume through Set up
+  // sync again (ReconfigureSync) and never be replayed against an account
+  // set up afresh. While the request is in flight the flag is true as well,
+  // which keeps the engine and the pairing flow out.
   bool NeedsReconfiguration() {
-    return cleanup_pending || marker_store.Load().requires_reconfiguration ||
+    const sync::MarkerFile journal = marker_store.Load();
+    return cleanup_pending || journal.requires_reconfiguration ||
+           journal.reset_operation_id.has_value() ||
            (engine && engine->requires_reconfiguration());
+  }
+
+  // Records the account reset's operation UUID before the request goes out
+  // (the Mac's journalResetOperation), so a crash, timeout or lost response
+  // retries the same operation. The engine writes marker.json from its own
+  // mirror and would save over the journal, so it is stopped first; it does
+  // not start again while the UUID is set (NeedsReconfiguration).
+  KeyStatus JournalResetOperation(const std::string& operation_id) {
+    StopEngine();
+    sync::MarkerFile journal = marker_store.Load();
+    if (journal.reset_operation_id == operation_id) {
+      return KeyStatus::Ok();
+    }
+    journal.reset_operation_id = operation_id;
+    return marker_store.Save(journal)
+               ? KeyStatus::Ok()
+               : KeyStatus::Error(KeyErrorKind::kStorage, "reset journal");
+  }
+
+  // Sends the journaled reset. The server's two refusals deleted nothing, so
+  // the journal forgets the operation before the refusal propagates; every
+  // other error leaves it for the retry.
+  KeyStatus RequestAccountReset(const std::string& operation_id) {
+    const KeyStatus status = core.ResetAccountFromThisDevice(operation_id);
+    if (status.ok()) {
+      LOG(INFO) << "[PhiSync] account reset accepted by the server";
+    } else if (status.kind == KeyErrorKind::kNotLastDevice ||
+               status.kind == KeyErrorKind::kDeviceNotFound) {
+      LOG(INFO) << "[PhiSync] account reset refused ("
+                << keys::KeyStatusName(status) << ")";
+      sync::MarkerFile journal = marker_store.Load();
+      journal.reset_operation_id.reset();
+      // A failed save leaves a UUID the server will refuse again; nothing
+      // depends on it.
+      marker_store.Save(journal);
+    } else {
+      LOG(WARNING) << "[PhiSync] account reset failed ("
+                   << keys::KeyStatusName(status) << ")";
+    }
+    return status;
   }
 
   KeyStatus ClearLocalSyncState(bool removing_device) {
@@ -526,6 +575,14 @@ struct PhiSyncKeyService::Worker {
       for (const char* label : {"bookmarks", "pins"}) {
         const auto it = owned.find(label);
         landed_rows = landed_rows || (it != owned.end() && it->second.applied > 0);
+      }
+      // Dormant copies parked for another pinned-tab scope are excluded
+      // from status; their own line keeps the round line unchanged.
+      for (const auto& [label, counters] : owned) {
+        if (counters.parked_for_scope > 0) {
+          LOG(INFO) << "[PhiSync] " << label << " parked for another scope="
+                    << counters.parked_for_scope;
+        }
       }
       // Also once per session: rows an earlier run landed.
       if (landed_rows || !favicon_startup_done) {
@@ -633,7 +690,12 @@ struct PhiSyncKeyService::Worker {
     if (NeedsReconfiguration()) {
       snapshot.native_sync_needs_reconfiguration = true;
       snapshot.native_sync_status.phase = sync::SyncPhase::kNeedsAttention;
-      if (cleanup_pending || marker_store.Load().removal_pending) {
+      const sync::MarkerFile journal = marker_store.Load();
+      snapshot.reset_resume_pending = journal.reset_operation_id.has_value();
+      // A journaled account reset means this PC is leaving the account, like
+      // a pending removal: nothing of its keys reaches Chromium meanwhile.
+      if (cleanup_pending || journal.removal_pending ||
+          snapshot.reset_resume_pending) {
         snapshot.exposed.clear();
         snapshot.paired = false;
       }
@@ -1334,11 +1396,63 @@ void PhiSyncKeyService::RemoveThisDevice(std::function<void(KeyStatus)> done) {
   });
 }
 
+void PhiSyncKeyService::ResetSyncAndRemoveThisDevice(
+    std::function<void(KeyStatus)> done) {
+  Post([done = std::move(done)](Worker& w) -> std::function<void()> {
+    // Server first, like RemoveThisDevice: journal the operation (an earlier
+    // attempt's UUID is reused so the server answers the same operation),
+    // let the server delete the account's sync data, then the shared
+    // cleanup. A refusal or a transport failure leaves local state as it was.
+    const std::string operation_id =
+        w.marker_store.Load().reset_operation_id.value_or(
+            base::Uuid::GenerateRandomV4().AsLowercaseString());
+    KeyStatus status = w.JournalResetOperation(operation_id);
+    if (status.ok()) {
+      status = w.RequestAccountReset(operation_id);
+      if (!w.retired && (status.kind == KeyErrorKind::kNotLastDevice ||
+                         status.kind == KeyErrorKind::kDeviceNotFound)) {
+        // Refused and forgotten: the account still syncs, so the engine the
+        // journal step stopped comes back now rather than at the next
+        // periodic round.
+        w.RunRound(&sync::PhiSyncEngine::PullOnce);
+      }
+    }
+    if (status.ok() && !w.retired) {
+      status = w.ClearLocalSyncState(/*removing_device=*/true);
+    }
+    return [done, status] { done(status); };
+  });
+}
+
 void PhiSyncKeyService::ReconfigureSync(std::function<void(KeyStatus)> done) {
   Post([done = std::move(done)](Worker& w) -> std::function<void()> {
-    const KeyStatus status = w.NeedsReconfiguration()
-        ? w.ClearLocalSyncState(/*removing_device=*/false)
-        : KeyStatus::Error(KeyErrorKind::kCancelled);
+    if (!w.NeedsReconfiguration()) {
+      return [done] { done(KeyStatus::Error(KeyErrorKind::kCancelled)); };
+    }
+    // An account reset whose outcome this PC never recorded (a lost
+    // response, or a crash between the server's answer and the end of
+    // cleanup) is retried first with the same UUID. The server answers a
+    // finished reset with `reset` again; a refusal turns this back into an
+    // ordinary reconfiguration; any other failure is reported and retried
+    // by the next Set up sync again.
+    bool removing_device = false;
+    if (const std::optional<std::string> operation_id =
+            w.marker_store.Load().reset_operation_id) {
+      w.StopEngine();
+      const KeyStatus reset = w.RequestAccountReset(*operation_id);
+      if (reset.ok()) {
+        removing_device = true;
+      } else if (reset.kind == KeyErrorKind::kNotLastDevice ||
+                 reset.kind == KeyErrorKind::kDeviceNotFound) {
+        LOG(INFO) << "[PhiSync] pending account reset was refused; "
+                     "reconfiguring without it";
+      } else {
+        return [done, reset] { done(reset); };
+      }
+    }
+    const KeyStatus status =
+        w.retired ? KeyStatus::Error(KeyErrorKind::kCancelled)
+                  : w.ClearLocalSyncState(removing_device);
     return [done, status] { done(status); };
   });
 }

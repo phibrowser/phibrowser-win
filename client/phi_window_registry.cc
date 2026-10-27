@@ -180,6 +180,15 @@ PhiKioskWindow* PhiWindowRegistry::Kiosk(BrowserId browser) const {
   return it == kiosks_.end() ? nullptr : it->second.get();
 }
 
+std::vector<PhiKioskWindow*> PhiWindowRegistry::Kiosks() const {
+  std::vector<PhiKioskWindow*> out;
+  out.reserve(kiosks_.size());
+  for (const auto& [browser, kiosk] : kiosks_) {
+    out.push_back(kiosk.get());
+  }
+  return out;
+}
+
 void PhiWindowRegistry::AddPending(phi_framework::RequestToken token,
                                    PendingCreation creation) {
   if (token.valid()) {

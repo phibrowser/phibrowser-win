@@ -107,12 +107,20 @@ enum class UrlRuleMatchType {
   kDomain,          // exact host only
   kDomainContains,  // host contains a substring ("*needle*")
   kUrl,             // exact host + path prefix
+  // The Mac's App rule ("app:<bundle id>", phibrowser-mac 48d4c4a6): links a
+  // named Mac app opens. Windows shows, retargets, asks and deletes such a
+  // row but never creates one, and never matches it (only the Mac knows
+  // which app sent a URL).
+  kSourceApp,
 };
 
 inline UrlRuleMatchType UrlRuleMatchTypeOf(const std::string& host,
                                            const std::string& path_prefix) {
   if (!path_prefix.empty()) {
     return UrlRuleMatchType::kUrl;
+  }
+  if (store::IsSourceAppRuleHost(host)) {
+    return UrlRuleMatchType::kSourceApp;
   }
   if (host.size() > 2 && host.front() == '*' && host.back() == '*') {
     return UrlRuleMatchType::kDomainContains;
@@ -134,6 +142,8 @@ inline std::string UrlRuleDisplayValue(const std::string& host,
       return host.substr(1, host.size() - 2);
     case UrlRuleMatchType::kUrl:
       return host + path_prefix;
+    case UrlRuleMatchType::kSourceApp:
+      return host.substr(store::kSourceAppRuleHostPrefix.size());
     case UrlRuleMatchType::kDomain:
       break;
   }
@@ -225,6 +235,18 @@ inline void UrlRuleEncode(UrlRuleMatchType type,
         needle.pop_back();
       }
       *host = needle.empty() ? std::string() : "*" + needle + "*";
+      break;
+    }
+    case UrlRuleMatchType::kSourceApp: {
+      // The row shows the bare bundle id; a pasted "app:" prefix is not
+      // doubled. The id is case-insensitive and already lowercased above.
+      const std::string bare =
+          store::IsSourceAppRuleHost(value)
+              ? value.substr(store::kSourceAppRuleHostPrefix.size())
+              : value;
+      *host = bare.empty() || bare.find(':') != std::string::npos
+                  ? std::string()
+                  : std::string(store::kSourceAppRuleHostPrefix) + bare;
       break;
     }
     case UrlRuleMatchType::kUrl:

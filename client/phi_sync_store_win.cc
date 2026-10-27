@@ -81,6 +81,10 @@ sync::MarkerFile PhiSyncMarkerFile::Load() {
   file.removal_pending = dict.FindBool("removalPending").value_or(false);
   file.requires_reconfiguration =
       dict.FindBool("requiresReconfiguration").value_or(false);
+  if (const std::string* op = dict.FindString("resetOperationId");
+      op && !op->empty()) {
+    file.reset_operation_id = *op;
+  }
   return file;
 }
 
@@ -100,6 +104,9 @@ bool PhiSyncMarkerFile::Save(const sync::MarkerFile& file) {
   }
   if (file.requires_reconfiguration) {
     dict.Set("requiresReconfiguration", true);
+  }
+  if (file.reset_operation_id) {
+    dict.Set("resetOperationId", *file.reset_operation_id);
   }
   return Write(path_, dict);
 }
@@ -322,6 +329,10 @@ sync::SpaceSyncTable PhiSpaceTableFile::Load() {
   for (const TableFlag& flag : kTableFlags) {
     table.*(flag.field) = dict.FindBool(flag.name).value_or(false);
   }
+  // An absent key is a table an older build wrote: it may have refused
+  // entities this build accepts, so it reads as version 0 and replays once.
+  table.inbound_acceptance_version =
+      dict.FindInt("inboundAcceptanceVersion").value_or(0);
   table.last_drained_birthday = FindText(dict, "lastDrainedBirthday");
   if (const base::ListValue* kinds = dict.FindList("replayedKinds")) {
     for (const base::Value& kind : *kinds) {
@@ -358,6 +369,7 @@ bool PhiSpaceTableFile::Save(const sync::SpaceSyncTable& table) {
     for (const TableFlag& flag : kTableFlags) {
       dict.Set(flag.name, table.*(flag.field));
     }
+    dict.Set("inboundAcceptanceVersion", table.inbound_acceptance_version);
     if (table.last_drained_birthday) {
       dict.Set("lastDrainedBirthday", *table.last_drained_birthday);
     }

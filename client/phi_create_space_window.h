@@ -45,6 +45,8 @@ class PhiCreateSpaceWindow : public PhiSecondaryWindow,
                    HWND anchor = nullptr);
   // The shell that owns the request is going away: the form goes with it.
   static void CloseIfBoundTo(PhiShellWindow* controller);
+  // Sign-out: the form goes, whichever shell it belongs to.
+  static void CloseForSignOut();
   // A profile the form asked for ("New Profile…") has appeared in
   // `controller`'s slot: the form's picker selects it.
   static void NoteProfileCreated(PhiShellWindow* controller,

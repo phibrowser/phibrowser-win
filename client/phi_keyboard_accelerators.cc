@@ -25,26 +25,21 @@ namespace {
 // creates exactly one for the process lifetime.
 PhiKeyboardAccelerators* g_accelerators = nullptr;
 
-// The menu bar's FIXED shortcuts, reserved the way Chrome reserves its
-// browser shortcuts (they fire even while a page has focus). Edit keys
-// (Ctrl+C/V/X/Z/A...) stay with the web content; everything a user can
-// rebind lives in the preferences' rebindable table, not here.
+// The FIXED shortcuts, reserved the way Chrome reserves its browser
+// shortcuts (they fire even while a page has focus): Quit (the Mac locks ⌘Q
+// the same way), F5, the app menu's keys and the Ctrl+1..9 Space switch.
+// Edit keys (Ctrl+C/V/X/Z/A...) stay with the web content; everything a
+// user can rebind — Open File, Print, Find, zoom, View Source, DevTools,
+// Back / Forward / Home, Settings and the rest — lives in the preferences'
+// rebindable table, not here.
 constexpr PhiKeyboardAccelerators::Accelerator kAccelerators[] = {
     {'Q', true, true, false, kCmdQuit},
-    {'O', true, false, false, kCmdOpenFile},
-    {'P', true, false, false, kCmdPrint},
-    {'F', true, false, false, kCmdFind},
     {VK_F5, false, false, false, kCmdReload},
-    {'U', true, false, false, kCmdViewSource},
-    {'I', true, true, false, kCmdDevTools},
-    {'J', true, true, false, kCmdJsConsole},
     // F11 deliberately unbound — see the menu bar's IDC_FULLSCREEN note.
-    {'0', true, false, false, kCmdActualSize},
-    {VK_OEM_PLUS, true, false, false, kCmdZoomIn},
+    // The numeric keypad's zoom twins; Ctrl++ / Ctrl+- themselves are the
+    // rebindable zoomIn / zoomOut rows.
     {VK_ADD, true, false, false, kCmdZoomIn},
-    {VK_OEM_MINUS, true, false, false, kCmdZoomOut},
     {VK_SUBTRACT, true, false, false, kCmdZoomOut},
-    {VK_OEM_COMMA, true, false, false, kCmdPreferences},
     // The app menu (docs/windows-native-ui.md §3.3): F10, Alt+F, Alt+E
     // (Chrome's and Edge's mnemonics). The solo Alt tap posts the same
     // command from OnKey.
@@ -52,10 +47,6 @@ constexpr PhiKeyboardAccelerators::Accelerator kAccelerators[] = {
     {'F', false, false, true, kCmdShowAppMenu},
     {'E', false, false, true, kCmdShowAppMenu},
     // Ctrl+Tab / Ctrl+Shift+Tab are handled in OnKey — the MRU switcher.
-    // Alt+Left/Right/Home — the history chords Chrome reserves.
-    {VK_LEFT, false, false, true, kCmdBack},
-    {VK_RIGHT, false, false, true, kCmdForward},
-    {VK_HOME, false, false, true, kCmdHome},
     // Ctrl+1..9 switches Spaces (the Mac's ⌃1..⌃9; the Spaces menu and
     // the pips' hover cards advertise these).
     {'1', true, false, false, kCmdSpace1},
@@ -249,6 +240,15 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
                                   host_.FocusedFindBrowser(shell));
       return 1;  // Swallow: Chromium must not double-handle it.
     }
+  }
+  // A default chord the user moved a shortcut away from is DEAD (the Mac
+  // replaces Chromium's key equivalent, so ⌘T opens nothing once New Tab is
+  // ⌘⌥T): swallowed here, or the hosted browser's own accelerator for the
+  // default would still fire it.
+  if (preferences_.IsDisplacedDefaultChord(static_cast<UINT>(wparam), ctrl,
+                                           shift, alt) &&
+      host_.FocusedShellHwnd()) {
+    return 1;
   }
   return 0;
 }

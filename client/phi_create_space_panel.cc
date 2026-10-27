@@ -399,6 +399,9 @@ void PhiCreateSpacePanel::Show(const RECT& bounds,
   // CreateSpacePanel.onAppear: the profile the strip's "+" was pressed
   // from; a random Phi icon; a random theme distinct from the source
   // Space's so the new Space arrives looking different.
+  // CreateSpacePanel's afterSpaceId: the Space active as the form opens is
+  // the one the new Space lands after.
+  source_space_id_ = controller_ ? controller_->active_space() : std::string();
   ReloadProfiles();
   profile_id_.clear();
   for (const auto& [id, name] : profiles_) {
@@ -894,6 +897,7 @@ void PhiCreateSpacePanel::Create() {
   spec.icon = icon_;
   spec.theme_id = theme_id_;
   spec.saturation = user_adjusted_slider_ ? slider_ : -1;
+  spec.after_space_id = source_space_id_;
   // The Mac derives the stored colorHex from the theme's overlay colour, so
   // the sidebar tint matches the pinned theme on both clients.
   const PhiTheme& theme = PhiThemeById(theme_id_);

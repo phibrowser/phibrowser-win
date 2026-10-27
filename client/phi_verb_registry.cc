@@ -1007,8 +1007,9 @@ constexpr PhiParamField kSyncKeyOp[] = {
     {"op", kParamString, kRequired, "",
      "unlock, resolve, beginSetup, bootstrap, requestJoin, pollJoin, "
      "cancelJoin, recover, startPairing, applyDecisions, refresh, approve, "
-     "deny, removeDevice, peek (read-only: the account's Phi sync data), "
-     "syncNow (a Phi native sync round)."},
+     "deny, removeDevice, resetAccount (the last active device deletes the "
+     "account's sync data, then removes itself), peek (read-only: the "
+     "account's Phi sync data), syncNow (a Phi native sync round)."},
     {"requestId", kParamString, kOptional, "",
      "pollJoin / cancelJoin / approve / deny: the join request."},
     {"code", kParamString, kOptional, "", "recover: the recovery code."},

@@ -488,6 +488,14 @@ OwnedLandingOutcome PinOwnedKind::Land(const OwnedLandingInput& input) {
     }
     return std::nullopt;
   };
+  // Whether the owner key resolves locally at all, ignoring the current
+  // scope. True with a nullopt local_owner means the owner shape belongs to
+  // another pinned-tab scope (a dormant copy).
+  auto owner_resolves_in_any_scope = [&](const std::string& owner_key) {
+    return owner_key == kAppOwnerKey ||
+           resolve.local_space_id(owner_key).has_value() ||
+           resolve.local_profile_id(owner_key).has_value();
+  };
 
   struct Planned {
     OwnedApplyStep step;
@@ -559,6 +567,9 @@ OwnedLandingOutcome PinOwnedKind::Land(const OwnedLandingInput& input) {
     const auto owner = local_owner(item.owner_key);
     if (!owner) {
       outcome.parked.insert(identity);
+      if (owner_resolves_in_any_scope(item.owner_key)) {
+        outcome.parked_for_scope.insert(identity);
+      }
       continue;
     }
     // One row per (lineage, local owner): a migrated row is updated next
