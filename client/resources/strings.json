@@ -100,6 +100,17 @@
    "zh-Hans": "按 Tab 键或空格键搜索 {0}",
    "zh-Hant": "按 Tab 鍵或空白鍵搜尋 {0}"
   },
+  "addressBar.suggestions.switchToOpenTabHintCtrl": {
+   "de": "Ctrl halten zum Wechseln →",
+   "en": "Hold Ctrl to switch →",
+   "es": "Mantén Ctrl para cambiar →",
+   "fr": "Maintenez Ctrl pour basculer →",
+   "ja": "Ctrlを押したまま切り替え →",
+   "ko": "Ctrl 키를 누른 채 전환 →",
+   "nl": "Houd Ctrl ingedrukt om te wisselen →",
+   "zh-Hans": "按住 Ctrl 切换 →",
+   "zh-Hant": "按住 Ctrl 切換 →"
+  },
   "agent.credentialPick.continueButton": {
    "de": "Weiter",
    "en": "Continue",

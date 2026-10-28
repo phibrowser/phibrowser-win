@@ -203,6 +203,17 @@ inline std::wstring PhiOmniboxSanitizePaste(const std::wstring& text) {
   return PhiOmniboxStripJavascript(result);
 }
 
+// ASCII case folding — keywords are hostnames, so this is all that matching
+// one needs, and it keeps the header free of locale state.
+inline std::wstring PhiOmniboxFoldAscii(std::wstring text) {
+  for (wchar_t& c : text) {
+    if (c >= L'A' && c <= L'Z') {
+      c = static_cast<wchar_t>(c - L'A' + L'a');
+    }
+  }
+  return text;
+}
+
 // One autocomplete row as the framework's OnOmniboxResults json carries it.
 struct PhiOmniboxRow {
   int line = 0;
@@ -216,17 +227,138 @@ struct PhiOmniboxRow {
   std::wstring keyword;
   std::wstring engine;
   bool has_tab_match = false;
+  // "inline": what the default row appends to the typed text, the part the
+  // field shows selected after the caret (the Mac's inlineCompletionString).
+  std::wstring inline_completion;
+  // "isDefault": Chromium allows the row as the default match — the row
+  // Enter opens unless the arrows picked another.
+  bool is_default = false;
+  bool deletable = false;  // Its provider can forget it (history, …).
+  // "swap": the row reads description first (Chromium's
+  // swap_contents_and_description).
+  bool swap = false;
 };
 
-// ASCII case folding — keywords are hostnames, so this is all that matching
-// one needs, and it keeps the header free of locale state.
-inline std::wstring PhiOmniboxFoldAscii(std::wstring text) {
-  for (wchar_t& c : text) {
-    if (c >= L'A' && c <= L'Z') {
-      c = static_cast<wchar_t>(c - L'A' + L'a');
-    }
+// The row belongs in the dropdown: a pedal (Chromium's "share this tab"
+// commands) has nothing the client can run, and a row with no text at all
+// has nothing to show (the Mac's isSupportedType / isEmpty filter).
+inline bool PhiOmniboxKeepsRow(const PhiOmniboxRow& row) {
+  return row.type != "pedal" &&
+         !(row.contents.empty() && row.description.empty());
+}
+
+// The Mac's phiBrandEnsuredUrlString: Chromium's own pages show as phi://
+// (the fork rewrites phi:// back on navigation).
+inline std::wstring PhiOmniboxBrandUrl(const std::wstring& text) {
+  constexpr std::wstring_view kChrome = L"chrome://";
+  if (text.compare(0, kChrome.size(), kChrome) != 0) {
+    return text;
   }
-  return text;
+  return L"phi://" + text.substr(kChrome.size());
+}
+
+// The Mac's normalizedForURLComparison: no scheme, lower case, no "www.",
+// no trailing slashes — "google.com/" and "https://www.google.com" match.
+inline std::wstring PhiOmniboxUrlKey(const std::wstring& text) {
+  const size_t scheme = text.find(L"://");
+  std::wstring key = PhiOmniboxFoldAscii(
+      scheme == std::wstring::npos ? text : text.substr(scheme + 3));
+  if (key.compare(0, 4, L"www.") == 0) {
+    key.erase(0, 4);
+  }
+  while (!key.empty() && key.back() == L'/') {
+    key.pop_back();
+  }
+  return key;
+}
+
+// The inline completion a row set offers `user_text`: the default row's,
+// when Chromium armed one and the typed text does not already spell the
+// row out (the Mac's guard against completing "google.com/" again).
+inline std::wstring PhiOmniboxInlineFor(const std::vector<PhiOmniboxRow>& rows,
+                                        const std::wstring& user_text) {
+  if (rows.empty() || !rows.front().is_default ||
+      rows.front().inline_completion.empty() || user_text.empty()) {
+    return std::wstring();
+  }
+  if (PhiOmniboxUrlKey(user_text) == PhiOmniboxUrlKey(rows.front().fill)) {
+    return std::wstring();
+  }
+  return rows.front().inline_completion;
+}
+
+// The field may take (or drop) an inline completion now: it still shows
+// exactly what the user typed with the caret at its end, or the completion
+// applied last time with that completion still selected. Anything else —
+// the caret moved, the selection changed, an arrowed row's text — means the
+// user has taken the text over, and a late row set must not rewrite it.
+inline bool PhiOmniboxCanInline(const std::wstring& field_text,
+                                size_t sel_start,
+                                size_t sel_end,
+                                const std::wstring& user_text,
+                                const std::wstring& shown_inline) {
+  if (field_text == user_text) {
+    return sel_start == user_text.size() && sel_end == user_text.size();
+  }
+  return !shown_inline.empty() && field_text == user_text + shown_inline &&
+         sel_start == user_text.size() && sel_end == field_text.size();
+}
+
+// The row armed once a fresh row set lands (the Mac's handleSearchResults):
+// a row the user ARROWED to stays armed across the streamed updates of one
+// query — by its engine when it named one, else by its place — and
+// otherwise the default row is armed when Chromium allows one; -1 = none,
+// Enter commits the text.
+inline int PhiOmniboxArmedRow(const std::vector<PhiOmniboxRow>& rows,
+                              int previous,
+                              const std::wstring& previous_keyword,
+                              bool arrowed) {
+  if (arrowed && !previous_keyword.empty()) {
+    for (size_t i = 0; i < rows.size(); ++i) {
+      if (rows[i].keyword == previous_keyword) {
+        return static_cast<int>(i);
+      }
+    }
+    return -1;
+  }
+  if (arrowed && previous >= 0 && previous < static_cast<int>(rows.size())) {
+    return previous;
+  }
+  return !rows.empty() && rows.front().is_default ? 0 : -1;
+}
+
+// Where a committed row opens (the Mac's suggestionDisposition): its open
+// tab while Ctrl is held on a row that has one ("Hold Ctrl to switch"),
+// a fresh tab in the omnibox new-tab mode, else the current tab — never an
+// automatic switch.
+enum class PhiOmniboxOpen { kCurrentTab, kNewTab, kSwitchToTab };
+inline PhiOmniboxOpen PhiOmniboxOpenFor(const PhiOmniboxRow& row,
+                                        bool ctrl,
+                                        bool new_tab) {
+  if (row.has_tab_match && ctrl) {
+    return PhiOmniboxOpen::kSwitchToTab;
+  }
+  return new_tab ? PhiOmniboxOpen::kNewTab : PhiOmniboxOpen::kCurrentTab;
+}
+
+// A brand colour (0xRRGGBB) for the keyword chip of the engines Chromium
+// seeds, matched by keyword — never by the user-editable name; -1 keeps the
+// accent (the Mac's OmniBoxKeywordSearchEngine.brandColor).
+inline int PhiOmniboxKeywordBrand(const std::wstring& keyword) {
+  const std::wstring key = PhiOmniboxFoldAscii(keyword);
+  if (key == L"x.com" || key == L"twitter.com" || key == L"wikipedia.org") {
+    return 0x000000;
+  }
+  if (key == L"spotify.com") return 0x1DB954;
+  if (key == L"reddit.com") return 0xFF4500;
+  if (key == L"youtube.com") return 0xFF0000;
+  if (key == L"github.com") return 0x24292F;
+  if (key == L"gmail.com") return 0xEA4335;
+  if (key == L"docs.google.com" || key == L"calendar.google.com") {
+    return 0x4285F4;
+  }
+  if (key == L"drive.google.com") return 0x34A853;
+  return -1;
 }
 
 // The row offers keyword search for `typed` (the Mac's
@@ -546,8 +678,9 @@ class PhiOmniboxSession {
   void ClosePopup(bool stop_query);
   // Called by the dropdown's own window procedure.
   void PaintPopup(HWND popup, HDC dc);
-  void PopupHover(int y);  // y < 0: the pointer left the list.
-  void PopupClick(int y);
+  void PopupHover(int x, int y);  // y < 0: the pointer left the list.
+  // A press at (x, y): the row's × forgets it, anywhere else opens it.
+  void PopupClick(int x, int y);
 
  private:
   // Rows mirror the framework's OnOmniboxResults json; the popup is a
@@ -560,9 +693,28 @@ class PhiOmniboxSession {
   // gesture untouched (ClosePopup decides those).
   void HidePopup();
   void MoveSelection(int delta);
-  void CommitSelection();  // CommitRow(selected_).
-  void CommitRow(int index);
+  void CommitSelection();  // CommitRow(selected_, Ctrl held).
+  // Opens rows_[index]; `ctrl` switches to the row's open tab when it has
+  // one (PhiOmniboxOpenFor).
+  void CommitRow(int index, bool ctrl);
+  // Shift+Delete or the row's ×: Chromium forgets a deletable row and the
+  // running query reports the shorter set.
+  void DeleteRow(int index);
   int RowAtY(int y) const;
+  // The × of rows_[row] in popup client coords; empty unless the row is
+  // deletable and lit (hovered or armed), the Mac's delete button.
+  RECT RowDeleteRect(int row) const;
+  // Inline autocompletion (the Mac's OmniBoxTextField): after a row set
+  // lands, the default row's completion follows what the user typed,
+  // selected, so the next keystroke replaces it — unless the user has since
+  // taken the text over (PhiOmniboxCanInline).
+  void ApplyInline(HWND edit);
+  // Puts what the user typed back in `edit`, caret at its end: arrowing
+  // back up to the field, or Escape on an inline or arrowed text.
+  void RestoreUserText(HWND edit);
+  // Sets `edit`'s text without it counting as typing; selects [start, end).
+  void SetFieldText(HWND edit, const std::wstring& text, size_t start,
+                    size_t end);
   int Scaled(int design_units) const;
   bool PaintField(HWND field);
 
@@ -641,9 +793,25 @@ class PhiOmniboxSession {
   std::vector<Row> rows_;
   std::wstring results_input_;  // The typed text rows_ answers.
   int selected_ = -1;  // -1 = nothing armed; Enter commits the text.
+  // The arrows picked selected_ (rather than the default row being armed
+  // when the rows landed): it survives the query's streamed updates.
+  bool arrowed_ = false;
+  // What the user typed, without an inline completion or an arrowed row's
+  // fill (the Mac's originalText) — what the query ran on.
+  std::wstring user_text_;
+  // The inline completion the field shows selected after user_text_.
+  std::wstring inline_shown_;
+  // The last edit removed text (Backspace, Delete, Cut): the query that
+  // follows asks for no inline completion, or the deleted text would come
+  // straight back.
+  bool last_edit_deleted_ = false;
   // The row under the pointer — a lighter wash only. Only the arrows set
   // selected_, so hovering never changes what Enter commits.
   int hovered_ = -1;
+  bool hovered_delete_ = false;  // The pointer is on hovered_'s ×.
+  // The last popup paint drew a history row's glyph while its favicon was
+  // still being fetched: the next nav refresh repaints the list.
+  bool favicon_missing_ = false;
   HWND popup_ = nullptr;
   bool programmatic_ = false;  // Suppresses EN_CHANGE feedback.
   // Set by StartNewTab in omnibox mode: the next commit opens a NEW tab.

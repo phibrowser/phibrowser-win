@@ -6,6 +6,7 @@
 
 #include <commctrl.h>
 #include <dwmapi.h>
+#include <imm.h>
 #include <windowsx.h>
 
 #include <algorithm>
@@ -25,6 +26,7 @@
 #include "phibrowser-win/client/phi_shell_menus.h"
 
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "imm32.lib")
 
 namespace phi_client {
 
@@ -103,17 +105,17 @@ LRESULT CALLBACK PopupProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         // The hover wash leaves with the pointer (WM_MOUSELEAVE below).
         TRACKMOUSEEVENT track = {sizeof(track), TME_LEAVE, hwnd, 0};
         ::TrackMouseEvent(&track);
-        self->PopupHover(GET_Y_LPARAM(lparam));
+        self->PopupHover(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
       }
       return 0;
     case WM_MOUSELEAVE:
       if (self) {
-        self->PopupHover(-1);
+        self->PopupHover(-1, -1);
       }
       return 0;
     case WM_LBUTTONDOWN:
       if (self) {
-        self->PopupClick(GET_Y_LPARAM(lparam));
+        self->PopupClick(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
       }
       return 0;
   }
@@ -265,11 +267,14 @@ void PhiOmniboxSession::Sync(bool force) {
   if (!force && ::GetFocus() == field_) {
     return;
   }
-  if (nav_url_ == TextOf(field_)) {
+  // Chromium's own pages read phi:// (the Mac's prefill goes through
+  // phiBrandEnsuredUrlString); the fork navigates phi:// back.
+  const std::wstring shown = PhiOmniboxBrandUrl(nav_url_);
+  if (shown == TextOf(field_)) {
     return;  // Unchanged; setting it again would fight the caret.
   }
   programmatic_ = true;  // Not the user typing — no autocomplete.
-  ::SetWindowTextW(field_, nav_url_.c_str());
+  ::SetWindowTextW(field_, shown.c_str());
   programmatic_ = false;
 }
 
@@ -467,6 +472,14 @@ void PhiOmniboxSession::OnFieldChanged(HWND edit) {
   }
   const std::wstring typed = TextOf(edit);
   const BrowserId browser = shell_->OmniboxBrowser();
+  // The user's own text now (an inline completion typed over or deleted
+  // is gone with it), and the arrows' pick no longer answers it: Enter
+  // waits for the rows this text brings, or commits the text.
+  user_text_ = typed;
+  inline_shown_.clear();
+  arrowed_ = false;
+  const bool prevent_inline = last_edit_deleted_;
+  last_edit_deleted_ = false;
   if (keyword_mode() && edit == field_) {
     // Behind the chip the text is the engine's query: no suggestions for it
     // (the Mac's handleInputChanged clears them) — and the new-tab gesture
@@ -484,7 +497,8 @@ void PhiOmniboxSession::OnFieldChanged(HWND edit) {
   if (!browser.valid()) {
     return;
   }
-  framework->StartOmniboxQuery(browser.value, base::WideToUTF8(typed).c_str());
+  framework->StartOmniboxQuery(browser.value, base::WideToUTF8(typed).c_str(),
+                               prevent_inline);
   // A hint that no longer prefixes what is typed goes now, not when the
   // next row set lands.
   UpdateKeywordHint();
@@ -522,6 +536,11 @@ void PhiOmniboxSession::RebuildNavState(const phi_framework::NavState* nav,
     can_go_forward_ = nav->can_go_forward;
     nav_loading_ = nav->loading;
   }
+  if (favicon_missing_ && popup_ && ::IsWindowVisible(popup_)) {
+    // A history row painted its glyph while the favicon was being fetched;
+    // the fetch reports as a window change, which lands here.
+    ::InvalidateRect(popup_, nullptr, FALSE);
+  }
   if (retargeted && field_ && ::GetFocus() == field_) {
     LOG(INFO) << "[PhiClient] omnibox: page target moved to browser "
               << page_browser.value << " under the field — dismissing";
@@ -550,7 +569,7 @@ BrowserId PhiOmniboxSession::CurrentTabTarget() {
 
 std::wstring PhiOmniboxSession::DisplayedUrl() const {
   // What the user actually sees, mid-edit.
-  return field_ ? TextOf(field_) : nav_url_;
+  return field_ ? TextOf(field_) : PhiOmniboxBrandUrl(nav_url_);
 }
 
 void PhiOmniboxSession::SetFieldHover(bool hovered) {
@@ -637,14 +656,29 @@ void PhiOmniboxSession::OnResults(BrowserId browser_id,
   }
   std::optional<base::DictValue> root =
       base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
-  rows_.clear();
-  results_input_.clear();
-  selected_ = -1;
-  hovered_ = -1;
+  std::wstring input;
   if (root) {
-    if (const std::string* input = root->FindString("input")) {
-      results_input_ = base::UTF8ToWide(*input);
+    if (const std::string* text = root->FindString("input")) {
+      input = base::UTF8ToWide(*text);
     }
+  }
+  if (PhiOmniboxTrimTyped(input) != PhiOmniboxTrimTyped(user_text_)) {
+    // The last update of a query the user has typed past (the Mac's
+    // shouldAcceptResponse): its rows would arm a stale default.
+    return;
+  }
+  // The arrows' pick survives this query's streamed updates
+  // (PhiOmniboxArmedRow), by its engine when it named one.
+  const int previous = selected_;
+  const std::wstring previous_keyword =
+      previous >= 0 && previous < static_cast<int>(rows_.size())
+          ? rows_[static_cast<size_t>(previous)].keyword
+          : std::wstring();
+  rows_.clear();
+  results_input_ = input;
+  hovered_ = -1;
+  hovered_delete_ = false;
+  if (root) {
     if (const base::ListValue* matches = root->FindList("matches")) {
       for (const base::Value& v : *matches) {
         const base::DictValue* m = v.GetIfDict();
@@ -657,13 +691,13 @@ void PhiOmniboxSession::OnResults(BrowserId browser_id,
           row.type = *s;
         }
         if (const std::string* s = m->FindString("contents")) {
-          row.contents = base::UTF8ToWide(*s);
+          row.contents = PhiOmniboxBrandUrl(base::UTF8ToWide(*s));
         }
         if (const std::string* s = m->FindString("description")) {
           row.description = base::UTF8ToWide(*s);
         }
         if (const std::string* s = m->FindString("fillIntoEdit")) {
-          row.fill = base::UTF8ToWide(*s);
+          row.fill = PhiOmniboxBrandUrl(base::UTF8ToWide(*s));
         }
         if (const std::string* s = m->FindString("url")) {
           row.url = base::UTF8ToWide(*s);
@@ -674,25 +708,91 @@ void PhiOmniboxSession::OnResults(BrowserId browser_id,
         if (const std::string* s = m->FindString("engine")) {
           row.engine = base::UTF8ToWide(*s);
         }
+        if (const std::string* s = m->FindString("inline")) {
+          row.inline_completion = base::UTF8ToWide(*s);
+        }
         row.has_tab_match = m->FindBool("hasTabMatch").value_or(false);
+        row.is_default = m->FindBool("isDefault").value_or(false);
+        row.deletable = m->FindBool("deletable").value_or(false);
+        row.swap = m->FindBool("swap").value_or(false);
         if (!row.engine.empty() && row.url.empty()) {
           // The engine-selection hint reads "Search Microsoft Bing —
           // bing.com" (the Mac's suggestionTitle row), not the bare
-          // keyword the provider fills in.
+          // keyword the provider fills in. It is never the default and
+          // never forgotten (the Mac's selectionEngine rules).
           row.contents = PhiStrF("addressBar.keywordSearch.suggestionTitle",
                                  {row.engine});
           row.description = row.keyword;
+          row.is_default = false;
+          row.deletable = false;
+          row.swap = false;
         }
-        rows_.push_back(std::move(row));
+        if (PhiOmniboxKeepsRow(row)) {
+          rows_.push_back(std::move(row));
+        }
       }
     }
   }
+  selected_ = PhiOmniboxArmedRow(rows_, previous, previous_keyword, arrowed_);
+  arrowed_ = arrowed_ && selected_ >= 0;
   if (rows_.empty()) {
     ClosePopup(/*stop_query=*/false);
   } else {
     ShowPopup();
+    ApplyInline(FocusedField());
   }
   UpdateKeywordHint();
+}
+
+void PhiOmniboxSession::SetFieldText(HWND edit,
+                                     const std::wstring& text,
+                                     size_t start,
+                                     size_t end) {
+  programmatic_ = true;  // Not the user typing — no new query.
+  ::SetWindowTextW(edit, text.c_str());
+  ::SendMessageW(edit, EM_SETSEL, start, end);
+  ::SendMessageW(edit, EM_SCROLLCARET, 0, 0);
+  programmatic_ = false;
+}
+
+void PhiOmniboxSession::ApplyInline(HWND edit) {
+  if (!edit || !::IsWindow(edit) || arrowed_ ||
+      (keyword_mode() && edit == field_)) {
+    return;  // An arrowed row's fill or the chip's query is showing.
+  }
+  if (HIMC imc = ::ImmGetContext(edit)) {
+    // Mid-composition the IME owns the text (the Mac skips marked text).
+    const LONG composing =
+        ::ImmGetCompositionStringW(imc, GCS_COMPSTR, nullptr, 0);
+    ::ImmReleaseContext(edit, imc);
+    if (composing > 0) {
+      return;
+    }
+  }
+  const std::wstring text = TextOf(edit);
+  DWORD sel_start = 0;
+  DWORD sel_end = 0;
+  ::SendMessageW(edit, EM_GETSEL, reinterpret_cast<WPARAM>(&sel_start),
+                 reinterpret_cast<LPARAM>(&sel_end));
+  if (!PhiOmniboxCanInline(text, sel_start, sel_end, user_text_,
+                           inline_shown_)) {
+    return;  // The user took the text over (caret moved, selection).
+  }
+  const std::wstring completion = PhiOmniboxInlineFor(rows_, user_text_);
+  const std::wstring target = user_text_ + completion;
+  inline_shown_ = completion;
+  if (target != text) {
+    // The completion selected, so the next keystroke replaces it; a set
+    // without one puts the typed text back.
+    SetFieldText(edit, target, user_text_.size(), target.size());
+  }
+}
+
+void PhiOmniboxSession::RestoreUserText(HWND edit) {
+  inline_shown_.clear();
+  if (edit && ::IsWindow(edit) && TextOf(edit) != user_text_) {
+    SetFieldText(edit, user_text_, user_text_.size(), user_text_.size());
+  }
 }
 
 void PhiOmniboxSession::ShowPopup() {
@@ -748,6 +848,9 @@ void PhiOmniboxSession::HidePopup() {
   results_input_.clear();
   selected_ = -1;
   hovered_ = -1;
+  hovered_delete_ = false;
+  arrowed_ = false;
+  inline_shown_.clear();
   if (popup_ && ::IsWindow(popup_)) {
     ::ShowWindow(popup_, SW_HIDE);
   }
@@ -772,17 +875,19 @@ void PhiOmniboxSession::MoveSelection(int delta) {
   }
   selected_ =
       PhiOmniboxNextSelection(selected_, delta, static_cast<int>(rows_.size()));
+  arrowed_ = selected_ >= 0;
   const HWND focused = FocusedField();
   if (selected_ >= 0 && focused) {
     const Row& row = rows_[static_cast<size_t>(selected_)];
     if (!row.fill.empty()) {
       // The row's fillIntoEdit lands in the field, caret at the end — the
-      // omnibox arrow behavior.
-      programmatic_ = true;
-      ::SetWindowTextW(focused, row.fill.c_str());
-      ::SendMessageW(focused, EM_SETSEL, row.fill.size(), row.fill.size());
-      programmatic_ = false;
+      // omnibox arrow behavior (the Mac's temporary text).
+      inline_shown_.clear();
+      SetFieldText(focused, row.fill, row.fill.size(), row.fill.size());
     }
+  } else if (focused) {
+    // Back up to the field: what the user typed, without a completion.
+    RestoreUserText(focused);
   }
   if (popup_) {
     ::InvalidateRect(popup_, nullptr, TRUE);
@@ -791,10 +896,10 @@ void PhiOmniboxSession::MoveSelection(int delta) {
 }
 
 void PhiOmniboxSession::CommitSelection() {
-  CommitRow(selected_);
+  CommitRow(selected_, ::GetKeyState(VK_CONTROL) < 0);
 }
 
-void PhiOmniboxSession::CommitRow(int index) {
+void PhiOmniboxSession::CommitRow(int index, bool ctrl) {
   phi_framework::PhiFramework* framework = shell_->OmniboxFramework();
   if (index < 0 || index >= static_cast<int>(rows_.size()) || !framework) {
     return;
@@ -807,16 +912,20 @@ void PhiOmniboxSession::CommitRow(int index) {
     return;
   }
   const int line = row.line;
-  // The framework opens it with Chromium's own semantics (fixup,
-  // switch-to-tab, shortcuts learning). Omnibox new-tab mode opens it in a
-  // FRESH tab.
-  const bool new_tab = new_tab_pending_;
+  // The framework opens it with Chromium's own semantics (fixup, shortcuts
+  // learning) in the tab PhiOmniboxOpenFor names: the row's open tab only
+  // while Ctrl is held (the Mac's Hold-to-switch), a FRESH tab in omnibox
+  // new-tab mode and in a placeholder browser (its strip is empty), else
+  // the current tab.
+  const bool new_tab =
+      new_tab_pending_ || shell_->OmniboxBrowserPlaceholding();
   new_tab_pending_ = false;
+  const PhiOmniboxOpen open = PhiOmniboxOpenFor(row, ctrl, new_tab);
   const BrowserId browser = shell_->OmniboxBrowser();
   if (!browser.valid()) {
     return;
   }
-  if (!new_tab) {
+  if (open == PhiOmniboxOpen::kCurrentTab) {
     const BrowserId page = CurrentTabTarget();
     if (!page.valid()) {
       ClosePopup(/*stop_query=*/true);
@@ -833,10 +942,47 @@ void PhiOmniboxSession::CommitRow(int index) {
       shell_->OmniboxFocusContent();
       return;
     }
+    // The match replaces the page the reader covers (as Commit).
+    shell_->OmniboxLeaveReader();
   }
-  framework->OpenOmniboxMatch(browser.value, line, new_tab);
+  using Disposition = phi_framework::PhiFramework::OmniboxDisposition;
+  framework->OpenOmniboxMatch(
+      browser.value, line,
+      open == PhiOmniboxOpen::kSwitchToTab ? Disposition::kSwitchToTab
+      : open == PhiOmniboxOpen::kNewTab    ? Disposition::kNewForegroundTab
+                                           : Disposition::kCurrentTab);
   ClosePopup(/*stop_query=*/false);
   shell_->OmniboxFocusContent();
+}
+
+void PhiOmniboxSession::DeleteRow(int index) {
+  phi_framework::PhiFramework* framework = shell_->OmniboxFramework();
+  const BrowserId browser = shell_->OmniboxBrowser();
+  if (index < 0 || index >= static_cast<int>(rows_.size()) ||
+      !rows_[static_cast<size_t>(index)].deletable || !framework ||
+      !browser.valid()) {
+    return;
+  }
+  // No local removal: Chromium drops the match and the running query
+  // reports the shorter set, with the arrows' pick kept by place (the
+  // Mac's deleteSuggestion).
+  framework->DeleteOmniboxMatch(browser.value,
+                                rows_[static_cast<size_t>(index)].line);
+}
+
+RECT PhiOmniboxSession::RowDeleteRect(int row) const {
+  RECT rc = {};
+  if (!popup_ || row < 0 || row >= static_cast<int>(rows_.size()) ||
+      !rows_[static_cast<size_t>(row)].deletable ||
+      (row != hovered_ && row != selected_)) {
+    return RECT{};
+  }
+  ::GetClientRect(popup_, &rc);
+  const int top = rc.top + Scaled(kPopupInset) + row * Scaled(kRowHeight);
+  const int size = Scaled(24);
+  const int right = rc.right - Scaled(10);
+  const int y = top + (Scaled(kRowHeight) - size) / 2;
+  return RECT{right - size, y, right, y + size};
 }
 
 int PhiOmniboxSession::RowAtY(int y) const {
@@ -844,22 +990,32 @@ int PhiOmniboxSession::RowAtY(int y) const {
                           Scaled(kPopupInset));
 }
 
-void PhiOmniboxSession::PopupHover(int y) {
+void PhiOmniboxSession::PopupHover(int x, int y) {
   // The pointer only LIGHTS a row; it never arms it. Enter commits what the
   // field shows unless the arrows picked a row, so a cursor resting over the
   // list cannot redirect a typed URL.
   const int row = y < 0 ? -1 : RowAtY(y);
-  if (row != hovered_) {
-    hovered_ = row;
-    if (popup_) {
-      ::InvalidateRect(popup_, nullptr, TRUE);
-    }
+  const bool changed = row != hovered_;
+  hovered_ = row;
+  const RECT remove = RowDeleteRect(row);
+  const POINT pt = {x, y};
+  const bool over_delete = row >= 0 && ::PtInRect(&remove, pt) != FALSE;
+  if ((changed || over_delete != hovered_delete_) && popup_) {
+    hovered_delete_ = over_delete;
+    ::InvalidateRect(popup_, nullptr, TRUE);
   }
 }
 
-void PhiOmniboxSession::PopupClick(int y) {
-  // A click opens the row under it, whatever the arrows had armed.
-  CommitRow(RowAtY(y));
+void PhiOmniboxSession::PopupClick(int x, int y) {
+  // A click on a row's × forgets it; anywhere else opens the row under it,
+  // whatever the arrows had armed — in its open tab with Ctrl held.
+  const int row = RowAtY(y);
+  const RECT remove = RowDeleteRect(row);
+  if (row >= 0 && ::PtInRect(&remove, POINT{x, y})) {
+    DeleteRow(row);
+    return;
+  }
+  CommitRow(row, ::GetKeyState(VK_CONTROL) < 0);
 }
 
 void PhiOmniboxSession::PaintPopup(HWND popup, HDC dc) {
@@ -873,57 +1029,127 @@ void PhiOmniboxSession::PaintPopup(HWND popup, HDC dc) {
   ::SetBkMode(dc, TRANSPARENT);
   HFONT text_font = shell_->OmniboxTextFont();
   HFONT icon_font = shell_->OmniboxIconFont();
+  HFONT hint_font = shell_->OmniboxHintFont();
+  phi_framework::PhiFramework* framework = shell_->OmniboxFramework();
+  const BrowserId browser = shell_->OmniboxBrowser();
+  favicon_missing_ = false;
   for (size_t i = 0; i < rows_.size(); ++i) {
     const Row& row = rows_[i];
+    const int index = static_cast<int>(i);
     RECT r = {rc.left + Scaled(6),
-              rc.top + Scaled(kPopupInset) +
-                  static_cast<int>(i) * Scaled(kRowHeight),
+              rc.top + Scaled(kPopupInset) + index * Scaled(kRowHeight),
               rc.right - Scaled(6), 0};
     r.bottom = r.top + Scaled(kRowHeight);
-    if (static_cast<int>(i) == selected_) {
-      PhiFillRoundRectAA(dc, r, Scaled(6), palette.hover_strong);
-    } else if (static_cast<int>(i) == hovered_) {
-      PhiFillRoundRectAA(dc, r, Scaled(6), palette.hover);
+    const COLORREF row_bg = index == selected_  ? palette.hover_strong
+                            : index == hovered_ ? palette.hover
+                                                : palette.card;
+    if (row_bg != palette.card) {
+      PhiFillRoundRectAA(dc, r, Scaled(6), row_bg);
     }
-    // Type glyph: search rows a magnifier, bookmarks a star, history a
-    // clock, everything else a globe.
-    const wchar_t glyph =
-        row.type.find("search") != std::string::npos    ? L''
-        : row.type.find("bookmark") != std::string::npos ? L''
-        : row.type.find("history") != std::string::npos  ? L''
-                                                         : L'';
     RECT glyph_rc = {r.left + Scaled(4), r.top, r.left + Scaled(28), r.bottom};
-    HGDIOBJ glyph_font = icon_font ? ::SelectObject(dc, icon_font) : nullptr;
-    ::SetTextColor(dc, palette.label_dim);
-    const wchar_t glyph_text[2] = {glyph, L'\0'};
-    PhiDrawTextAA(dc, glyph_text, 1, &glyph_rc,
-                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-    if (glyph_font) {
-      ::SelectObject(dc, glyph_font);
+    // A history row shows its page's favicon (the Mac's faviconPageURL);
+    // the fetch is async, so a miss paints the glyph and repaints on
+    // arrival (RebuildNavState).
+    bool drew_favicon = false;
+    const bool history = row.type.find("history") != std::string::npos;
+    if (history && framework && browser.valid() && !row.url.empty()) {
+      int width = 0;
+      int height = 0;
+      const unsigned char* pixels = framework->FaviconForUrlBgra(
+          browser.value, base::WideToUTF8(row.url).c_str(), &width, &height);
+      if (pixels && width > 0 && height > 0) {
+        const int size = Scaled(16);
+        const int x = (glyph_rc.left + glyph_rc.right - size) / 2;
+        const int y = (glyph_rc.top + glyph_rc.bottom - size) / 2;
+        drew_favicon =
+            PhiDrawBgra(dc, RECT{x, y, x + size, y + size}, pixels, width,
+                        height);
+      } else {
+        favicon_missing_ = true;
+      }
+    }
+    if (!drew_favicon) {
+      // Type glyph: search rows a magnifier, bookmarks a star, history a
+      // clock, everything else a globe.
+      const wchar_t glyph =
+          row.type.find("search") != std::string::npos     ? L'\uE721'
+          : row.type.find("bookmark") != std::string::npos ? L'\uE734'
+          : history                                        ? L'\uE81C'
+                                                           : L'\uE774';
+      HGDIOBJ glyph_font = icon_font ? ::SelectObject(dc, icon_font) : nullptr;
+      ::SetTextColor(dc, palette.label_dim);
+      const wchar_t glyph_text[2] = {glyph, L'\0'};
+      PhiDrawTextAA(dc, glyph_text, 1, &glyph_rc,
+                    DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+      if (glyph_font) {
+        ::SelectObject(dc, glyph_font);
+      }
     }
     RECT text_rc = {glyph_rc.right + Scaled(6), r.top, r.right - Scaled(8),
                     r.bottom};
+    // The trailing stack, right to left: the × of a lit deletable row (the
+    // Mac's delete button), then "Hold Ctrl to switch →" on a row that has
+    // an open tab (the Mac's SwitchToTabView).
+    const RECT remove = RowDeleteRect(index);
+    if (remove.right > remove.left) {
+      if (hovered_delete_ && index == hovered_) {
+        PhiFillCapsuleAA(dc, remove, PhiBlend(palette.ink, row_bg, 24));
+      }
+      HGDIOBJ previous = icon_font ? ::SelectObject(dc, icon_font) : nullptr;
+      ::SetTextColor(dc, palette.label_dim);
+      RECT glyph = remove;
+      PhiDrawTextAA(dc, L"\uE711", 1, &glyph,
+                    DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+      if (previous) {
+        ::SelectObject(dc, previous);
+      }
+      text_rc.right = remove.left - Scaled(6);
+    }
+    if (row.has_tab_match) {
+      const wchar_t* hint =
+          PhiStr("addressBar.suggestions.switchToOpenTabHintCtrl");
+      HGDIOBJ previous = hint_font ? ::SelectObject(dc, hint_font) : nullptr;
+      RECT measure = text_rc;
+      PhiDrawTextAA(dc, hint, -1, &measure,
+                    DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+      // At most half the row: the row's own text keeps the rest.
+      const int width =
+          std::min<int>(measure.right - measure.left,
+                        (text_rc.right - text_rc.left) / 2);
+      RECT hint_rc = {text_rc.right - width, r.top, text_rc.right, r.bottom};
+      ::SetTextColor(dc, PhiBlend(palette.label_dim, row_bg, 190));
+      PhiDrawTextAA(dc, hint, -1, &hint_rc,
+                    DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                        DT_NOPREFIX);
+      if (previous) {
+        ::SelectObject(dc, previous);
+      }
+      text_rc.right = hint_rc.left - Scaled(8);
+    }
+    // Chromium's swap_contents_and_description: some rows (a navigation
+    // suggestion's title) read description first.
+    const std::wstring& title = row.swap ? row.description : row.contents;
+    const std::wstring& subtitle = row.swap ? row.contents : row.description;
     HGDIOBJ prev_font = text_font ? ::SelectObject(dc, text_font) : nullptr;
     ::SetTextColor(dc, palette.label);
     RECT measure = text_rc;
-    PhiDrawTextAA(dc, row.contents.c_str(), -1, &measure,
-                DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+    PhiDrawTextAA(dc, title.c_str(), -1, &measure,
+                  DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
     RECT contents_rc = text_rc;
     contents_rc.right = std::min(
         text_rc.right,
         static_cast<LONG>(text_rc.left + (measure.right - measure.left)));
-    PhiDrawTextAA(dc, row.contents.c_str(), -1, &contents_rc,
-                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
-                    DT_NOPREFIX);
-    if (!row.description.empty() &&
-        contents_rc.right + Scaled(16) < text_rc.right) {
+    PhiDrawTextAA(dc, title.c_str(), -1, &contents_rc,
+                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                      DT_NOPREFIX);
+    if (!subtitle.empty() && contents_rc.right + Scaled(16) < text_rc.right) {
       RECT desc_rc = {contents_rc.right + Scaled(8), r.top, text_rc.right,
                       r.bottom};
       ::SetTextColor(dc, palette.label_dim);
-      const std::wstring desc = L"— " + row.description;
+      const std::wstring desc = L"— " + subtitle;
       PhiDrawTextAA(dc, desc.c_str(), -1, &desc_rc,
-                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
-                      DT_NOPREFIX);
+                    DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                        DT_NOPREFIX);
     }
     if (prev_font) {
       ::SelectObject(dc, prev_font);
@@ -1133,13 +1359,15 @@ void PhiOmniboxSession::UpdateKeywordHint() {
   // page's box has no capsule to draw them in.
   if (!keyword_mode() && field_ && FocusedField() == field_ &&
       !rows_.empty()) {
-    const std::wstring typed = TextOf(field_);
+    // What the user typed — not an inline completion or an arrowed row's
+    // fill (the Mac reads state.inputText, never the field editor).
+    const std::wstring& typed = user_text_;
     const bool current = ResultsCurrent(typed);
     const int hint = PhiOmniboxKeywordHintRow(rows_, selected_, typed, current);
     if (hint >= 0) {
       const bool space =
-          PhiOmniboxSpaceKeywordRow(rows_, selected_, typed, current,
-                                    SpaceShortcutEnabled()) >= 0;
+          PhiOmniboxSpaceKeywordRow(rows_, arrowed_ ? selected_ : -1, typed,
+                                    current, SpaceShortcutEnabled()) >= 0;
       text = PhiStrF(space ? "addressBar.keywordSearch.tabOrSpaceHint"
                            : "addressBar.keywordSearch.tabHint",
                      {rows_[static_cast<size_t>(hint)].engine});
@@ -1179,12 +1407,18 @@ void PhiOmniboxSession::PaintKeyword(HDC dc) {
     const int mid = (capsule.field.top + capsule.field.bottom) / 2;
     const RECT chip = {text.left, mid - half, text.left + chip_width_px_,
                        mid + half};
-    PhiFillCapsuleAA(dc, chip, palette.accent);
+    // A seeded engine wears its brand (the Mac's brandColor), with white
+    // ink; every other engine the accent.
+    const int brand = PhiOmniboxKeywordBrand(keyword_keyword_);
+    PhiFillCapsuleAA(dc, chip,
+                     brand >= 0 ? RGB((brand >> 16) & 0xFF,
+                                      (brand >> 8) & 0xFF, brand & 0xFF)
+                                : palette.accent);
     RECT label = {chip.left + Scaled(10), chip.top, chip.right - Scaled(10),
                   chip.bottom};
     HFONT font = shell_->OmniboxChipFont();
     HGDIOBJ previous = font ? ::SelectObject(dc, font) : nullptr;
-    ::SetTextColor(dc, palette.on_accent);
+    ::SetTextColor(dc, brand >= 0 ? RGB(0xFF, 0xFF, 0xFF) : palette.on_accent);
     PhiDrawTextAA(dc, keyword_engine_.c_str(), -1, &label,
                   DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
                       DT_NOPREFIX);
@@ -1280,7 +1514,13 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
         if (self) {
           if (self->keyword_mode() && hwnd == self->field_) {
             self->CommitKeyword(hwnd);
-          } else if (self->selected_ >= 0) {
+          } else if (self->selected_ >= 0 &&
+                     (self->arrowed_ ||
+                      self->ResultsCurrent(self->user_text_))) {
+            // The arrows' pick, or the default row of rows that answer
+            // what is typed (the Mac's selectSuggestion) — Chromium opens
+            // it, inline completion included. Rows of a text the user has
+            // typed past are stale: the text itself commits instead.
             self->CommitSelection();
           } else {
             // stop_query=false: the omnibox-new-tab pending flag must
@@ -1300,7 +1540,9 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
             return 0;
           }
           if (self->popup_ && ::IsWindowVisible(self->popup_)) {
-            // First Escape closes the list; the second reverts the field.
+            // First Escape drops an inline completion or an arrowed row's
+            // text and closes the list; the second reverts the field.
+            self->RestoreUserText(hwnd);
             self->ClosePopup(/*stop_query=*/true);
             return 0;
           }
@@ -1326,12 +1568,24 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
         // omniBoxTextFieldDidReceiveTabEvent); behind the chip it is inert.
         // Either way the EDIT never sees it — it has no tab stop to go to.
         if (!self->keyword_mode()) {
-          const std::wstring typed = TextOf(hwnd);
+          const std::wstring typed = self->user_text_;
           self->AcceptKeyword(PhiOmniboxKeywordHintRow(
               self->rows_, self->selected_, typed,
               self->ResultsCurrent(typed)));
         }
         return 0;
+      }
+      if (wparam == VK_DELETE && self) {
+        if (::GetKeyState(VK_SHIFT) < 0 && ::GetKeyState(VK_CONTROL) >= 0 &&
+            self->selected_ >= 0 &&
+            self->selected_ < static_cast<int>(self->rows_.size()) &&
+            self->rows_[static_cast<size_t>(self->selected_)].deletable) {
+          // Shift+Delete on an armed row Chromium can forget removes it
+          // (Chrome's own chord), instead of the EDIT's cut.
+          self->DeleteRow(self->selected_);
+          return 0;
+        }
+        self->last_edit_deleted_ = true;
       }
       if (wparam == VK_INSERT && self && ::GetKeyState(VK_SHIFT) < 0 &&
           ::GetKeyState(VK_CONTROL) >= 0) {
@@ -1342,8 +1596,18 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
     case WM_CHAR:
       // These keys are handled above; letting them reach the EDIT would
       // only produce the "unhandled character" beep.
-      if (wparam == VK_RETURN || wparam == VK_ESCAPE || wparam == VK_TAB) {
+      // (Ctrl+Enter arrives as a line feed.)
+      if (wparam == VK_RETURN || wparam == VK_ESCAPE || wparam == VK_TAB ||
+          wparam == 0x0A) {
         return 0;
+      }
+      if (self) {
+        // Backspace (and the 0x7F of Ctrl+Backspace) removes text: the
+        // query it starts asks for no inline completion, or what was just
+        // deleted would come straight back. Anything else typed may
+        // complete again.
+        self->last_edit_deleted_ =
+            wparam == VK_BACK || wparam == 0x7F || wparam == 0x18;  // ^X
       }
       if (wparam == VK_BACK && self && self->keyword_mode() &&
           hwnd == self->field_ && ::GetWindowTextLengthW(hwnd) == 0) {
@@ -1368,8 +1632,10 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
                        reinterpret_cast<LPARAM>(&sel_end));
         const std::wstring typed = TextOf(hwnd);
         if (sel_start == sel_end && sel_end == typed.size() &&
+            // Only a row the ARROWS armed: the default row is armed on its
+            // own now, and "bing.com foo" + Space must stay a space.
             self->AcceptKeyword(PhiOmniboxSpaceKeywordRow(
-                self->rows_, self->selected_, typed,
+                self->rows_, self->arrowed_ ? self->selected_ : -1, typed,
                 self->ResultsCurrent(typed), self->SpaceShortcutEnabled()))) {
           return 0;
         }
@@ -1381,8 +1647,15 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
       break;
     case WM_PASTE:
       if (self) {
+        self->last_edit_deleted_ = false;
         self->PasteInto(hwnd);
         return 0;
+      }
+      break;
+    case WM_CUT:
+    case WM_CLEAR:
+      if (self) {
+        self->last_edit_deleted_ = true;
       }
       break;
     case WM_KILLFOCUS:

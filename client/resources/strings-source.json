@@ -32,6 +32,20 @@
    "comment": "sidebar — hint at the address field's trailing end when Tab or Space picks the highlighted search engine; {0} is the engine name (used at phi_omnibox_session.cc)",
    "en": "Tab or Space to search {0}"
   },
+  "addressBar.suggestions.switchToOpenTabHintCtrl": {
+   "comment": "omnibox — used in phi_omnibox_session.cc; the Mac's addressBar.suggestions.switchToOpenTabHint with Ctrl for ⌘",
+   "en": "Hold Ctrl to switch →",
+   "translations": {
+    "de": "Ctrl halten zum Wechseln →",
+    "es": "Mantén Ctrl para cambiar →",
+    "fr": "Maintenez Ctrl pour basculer →",
+    "ja": "Ctrlを押したまま切り替え →",
+    "ko": "Ctrl 키를 누른 채 전환 →",
+    "nl": "Houd Ctrl ingedrukt om te wisselen →",
+    "zh-Hans": "按住 Ctrl 切换 →",
+    "zh-Hant": "按住 Ctrl 切換 →"
+   }
+  },
   "agent.credentialPick.continueButton": {
    "comment": "agent — credential chooser confirm button (an ambiguous vault query); used at phi_credential_service.cc",
    "en": "Continue"
