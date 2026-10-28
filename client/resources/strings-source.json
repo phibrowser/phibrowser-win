@@ -6463,6 +6463,34 @@
     "zh-Hant": "標示已在某處開啟的釘選分頁和書籤"
    }
   },
+  "settings.appearance.sidebarTransparency.hint": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, hint under the sidebar-transparency slider",
+   "en": "How much of the desktop shows through behind the sidebar",
+   "translations": {
+    "de": "Wie viel vom Desktop hinter der Seitenleiste durchscheint",
+    "es": "Cuánto se ve el escritorio detrás de la barra lateral",
+    "fr": "Dans quelle mesure le bureau transparaît derrière la barre latérale",
+    "ja": "サイドバーの背後にデスクトップがどれだけ透けて見えるか",
+    "ko": "사이드바 뒤로 데스크톱이 비쳐 보이는 정도",
+    "nl": "Hoeveel van het bureaublad door de zijbalk heen schijnt",
+    "zh-Hans": "桌面透过边栏显示的程度",
+    "zh-Hant": "桌面透過側邊欄顯示的程度"
+   }
+  },
+  "settings.appearance.sidebarTransparency.title": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color slider, 0-100 % (Windows only)",
+   "en": "Sidebar transparency",
+   "translations": {
+    "de": "Transparenz der Seitenleiste",
+    "es": "Transparencia de la barra lateral",
+    "fr": "Transparence de la barre latérale",
+    "ja": "サイドバーの透明度",
+    "ko": "사이드바 투명도",
+    "nl": "Transparantie van zijbalk",
+    "zh-Hans": "边栏透明度",
+    "zh-Hant": "側邊欄透明度"
+   }
+  },
   "settings.approvedAgents": {
    "comment": "settings — used at phi_settings_window.cc:2175",
    "en": "Approved agents",
@@ -7053,27 +7081,9 @@
    "comment": "settings — used at phi_settings_window.cc:772",
    "en": "Restore last session"
   },
-  "settings.general.theme.allSpacesHint": {
-   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Space color hint, one Space",
-   "en": "Applies to every Space",
-   "translations": {
-    "de": "Gilt für alle Spaces",
-    "es": "Se aplica a todos los Espacios",
-    "fr": "S'applique à tous les Espaces",
-    "ja": "すべてのスペースに適用されます",
-    "ko": "모든 스페이스에 적용돼요",
-    "nl": "Geldt voor elke Space",
-    "zh-Hans": "应用于所有空间",
-    "zh-Hant": "套用到所有空間"
-   }
-  },
   "settings.general.theme.colorTitle": {
    "comment": "settings — used at phi_settings_window.cc:599",
    "en": "Color"
-  },
-  "settings.general.theme.opacityTitle": {
-   "comment": "settings — used at phi_settings_window.cc:624",
-   "en": "Saturation"
   },
   "settings.general.theme.perSpaceHint": {
    "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Space color hint, several Spaces",

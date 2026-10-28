@@ -3242,6 +3242,14 @@ void PhiCoordinator::SetDimUnloadedTabIcons(bool enabled) {
   preferences_.SetDimUnloadedTabIcons(enabled);
 }
 
+int PhiCoordinator::SidebarTransparency() const {
+  return preferences_.SidebarTransparency();
+}
+
+void PhiCoordinator::SetSidebarTransparency(int percent) {
+  preferences_.SetSidebarTransparency(percent);
+}
+
 bool PhiCoordinator::PeekViewEnabled() const {
   return preferences_.PeekViewEnabled();
 }
@@ -3754,6 +3762,18 @@ void PhiCoordinator::OnPreferencesChanged(
     case PreferenceChange::kOpenIndicators:
     case PreferenceChange::kDimUnloaded:
       registry_.InvalidateAll();  // The sidebars repaint their icons and dots.
+      break;
+    case PreferenceChange::kSidebarTransparency:
+      // The DWM backdrop is set (or dropped) per window and the tint's alpha
+      // re-read; the corners, split ground and regrade follow it, as on a
+      // palette change.
+      for (PhiShellWindow* controller : registry_.Controllers()) {
+        controller->ApplyPalette();
+        if (HWND shell = controller->shell_hwnd()) {
+          ::InvalidateRect(shell, nullptr, FALSE);
+        }
+      }
+      registry_.InvalidateAll();
       break;
     case PreferenceChange::kPeek:
       PushPeekPreferences();  // The framework owns both decisions it gates.

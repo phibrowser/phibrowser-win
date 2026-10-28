@@ -150,6 +150,9 @@ class PhiSettingsHost {
   // GeneralSettings.dimUnloadedTabIcons — a reclaimed tab's favicon and
   // open dot at 30%. On by default, as on Mac.
   virtual void SetDimUnloadedTabIcons(bool enabled) = 0;
+  // Appearance ▸ "Sidebar transparency", 0-100 % (Windows only; 50 by
+  // default).
+  virtual void SetSidebarTransparency(int percent) = 0;
   // The UI language. An EMPTY tag means "follow the operating system", which
   // is the default and the only value that tracks a later OS change.
   virtual void SetLanguagePreference(const std::string& tag) = 0;
@@ -484,6 +487,9 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
                       const std::vector<PhiSpaceSummary>& spaces,
                       const std::vector<PhiProfileSummary>& profiles);
   void BuildSpaceEditor(const RECT& pane, const PhiSpaceSummary& space);
+  // A "Color ›" row's dot: the Space's palette colours, else its theme's
+  // overlay colour, in the current appearance.
+  std::vector<COLORREF> SpaceThemeDots(const PhiSpaceSummary& space) const;
   // The design's "URL Rules" row closing the Spaces page.
   void AddSpacesUrlRow(int* y);
   // Selects a Space in the list; a new selection resets the picker (tab,

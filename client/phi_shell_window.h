@@ -418,6 +418,9 @@ class ChromePrefsHost {
   // The Mac's GeneralSettings.dimUnloadedTabIcons: a reclaimed tab's favicon
   // and open dot at 30%. On by default; the dimmed title stays either way.
   virtual bool DimUnloadedTabIcons() const = 0;
+  // Appearance ▸ "Sidebar transparency", 0-100 %: how much of the Desktop
+  // Acrylic backdrop shows through the theme tint; 0 paints it opaque.
+  virtual int SidebarTransparency() const = 0;
   // Developer ▸ "Allow agents to control Phi": gates the View menu's agent
   // items, as the Mac's cdpAgentAccessEnabled does.
   virtual bool AllowAgentControl() const = 0;

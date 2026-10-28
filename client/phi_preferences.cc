@@ -301,6 +301,10 @@ bool PhiPreferences::DimUnloadedTabIcons() const {
   return settings_.dim_unloaded_tab_icons;
 }
 
+int PhiPreferences::SidebarTransparency() const {
+  return settings_.sidebar_transparency;
+}
+
 bool PhiPreferences::NewTabOpensOmnibox() const {
   return settings_.new_tab_behavior == model::NewTabBehavior::kOmnibox;
 }
@@ -479,6 +483,16 @@ void PhiPreferences::SetDimUnloadedTabIcons(bool enabled) {
   settings_.dim_unloaded_tab_icons = enabled;
   MarkDirty();
   Notify(PreferenceChange::kDimUnloaded);
+}
+
+void PhiPreferences::SetSidebarTransparency(int percent) {
+  percent = std::clamp(percent, 0, 100);
+  if (percent == settings_.sidebar_transparency) {
+    return;
+  }
+  settings_.sidebar_transparency = percent;
+  MarkDirty();
+  Notify(PreferenceChange::kSidebarTransparency);
 }
 
 void PhiPreferences::SetPeekViewEnabled(bool enabled) {

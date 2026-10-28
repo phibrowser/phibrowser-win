@@ -19,10 +19,18 @@ namespace phi_client {
 // Inputs are packed RGB (0xRRGGBB); output is premultiplied ARGB for a DIB.
 //
 // The theme ground's opacity over the OS backdrop (sidebar, address row and
-// window ground alike): the Mac's fixed overlay alpha over its vibrancy
-// material (ThemeColorAdjustment.defaultOverlayAlpha, 0.8), so the backdrop
-// shows through by a fifth.
-inline constexpr int kPhiBackdropTintAlpha = 204;
+// window ground alike). Appearance ▸ "Sidebar transparency" sets it; its
+// default, 50 %, lets the backdrop show through by half (the Mac's fixed
+// overlay alpha, ThemeColorAdjustment.defaultOverlayAlpha 0.8, is 20 %).
+// One value for the whole client, as the preference is.
+inline constexpr int kPhiBackdropDefaultTintAlpha = 128;
+inline int g_phi_backdrop_tint_alpha = kPhiBackdropDefaultTintAlpha;
+
+// `percent` transparent (0-100) as the tint's alpha.
+inline void PhiSetBackdropTransparency(int percent) {
+  g_phi_backdrop_tint_alpha =
+      (255 * (100 - std::clamp(percent, 0, 100)) + 50) / 100;
+}
 
 inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
   int coverage = 0;
@@ -39,12 +47,12 @@ inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
   return coverage;
 }
 
-// The tint is `pixel` read as one colour at kPhiBackdropTintAlpha over
+// The tint is `pixel` read as one colour at g_phi_backdrop_tint_alpha over
 // `ground`, as the Mac lays its overlay colour over the material; only a
 // pixel too far from `ground` for that alpha takes more.
 inline uint32_t PhiBackdropPixel(uint32_t pixel, uint32_t ground) {
   const int alpha =
-      std::max(kPhiBackdropTintAlpha, PhiBackdropCoverage(pixel, ground));
+      std::max(g_phi_backdrop_tint_alpha, PhiBackdropCoverage(pixel, ground));
   uint32_t result = static_cast<uint32_t>(alpha) << 24;
   for (int shift : {0, 8, 16}) {
     const int c = (pixel >> shift) & 255;
@@ -61,6 +69,9 @@ inline uint32_t PhiBackdropPixel(uint32_t pixel, uint32_t ground) {
 inline uint32_t PhiBackdropColor(uint32_t ground, bool dark) {
   const uint32_t pixel = PhiBackdropPixel(ground, dark ? 0 : 0xFFFFFF);
   const uint32_t alpha = pixel >> 24;
+  if (alpha == 0) {
+    return 0;  // Fully transparent (100 %): nothing to un-premultiply.
+  }
   uint32_t result = alpha << 24;
   for (int shift : {0, 8, 16}) {
     result |= ((((pixel >> shift) & 255) * 255 + alpha / 2) / alpha) << shift;

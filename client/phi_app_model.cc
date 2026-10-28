@@ -110,6 +110,9 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
                                       .value_or(out->show_open_tab_indicators);
   out->dim_unloaded_tab_icons = dict.FindBool("dimUnloadedTabIcons")
                                     .value_or(out->dim_unloaded_tab_icons);
+  out->sidebar_transparency = std::clamp(
+      dict.FindInt("sidebarTransparency").value_or(out->sidebar_transparency),
+      0, 100);
   out->agent_auto_view =
       dict.FindBool("PhiAgentSpaceAutoView").value_or(out->agent_auto_view);
   out->peek_view_enabled =
@@ -304,6 +307,7 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("showTabPreviews", value.show_tab_previews);
   root.Set("showOpenTabIndicators", value.show_open_tab_indicators);
   root.Set("dimUnloadedTabIcons", value.dim_unloaded_tab_icons);
+  root.Set("sidebarTransparency", value.sidebar_transparency);
   root.Set("PhiAgentSpaceAutoView", value.agent_auto_view);
   root.Set("peekViewEnabled", value.peek_view_enabled);
   root.Set("autoPeekViewEnabled", value.auto_peek_view_enabled);

@@ -426,6 +426,7 @@ class PhiCoordinator : public SidebarHost,
   bool ShowTabPreviews() const override;
   bool ShowOpenTabIndicators() const override;
   bool DimUnloadedTabIcons() const override;
+  int SidebarTransparency() const override;
   void NoteSlotActiveSpace(const std::string& space_id) override;
   void NoteSpaceWindow(const std::string& space_id,
                        int64_t browser_window_id) override;
@@ -454,6 +455,7 @@ class PhiCoordinator : public SidebarHost,
   void SetShowTabPreviews(bool enabled) override;
   void SetShowOpenTabIndicators(bool enabled) override;
   void SetDimUnloadedTabIcons(bool enabled) override;
+  void SetSidebarTransparency(int percent) override;
   std::string LanguagePreference() const;
   void SetLanguagePreference(const std::string& tag) override;
   bool RestoreLastSession() const;

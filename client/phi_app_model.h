@@ -211,6 +211,10 @@ struct PhiSettings {
   // The Mac's GeneralSettings.dimUnloadedTabIcons: a reclaimed (unloaded or
   // discarded) tab's favicon and open dot draw at 30%. On by default.
   bool dim_unloaded_tab_icons = true;
+  // Appearance ▸ "Sidebar transparency", 0-100 %: how much of the Desktop
+  // Acrylic backdrop shows through the sidebar's theme tint. 0 paints the
+  // palette opaque; 20 is the Mac's 80 % overlay. Windows only.
+  int sidebar_transparency = 50;
   bool peek_view_enabled = true;
   bool auto_peek_view_enabled = true;
   // The Mac's GeneralSettings.openKioskOnCommandOptionClick: a link clicked

@@ -167,13 +167,10 @@ constexpr int kRadius = 4;
 // Theme swatches: a 22pt dot in a 26pt ring frame, 2pt ring when selected,
 // caption (11pt) below only while selected (ThemeSwatchView).
 constexpr int kSwatchDot = 22;  // Selection ring = dot + 4.
-constexpr int kSwatchItemGeneral = 26;   // Per-item width in Appearance…
-constexpr int kSwatchGapGeneral = 4;     // …on 30 dip centres, no caption.
-constexpr int kSwatchBlock = 26;  // The ring frame; no caption.
-// The saturation slider: 10pt-tall full-width rounded bar with a gradient,
-// an 18pt white knob (ThemeOpacitySliderView).
+// The slider (Sidebar transparency): a 4 dip track, an 18pt white knob.
 constexpr int kSliderHeight = 20;
 constexpr int kSliderGeneral = 200;
+constexpr int kSliderReadout = 48;  // The "NN%" after the track.
 constexpr int kSliderKnob = 18;
 // Layout / appearance / new-tab picture cards: 122x72 image, r5, 2pt accent
 // ring when selected, 11pt caption 10 below, 16 apart (GeneralSttingCardView).
@@ -1343,6 +1340,25 @@ void PhiSettingsWindow::AddChips(const RECT& area,
   items_.push_back(std::move(pill));
 }
 
+std::vector<COLORREF> PhiSettingsWindow::SpaceThemeDots(
+    const PhiSpaceSummary& space) const {
+  // indicatorColors: a palette's resolved colours, opaque; else the
+  // theme's overlay colour.
+  const bool dark = prefs_->Palette().dark;
+  std::vector<COLORREF> colors;
+  const model::Space* record = spaces_->Find(space.id);
+  if (record && record->palette) {
+    for (int i = 0; i < record->palette->color_count(); ++i) {
+      colors.push_back(record->palette->ResolvedColor(i, dark));
+    }
+  } else {
+    const PhiTheme& theme = PhiThemeById(
+        space.theme_id.empty() ? prefs_->ThemeId() : space.theme_id);
+    colors.push_back(dark ? theme.dark.overlay : theme.light.overlay);
+  }
+  return colors;
+}
+
 // --- Panes -------------------------------------------------------------------
 
 void PhiSettingsWindow::BuildGeneral(int* y) {
@@ -1503,7 +1519,6 @@ void PhiSettingsWindow::BuildGeneral(int* y) {
 // cards — the page rows, the browsing rows, Developer mode, then the
 // browser-settings link.
 void PhiSettingsWindow::BuildAppearance(int* y) {
-  const auto& themes = PhiBuiltInThemes();
   const bool locked = spaces_->Summaries().size() > 1;
 
   BeginSection(y, PhiStr("appMenu.layout"));
@@ -1560,52 +1575,66 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
                 kChipIndent, 0xE7B3);
   }
   AddDividerRow(y);
-  {
-    // Space color — the theme dots, 22 on 30 dip centres. With several
-    // Spaces each one pins its own colour (the Spaces page), so the
-    // app-wide dots go inert and the description says where to go.
-    const int width = static_cast<int>(themes.size()) * kSwatchItemGeneral +
-                      (static_cast<int>(themes.size()) - 1) * kSwatchGapGeneral;
+  if (locked) {
+    // Space color: with several Spaces each one sets its own colours in the
+    // Spaces pane, so this row only says so and links there.
     const RECT area =
         AddRow(y, PhiStr("settings.general.theme.spaceColorTitle"),
-               kSwatchBlock, width,
-               PhiStr(locked ? "settings.general.theme.perSpaceHint"
-                             : "settings.general.theme.allSpacesHint"),
+               kRowLabelHeight, 170,
+               PhiStr("settings.general.theme.perSpaceHint"), kChipIndent,
+               0xE790);
+    Item link;
+    link.kind = ItemKind::kLink;
+    link.text =
+        PhiStr("settings.general.pinnedTabScope.openSpacesSettingsLink");
+    link.action = "gospaces";
+    link.bounds = area;
+    items_.push_back(std::move(link));
+  } else {
+    // Space color: the one Space's "Color ›" button (the Spaces pane's
+    // ThemeColorSettingsRow) opens its theme editor — colours, harmony and
+    // saturation in one place, replacing the theme dots and the slider.
+    const std::vector<PhiSpaceSummary> spaces = spaces_->Summaries();
+    const RECT area =
+        AddRow(y, PhiStr("settings.general.theme.spaceColorTitle"),
+               kPillHeight, kThemeColorControl + 2 * kWellPadX, nullptr,
                kChipIndent, 0xE790);
-    for (size_t i = 0; i < themes.size(); ++i) {
-      Item swatch;
-      swatch.kind = ItemKind::kSwatch;
-      swatch.payload = themes[i].id;
-      swatch.selected = prefs_->ThemeId() == themes[i].id;
-      swatch.enabled = !locked;
-      const PhiPalette resolved = PhiResolvePalette(
-          themes[i], prefs_->Appearance(), prefs_->Saturation());
-      // The dot is the Space tint the sidebar wears (the design's pastel
-      // dots); Pure fills white (contrast ring). The selection ring is
-      // that theme's OWN accent, as on Mac.
-      swatch.swatch = i == 0 ? RGB(0xFF, 0xFF, 0xFF) : resolved.ground_top;
-      swatch.ring = resolved.accent;
-      swatch.action = "theme";
-      const int x = area.left + static_cast<int>(i) *
-                                    Scaled(kSwatchItemGeneral +
-                                           kSwatchGapGeneral);
-      swatch.bounds = {x, area.top, x + Scaled(kSwatchItemGeneral),
-                       area.top + Scaled(kSwatchBlock)};
-      items_.push_back(std::move(swatch));
+    if (!spaces.empty() && !last_row_skipped_) {
+      Item row;
+      row.kind = ItemKind::kThemeColor;
+      row.colors = SpaceThemeDots(spaces.front());
+      row.action = "spacecolor";
+      row.payload = spaces.front().id;
+      row.a11y = PhiStr("settings.general.theme.spaceColorTitle");
+      row.bounds = area;
+      items_.push_back(std::move(row));
     }
   }
   AddDividerRow(y);
   {
+    // Sidebar transparency, 0-100 %: the desktop through the theme tint,
+    // the value read out after the track.
     const RECT area =
-        AddRow(y, PhiStr("settings.general.theme.opacityTitle"), kSliderHeight,
-               kSliderGeneral, nullptr, kChipIndent, 0xE9E9);
-    Item slider;
-    slider.kind = ItemKind::kSliderTrack;
-    slider.value = prefs_->Saturation();
-    slider.enabled = !locked;
-    slider.action = "saturation";
-    slider.bounds = area;
-    items_.push_back(std::move(slider));
+        AddRow(y, PhiStr("settings.appearance.sidebarTransparency.title"),
+               kSliderHeight, kSliderGeneral + kSliderReadout,
+               PhiStr("settings.appearance.sidebarTransparency.hint"),
+               kChipIndent, 0xE8A0);
+    if (!last_row_skipped_) {
+      const int value = prefs_->SidebarTransparency();
+      Item slider;
+      slider.kind = ItemKind::kSliderTrack;
+      slider.value = value;
+      slider.action = "sidebartransparency";
+      slider.bounds = area;
+      slider.bounds.right -= Scaled(kSliderReadout);
+      items_.push_back(std::move(slider));
+      Item readout;
+      readout.kind = ItemKind::kHint;
+      readout.text = PhiFormatNumber(static_cast<long long>(value)) + L"%";
+      readout.bounds = {area.right - Scaled(kSliderReadout) + Scaled(12),
+                        area.top, area.right, area.bottom};
+      items_.push_back(std::move(readout));
+    }
   }
   // The Mac's "Apply theme to text selection on web pages" is not drawn:
   // Windows has no web-selection tint for it to switch.
@@ -2308,16 +2337,7 @@ void PhiSettingsWindow::BuildSpaceEditor(const RECT& pane,
     // theme's overlay colour.
     Item row;
     row.kind = ItemKind::kThemeColor;
-    const model::Space* record = spaces_->Find(space.id);
-    if (record && record->palette) {
-      for (int i = 0; i < record->palette->color_count(); ++i) {
-        row.colors.push_back(record->palette->ResolvedColor(i, dark));
-      }
-    } else {
-      const PhiTheme& theme = PhiThemeById(
-          space.theme_id.empty() ? prefs_->ThemeId() : space.theme_id);
-      row.colors.push_back(dark ? theme.dark.overlay : theme.light.overlay);
-    }
+    row.colors = SpaceThemeDots(space);
     row.backdrop = well;
     row.action = "spacecolor";
     row.payload = space.id;
@@ -4303,8 +4323,8 @@ void PhiSettingsWindow::StepSlider(const Item& item, int delta) {
   // replaces items_ — and `item` with it — before the call returns.
   const std::string action = item.action;
   const int value = std::max(0, std::min(100, item.value + delta));
-  if (action == "saturation") {
-    host_->SetSaturation(value);
+  if (action == "sidebartransparency") {
+    host_->SetSidebarTransparency(value);
   }
   ScheduleRebuild();
 }
@@ -6427,6 +6447,10 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     section_ = "profiles";
     scroll_ = 0;
     SyncTitle();
+  } else if (item.action == "gospaces") {
+    section_ = "spaces";
+    scroll_ = 0;
+    SyncTitle();
   } else if (item.action == "browsersettings") {
     host_->OpenBrowserSettings();
   } else if (item.action == "openpage") {
@@ -6837,11 +6861,11 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
                          : chosen == 2 ? PhiPinScope::kProfile
                                        : PhiPinScope::kApp);
     }
-  } else if (item.action == "saturation") {
+  } else if (item.action == "sidebartransparency") {
     const int span = item.bounds.right - item.bounds.left;
     if (span > 0) {
       const int value = (x - item.bounds.left) * 100 / span;
-      host_->SetSaturation(value < 0 ? 0 : (value > 100 ? 100 : value));
+      host_->SetSidebarTransparency(std::clamp(value, 0, 100));
     }
   } else if (item.action == "spacecolor") {
     // Copied out first: the editor's writes rebuild items_ under `item`.
@@ -7004,7 +7028,7 @@ void PhiSettingsWindow::OnMouseDown(int hit, POINT client_pt) {
   // A slider is the one control that acts on the PRESS, and it keeps
   // following the pointer — outside the window too — until the button
   // comes back up. Everything else waits for the release.
-  if (item.action == "saturation") {
+  if (item.kind == ItemKind::kSliderTrack) {
     dragging_ = true;
     drag_item_ = item;
     drag_ = Capture(this);

@@ -984,6 +984,8 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
           coordinator_->settings().show_open_tab_indicators);
   out.Set("dimUnloadedTabIcons",
           coordinator_->settings().dim_unloaded_tab_icons);
+  out.Set("sidebarTransparency",
+          coordinator_->settings().sidebar_transparency);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
   out.Set("analyticsEnabled", coordinator_->settings().analytics_enabled);
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
@@ -1040,6 +1042,11 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   }
   if (std::optional<bool> dim = ctx.params.FindBool("dimUnloadedTabIcons")) {
     coordinator_->SetDimUnloadedTabIcons(*dim);
+    ok = true;
+  }
+  if (std::optional<int> transparency =
+          ctx.params.FindInt("sidebarTransparency")) {
+    coordinator_->SetSidebarTransparency(*transparency);
     ok = true;
   }
   if (std::optional<bool> restore =
@@ -1105,6 +1112,8 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
           coordinator_->settings().show_open_tab_indicators);
   out.Set("dimUnloadedTabIcons",
           coordinator_->settings().dim_unloaded_tab_icons);
+  out.Set("sidebarTransparency",
+          coordinator_->settings().sidebar_transparency);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
   out.Set("autoPeekViewEnabled",

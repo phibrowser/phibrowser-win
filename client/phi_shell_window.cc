@@ -4671,9 +4671,14 @@ void PhiShellWindow::UpdateSidebarBackdrop() {
   HIGHCONTRASTW contrast = {sizeof(contrast)};
   ::SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast), &contrast, 0);
   backdrop_split_ = ActiveTabIsSplit() && !browsers_->content_fullscreen();
+  // Appearance ▸ "Sidebar transparency": the tint's alpha for every
+  // backdrop surface; 0 % keeps the opaque palette.
+  const int transparency =
+      services_.prefs ? services_.prefs->SidebarTransparency() : 50;
+  PhiSetBackdropTransparency(transparency);
   const bool enabled =
       !browsers_->content_fullscreen() &&
-      !(contrast.dwFlags & HCF_HIGHCONTRASTON);
+      !(contrast.dwFlags & HCF_HIGHCONTRASTON) && transparency > 0;
   const BOOL dark = SettledDark();
   backdrop_dark_ = dark != FALSE;
   ::DwmSetWindowAttribute(shell_hwnd_, DWMWA_USE_IMMERSIVE_DARK_MODE,
