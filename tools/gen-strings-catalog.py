@@ -56,7 +56,8 @@ MAC_CATALOG = os.path.join(
 
 # The locales the product ships. "en" leads: it is the source language and the
 # runtime fallback.
-LOCALES = ["en", "de", "es", "fr", "ja", "ko", "nl", "zh-Hans", "zh-Hant"]
+LOCALES = ["en", "de", "es", "fr", "ja", "ko", "nl", "pt-BR", "zh-Hans",
+           "zh-Hant"]
 
 # CLDR's plural categories. A source key ending in one of these is a branch of
 # a plural family, not a key of its own (see the module docstring).

@@ -123,14 +123,15 @@ std::wstring PhiSubstitute(std::wstring_view pattern,
 
 PhiPlural PhiPluralFor(std::string_view locale, long long n) {
   // The language subtag is what decides; the script and region never do for
-  // the categories these nine locales use.
+  // the categories these ten locales use, with one exception: CLDR splits
+  // Portuguese, where Brazil counts zero as singular and Portugal does not.
   const size_t dash = locale.find('-');
   const std::string language = PhiLower(
       dash == std::string_view::npos ? locale : locale.substr(0, dash));
   if (language == "ja" || language == "ko" || language == "zh") {
     return PhiPlural::kOther;  // One form; a count never changes the noun.
   }
-  if (language == "fr") {
+  if (language == "fr" || (language == "pt" && PhiLower(locale) != "pt-pt")) {
     return (n == 0 || n == 1) ? PhiPlural::kOne : PhiPlural::kOther;
   }
   return n == 1 ? PhiPlural::kOne : PhiPlural::kOther;

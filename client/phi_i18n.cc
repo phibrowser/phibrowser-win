@@ -116,6 +116,10 @@ bool TagEquals(const std::string& a, const std::string& b) {
 // Best catalog locale for an OS tag. Exact match wins; then the script-aware
 // Chinese rules (a tag naming Hant, or a Hant-only region, is Traditional and
 // everything else Chinese is Simplified); then the bare language subtag.
+// That last rule is deliberate for Portuguese too: the catalog carries only
+// pt-BR, so a Windows "pt-PT" or bare "pt" reads Brazilian Portuguese, which
+// is closer to the user than the English fallback. A pt-PT catalog, once one
+// ships, wins by exact match and needs no change here.
 std::string MatchLocale(const std::string& os_tag,
                         const std::vector<std::string>& available) {
   for (const std::string& tag : available) {
@@ -399,6 +403,7 @@ const wchar_t* PhiLocaleDisplayName(const std::string& tag) {
       {"ja", L"日本語"},
       {"ko", L"한국어"},
       {"nl", L"Nederlands"},
+      {"pt-BR", L"Português (Brasil)"},
       {"zh-Hans", L"简体中文"},
       {"zh-Hant", L"繁體中文"},
   };

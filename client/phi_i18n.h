@@ -85,7 +85,7 @@ std::wstring PhiStrF(const char* key, const std::vector<std::wstring>& args);
 // A locale with more CLDR categories than one/other (Polish, Russian, Arabic)
 // gets them by adding `few`/`many`/`zero`/`two` to PhiPlural and shipping the
 // extra keys; nothing here or in the catalog format has to change, because
-// the category name IS the suffix. The nine locales the client ships today
+// the category name IS the suffix. The ten locales the client ships today
 // need only the two.
 //
 // A missing `<key>.other` degrades exactly as PhiStr does — the key comes

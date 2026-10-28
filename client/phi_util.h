@@ -131,7 +131,7 @@ std::wstring PhiSubstitute(std::wstring_view pattern,
 // Plurals and numbers (the pure half of phi_i18n's formatting)
 // ---------------------------------------------------------------------------
 
-// CLDR's plural categories, as far as the nine shipping locales need them.
+// CLDR's plural categories, as far as the ten shipping locales need them.
 // `few`/`many`/`two`/`zero` will be added with the locales that have them;
 // the key shape (`<key>.one`, `<key>.other`) already leaves room, because a
 // category name is the suffix.
@@ -139,7 +139,8 @@ enum class PhiPlural { kOne, kOther };
 
 // Which category `n` falls in for `locale` (a catalog tag, e.g. "zh-Hans").
 //   en, de, es, nl : n == 1
-//   fr             : n == 0 or n == 1  (French counts zero as singular)
+//   fr, pt-BR      : n == 0 or n == 1  (both count zero as singular;
+//                    CLDR gives pt-PT the English rule)
 //   ja, ko, zh     : never — those languages have one form
 // An unknown tag gets the English rule, which is the safest guess for a
 // language we have not classified.
