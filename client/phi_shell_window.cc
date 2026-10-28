@@ -14,6 +14,7 @@
 #undef small
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <cmath>
 #include <iterator>
@@ -233,6 +234,44 @@ int DiscCoverage(const RECT& disc, int x, int y) {
                                 y + 0.5 - (disc.top + radius)),
       0.0, 1.0);
   return static_cast<int>(coverage * 255 + 0.5);
+}
+
+// `circle` (a premultiplied px × px disc) with the Mac's commonBorder laid
+// over its edge: `ink` at `alpha` (0-255) through a `ring`-px band inside
+// the rim, antialiased by distance at both edges. Composited onto the
+// picture's own pixels, as the Mac lays it, rather than stroked as an
+// opaque ink-over-ground colour: the disc stays opaque through the
+// backdrop regrade, ring and all.
+std::vector<uint8_t> WithAvatarRing(const std::vector<uint8_t>& circle,
+                                    int px,
+                                    int ring,
+                                    PhiColor ink,
+                                    int alpha) {
+  std::vector<uint8_t> out = circle;
+  const double radius = px / 2.0;
+  const double inner = radius - ring;
+  const std::array<int, 3> ink_bgr = {PhiBlue(ink), PhiGreen(ink),
+                                      PhiRed(ink)};
+  for (int y = 0; y < px; ++y) {
+    for (int x = 0; x < px; ++x) {
+      const double distance =
+          std::hypot(x + 0.5 - radius, y + 0.5 - radius);
+      const double coverage = std::clamp(
+          std::min(radius - distance, distance - inner) + 0.5, 0.0, 1.0);
+      if (coverage <= 0.0) {
+        continue;
+      }
+      const double a = coverage * alpha / 255.0;
+      const size_t base = (static_cast<size_t>(y) * px + x) * 4;
+      for (int c = 0; c < 3; ++c) {
+        out[base + c] = static_cast<uint8_t>(
+            std::lround(ink_bgr[c] * a + out[base + c] * (1.0 - a)));
+      }
+      out[base + 3] =
+          static_cast<uint8_t>(std::lround(255 * a + out[base + 3] * (1.0 - a)));
+    }
+  }
+  return out;
 }
 
 }  // namespace
@@ -8171,15 +8210,14 @@ void PhiShellWindow::PaintChrome(HDC dc,
         const std::vector<uint8_t>& circle =
             services_.window->AccountAvatarCircle(px);
         if (!circle.empty()) {
-          drew_avatar = PhiBlendBgra(dc, disc, circle.data(), px, px);
+          const std::vector<uint8_t> ringed =
+              WithAvatarRing(circle, px, std::max(1, Scaled(1)), palette.ink,
+                             palette.dark ? 20 : 23);
+          drew_avatar = PhiBlendBgra(dc, disc, ringed.data(), px, px);
         }
       }
       if (drew_avatar) {
-        const int ring = std::max(1, Scaled(1));
-        PhiStrokeEllipseAA(dc, disc, palette.border, ring);
-        // The picture inside the ring; the ring is chrome ink like any other.
         avatar_disc_ = disc;
-        ::InflateRect(&avatar_disc_, -ring, -ring);
       } else {
         PhiDrawIconGlyph(dc, disc, fluent::kContact, px, kLabelDim);
       }

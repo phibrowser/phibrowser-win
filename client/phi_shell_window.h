@@ -1488,8 +1488,8 @@ class PhiShellWindow : public PhiHitSource,
   SIZE back_buffer_size_{};
   bool sidebar_backdrop_ = false;
   bool backdrop_split_ = false;
-  // Where PaintChrome last drew the account picture, inside its ring (empty:
-  // the glyph or no button). The backdrop regrade keeps this disc opaque: a
+  // Where PaintChrome last drew the account picture and its ring (empty: the
+  // glyph or no button). The backdrop regrade keeps this disc opaque: a
   // photo is not ink over the ground, and reading it as one tints and washes
   // it out.
   RECT avatar_disc_ = {};
