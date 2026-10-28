@@ -334,14 +334,6 @@
     "zh-Hant": "後再試一次。"
    }
   },
-  "app.appsuselighttheme": {
-   "comment": "app — used in phi_theme.cc",
-   "en": "AppsUseLightTheme"
-  },
-  "app.authorizationBearer": {
-   "comment": "app — used in phi_telemetry.cc",
-   "en": "\r\nAuthorization: Bearer "
-  },
   "app.bookmarkFolderDialog.createTitle": {
    "comment": "bookmarkManager — used at phi_bookmark_manager.cc:537",
    "en": "New Folder"
@@ -426,14 +418,6 @@
    "comment": "app — used in phi_coordinator.cc",
    "en": "Close Window"
   },
-  "app.contentTypeApplicationJson": {
-   "comment": "app — used in phi_telemetry.cc",
-   "en": "Content-Type: application/json"
-  },
-  "app.contentTypeApplicationXWww": {
-   "comment": "app — used in phi_auth.cc",
-   "en": "Content-Type: application/x-www-form-urlencoded"
-  },
   "app.copyTabURLsToast.single": {
    "comment": "menuBar — used at phi_menu_bar.cc:927",
    "en": "URL Copied"
@@ -469,10 +453,6 @@
     "zh-Hans": "  （当前）",
     "zh-Hant": "  （目前）"
    }
-  },
-  "app.dPAGaSy": {
-   "comment": "app — used in phi_control_server.cc",
-   "en": "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;OW)"
   },
   "app.deleteProfileConfirmation.deleteButton": {
    "comment": "bookmarkManager — used at phi_bookmark_manager.cc:768",
@@ -564,10 +544,6 @@
     "zh-Hant": "Français"
    }
   },
-  "app.fydeInnovations": {
-   "comment": "app — used in phi_updater.cc",
-   "en": "Fyde Innovations"
-  },
   "app.helpMenu.exportUserData": {
    "comment": "menuBar — used at phi_menu_bar.cc:394",
    "en": "Export User Data..."
@@ -583,10 +559,6 @@
   "app.helpMenu.whatsNew": {
    "comment": "menuBar — used at phi_menu_bar.cc:390",
    "en": "What's New"
-  },
-  "app.imagePng": {
-   "comment": "app — used in phi_window_capture.cc",
-   "en": "image/png"
   },
   "app.import": {
    "comment": "app — used at phi_coordinator.cc:6350",
@@ -631,10 +603,6 @@
   "app.mainMenu.spaces": {
    "comment": "app — used at phi_coordinator.cc:107",
    "en": "Spaces"
-  },
-  "app.name": {
-   "comment": "app — used in phi_control_server.cc",
-   "en": "name:"
   },
   "app.nederlands": {
    "comment": "app — used in phi_i18n.cc",
@@ -772,14 +740,6 @@
     "zh-Hant": "Phi 會將機密資訊輸入頁面，AI 代理永遠看不到。"
    }
   },
-  "app.phiVaultHelper": {
-   "comment": "app — used in phi_coordinator.cc",
-   "en": "PHI_VAULT_HELPER"
-  },
-  "app.phibrowserWin": {
-   "comment": "app — used in phi_auth.cc",
-   "en": "PhiBrowser-Win"
-  },
   "app.previousSpace": {
    "comment": "app — used in phi_coordinator.cc",
    "en": "Previous Space"
@@ -837,10 +797,6 @@
     "zh-Hans": "显示全部历史记录",
     "zh-Hant": "顯示完整瀏覽記錄"
    }
-  },
-  "app.softwareMicrosoftWindowsCurrentversionThemes": {
-   "comment": "app — used in phi_theme.cc",
-   "en": "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
   },
   "app.spacesMenu.closeActiveIncognitoSpace": {
    "comment": "spaces — Incognito Spaces (docs/incognito-space-port.md), phi_space_manager.cc / phi_shell_window.cc",
@@ -901,10 +857,6 @@
   "app.timeMachineBackup.details.dataSizeUnavailable": {
    "comment": "settings — used at phi_settings_window.cc:1739",
    "en": "Unavailable"
-  },
-  "app.tmp": {
-   "comment": "app — used in phi_tab_store.cc",
-   "en": ".tmp"
   },
   "app.toggleSidebar": {
    "comment": "app — used in phi_coordinator.cc",
@@ -1147,13 +1099,13 @@
    "en": "Delete Space…",
    "translations": {
     "de": "Space löschen…",
-    "es": "Eliminar Space…",
-    "fr": "Supprimer le Space…",
-    "ja": "Space を削除…",
-    "ko": "Space 삭제…",
+    "es": "Eliminar Espacio…",
+    "fr": "Supprimer l'Espace…",
+    "ja": "スペースを削除…",
+    "ko": "스페이스 삭제…",
     "nl": "Space verwijderen…",
-    "zh-Hans": "删除 Space…",
-    "zh-Hant": "刪除 Space…"
+    "zh-Hans": "删除空间…",
+    "zh-Hant": "刪除空間…"
    }
   },
   "appMenu.developerTools": {
@@ -1511,13 +1463,13 @@
    "en": "New Space…",
    "translations": {
     "de": "Neuer Space…",
-    "es": "Nuevo Space…",
-    "fr": "Nouveau Space…",
-    "ja": "新しい Space…",
-    "ko": "새 Space…",
+    "es": "Nuevo Espacio…",
+    "fr": "Nouvel Espace…",
+    "ja": "新しいスペース…",
+    "ko": "새 스페이스…",
     "nl": "Nieuwe Space…",
-    "zh-Hans": "新建 Space…",
-    "zh-Hant": "新增 Space…"
+    "zh-Hans": "新建空间…",
+    "zh-Hant": "新增空間…"
    }
   },
   "appMenu.newTab": {
@@ -1553,13 +1505,13 @@
    "en": "Next Space\tCtrl+Alt+Right",
    "translations": {
     "de": "Nächster Space",
-    "es": "Space siguiente",
-    "fr": "Space suivant",
-    "ja": "次の Space",
-    "ko": "다음 Space",
+    "es": "Espacio siguiente",
+    "fr": "Espace suivant",
+    "ja": "次のスペース",
+    "ko": "다음 스페이스",
     "nl": "Volgende Space",
-    "zh-Hans": "下一个 Space",
-    "zh-Hant": "下一個 Space"
+    "zh-Hans": "下一个空间",
+    "zh-Hant": "下一個空間"
    }
   },
   "appMenu.openFile": {
@@ -1585,13 +1537,13 @@
    "en": "Previous Space\tCtrl+Alt+Left",
    "translations": {
     "de": "Vorheriger Space",
-    "es": "Space anterior",
-    "fr": "Space précédent",
-    "ja": "前の Space",
-    "ko": "이전 Space",
+    "es": "Espacio anterior",
+    "fr": "Espace précédent",
+    "ja": "前のスペース",
+    "ko": "이전 스페이스",
     "nl": "Vorige Space",
-    "zh-Hans": "上一个 Space",
-    "zh-Hant": "上一個 Space"
+    "zh-Hans": "上一个空间",
+    "zh-Hant": "上一個空間"
    }
   },
   "appMenu.print": {
@@ -1641,13 +1593,13 @@
    "en": "Rename Space…",
    "translations": {
     "de": "Space umbenennen…",
-    "es": "Cambiar nombre del Space…",
-    "fr": "Renommer le Space…",
-    "ja": "Space の名前を変更…",
-    "ko": "Space 이름 바꾸기…",
+    "es": "Renombrar Espacio…",
+    "fr": "Renommer l'Espace…",
+    "ja": "スペースの名前を変更…",
+    "ko": "스페이스 이름 변경…",
     "nl": "Space hernoemen…",
-    "zh-Hans": "重命名 Space…",
-    "zh-Hant": "重新命名 Space…"
+    "zh-Hans": "重命名空间…",
+    "zh-Hant": "重新命名空間…"
    }
   },
   "appMenu.reopenClosedTab": {
@@ -1757,13 +1709,13 @@
    "en": "Spaces",
    "translations": {
     "de": "Spaces",
-    "es": "Spaces",
-    "fr": "Spaces",
-    "ja": "Spaces",
-    "ko": "Spaces",
+    "es": "Espacios",
+    "fr": "Espaces",
+    "ja": "スペース",
+    "ko": "스페이스",
     "nl": "Spaces",
-    "zh-Hans": "Spaces",
-    "zh-Hant": "Spaces"
+    "zh-Hans": "空间",
+    "zh-Hant": "空間"
    }
   },
   "appMenu.taskManager": {
@@ -2435,13 +2387,13 @@
    "en": "Clone to Space",
    "translations": {
     "de": "In Space klonen",
-    "es": "Clonar en Space",
-    "fr": "Cloner vers un Space",
-    "ja": "Space に複製",
-    "ko": "Space로 복제",
+    "es": "Clonar en otro Espacio",
+    "fr": "Cloner vers un Espace",
+    "ja": "スペースに複製",
+    "ko": "스페이스로 복제",
     "nl": "Klonen naar Space",
-    "zh-Hans": "克隆到 Space",
-    "zh-Hant": "複製到 Space"
+    "zh-Hans": "克隆到空间",
+    "zh-Hant": "複製到空間"
    }
   },
   "contextMenu.close": {
@@ -2589,13 +2541,13 @@
    "en": "Delete Space…",
    "translations": {
     "de": "Space löschen…",
-    "es": "Eliminar Space…",
-    "fr": "Supprimer le Space…",
-    "ja": "Space を削除…",
-    "ko": "Space 삭제…",
+    "es": "Eliminar Espacio…",
+    "fr": "Supprimer l'Espace…",
+    "ja": "スペースを削除…",
+    "ko": "스페이스 삭제…",
     "nl": "Space verwijderen…",
-    "zh-Hans": "删除 Space…",
-    "zh-Hant": "刪除 Space…"
+    "zh-Hans": "删除空间…",
+    "zh-Hant": "刪除空間…"
    }
   },
   "contextMenu.duplicate": {
@@ -2841,13 +2793,13 @@
    "en": "Move to Space",
    "translations": {
     "de": "In Space verschieben",
-    "es": "Mover a Space",
-    "fr": "Déplacer vers un Space",
-    "ja": "Space に移動",
-    "ko": "Space로 이동",
+    "es": "Mover a un Espacio",
+    "fr": "Déplacer vers un Espace",
+    "ja": "スペースに移動",
+    "ko": "스페이스로 이동",
     "nl": "Naar Space verplaatsen",
-    "zh-Hans": "移动到 Space",
-    "zh-Hant": "移至 Space"
+    "zh-Hans": "移到空间",
+    "zh-Hant": "移至空間"
    }
   },
   "contextMenu.newFolder": {
@@ -2883,13 +2835,13 @@
    "en": "New Space…",
    "translations": {
     "de": "Neuer Space…",
-    "es": "Nuevo Space…",
-    "fr": "Nouveau Space…",
-    "ja": "新しい Space…",
-    "ko": "새 Space…",
+    "es": "Nuevo Espacio…",
+    "fr": "Nouvel Espace…",
+    "ja": "新しいスペース…",
+    "ko": "새 스페이스…",
     "nl": "Nieuwe Space…",
-    "zh-Hans": "新建 Space…",
-    "zh-Hant": "新增 Space…"
+    "zh-Hans": "新建空间…",
+    "zh-Hant": "新增空間…"
    }
   },
   "contextMenu.newSpaceWithNewProfile": {
@@ -2897,13 +2849,13 @@
    "en": "New Space with new profile…",
    "translations": {
     "de": "Neuer Space mit neuem Profil…",
-    "es": "Nuevo Space con perfil nuevo…",
-    "fr": "Nouveau Space avec un nouveau profil…",
-    "ja": "新しいプロファイルで新しい Space…",
-    "ko": "새 프로필로 새 Space…",
+    "es": "Nuevo Espacio con perfil nuevo…",
+    "fr": "Nouvel Espace avec un nouveau profil…",
+    "ja": "新しいプロファイルで新しいスペース…",
+    "ko": "새 프로필로 새 스페이스…",
     "nl": "Nieuwe Space met nieuw profiel…",
-    "zh-Hans": "使用新配置文件新建 Space…",
-    "zh-Hant": "以新設定檔新增 Space…"
+    "zh-Hans": "使用新配置文件新建空间…",
+    "zh-Hant": "以新設定檔新增空間…"
    }
   },
   "contextMenu.newTab": {
@@ -3079,13 +3031,13 @@
    "en": "Rename Space…",
    "translations": {
     "de": "Space umbenennen…",
-    "es": "Cambiar nombre del Space…",
-    "fr": "Renommer le Space…",
-    "ja": "Space の名前を変更…",
-    "ko": "Space 이름 바꾸기…",
+    "es": "Renombrar Espacio…",
+    "fr": "Renommer l'Espace…",
+    "ja": "スペースの名前を変更…",
+    "ko": "스페이스 이름 변경…",
     "nl": "Space hernoemen…",
-    "zh-Hans": "重命名 Space…",
-    "zh-Hant": "重新命名 Space…"
+    "zh-Hans": "重命名空间…",
+    "zh-Hant": "重新命名空間…"
    }
   },
   "contextMenu.reopenClosedTab": {
@@ -3237,13 +3189,13 @@
    "en": "Delete this Space?",
    "translations": {
     "de": "Diesen Space löschen?",
-    "es": "¿Eliminar este Space?",
-    "fr": "Supprimer ce Space ?",
-    "ja": "この Space を削除しますか？",
-    "ko": "이 Space를 삭제할까요?",
+    "es": "¿Eliminar este Espacio?",
+    "fr": "Supprimer cet Espace ?",
+    "ja": "このスペースを削除しますか？",
+    "ko": "이 스페이스를 삭제할까요?",
     "nl": "Deze Space verwijderen?",
-    "zh-Hans": "删除此 Space？",
-    "zh-Hant": "刪除此 Space？"
+    "zh-Hans": "删除此空间？",
+    "zh-Hant": "刪除此空間？"
    }
   },
   "download.safety.short.blocked": {
@@ -5181,10 +5133,6 @@
     "zh-Hant": "工作管理員"
    }
   },
-  "menuBar.text": {
-   "comment": "menuBar — used in phi_menu_bar.cc",
-   "en": "\tCtrl+"
-  },
   "menuBar.theImportCouldNotStart": {
    "comment": "menuBar — used in phi_menu_bar.cc",
    "en": "The import could not start. Is Google Chrome ",
@@ -5866,10 +5814,6 @@
     "zh-Hans": "Left",
     "zh-Hant": "Left"
    }
-  },
-  "prompt.listbox": {
-   "comment": "prompt — used in phi_prompt.cc",
-   "en": "LISTBOX"
   },
   "prompt.ok": {
    "comment": "prompt — used in phi_prompt.cc",
@@ -7250,10 +7194,6 @@
     "zh-Hans": "为 Phi 和智能体请求提供登录信息，由独立的",
     "zh-Hant": "供 Phi 和 AI 代理要求使用的登入資訊，由獨立的"
    }
-  },
-  "settings.msSettingsDefaultapps": {
-   "comment": "settings — used in phi_settings_window.cc",
-   "en": "ms-settings:defaultapps"
   },
   "settings.navigation.aboutTitle": {
    "comment": "settings — Settings window (phi_settings_window.cc): navigation rail page",
@@ -8759,10 +8699,6 @@
    "comment": "menuBar — used at phi_menu_bar.cc:259",
    "en": "Chat\tCtrl+Shift+C"
   },
-  "sidebar.chromeNewtab": {
-   "comment": "sidebar — used in phi_shell_window.cc",
-   "en": "chrome://newtab"
-  },
   "sidebar.createSpace.cancelButton": {
    "comment": "createSpace — used at phi_create_space_panel.cc",
    "en": "Cancel"
@@ -9466,8 +9402,18 @@
    }
   },
   "sync.reconfigure.resumeResetBody.windows": {
-   "comment": "Windows wording of Mac key sync.reconfigure.resumeResetBody (the Mac says “this Mac”); confirmation before Set up sync again finishes an account reset the user confirmed earlier but that did not complete (phi_settings_window.cc). English only until the translation repo carries it.",
-   "en": "This finishes the reset you confirmed earlier: this PC is removed from sync and all sync data stored for this account is deleted. Your local browsing data stays on this PC."
+   "comment": "Windows wording of Mac key sync.reconfigure.resumeResetBody (the Mac says “this Mac”); confirmation before Set up sync again finishes an account reset the user confirmed earlier but that did not complete (phi_settings_window.cc).",
+   "en": "This finishes the reset you confirmed earlier: this PC is removed from sync and all sync data stored for this account is deleted. Your local browsing data stays on this PC.",
+   "translations": {
+    "de": "Damit wird das Zurücksetzen abgeschlossen, das du zuvor bestätigt hast: Dieser PC wird aus der Synchronisierung entfernt und alle für diesen Account gespeicherten Synchronisierungsdaten werden gelöscht. Deine lokalen Browserdaten bleiben auf diesem PC erhalten.",
+    "es": "Esto finaliza el restablecimiento que confirmaste antes: este PC se elimina de la sincronización, junto con todos los datos de sincronización almacenados para esta cuenta. Tus datos de navegación locales permanecen en este PC.",
+    "fr": "Ceci termine la réinitialisation que vous avez confirmée précédemment : ce PC est supprimé de la synchronisation et toutes les données de synchronisation stockées pour ce compte sont supprimées. Vos données de navigation locales restent sur ce PC.",
+    "ja": "先ほど確認したリセットを完了します。このPCが同期から削除され、このアカウントの同期データがすべて削除されます。ローカルの閲覧データはこのPCに残ります。",
+    "ko": "앞서 확인한 재설정을 완료해요: 이 PC가 동기화에서 제거되고 이 계정에 저장된 모든 동기화 데이터가 삭제돼요. 로컬 브라우징 데이터는 이 PC에 그대로 남아요.",
+    "nl": "Hiermee wordt de reset voltooid die je eerder hebt bevestigd: deze pc wordt uit synchronisatie verwijderd en alle synchronisatiegegevens die voor dit account zijn opgeslagen, worden verwijderd. Je lokale browsegegevens blijven op deze pc staan.",
+    "zh-Hans": "这将完成你之前确认的重置：这台电脑会从同步中移除，为此账户存储的所有同步数据都会被删除。你的本地浏览数据会保留在这台电脑上。",
+    "zh-Hant": "這會完成你先前確認的重設：這部電腦會從同步中移除，且為此帳號儲存的所有同步資料都會刪除。你的本機瀏覽資料會留在這部電腦上。"
+   }
   },
   "sync.reconfigure.returnToSettings": {
    "comment": "Sync recovery after a server reset or incomplete local cleanup.",
@@ -9482,24 +9428,54 @@
    "en": "Delete All Sync Data"
   },
   "sync.removal.resetConfirmBody.windows": {
-   "comment": "Windows wording of Mac key sync.removal.resetConfirmBody (the Mac says “this Mac”); Delete all sync data — confirmation dialog message explaining what deleting the account's sync data does (phi_settings_window.cc). English only until the translation repo carries it.",
-   "en": "Every device will be removed from sync, and all data stored on the sync server for this account will be deleted. Your local browsing data stays on this PC. To use sync again, you’ll need to set it up from scratch."
+   "comment": "Windows wording of Mac key sync.removal.resetConfirmBody (the Mac says “this Mac”); Delete all sync data — confirmation dialog message explaining what deleting the account's sync data does (phi_settings_window.cc).",
+   "en": "Every device will be removed from sync, and all data stored on the sync server for this account will be deleted. Your local browsing data stays on this PC. To use sync again, you’ll need to set it up from scratch.",
+   "translations": {
+    "de": "Alle Geräte werden aus der Synchronisierung entfernt und alle auf dem Synchronisierungsserver für diesen Account gespeicherten Daten werden gelöscht. Deine lokalen Browserdaten bleiben auf diesem PC erhalten. Um die Synchronisierung wieder zu verwenden, musst du sie von Grund auf neu einrichten.",
+    "es": "Se eliminarán todos los dispositivos de la sincronización, junto con todos los datos almacenados en el servidor de sincronización para esta cuenta. Tus datos de navegación locales permanecen en este PC. Para volver a usar la sincronización, tendrás que configurarla desde cero.",
+    "fr": "Tous les appareils seront supprimés de la synchronisation et toutes les données stockées sur le serveur de synchronisation pour ce compte seront supprimées. Vos données de navigation locales restent sur ce PC. Pour utiliser à nouveau la synchronisation, vous devrez la configurer depuis le début.",
+    "ja": "すべてのデバイスが同期から削除され、このアカウントの同期サーバに保存されているデータはすべて削除されます。ローカルの閲覧データはこのPCに残ります。同期を再び使用するには、最初から設定し直す必要があります。",
+    "ko": "모든 기기가 동기화에서 제거되고, 이 계정에 대해 동기화 서버에 저장된 모든 데이터가 삭제돼요. 로컬 브라우징 데이터는 이 PC에 그대로 남아요. 동기화를 다시 사용하려면 처음부터 다시 설정해야 해요.",
+    "nl": "Elk apparaat wordt uit synchronisatie verwijderd en alle gegevens die voor dit account op de synchronisatieserver zijn opgeslagen, worden verwijderd. Je lokale browsegegevens blijven op deze pc staan. Om synchronisatie opnieuw te gebruiken, moet je deze helemaal opnieuw instellen.",
+    "zh-Hans": "所有设备都将从同步中移除，同步服务器上为此账户存储的所有数据都将被删除。你的本地浏览数据会保留在这台电脑上。若要再次使用同步，你需要从头重新设置。",
+    "zh-Hant": "所有裝置都會從同步中移除，且同步伺服器上為此帳號儲存的所有資料都會刪除。你的本機瀏覽資料會留在這部電腦上。若要再次使用同步，你需要從頭重新設定。"
+   }
   },
   "sync.removal.resetConfirmTitle": {
    "comment": "Mac key (translations by key); Delete all sync data — confirmation dialog title, shown before the last device removes itself and deletes the account's sync data (phi_settings_window.cc)",
    "en": "Delete all sync data for this account?"
   },
   "sync.removal.resetRefusedNotLastDevice.windows": {
-   "comment": "Windows wording of Mac key sync.removal.resetRefusedNotLastDevice (the Mac says “this Mac”); Reset sync — error shown when the server refused the reset because another device joined the account in the meantime (phi_settings_window.cc). English only until the translation repo carries it.",
-   "en": "Another device has joined this account since, so nothing was deleted. You can remove this PC from sync instead."
+   "comment": "Windows wording of Mac key sync.removal.resetRefusedNotLastDevice (the Mac says “this Mac”); Reset sync — error shown when the server refused the reset because another device joined the account in the meantime (phi_settings_window.cc).",
+   "en": "Another device has joined this account since, so nothing was deleted. You can remove this PC from sync instead.",
+   "translations": {
+    "de": "Inzwischen ist ein anderes Gerät diesem Account beigetreten, daher wurde nichts gelöscht. Du kannst stattdessen diesen PC aus der Synchronisierung entfernen.",
+    "es": "Otro dispositivo se ha unido a esta cuenta desde entonces, así que no se eliminó nada. En su lugar, puedes eliminar este PC de la sincronización.",
+    "fr": "Un autre appareil a rejoint ce compte entre-temps, rien n'a donc été supprimé. Vous pouvez plutôt supprimer ce PC de la synchronisation.",
+    "ja": "その後、別のデバイスがこのアカウントに参加したため、何も削除されませんでした。代わりに、このPCを同期から削除できます。",
+    "ko": "그 사이에 다른 기기가 이 계정에 참여해서 아무것도 삭제되지 않았어요. 대신 동기화에서 이 PC를 제거할 수 있어요.",
+    "nl": "Er is sindsdien een ander apparaat aan dit account toegevoegd, dus er is niets verwijderd. Je kunt deze pc in plaats daarvan uit synchronisatie verwijderen.",
+    "zh-Hans": "此后已有另一台设备加入了此账户，因此没有删除任何内容。你可以改为将这台电脑从同步中移除。",
+    "zh-Hant": "在此期間已有另一部裝置加入此帳號，因此沒有刪除任何資料。你可以改為將這部電腦從同步中移除。"
+   }
   },
   "sync.removal.resetRowAction": {
    "comment": "Mac key (translations by key); Sync settings — destructive button on the Reset sync row; opens the delete-all-sync-data confirmation (phi_settings_window.cc)",
    "en": "Reset…"
   },
   "sync.removal.resetRowDescription.windows": {
-   "comment": "Windows wording of Mac key sync.removal.resetRowDescription (the Mac says “this Mac”); Sync settings — description under the Reset sync row (phi_settings_window.cc). English only until the translation repo carries it.",
-   "en": "This is the only device set up for sync. Resetting removes this PC from sync and deletes all sync data stored for this account. Your local browsing data stays on this PC."
+   "comment": "Windows wording of Mac key sync.removal.resetRowDescription (the Mac says “this Mac”); Sync settings — description under the Reset sync row (phi_settings_window.cc).",
+   "en": "This is the only device set up for sync. Resetting removes this PC from sync and deletes all sync data stored for this account. Your local browsing data stays on this PC.",
+   "translations": {
+    "de": "Dies ist das einzige für die Synchronisierung eingerichtete Gerät. Beim Zurücksetzen wird dieser PC aus der Synchronisierung entfernt und alle für diesen Account gespeicherten Synchronisierungsdaten werden gelöscht. Deine lokalen Browserdaten bleiben auf diesem PC erhalten.",
+    "es": "Este es el único dispositivo configurado para la sincronización. Restablecerla elimina este PC de la sincronización y todos los datos de sincronización almacenados para esta cuenta. Tus datos de navegación locales permanecen en este PC.",
+    "fr": "Ceci est le seul appareil configuré pour la synchronisation. La réinitialisation supprime ce PC de la synchronisation ainsi que toutes les données de synchronisation stockées pour ce compte. Vos données de navigation locales restent sur ce PC.",
+    "ja": "同期が設定されているデバイスはこのPCだけです。リセットすると、このPCが同期から削除され、このアカウントの同期データがすべて削除されます。ローカルの閲覧データはこのPCに残ります。",
+    "ko": "동기화가 설정된 기기는 이 기기뿐이에요. 재설정하면 이 PC가 동기화에서 제거되고 이 계정에 저장된 모든 동기화 데이터가 삭제돼요. 로컬 브라우징 데이터는 이 PC에 그대로 남아요.",
+    "nl": "Dit is het enige apparaat dat is ingesteld voor synchronisatie. Bij het resetten wordt deze pc uit synchronisatie verwijderd en worden alle synchronisatiegegevens die voor dit account zijn opgeslagen, verwijderd. Je lokale browsegegevens blijven op deze pc staan.",
+    "zh-Hans": "这是唯一一台设置了同步的设备。重置会将这台电脑从同步中移除，并删除为此账户存储的所有同步数据。你的本地浏览数据会保留在这台电脑上。",
+    "zh-Hant": "這是唯一一部設定了同步的裝置。重設會將這部電腦從同步中移除，並刪除為此帳號儲存的所有同步資料。你的本機瀏覽資料會留在這部電腦上。"
+   }
   },
   "sync.removal.resetRowTitle": {
    "comment": "Mac key (translations by key); Sync settings — title of the row, shown when this PC is the account's only active device, that removes it and deletes all of the account's sync data (phi_settings_window.cc)",
@@ -9510,12 +9486,32 @@
    "en": "Remove…"
   },
   "sync.removal.rowDescription.windows": {
-   "comment": "Windows wording of Mac key sync.removal.rowDescription (the Mac says “this Mac”); Sync settings — description under the row that removes this PC from sync (phi_settings_window.cc). English only until the translation repo carries it.",
-   "en": "This PC will stop syncing. Your local browsing data stays on this PC."
+   "comment": "Windows wording of Mac key sync.removal.rowDescription (the Mac says “this Mac”); Sync settings — description under the row that removes this PC from sync (phi_settings_window.cc).",
+   "en": "This PC will stop syncing. Your local browsing data stays on this PC.",
+   "translations": {
+    "de": "Dieser PC stellt die Synchronisierung ein. Deine lokalen Browserdaten bleiben auf diesem PC erhalten.",
+    "es": "Este PC dejará de sincronizarse. Tus datos de navegación locales permanecen en este PC.",
+    "fr": "Ce PC cessera de se synchroniser. Vos données de navigation locales restent sur ce PC.",
+    "ja": "このPCは同期を停止します。ローカルの閲覧データはこのPCに残ります。",
+    "ko": "이 PC의 동기화가 중단돼요. 로컬 브라우징 데이터는 이 PC에 그대로 남아요.",
+    "nl": "Deze pc stopt met synchroniseren. Je lokale browsegegevens blijven op deze pc staan.",
+    "zh-Hans": "这台电脑将停止同步。你的本地浏览数据会保留在这台电脑上。",
+    "zh-Hant": "這部電腦將停止同步。你的本機瀏覽資料會留在這部電腦上。"
+   }
   },
   "sync.removal.rowTitle.windows": {
-   "comment": "Windows wording of Mac key sync.removal.rowTitle (the Mac says “this Mac”); Sync settings — title of the row that removes this PC from sync (phi_settings_window.cc). English only until the translation repo carries it.",
-   "en": "Remove this PC from sync"
+   "comment": "Windows wording of Mac key sync.removal.rowTitle (the Mac says “this Mac”); Sync settings — title of the row that removes this PC from sync (phi_settings_window.cc).",
+   "en": "Remove this PC from sync",
+   "translations": {
+    "de": "Diesen PC aus der Synchronisierung entfernen",
+    "es": "Eliminar este PC de la sincronización",
+    "fr": "Supprimer ce PC de la synchronisation",
+    "ja": "このPCを同期から削除",
+    "ko": "동기화에서 이 PC 제거",
+    "nl": "Verwijder deze pc uit synchronisatie",
+    "zh-Hans": "将这台电脑从同步中移除",
+    "zh-Hant": "將這部電腦從同步中移除"
+   }
   },
   "sync.removal.sectionTitle": {
    "comment": "Mac key (translations by key); Sync settings — header of the section that removes this PC from sync (phi_settings_window.cc)",
@@ -9603,7 +9599,17 @@
   },
   "sync.setup.error.defaultProfileMismatch": {
    "comment": "sync setup — phi_sync_setup_window.cc; the default-profile rule refused a match (Mac sync.pairing.error.defaultProfileMismatch, reworded for a PC)",
-   "en": "This PC’s default profile can only be matched with the account’s default profile. Review the matches and try again."
+   "en": "This PC’s default profile can only be matched with the account’s default profile. Review the matches and try again.",
+   "translations": {
+    "de": "Das Standardprofil dieses PCs kann nur dem Standardprofil des Accounts zugeordnet werden. Überprüfe die Zuordnungen und versuche es erneut.",
+    "es": "El Perfil predeterminado de este PC solo se puede emparejar con el Perfil predeterminado de la cuenta. Revisa los emparejamientos y vuelve a intentarlo.",
+    "fr": "Le profil par défaut de ce PC ne peut être associé qu'au profil par défaut du compte. Vérifiez les associations, puis réessayez.",
+    "ja": "このPCのデフォルトのプロファイルは、アカウントのデフォルトのプロファイルとのみ対応付けできます。対応付けを確認して、もう一度お試しください。",
+    "ko": "이 PC의 기본 프로필은 계정의 기본 프로필과만 연결할 수 있어요. 연결 항목을 확인하고 다시 시도해 주세요.",
+    "nl": "Het standaardprofiel van deze pc kan alleen worden gekoppeld aan het standaardprofiel van het account. Controleer de koppelingen en probeer het opnieuw.",
+    "zh-Hans": "这台电脑的默认个人资料只能与账户的默认个人资料匹配。请检查匹配项后重试。",
+    "zh-Hant": "這部電腦的預設設定檔只能與帳號的預設設定檔配對。請檢視配對內容後再試一次。"
+   }
   },
   "sync.setup.error.profileDecisionFailed": {
    "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",
