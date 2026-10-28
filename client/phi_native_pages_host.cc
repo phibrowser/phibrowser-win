@@ -221,6 +221,10 @@ void PhiNativePagesHost::SyncNtpSlot(int slot, const Placement& want) {
     return;
   }
   page->Show();
+  // Painted now, not on a later WM_PAINT: the shell sits on a translucent
+  // backdrop, so a page shown but not yet painted lets the desktop through
+  // the pane for a frame (switching to a new-tab tab blinked).
+  ::UpdateWindow(page->hwnd());
   if (const HWND shell = shell_->NativePagesShellWindow()) {
     // The corner caps go back on top of the page, as they ride the browser.
     shell_->NativePagesRaiseCaps();
