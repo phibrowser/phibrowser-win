@@ -230,6 +230,8 @@ PhiPalette ResolveFromColors(const PhiThemeColors& colors,
   palette.ground_top = PhiBlend(colors.overlay, colors.background, top_alpha);
   palette.ground_bottom =
       PhiBlend(colors.overlay, colors.background, bottom_alpha);
+  palette.ground_stops.fill(palette.ground_top);
+  palette.ground_stop_count = 1;
   palette.accent = colors.accent;
   palette.window_bg = colors.background;
   // The ink the Mac's percentage overlays are made of.
@@ -337,13 +339,31 @@ PhiPalette PhiResolvePalette(const PhiTheme& base,
   }
   const bool dark = ResolveDark(appearance);
   // ThemePalette.applying(to:): the base keeps its window background; the
-  // overlay and the accent are the palette's. The ground is flat — the
-  // Mac's gradient has no home on the Windows sidebar (see the header).
+  // overlay and the accent are the palette's. The linked colours become the
+  // sidebar's gradient stops, each at the same overlay alpha.
   PhiThemeColors colors = dark ? base.dark : base.light;
   colors.overlay = palette.ResolvedColor(0, dark);
   colors.accent = palette.Accent(dark);
-  return ResolveFromColors(colors, dark, kPaletteOverlayAlpha,
-                           kPaletteOverlayAlpha);
+  PhiPalette resolved = ResolveFromColors(colors, dark, kPaletteOverlayAlpha,
+                                          kPaletteOverlayAlpha);
+  const int count = std::clamp(palette.color_count(), 1, 3);
+  for (size_t i = 1; i < resolved.ground_stops.size(); ++i) {
+    resolved.ground_stops[i] =
+        static_cast<int>(i) < count
+            ? PhiBlend(palette.ResolvedColor(static_cast<int>(i), dark),
+                       colors.background, kPaletteOverlayAlpha)
+            : resolved.ground_stops[i - 1];
+  }
+  resolved.ground_stop_count = count;
+  return resolved;
+}
+
+PhiColor PhiPaletteGroundAt(const PhiPalette& palette, double position) {
+  if (palette.ground_stop_count <= 1) {
+    return palette.ground_top;
+  }
+  return PhiOklabGradient(palette.ground_stops, palette.ground_stop_count,
+                          position);
 }
 
 namespace {
@@ -380,6 +400,8 @@ PhiPalette PhiPageBarPalette(const PhiPalette& base, PhiColor page) {
   palette.ink = ink;
   palette.ground_top = page;
   palette.ground_bottom = page;
+  palette.ground_stops.fill(page);
+  palette.ground_stop_count = 1;
   palette.window_bg = page;
   palette.card = page;
   // PhiResolvePalette's ladder, over the page instead of the tint.

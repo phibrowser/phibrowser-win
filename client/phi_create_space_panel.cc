@@ -47,16 +47,34 @@ bool EnsureSurface(std::unique_ptr<PhiLayerSurface>& surface, const RECT& rc) {
   return surface->valid();
 }
 
-void PrepareSurface(PhiLayerSurface& surface, const PhiPalette& palette) {
+// `window` is the surface's window: a multi-colour palette's gradient runs
+// down its shell's full client height, so the form lines up with the
+// sidebar around it.
+void PrepareSurface(PhiLayerSurface& surface,
+                    const PhiPalette& palette,
+                    HWND window) {
   ::GdiFlush();
-  const COLORREF ground = palette.ground_top;
-  const uint32_t rgb = (GetRValue(ground) << 16) |
-                       (GetGValue(ground) << 8) | GetBValue(ground);
+  const uint32_t rgb = PhiPackedRgb(palette.ground_top);
   // SAFETY: PhiLayerSurface owns a top-down, tightly packed 32bpp DIB.
   auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
       static_cast<uint32_t*>(surface.bits()), surface.byte_size() / 4));
-  const uint32_t tint = PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF);
-  for (uint32_t& pixel : pixels) {
+  const uint32_t flat_tint =
+      PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF);
+  std::vector<uint32_t> grounds;
+  if (palette.ground_stop_count > 1) {
+    const HWND shell = ::GetAncestor(window, GA_ROOT);
+    RECT shell_rc = {};
+    ::GetClientRect(shell, &shell_rc);
+    POINT origin = {0, 0};
+    ::MapWindowPoints(window, shell, &origin, 1);
+    grounds = PhiBackdropRowGrounds(palette, origin.y, surface.height(),
+                                    shell_rc.bottom, /*glass=*/true);
+  }
+  const int width = surface.width();
+  for (size_t i = 0; i < pixels.size(); ++i) {
+    const uint32_t tint =
+        grounds.empty() ? flat_tint : grounds[i / static_cast<size_t>(width)];
+    uint32_t& pixel = pixels[i];
     pixel = (pixel & 0xFFFFFF) == rgb
                 ? tint : PhiBackdropPixelOver(pixel, rgb, tint);
   }
@@ -847,7 +865,7 @@ void PhiCreateSpacePanel::Paint(HDC dc, const RECT&) {
   ::GetClientRect(hwnd(), &rc);
   if (UsesSidebarBackdrop() && EnsureSurface(backdrop_surface_, rc)) {
     PaintForm(backdrop_surface_->dc());
-    PrepareSurface(*backdrop_surface_, QueryPalette());
+    PrepareSurface(*backdrop_surface_, QueryPalette(), hwnd());
     ::BitBlt(dc, 0, 0, rc.right, rc.bottom, backdrop_surface_->dc(), 0, 0,
              SRCCOPY);
     return;
@@ -881,7 +899,7 @@ bool PhiCreateSpacePanel::PaintBackdropField(HWND field) {
   ::CallWindowProcW(field_base_proc_, field, WM_PRINTCLIENT,
                     reinterpret_cast<WPARAM>(field_surface_->dc()),
                     PRF_CLIENT | PRF_ERASEBKGND);
-  PrepareSurface(*field_surface_, palette);
+  PrepareSurface(*field_surface_, palette, field);
   ::BitBlt(dc, 0, 0, rc.right, rc.bottom, field_surface_->dc(), 0, 0, SRCCOPY);
   ::EndPaint(field, &ps);
   return true;

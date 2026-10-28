@@ -84,6 +84,11 @@ PhiPalette LerpPalette(const PhiPalette& a, const PhiPalette& b, double t) {
   out.separator = LerpColor(a.separator, b.separator, t);
   out.window_bg = LerpColor(a.window_bg, b.window_bg, t);
   out.accent = LerpColor(a.accent, b.accent, t);
+  // Unused stops repeat the last, so a flat side lerps as a flat gradient.
+  for (size_t i = 0; i < out.ground_stops.size(); ++i) {
+    out.ground_stops[i] = LerpColor(a.ground_stops[i], b.ground_stops[i], t);
+  }
+  out.ground_stop_count = std::max(a.ground_stop_count, b.ground_stop_count);
   out.dark = t < 0.5 ? a.dark : b.dark;
   return out;
 }

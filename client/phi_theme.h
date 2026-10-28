@@ -9,6 +9,7 @@
 #include <windows.h>
 #endif
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -124,8 +125,23 @@ struct PhiPalette {
   // The pressed wash: ink 9 % / white 10 %.
   PhiColor pressed;
 
+  // The sidebar ground's stops, top to bottom: a two- or three-colour
+  // Space palette's colours, each at the fixed overlay alpha over the
+  // window background (stop 0 is ground_top). The sidebar is still PAINTED
+  // on the flat ground_top and every wash above is pre-blended over it; the
+  // shell regrades its pixels row by row onto the gradient after painting
+  // (PhiPaletteGroundAt), so the washes keep their coverage over the
+  // secondary colours. One stop is a flat ground; unused stops repeat the
+  // last, so a ramp can lerp them element-wise.
+  std::array<PhiColor, 3> ground_stops = {};
+  int ground_stop_count = 1;
+
   bool dark = false;
 };
+
+// The sidebar ground `position` (0 top ... 1 bottom) of the way down:
+// ground_top for a flat palette, the Mac's Oklab palette gradient otherwise.
+PhiColor PhiPaletteGroundAt(const PhiPalette& palette, double position);
 
 // The design-unit table: the metrics that recur ACROSS surfaces, in Mac
 // design points at 96 dpi. Scale exactly one way, with PhiDip(dpi, design)
@@ -185,13 +201,10 @@ PhiPalette PhiResolvePalette(const PhiTheme& theme,
 // theme pin (its background shows through the overlay); the palette beats
 // its overlay colour and the saturation slider alike.
 //
-// DEVIATION from the Mac: a two- or three-colour palette paints the Mac
-// sidebar as a vertical Oklab gradient. The Windows sidebar ground is flat
-// by design (docs/windows-native-ui.md §2.3) and every wash on it is
-// pre-blended over ground_top (GDI composites nothing), so a gradient
-// ground would leave the pinned cells and the active row carrying the
-// primary hue over the secondary colour. The chrome takes the PRIMARY
-// colour; the linked colours show on the editor's handles.
+// A two- or three-colour palette paints the sidebar as the Mac's vertical
+// Oklab gradient: ground_stops carries the colours, and the shell regrades
+// the sidebar's pixels onto it after painting (see PhiPalette). Every other
+// surface — the top bar, washes, accent — takes the PRIMARY colour.
 PhiPalette PhiResolvePalette(const PhiTheme& base,
                              PhiAppearance appearance,
                              const PhiThemePalette& palette);

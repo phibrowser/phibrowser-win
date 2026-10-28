@@ -4590,12 +4590,18 @@ void PhiShellWindow::UpdateSidebarBackdrop() {
 }
 
 void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
-  if (!sidebar_backdrop_ || !back_buffer_bits_) {
+  // A multi-colour Space palette regrades the sidebar onto its gradient
+  // even on an opaque frame.
+  const bool gradient = palette.ground_stop_count > 1;
+  if ((!sidebar_backdrop_ && !gradient) || !back_buffer_bits_) {
     return;
   }
   // GDI can batch writes to a DIB; finish them before accessing its bits.
   ::GdiFlush();
   if (content_slide_->running()) {
+    if (!sidebar_backdrop_) {
+      return;
+    }
     // During a full-content slide the shell owns the page pixels too:
     // they are already-composited snapshots, not holes for a browser HWND.
     // GDI copies can drop their alpha; clearing the content rectangle below
@@ -4612,20 +4618,41 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
   const Layout layout = ComputeWindowLayout();
   const int sidebar = std::clamp(layout.content.left, 0L,
                                 back_buffer_size_.cx);
-  const COLORREF ground = palette.ground_top;
-  const uint32_t rgb = (GetRValue(ground) << 16) |
-                       (GetGValue(ground) << 8) | GetBValue(ground);
+  const uint32_t rgb = PhiPackedRgb(palette.ground_top);
   // SAFETY: AcquireBackBuffer allocated width * height 32-bit pixels in a
   // top-down DIB; 32bpp rows require no additional stride padding.
   auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
       static_cast<uint32_t*>(back_buffer_bits_),
       static_cast<size_t>(width) * back_buffer_size_.cy));
-  const uint32_t tint = PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF);
+  // The ground each row of the sidebar shows: the one tint, or the
+  // palette's gradient down the window's full height (the Mac's sidebar
+  // backdrop spans it, traffic lights to bottom bar).
+  const std::vector<uint32_t> grounds =
+      gradient ? PhiBackdropRowGrounds(palette, 0, back_buffer_size_.cy,
+                                       back_buffer_size_.cy, sidebar_backdrop_)
+               : std::vector<uint32_t>();
+  if (!sidebar_backdrop_) {
+    // Opaque frame: only the sidebar's ground moves.
+    for (int y = 0; y < back_buffer_size_.cy; ++y) {
+      auto row = pixels.subspan(static_cast<size_t>(y) * width,
+                                static_cast<size_t>(sidebar));
+      const uint32_t ground = grounds[static_cast<size_t>(y)];
+      for (uint32_t& pixel : row) {
+        pixel = (pixel & 0xFFFFFF) == rgb
+                    ? ground : PhiBackdropPixelOver(pixel, rgb, ground);
+      }
+    }
+    return;
+  }
+  const uint32_t flat_tint =
+      PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF);
   const int radius = Scaled(kContentRadius);
   const RECT& band = layout.top_bar;
   for (int y = 0; y < back_buffer_size_.cy; ++y) {
     auto row = pixels.subspan(static_cast<size_t>(y) * width,
                               static_cast<size_t>(width));
+    const uint32_t tint =
+        gradient ? grounds[static_cast<size_t>(y)] : flat_tint;
     for (int x = 0; x < sidebar; ++x) {
       row[x] = (row[x] & 0xFFFFFF) == rgb
                    ? tint : PhiBackdropPixelOver(row[x], rgb, tint);
@@ -7286,13 +7313,45 @@ void PhiShellWindow::PaintFloatingSidebar(HDC dc) {
   const Layout layout = ComputeLayout();
   const PhiPalette palette = CurrentPalette();
   HDC mem = ::CreateCompatibleDC(dc);
-  HBITMAP bitmap = ::CreateCompatibleBitmap(dc, layout.client.right,
-                                            layout.client.bottom);
+  // A top-down 32bpp DIB, so a multi-colour palette can regrade its ground.
+  const int width = std::max<int>(layout.client.right, 1);
+  const int height = std::max<int>(layout.client.bottom, 1);
+  BITMAPINFO info = {};
+  info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  info.bmiHeader.biWidth = width;
+  info.bmiHeader.biHeight = -height;
+  info.bmiHeader.biPlanes = 1;
+  info.bmiHeader.biBitCount = 32;
+  info.bmiHeader.biCompression = BI_RGB;
+  void* bits = nullptr;
+  HBITMAP bitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits,
+                                      nullptr, 0);
   HGDIOBJ old = ::SelectObject(mem, bitmap);
   // include_child_controls: the panel has no live EDIT; the address text
   // is painted by hand where the layout has a field.
   PaintChrome(mem, layout, palette, /*include_child_controls=*/true);
   sidebar_->DrawDragIndicator(mem);  // As the shell's paint: after the rows.
+  if (bits && palette.ground_stop_count > 1) {
+    // The docked sidebar's regrade (PrepareBackdropPixels), opaque: the
+    // panel is a plain window over the page.
+    ::GdiFlush();
+    const uint32_t rgb = PhiPackedRgb(palette.ground_top);
+    const int column = std::clamp<int>(panel_rc.right, 0, width);
+    const std::vector<uint32_t> grounds = PhiBackdropRowGrounds(
+        palette, 0, height, height, /*glass=*/false);
+    // SAFETY: CreateDIBSection allocated width * height 32-bit pixels in a
+    // top-down DIB; 32bpp rows require no additional stride padding.
+    auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
+        static_cast<uint32_t*>(bits), static_cast<size_t>(width) * height));
+    for (int y = 0; y < height; ++y) {
+      const uint32_t ground = grounds[static_cast<size_t>(y)];
+      for (uint32_t& pixel : pixels.subspan(static_cast<size_t>(y) * width,
+                                            static_cast<size_t>(column))) {
+        pixel = (pixel & 0xFFFFFF) == rgb
+                    ? ground : PhiBackdropPixelOver(pixel, rgb, ground);
+      }
+    }
+  }
   ::BitBlt(dc, 0, 0, panel_rc.right, panel_rc.bottom, mem, 0,
            floating_offset_y_, SRCCOPY);
   ::SelectObject(mem, old);

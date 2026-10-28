@@ -242,18 +242,16 @@ constexpr int kSpaceBarButton = 24;
 constexpr int kSpacePillWidth = 120;
 constexpr int kSpacePillHeight = 24;
 // The editor: 14 padding, 16 between its two wells; the appearance well's
-// rows are 42 with 12 side padding; 8 swatches of 16 across a 200 strip
-// (selection ring 20); the saturation track 199 x 10, its knob 16.
+// row is 42 with 12 side padding, its "Color" control a 20 dot and a 20
+// chevron cell 2 apart (ThemeColorSettingsRow).
 constexpr int kEditorPad = 14;
 constexpr int kEditorGap = 16;
 constexpr int kWellPadX = 12;
 constexpr int kWellRow = 42;
 constexpr int kWellRadius = 4;
-constexpr int kSpaceSwatchStrip = 200;
-constexpr int kSpaceSwatchDot = 16;
-constexpr int kSpaceTrackWidth = 199;
-constexpr int kSpaceTrackHeight = 10;
-constexpr int kSpaceKnob = 16;
+constexpr int kThemeColorDot = 20;
+constexpr int kThemeColorGap = 2;
+constexpr int kThemeColorControl = 2 * kThemeColorDot + kThemeColorGap;
 // The picker well: 12 top and bottom; the Icon | Emoji pill (26, 2 in,
 // 4 between, segments 16 to the side), the 231 x 24 search pill 12 under
 // it, then the grid 16 under that: 8 columns of 24 glyphs spread across
@@ -276,18 +274,6 @@ constexpr int kUrlRowPad = 16;
 constexpr int kUrlRowIcon = 20;
 // One wheel notch (120) scrolls the list or the grid three rows.
 constexpr int kWheelPerRow = 40;
-// The design's swatch fills (light), by theme id — the Mac's themeColor
-// stand-ins drawn as the dots, independent of the saturation slider.
-struct SpaceSwatch {
-  const char* theme_id;
-  COLORREF fill;
-};
-constexpr SpaceSwatch kSpaceSwatches[] = {
-    {"pure", RGB(0xFF, 0xFF, 0xFF)},  {"mint", RGB(0x8D, 0xDA, 0x86)},
-    {"mist", RGB(0x66, 0xCC, 0xFF)},  {"aqua", RGB(0x73, 0xDA, 0xE0)},
-    {"iris", RGB(0x86, 0x82, 0xF6)},  {"petal", RGB(0xDA, 0x7B, 0xE7)},
-    {"coral", RGB(0xF5, 0x86, 0x7B)}, {"amber", RGB(0xF5, 0xD6, 0x7B)},
-};
 
 // The Mac's panes(), in order (AppController+Settings.panes(): Account,
 // General, Profiles, Spaces, Navigation, Phi & AI, Shortcuts, Developer —
@@ -348,6 +334,47 @@ void Ellipse(HDC dc, const RECT& r, COLORREF fill, COLORREF border,
   if (border_width > 0) {
     PhiStrokeEllipseAA(dc, r, border, border_width);
   }
+}
+
+// A dot filled with `colors` top to bottom — a Space palette's Oklab run
+// (PhiOklabGradient, as the Mac's ThemeColorSettingsRow indicator), flat
+// for one colour — with an antialiased edge.
+void FillGradientDot(HDC dc,
+                     const RECT& r,
+                     const std::vector<COLORREF>& colors) {
+  const int width = r.right - r.left;
+  const int height = r.bottom - r.top;
+  if (colors.empty() || width <= 0 || height <= 0) {
+    return;
+  }
+  if (colors.size() == 1) {
+    PhiFillEllipseAA(dc, r, colors.front());
+    return;
+  }
+  std::array<PhiColor, 3> stops = {};
+  const int count = static_cast<int>(std::min<size_t>(colors.size(), 3));
+  for (size_t i = 0; i < stops.size(); ++i) {
+    stops[i] = colors[std::min(i, static_cast<size_t>(count - 1))];
+  }
+  std::vector<unsigned char> bgra(static_cast<size_t>(width) * height * 4);
+  const double cx = width / 2.0;
+  const double cy = height / 2.0;
+  const double radius = std::min(width, height) / 2.0;
+  for (int y = 0; y < height; ++y) {
+    const PhiColor color = PhiOklabGradient(
+        stops, count, height > 1 ? y / (height - 1.0) : 0.0);
+    for (int x = 0; x < width; ++x) {
+      const double coverage = std::clamp(
+          radius + 0.5 - std::hypot(x + 0.5 - cx, y + 0.5 - cy), 0.0, 1.0);
+      const int alpha = static_cast<int>(coverage * 255 + 0.5);
+      const size_t at = (static_cast<size_t>(y) * width + x) * 4;
+      bgra[at] = static_cast<unsigned char>(GetBValue(color) * alpha / 255);
+      bgra[at + 1] = static_cast<unsigned char>(GetGValue(color) * alpha / 255);
+      bgra[at + 2] = static_cast<unsigned char>(GetRValue(color) * alpha / 255);
+      bgra[at + 3] = static_cast<unsigned char>(alpha);
+    }
+  }
+  PhiBlendBgra(dc, r, bgra.data(), width, height);
 }
 
 // `over` at alpha/255 on `base` — the Mac's percentage overlays, opaque.
@@ -1929,7 +1956,6 @@ void PhiSettingsWindow::BuildSpaces(int* y) {
     }
     for (const char* key :
          {"settings.navigation.spacesTitle", "settings.spaces.theme.colorLabel",
-          "settings.spaces.theme.saturationLabel",
           "common.iconPicker.iconTabTitle", "common.iconPicker.emojiTabTitle",
           "settings.spaces.newButtonTooltip"}) {
       show_card = show_card || SearchMatches(PhiStr(key), nullptr);
@@ -2266,9 +2292,10 @@ void PhiSettingsWindow::BuildSpaceEditor(const RECT& pane,
     items_.push_back(std::move(item));
   };
 
-  // 1) Appearance: Color, a rule, Saturation.
+  // 1) Appearance: the Mac's ThemeColorSettingsRow — "Color", the theme's
+  // colours as a dot, a chevron; the row opens the Space theme editor.
   const RECT appearance = {pane.left, pane.top, pane.right,
-                           pane.top + 2 * Scaled(kWellRow) + 1};
+                           pane.top + Scaled(kWellRow)};
   {
     Item box;
     box.kind = ItemKind::kGroupBox;
@@ -2276,96 +2303,30 @@ void PhiSettingsWindow::BuildSpaceEditor(const RECT& pane,
     box.bounds = appearance;
     items_.push_back(std::move(box));
   }
-  const RECT color_row = {appearance.left, appearance.top, appearance.right,
-                          appearance.top + Scaled(kWellRow)};
-  label(color_row, PhiStr("settings.spaces.theme.colorLabel"),
-        kSpaceSwatchStrip + 2);
   {
-    // One dot per built-in theme in the Mac's order; a Space pinning no
-    // theme shows the app's with a hairline ring instead of the accent.
-    const auto& themes = PhiBuiltInThemes();
-    const bool inherited = space.theme_id.empty();
-    const std::string effective =
-        inherited ? prefs_->ThemeId() : space.theme_id;
-    const PhiAppearance appearance_mode =
-        dark ? PhiAppearance::kDark : PhiAppearance::kLight;
-    const int strip_right = color_row.right - Scaled(kWellPadX);
-    const int strip_left = strip_right - Scaled(kSpaceSwatchStrip);
-    const int dot = Scaled(kSpaceSwatchDot);
-    const int frame = dot + Scaled(4);
-    const int count = static_cast<int>(themes.size());
-    const int mid = (color_row.top + color_row.bottom) / 2;
-    for (int i = 0; i < count; ++i) {
-      const PhiTheme& theme = themes[static_cast<size_t>(i)];
-      Item swatch;
-      swatch.kind = ItemKind::kSwatch;
-      swatch.selected = effective == theme.id;
-      swatch.on = swatch.selected && inherited;
-      // The design's fill (light); dark mode draws the theme's own dark
-      // themeColor, as the Mac's ThemeSwatchView does. Pure stays white.
-      COLORREF fill = dark ? theme.dark.accent : theme.light.accent;
-      for (const SpaceSwatch& entry : kSpaceSwatches) {
-        if (std::string(entry.theme_id) == theme.id && !dark) {
-          fill = entry.fill;
-        }
+    // indicatorColors: a palette's resolved colours, opaque; else the
+    // theme's overlay colour.
+    Item row;
+    row.kind = ItemKind::kThemeColor;
+    const model::Space* record = spaces_->Find(space.id);
+    if (record && record->palette) {
+      for (int i = 0; i < record->palette->color_count(); ++i) {
+        row.colors.push_back(record->palette->ResolvedColor(i, dark));
       }
-      if (std::string(theme.id) == "pure") {
-        fill = RGB(0xFF, 0xFF, 0xFF);
-      }
-      swatch.swatch = fill;
-      swatch.ring =
-          PhiResolvePalette(theme, appearance_mode, prefs_->Saturation())
-              .accent;
-      swatch.value = kSpaceSwatchDot;
-      swatch.backdrop = well;
-      swatch.action = "spacetheme";
-      swatch.payload = theme.id;
-      swatch.space = space.id;
-      // Spread across the strip (space-between); the item is the ring's
-      // square, centred on the dot.
-      const int cx = strip_left + dot / 2 +
-                     (count > 1 ? (Scaled(kSpaceSwatchStrip) - dot) * i /
-                                      (count - 1)
-                                : 0);
-      swatch.bounds = {cx - frame / 2, mid - frame / 2, cx - frame / 2 + frame,
-                       mid - frame / 2 + frame};
-      items_.push_back(std::move(swatch));
+    } else {
+      const PhiTheme& theme = PhiThemeById(
+          space.theme_id.empty() ? prefs_->ThemeId() : space.theme_id);
+      row.colors.push_back(dark ? theme.dark.overlay : theme.light.overlay);
     }
+    row.backdrop = well;
+    row.action = "spacecolor";
+    row.payload = space.id;
+    row.a11y = PhiStr("settings.spaces.theme.colorLabel");
+    row.bounds = appearance;
+    items_.push_back(std::move(row));
   }
-  {
-    Item rule;
-    rule.kind = ItemKind::kHairline;
-    rule.backdrop = well;
-    rule.bounds = {appearance.left + Scaled(kWellPadX), color_row.bottom,
-                   appearance.right - Scaled(kWellPadX), color_row.bottom + 1};
-    items_.push_back(std::move(rule));
-  }
-  const RECT saturation_row = {appearance.left, color_row.bottom + 1,
-                               appearance.right, appearance.bottom};
-  label(saturation_row, PhiStr("settings.spaces.theme.saturationLabel"),
-        kSpaceTrackWidth);
-  {
-    // The Mac's ThemeOpacitySliderView: a 10 track in a hairline, the
-    // well's ground running into the theme's window tint, a white knob.
-    const PhiTheme& theme = PhiThemeById(
-        space.theme_id.empty() ? prefs_->ThemeId() : space.theme_id);
-    const int right = saturation_row.right - Scaled(kWellPadX);
-    const int mid = (saturation_row.top + saturation_row.bottom) / 2;
-    Item slider;
-    slider.kind = ItemKind::kSliderTrack;
-    slider.on = true;  // The Spaces editor's track, not the accent bar.
-    slider.value =
-        space.saturation < 0 ? prefs_->Saturation() : space.saturation;
-    slider.swatch = dark ? theme.dark.overlay : theme.light.overlay;
-    slider.backdrop = well;
-    slider.action = "spacesat";
-    slider.payload = space.id;
-    slider.a11y = PhiStr("settings.spaces.theme.saturationLabel");
-    slider.bounds = {right - Scaled(kSpaceTrackWidth),
-                     mid - Scaled(kSpaceKnob) / 2, right,
-                     mid - Scaled(kSpaceKnob) / 2 + Scaled(kSpaceKnob)};
-    items_.push_back(std::move(slider));
-  }
+  label(appearance, PhiStr("settings.spaces.theme.colorLabel"),
+        kThemeColorControl);
 
   // 2) The picker well: Icon | Emoji, search, the grid.
   const RECT picker = {pane.left, appearance.bottom + Scaled(kEditorGap),
@@ -4341,12 +4302,9 @@ void PhiSettingsWindow::StepSlider(const Item& item, int delta) {
   // Copied out first: the host's write notifies the window, whose rebuild
   // replaces items_ — and `item` with it — before the call returns.
   const std::string action = item.action;
-  const std::string space_id = item.payload;
   const int value = std::max(0, std::min(100, item.value + delta));
   if (action == "saturation") {
     host_->SetSaturation(value);
-  } else if (action == "spacesat") {
-    host_->SetSpaceSaturation(space_id, value);
   }
   ScheduleRebuild();
 }
@@ -5166,34 +5124,6 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
         break;
       }
       case ItemKind::kSliderTrack: {
-        if (item.on) {
-          // The Spaces editor's track (the Mac's ThemeOpacitySliderView):
-          // 10 high, the well's ground running into the theme's tint
-          // (`swatch`), a 10 % hairline; a 16 white knob, 10 % stroke.
-          const COLORREF ground = ground_of(item);
-          const int mid = (bounds.top + bounds.bottom) / 2;
-          const int half = Scaled(kSpaceTrackHeight) / 2;
-          const RECT track = {bounds.left, mid - half, bounds.right,
-                              mid - half + Scaled(kSpaceTrackHeight)};
-          const int span = std::max(1, static_cast<int>(track.right -
-                                                        track.left) - 1);
-          for (int x = track.left; x < track.right; x += 2) {
-            const int alpha = (x - track.left) * 255 / span;
-            const RECT column = {x, track.top, std::min<LONG>(x + 2, track.right),
-                                 track.bottom};
-            fill_rect(column, Blend(item.swatch, ground, alpha));
-          }
-          PhiKnockOutRoundRectAA(dc, track, (track.bottom - track.top) / 2,
-                                 ground);
-          PhiStrokeCapsuleAA(dc, track, Blend(ink, ground, 26), 1);
-          const int knob = Scaled(kSpaceKnob);
-          const int at = bounds.left +
-                         (static_cast<int>(bounds.right - bounds.left) - knob) *
-                             item.value / 100;
-          RECT dot = {at, mid - knob / 2, at + knob, mid - knob / 2 + knob};
-          Ellipse(dc, dot, white, Blend(ink, ground, hot ? 60 : 26), 1);
-          break;
-        }
         // The design's Slider: a 4 dip track (ink 20 %) filled in the
         // accent up to an 18 white knob carrying an 8 accent dot.
         const int mid = (bounds.top + bounds.bottom) / 2;
@@ -5950,6 +5880,30 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
         if (font_) {
           ::SelectObject(dc, font_);
         }
+        break;
+      }
+      case ItemKind::kThemeColor: {
+        // ThemeColorSettingsRow: the whole row is the button (its label is
+        // a kPaneLabel over it); trailing, the theme's colours as a 20 dot
+        // in a 10 % hairline, then the 20 chevron cell.
+        const COLORREF ground = ground_of(item);
+        if (hot) {
+          FillRounded(dc, bounds, Blend(ink, ground, dark ? 15 : 11),
+                      Scaled(kWellRadius));
+        }
+        const int dot = Scaled(kThemeColorDot);
+        const int mid = (bounds.top + bounds.bottom) / 2;
+        const int right = bounds.right - Scaled(kWellPadX);
+        const RECT chevron = {right - dot, mid - dot / 2, right,
+                              mid - dot / 2 + dot};
+        const RECT dot_rc = {chevron.left - Scaled(kThemeColorGap) - dot,
+                             chevron.top,
+                             chevron.left - Scaled(kThemeColorGap),
+                             chevron.bottom};
+        FillGradientDot(dc, dot_rc, item.colors);
+        PhiStrokeEllipseAA(dc, dot_rc, Blend(ink, ground, 26), 1);
+        PhiDrawGlyphIcon(dc, chevron, L"\uE76C", Scaled(11),
+                         Blend(ink, ground, 217));
         break;
       }
       case ItemKind::kExpander: {
@@ -6889,15 +6843,12 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
       const int value = (x - item.bounds.left) * 100 / span;
       host_->SetSaturation(value < 0 ? 0 : (value > 100 ? 100 : value));
     }
-  } else if (item.action == "spacesat") {
-    const int span = item.bounds.right - item.bounds.left;
-    if (span > 0) {
-      const int value = (x - item.bounds.left) * 100 / span;
-      host_->SetSpaceSaturation(item.payload,
-                                value < 0 ? 0 : (value > 100 ? 100 : value));
-    }
-  } else if (item.action == "spacetheme") {
-    host_->SetSpaceTheme(item.space, item.payload);
+  } else if (item.action == "spacecolor") {
+    // Copied out first: the editor's writes rebuild items_ under `item`.
+    const std::string space_id = item.payload;
+    RECT anchor = item.bounds;
+    ::MapWindowPoints(hwnd(), nullptr, reinterpret_cast<POINT*>(&anchor), 2);
+    host_->OpenSpaceThemeEditor(space_id, hwnd(), anchor);
   } else if (item.action == "spaceicon") {
     host_->SetSpaceIcon(item.space, item.payload);
   } else if (item.action == "pickspace") {
@@ -7053,7 +7004,7 @@ void PhiSettingsWindow::OnMouseDown(int hit, POINT client_pt) {
   // A slider is the one control that acts on the PRESS, and it keeps
   // following the pointer — outside the window too — until the button
   // comes back up. Everything else waits for the release.
-  if (item.action == "saturation" || item.action == "spacesat") {
+  if (item.action == "saturation") {
     dragging_ = true;
     drag_item_ = item;
     drag_ = Capture(this);

@@ -173,6 +173,12 @@ class PhiSettingsHost {
   virtual void SetSpaceIcon(const std::string& space_id,
                             const std::string& icon) = 0;
   virtual void SetSpaceSaturation(const std::string& space_id, int value) = 0;
+  // The Spaces editor's "Color ›" row: the Space theme editor (the palette
+  // field) as a popover owned by `owner`, beside `anchor_screen`. False
+  // when there is no browser window to drive it.
+  virtual bool OpenSpaceThemeEditor(const std::string& space_id,
+                                    HWND owner,
+                                    const RECT& anchor_screen) = 0;
   // Re-binds a Space to another profile (the expander's Profile pick,
   // windows-native-ui.md §7.1). Refused for the default Space.
   virtual bool SetSpaceProfile(const std::string& space_id,
@@ -377,6 +383,7 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
     kIconSearch,     // The embedded picker's search pill (a text input).
     kPickerCell,     // One glyph of the embedded picker; `value` = its index.
     kUrlRow,         // The page's "URL Rules" row under the card.
+    kThemeColor,     // A "Color ›" row: `colors` as a 20 dot, a chevron.
   };
   struct Item {
     ItemKind kind = ItemKind::kRowLabel;
@@ -396,6 +403,8 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
     bool danger = false;
     COLORREF swatch = 0;
     COLORREF ring = 0;   // A swatch's selection-ring color (its own accent).
+    // kThemeColor: the theme's colours, top to bottom (one is flat).
+    std::vector<COLORREF> colors;
     int value = 0;       // Slider position, or an option index.
     std::string action;  // What a click does; empty = not clickable.
     // The action's ONE target id (a theme, a Space, a profile, a rule, a

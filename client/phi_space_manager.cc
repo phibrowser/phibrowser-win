@@ -780,6 +780,7 @@ void PhiSpaceManager::RebuildSpacePalettes() {
         graphite.dark ? RGB(0x26, 0x28, 0x2C) : RGB(0xE8, 0xEA, 0xEE);
     graphite.ground_top = ground;
     graphite.ground_bottom = ground;
+    graphite.ground_stops.fill(ground);
     graphite.window_bg = ground;
     agent_palette_ = std::make_unique<PhiPalette>(graphite);
   }

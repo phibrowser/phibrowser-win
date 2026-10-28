@@ -313,4 +313,86 @@ PhiThemePalette PhiThemePalette::RotatingHue(double delta) const {
   return Make(hue + delta, saturation, brightness, harmony);
 }
 
+namespace {
+
+struct Oklab {
+  double l = 0;
+  double a = 0;
+  double b = 0;
+};
+
+Oklab OklabOf(PhiColor color) {
+  const auto linear = [](int value) {
+    const double c = value / 255.0;
+    return c <= 0.04045 ? c / 12.92 : std::pow((c + 0.055) / 1.055, 2.4);
+  };
+  const double r = linear(PhiRed(color));
+  const double g = linear(PhiGreen(color));
+  const double b = linear(PhiBlue(color));
+  const double l = std::cbrt(0.4122214708 * r + 0.5363325363 * g +
+                             0.0514459929 * b);
+  const double m = std::cbrt(0.2119034982 * r + 0.6806995451 * g +
+                             0.1073969566 * b);
+  const double s = std::cbrt(0.0883024619 * r + 0.2817188376 * g +
+                             0.6299787005 * b);
+  return {0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+          1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+          0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s};
+}
+
+PhiColor ColorOfOklab(const Oklab& value) {
+  const double l_root = value.l + 0.3963377774 * value.a + 0.2158037573 * value.b;
+  const double m_root = value.l - 0.1055613458 * value.a - 0.0638541728 * value.b;
+  const double s_root = value.l - 0.0894841775 * value.a - 1.2914855480 * value.b;
+  const double l = l_root * l_root * l_root;
+  const double m = m_root * m_root * m_root;
+  const double s = s_root * s_root * s_root;
+  const auto encoded = [](double c) {
+    c = Unit(c);
+    c = c <= 0.0031308 ? c * 12.92 : 1.055 * std::pow(c, 1 / 2.4) - 0.055;
+    return static_cast<int>(c * 255 + 0.5);
+  };
+  return PhiRgb(
+      encoded(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+      encoded(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+      encoded(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s));
+}
+
+}  // namespace
+
+PhiColor PhiOklabGradient(const std::array<PhiColor, 3>& colors,
+                          int count,
+                          double position) {
+  count = std::min(count, 3);
+  if (count <= 1) {
+    return colors[0];
+  }
+  position = Unit(position);
+  if (position <= 0) {
+    return colors[0];
+  }
+  if (position >= 1) {
+    return colors[static_cast<size_t>(count - 1)];
+  }
+  const Oklab first = OklabOf(colors[0]);
+  const Oklab second = OklabOf(colors[1]);
+  Oklab value;
+  if (count >= 3) {
+    const Oklab third = OklabOf(colors[2]);
+    const double t = position * position;
+    const double remaining = 1 - t;
+    const double w0 = remaining * remaining;
+    const double w1 = 2 * remaining * t;
+    const double w2 = t * t;
+    value = {first.l * w0 + second.l * w1 + third.l * w2,
+             first.a * w0 + second.a * w1 + third.a * w2,
+             first.b * w0 + second.b * w1 + third.b * w2};
+  } else {
+    value = {first.l + (second.l - first.l) * position,
+             first.a + (second.a - first.a) * position,
+             first.b + (second.b - first.b) * position};
+  }
+  return ColorOfOklab(value);
+}
+
 }  // namespace phi_client

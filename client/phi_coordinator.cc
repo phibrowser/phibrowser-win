@@ -47,6 +47,7 @@
 #include "phibrowser-win/client/phi_new_tab_page.h"
 #include "phibrowser-win/client/phi_popup_chrome.h"
 #include "phibrowser-win/client/phi_prompt.h"
+#include "phibrowser-win/client/phi_space_theme_panel.h"
 #include "phibrowser-win/client/phi_startup_profile.h"
 #include "phibrowser-win/client/phi_sync_settings_win.h"
 #include "phibrowser-win/client/phi_telemetry.h"
@@ -3602,6 +3603,16 @@ bool PhiCoordinator::OpenCreateSpaceWindow(
   PhiCreateSpaceWindow::Open(controller, initial_profile_id, theme_id,
                              preferences_.Saturation(), anchor);
   return true;
+}
+
+bool PhiCoordinator::OpenSpaceThemeEditor(const std::string& space_id,
+                                         HWND owner,
+                                         const RECT& anchor_screen) {
+  // Any browser window drives the editor: the record goes through the one
+  // SpacesHost, and the Space's windows preview it wherever they are.
+  PhiShellWindow* controller = FocusedUserController();
+  return controller && PhiOpenSpaceThemePanelBeside(controller, owner,
+                                                    anchor_screen, space_id);
 }
 
 bool PhiCoordinator::OpenLibrarySpaces() {

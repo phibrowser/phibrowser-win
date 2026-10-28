@@ -37,6 +37,16 @@ void PhiOpenSpaceThemePanel(PhiShellWindow* controller,
                             const std::string& space_id,
                             std::function<void()> on_closed);
 
+// The same Space editor from Settings ▸ Spaces' "Color ›" row (the Mac's
+// ThemeColorSettingsRow popover, arrowEdge .trailing): owned by `owner`
+// and placed beside `anchor_screen`; `controller` is any browser window,
+// whose SpacesHost reads and writes the record. False when it could not
+// open.
+bool PhiOpenSpaceThemePanelBeside(PhiShellWindow* controller,
+                                  HWND owner,
+                                  const RECT& anchor_screen,
+                                  const std::string& space_id);
+
 // TRANSITIONAL synchronous wrapper, exactly as for the folder icon picker:
 // it drives the asynchronous panel through a short local message loop so
 // the existing call site (in phi_shell_window.cc, a file phase 5 does

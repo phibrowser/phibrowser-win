@@ -867,6 +867,23 @@ void PhiOpenSpaceThemePanel(PhiShellWindow* controller,
   }
 }
 
+bool PhiOpenSpaceThemePanelBeside(PhiShellWindow* controller,
+                                  HWND owner,
+                                  const RECT& anchor_screen,
+                                  const std::string& space_id) {
+  if (!controller || !owner || space_id.empty() ||
+      !controller->spaces_host()) {
+    return false;
+  }
+  Panel* panel = new Panel(controller, space_id, std::function<void()>());
+  panel->DeleteWhenDestroyed();
+  if (!panel->Open(owner, anchor_screen, /*beside=*/true)) {
+    delete panel;
+    return false;
+  }
+  return true;
+}
+
 void PhiShowSpaceThemePanel(PhiShellWindow* controller,
                             const RECT& anchor_screen,
                             const std::string& space_id) {

@@ -7,6 +7,9 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <vector>
+
+#include "phibrowser-win/client/phi_theme.h"
 
 namespace phi_client {
 
@@ -89,6 +92,37 @@ inline uint32_t PhiBackdropPixelOver(uint32_t pixel,
     result |= static_cast<uint32_t>(std::clamp(channel, 0, alpha)) << shift;
   }
   return result;
+}
+
+// The packed RGB (0xRRGGBB) of a COLORREF / PhiColor (0x00BBGGRR).
+inline uint32_t PhiPackedRgb(PhiColor color) {
+  return (static_cast<uint32_t>(PhiRed(color)) << 16) |
+         (static_cast<uint32_t>(PhiGreen(color)) << 8) |
+         static_cast<uint32_t>(PhiBlue(color));
+}
+
+// The backdrop each row of a surface sits on, for PhiBackdropPixelOver:
+// `palette`'s sidebar ground at that row's place in a column `full_height`
+// tall whose top is `first_row` rows above the surface. `glass` gives the
+// premultiplied tint over the OS backdrop (PhiBackdropPixel); otherwise the
+// ground itself, opaque. Painting stays on the flat ground_top; regrading
+// each pixel against it moves the ground onto the palette's gradient while
+// every wash, label and card keeps its coverage.
+inline std::vector<uint32_t> PhiBackdropRowGrounds(const PhiPalette& palette,
+                                                   int first_row,
+                                                   int rows,
+                                                   int full_height,
+                                                   bool glass) {
+  std::vector<uint32_t> grounds(static_cast<size_t>(std::max(rows, 0)));
+  const double span = full_height > 1 ? full_height - 1.0 : 1.0;
+  for (int y = 0; y < rows; ++y) {
+    const uint32_t rgb = PhiPackedRgb(
+        PhiPaletteGroundAt(palette, (first_row + y) / span));
+    grounds[static_cast<size_t>(y)] =
+        glass ? PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF)
+              : 0xFF000000u | rgb;
+  }
+  return grounds;
 }
 
 }  // namespace phi_client

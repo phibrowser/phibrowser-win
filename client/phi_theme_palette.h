@@ -5,6 +5,7 @@
 #ifndef PHIBROWSER_WIN_CLIENT_PHI_THEME_PALETTE_H_
 #define PHIBROWSER_WIN_CLIENT_PHI_THEME_PALETTE_H_
 
+#include <array>
 #include <string>
 
 #include "phibrowser-win/client/phi_util.h"
@@ -111,6 +112,15 @@ struct PhiThemePalette {
   // Within this radius a pointer edit snaps to neutral (≈ 6 pt of 244).
   static constexpr double kCenterSnapRadius = 0.025;
 };
+
+// The Mac sidebar's palette gradient (ColoredVisualEffectView.gradientColors)
+// sampled at `position` (0 top ... 1 bottom): one continuous blend in Oklab,
+// which avoids RGB's brightness dips. Two colours run linearly; three are a
+// quadratic Bezier on the squared position, so the first colour holds the
+// upper half and the other two overlap below it. One colour is flat.
+PhiColor PhiOklabGradient(const std::array<PhiColor, 3>& colors,
+                          int count,
+                          double position);
 
 }  // namespace phi_client
 
