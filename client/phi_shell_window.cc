@@ -220,6 +220,21 @@ ATOM EnsureShellClass() {
   return atom;
 }
 
+// The coverage (0-255) of the circle inscribed in `disc` at pixel (x, y),
+// with the one-pixel antialiased rim DecodeAvatarCircle masks with; 0 off
+// the disc. An empty `disc` covers nothing.
+int DiscCoverage(const RECT& disc, int x, int y) {
+  if (x < disc.left || x >= disc.right || y < disc.top || y >= disc.bottom) {
+    return 0;
+  }
+  const double radius = (disc.right - disc.left) / 2.0;
+  const double coverage = std::clamp(
+      radius + 0.5 - std::hypot(x + 0.5 - (disc.left + radius),
+                                y + 0.5 - (disc.top + radius)),
+      0.0, 1.0);
+  return static_cast<int>(coverage * 255 + 0.5);
+}
+
 }  // namespace
 
 // The Phi app icon, shipped beside the exe (resources\phi.ico — the Mac's
@@ -4637,9 +4652,11 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
       auto row = pixels.subspan(static_cast<size_t>(y) * width,
                                 static_cast<size_t>(sidebar));
       const uint32_t ground = grounds[static_cast<size_t>(y)];
-      for (uint32_t& pixel : row) {
-        pixel = (pixel & 0xFFFFFF) == rgb
-                    ? ground : PhiBackdropPixelOver(pixel, rgb, ground);
+      for (int x = 0; x < sidebar; ++x) {
+        row[x] = (row[x] & 0xFFFFFF) == rgb
+                     ? ground
+                     : PhiBackdropPixelOver(row[x], rgb, ground,
+                                            DiscCoverage(avatar_disc_, x, y));
       }
     }
     return;
@@ -4655,7 +4672,9 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
         gradient ? grounds[static_cast<size_t>(y)] : flat_tint;
     for (int x = 0; x < sidebar; ++x) {
       row[x] = (row[x] & 0xFFFFFF) == rgb
-                   ? tint : PhiBackdropPixelOver(row[x], rgb, tint);
+                   ? tint
+                   : PhiBackdropPixelOver(row[x], rgb, tint,
+                                          DiscCoverage(avatar_disc_, x, y));
     }
     // Chromium supplies the ground tint and clipped opaque page layers.
     // Leave the shell underneath clear so its tint is not applied twice.
@@ -7345,10 +7364,13 @@ void PhiShellWindow::PaintFloatingSidebar(HDC dc) {
         static_cast<uint32_t*>(bits), static_cast<size_t>(width) * height));
     for (int y = 0; y < height; ++y) {
       const uint32_t ground = grounds[static_cast<size_t>(y)];
-      for (uint32_t& pixel : pixels.subspan(static_cast<size_t>(y) * width,
-                                            static_cast<size_t>(column))) {
-        pixel = (pixel & 0xFFFFFF) == rgb
-                    ? ground : PhiBackdropPixelOver(pixel, rgb, ground);
+      auto row = pixels.subspan(static_cast<size_t>(y) * width,
+                                static_cast<size_t>(column));
+      for (int x = 0; x < column; ++x) {
+        row[x] = (row[x] & 0xFFFFFF) == rgb
+                     ? ground
+                     : PhiBackdropPixelOver(row[x], rgb, ground,
+                                            DiscCoverage(avatar_disc_, x, y));
       }
     }
   }
@@ -8123,6 +8145,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
   const auto bottom_hot = [&](int ordinal) {
     return hover_kind_ == HoverKind::kNav && hover_index_ == 6 + ordinal;
   };
+  avatar_disc_ = {};
   {
     const auto tool = [&](const RECT& rect, const wchar_t* glyph, bool hot) {
       PhiPaintIconButton(dc, rect, glyph,
@@ -8152,7 +8175,11 @@ void PhiShellWindow::PaintChrome(HDC dc,
         }
       }
       if (drew_avatar) {
-        PhiStrokeEllipseAA(dc, disc, palette.border, std::max(1, Scaled(1)));
+        const int ring = std::max(1, Scaled(1));
+        PhiStrokeEllipseAA(dc, disc, palette.border, ring);
+        // The picture inside the ring; the ring is chrome ink like any other.
+        avatar_disc_ = disc;
+        ::InflateRect(&avatar_disc_, -ring, -ring);
       } else {
         PhiDrawIconGlyph(dc, disc, fluent::kContact, px, kLabelDim);
       }
