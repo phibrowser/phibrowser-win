@@ -30,7 +30,13 @@ fi
 
 # 1. The host-compiled C++ tests: the pure modules the client actually runs,
 #    not copies of them.
-run "host unit tests" bash test/model/run.sh
+if [[ -f test/model/run.sh ]]; then
+  run "host unit tests" bash test/model/run.sh
+else
+  # The suite is not in the public repository; its absence is the
+  # checkout's, not a failure of the code.
+  printf '\n=== host unit tests\nskip: test/model/run.sh not in this checkout\n'
+fi
 
 # 2. JS that needs no browser. selftest-mirror runs entirely on fixtures and
 #    was wired to nothing before this file existed.
@@ -79,7 +85,10 @@ strings_keys() {
   local missing=0
   while IFS= read -r key; do
     grep -q "\"$key\"" "$src" || { echo "  missing key: $key"; missing=1; }
-  done < <(grep -rhoP '(?<=PhiStrF?\(")[^"]+' client/*.cc | sort -u)
+  # A key split over two lines ("app.foo." "bar") is one literal to C++,
+  # so join adjacent literals before reading the keys.
+  done < <(perl -0pe 's/"\s*\n\s*"//g' client/*.cc |
+           grep -oP '(?<=PhiStrF?\(")[^"]+' | sort -u)
   return $missing
 }
 run "every PhiStr key exists" strings_keys

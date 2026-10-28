@@ -2103,7 +2103,7 @@ Presses a control of the onboarding window by name.
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
-| `action` | string | yes | — | signIn, guest, cancel, legal, metrics, name, swatch, layout, next, close. |
+| `action` | string | yes | — | signIn, guest, cancel, legal, metrics, name, swatch, randomize, layout, next, close. |
 | `value` | string | no | — | The name / theme id / layout. |
 
 ### Chromium sync (docs/user-data-parity.md S2)

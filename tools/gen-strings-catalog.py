@@ -59,6 +59,13 @@ MAC_CATALOG = os.path.join(
 LOCALES = ["en", "de", "es", "fr", "ja", "ko", "nl", "pt-BR", "zh-Hans",
            "zh-Hant"]
 
+# The share of keys a locale must carry before the catalog's "locales" list
+# names it. The runtime builds the language picker and the OS-language match
+# from that list, so a locale listed here ahead of its translations would be
+# offered, and picked for a Portuguese Windows, as an English UI. Below the
+# bar its strings are still written; only the advertisement waits.
+MIN_COVERAGE = 0.9
+
 # CLDR's plural categories. A source key ending in one of these is a branch of
 # a plural family, not a key of its own (see the module docstring).
 PLURAL_CATEGORIES = ("zero", "one", "two", "few", "many", "other")
@@ -251,12 +258,21 @@ def main():
         if len(report["untranslated"]) > 40:
             print(f"    … and {len(report['untranslated']) - 40} more")
 
+    shipped = ["en"]
+    for locale in LOCALES[1:]:
+        covered = sum(1 for table in strings.values() if locale in table)
+        if covered >= MIN_COVERAGE * total:
+            shipped.append(locale)
+        else:
+            print(f"\nheld back: {locale} carries {covered}/{total} keys "
+                  f"(needs {MIN_COVERAGE:.0%}); not listed in \"locales\"")
+
     if broken_families:
         return 1
     if args.check:
         return 0
 
-    payload = {"locales": LOCALES, "strings": dict(sorted(strings.items()))}
+    payload = {"locales": shipped, "strings": dict(sorted(strings.items()))}
     with open(OUTPUT, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=1, sort_keys=True)
         f.write("\n")
