@@ -964,6 +964,15 @@ void PhiShellWindow::PushSplitViewStyle() {
   // Incognito is FIXED-DARK regardless of theme (CurrentPalette's rule).
   static const PhiPalette kIncognito =
       PhiResolvePalette(PhiThemeById("pure"), PhiAppearance::kDark);
+  // The framework rounds the pane's bottom corners against the sidebar (the
+  // address row owns the top ones): their ground is the sidebar's at that
+  // height, which a multi-colour palette grades down the window — the
+  // regrade's row position (PrepareBackdropPixels) at the corner's middle.
+  const Layout layout = ComputeWindowLayout();
+  const double corner_position = std::clamp(
+      (layout.content.bottom - Scaled(kContentRadius) / 2.0) /
+          std::max(1.0, layout.client.bottom - 1.0),
+      0.0, 1.0);
   for (const auto& [space_id, browser] : browsers_->spaces().all()) {
     if (!browser.valid()) {
       continue;
@@ -983,10 +992,12 @@ void PhiShellWindow::PushSplitViewStyle() {
     // 4 % ink over it in light; dark is not in the design (derived: the
     // dark ground with 6 % white). A contrast theme keeps its own edges.
     phi_framework::SplitViewStyle style;
+    const PhiColor corner_ground =
+        PhiPaletteGroundAt(palette, corner_position);
     style.background_argb =
         sidebar_backdrop_
-            ? PhiBackdropColor(argb(palette.ground_top) & 0xFFFFFF, palette.dark)
-            : argb(palette.ground_top);
+            ? PhiBackdropColor(argb(corner_ground) & 0xFFFFFF, palette.dark)
+            : argb(corner_ground);
     if (PhiHighContrastActive()) {
       style.divider_ground_argb = argb(palette.ground_top);
       style.border_argb = argb(palette.border);
