@@ -65,6 +65,10 @@ class PhiNativePagesShell {
   // The active browser has no tabs at all: the NTP's omnibox is the way
   // back in.
   virtual bool NativePagesPlaceholding() const = 0;
+  // Placeholder mode under "New tab behavior = Omnibox": the floating
+  // omnibox is the way in, so the page under it is a blank ground with no
+  // mark and no box of its own (the Mac's placeholder shell).
+  virtual bool NativePagesBlankPlaceholder() const = 0;
   // A Space switch is mid-slide: the page arrives (or leaves) with the
   // content, when the slide's completion re-runs Sync().
   virtual bool NativePagesSwapPending() const = 0;

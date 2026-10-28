@@ -462,6 +462,12 @@ class ChromePrefsHost {
   // at all, so the catalogue string's own "\tChord" stands.
   virtual std::optional<std::wstring> RebindableChordLabel(
       UINT command) const = 0;
+  // The command a rebindable shortcut binds to this chord, or 0 (what the
+  // keyboard hook asks; the floating omnibox asks it for New / Close Tab).
+  virtual UINT MatchRebindableChord(UINT vk,
+                                    bool ctrl,
+                                    bool shift,
+                                    bool alt) const = 0;
 };
 
 // Agent Spaces as pips, watching, and the operating mask over the user's
@@ -1878,6 +1884,8 @@ class PhiShellWindow : public PhiHitSource,
   void OmniboxLeaveReader() override;
   HWND OmniboxNativePageField() const override;
   bool OmniboxNativePageBox(RECT* out) const override;
+  bool OmniboxContentScreenRect(RECT* out) override;
+  bool OmniboxClosesFloating(UINT vk) const override;
   void OmniboxNativePageCommitting() override;
 
   // --- PhiNativePagesShell: what the native pages ask of their shell -------
@@ -1887,6 +1895,7 @@ class PhiShellWindow : public PhiHitSource,
   bool NativePagesIsAgent() const override;
   bool NativePagesContentFullscreen() const override;
   bool NativePagesPlaceholding() const override;
+  bool NativePagesBlankPlaceholder() const override;
   bool NativePagesSwapPending() const override;
   const std::string& NativePagesActiveUrl() const override;
   int NativePagesActiveTabId() const override;

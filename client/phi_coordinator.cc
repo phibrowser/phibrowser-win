@@ -3072,6 +3072,13 @@ std::optional<std::wstring> PhiCoordinator::RebindableChordLabel(
   return preferences_.RebindableChordLabel(command);
 }
 
+UINT PhiCoordinator::MatchRebindableChord(UINT vk,
+                                          bool ctrl,
+                                          bool shift,
+                                          bool alt) const {
+  return preferences_.MatchRebindableChord(vk, ctrl, shift, alt);
+}
+
 void PhiCoordinator::FocusWindowForBrowser(int64_t browser_window_id) {
   const BrowserId browser{browser_window_id};
   PhiShellWindow* controller = registry_.ControllerForBrowser(browser);

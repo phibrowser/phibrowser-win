@@ -407,6 +407,10 @@ class PhiCoordinator : public SidebarHost,
   void RequestAppearance(PhiAppearance appearance) override;
   int Saturation() const override;
   std::optional<std::wstring> RebindableChordLabel(UINT command) const override;
+  UINT MatchRebindableChord(UINT vk,
+                            bool ctrl,
+                            bool shift,
+                            bool alt) const override;
   void SetThemeId(const std::string& id) override;
   void SetAppearance(PhiAppearance appearance) override;
   void SetSaturation(int value) override;

@@ -265,7 +265,10 @@ class PhiPreferences : public ChromePrefsHost {
   // The command bound to this chord among the REBINDABLE shortcuts, or 0.
   // Checked by the keyboard hook before the fixed table, so a custom chord
   // wins.
-  UINT MatchRebindableChord(UINT vk, bool ctrl, bool shift, bool alt) const;
+  UINT MatchRebindableChord(UINT vk,
+                            bool ctrl,
+                            bool shift,
+                            bool alt) const override;
   // True when this chord is some rebindable shortcut's DEFAULT but not what
   // that shortcut answers to now (rebound, or unbound). The hook swallows
   // such a chord: the Mac replaces Chromium's key equivalent, so a moved

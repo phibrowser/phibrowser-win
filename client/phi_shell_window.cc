@@ -167,7 +167,8 @@ constexpr int kContentRadius = 8;  // The pane's corners (windows-native-ui.md �
 constexpr UINT_PTR kFloatingTickTimer = 0x522;
 // 0x523 is PhiOmniboxSession::kCopyLinkTimer — the shell routes it back to
 // the session, which owns the copy-link flash.
-// 0x524 was the Spaces strip's "+" fade; it rides PhiAnimator now.
+// 0x524 is PhiOmniboxSession::kFloatingOpenTimer (it was the Spaces
+// strip's "+" fade, which rides PhiAnimator now).
 // Re-arms a kMsgPhiDeferredClose that found a nested loop still on the
 // stack (see PhiShellWindow::RequestClose).
 constexpr UINT_PTR kDeferredCloseTimer = 0x525;
@@ -2195,6 +2196,14 @@ void PhiShellWindow::BrowserHostRetintChrome() {
 }
 
 void PhiShellWindow::BrowserHostFocusAddressField() {
+  // An empty window under the Omnibox behaviour opens the floating omnibox
+  // over the placeholder, as Ctrl+T would (the Mac's
+  // openOmniBoxForEmptyWindowIfConfigured); otherwise the field is the way
+  // in.
+  if (OmniboxNewTabFocusesField() && !AgentHoldsInput()) {
+    omnibox_->OpenFloatingSoon();
+    return;
+  }
   FocusAddressField();
 }
 
@@ -2405,6 +2414,34 @@ bool PhiShellWindow::OmniboxNativePageBox(RECT* out) const {
   return native_pages_->NtpBoxScreenRect(out);
 }
 
+bool PhiShellWindow::OmniboxClosesFloating(UINT vk) const {
+  if (!services_.prefs) {
+    return false;
+  }
+  // The Mac's toggleOmniBox (⌘T again) and handleCloseTab (⌘W) while the
+  // omnibox is up — through the user's own bindings.
+  const UINT command = services_.prefs->MatchRebindableChord(
+      vk, ::GetKeyState(VK_CONTROL) < 0, ::GetKeyState(VK_SHIFT) < 0,
+      ::GetKeyState(VK_MENU) < 0);
+  return command == kCmdNewTab || command == kCmdCloseTab;
+}
+
+bool PhiShellWindow::OmniboxContentScreenRect(RECT* out) {
+  if (!shell_hwnd_ || !out) {
+    return false;
+  }
+  // The page area beside the sidebar (the Mac centres over the window
+  // minus the sidebar); the whole client when there is no page area.
+  RECT area = ComputeWindowLayout().content;
+  if (area.right <= area.left || area.bottom <= area.top) {
+    ::GetClientRect(shell_hwnd_, &area);
+  }
+  ::MapWindowPoints(shell_hwnd_, HWND_DESKTOP, reinterpret_cast<POINT*>(&area),
+                    2);
+  *out = area;
+  return true;
+}
+
 void PhiShellWindow::OmniboxNativePageCommitting() {
   // omniBoxDidClear: the native page blanks its controls now, so nothing of
   // the new-tab page lingers over the arriving one; the rebuild that sees
@@ -2439,6 +2476,10 @@ bool PhiShellWindow::NativePagesContentFullscreen() const {
 
 bool PhiShellWindow::NativePagesPlaceholding() const {
   return browsers_->ActiveBrowserPlaceholding();
+}
+
+bool PhiShellWindow::NativePagesBlankPlaceholder() const {
+  return OmniboxNewTabFocusesField();
 }
 
 bool PhiShellWindow::NativePagesSwapPending() const {
@@ -4896,6 +4937,14 @@ void PhiShellWindow::RevealSwappedContent() {
          (page && ::IsChild(page, focus)))) {
       FocusActiveBrowser();
     }
+  }
+  if (browsers_->ActiveBrowserPlaceholding() && OmniboxNewTabFocusesField() &&
+      !AgentHoldsInput()) {
+    // The Space switched to is an empty window under the Omnibox behaviour:
+    // its placeholder entry happened while it was hidden, so nothing else
+    // opens the omnibox over it (the Mac's activate(),
+    // emptyLiveSpaceOpensOmniBox).
+    omnibox_->OpenFloatingSoon();
   }
   FinishUnhost();  // An agent's page was the leaving one: hand it back.
 }
@@ -8994,6 +9043,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       }
       if (self && wparam == PhiOmniboxSession::kCopyLinkTimer) {
         self->omnibox_->RevertCopyLinkFlash();
+        return 0;
+      }
+      if (self && wparam == PhiOmniboxSession::kFloatingOpenTimer) {
+        self->omnibox_->OnFloatingOpenTimer();  // Kills its own timer.
         return 0;
       }
       if (self && wparam == PhiSidebarDragSession::kHoverExpandTimer) {

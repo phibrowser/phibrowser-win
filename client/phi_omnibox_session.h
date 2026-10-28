@@ -486,6 +486,8 @@ inline bool PhiOmniboxHidesUrl(const std::string& url) {
 
 namespace phi_client {
 
+class PhiFloatingOmnibox;
+
 // What the session needs from the shell window that owns it: geometry, the
 // chrome's fonts and palette, the browser its text acts on, and the two
 // hand-backs (focus to the page, the reader overlay out of the way) a commit
@@ -547,6 +549,13 @@ class PhiOmniboxShell {
   virtual HWND OmniboxNativePageField() const = 0;
   // That page's box in screen coords — the dropdown grows out of it.
   virtual bool OmniboxNativePageBox(RECT* out) const = 0;
+  // The page area beside the sidebar in screen coords — the floating
+  // omnibox centres over it. False with no window to centre in.
+  virtual bool OmniboxContentScreenRect(RECT* out) = 0;
+  // `vk` with the modifiers now down is the user's New Tab or Close Tab
+  // chord — what closes the floating omnibox while it holds the keys (the
+  // window-level accelerators cannot see an owned popup's focus).
+  virtual bool OmniboxClosesFloating(UINT vk) const = 0;
   // A commit is about to land while the native page is up: it blanks its
   // controls now (omniBoxDidClear) so nothing of it lingers over the
   // arriving page.
@@ -563,6 +572,9 @@ class PhiOmniboxSession {
   // Reverts the copy-link checkmark after its second. The shell owns the
   // timer space, so its WM_TIMER routes this id back here.
   static constexpr UINT_PTR kCopyLinkTimer = 0x523;
+  // Opens the floating omnibox a turn after an empty window's placeholder
+  // entry (OpenFloatingSoon); routed back by the shell's WM_TIMER too.
+  static constexpr UINT_PTR kFloatingOpenTimer = 0x524;
 
   explicit PhiOmniboxSession(PhiOmniboxShell* shell);
   PhiOmniboxSession(const PhiOmniboxSession&) = delete;
@@ -610,9 +622,38 @@ class PhiOmniboxSession {
   // Focuses the field and selects it whole, when it is on screen; false when
   // there is no visible field to focus (placeholder mode's entry point).
   bool FocusFieldIfVisible();
-  // The New Tab entry points: in omnibox mode this focuses the field and the
-  // tab is born on commit; in page mode it opens a tab now.
+  // The New Tab entry points: in omnibox mode this opens (or, when it is
+  // up, closes) the floating omnibox and the tab is born on commit; in page
+  // mode it opens a tab now.
   void StartNewTab();
+
+  // --- The floating omnibox (phi_floating_omnibox.h) -----------------------
+  // The Mac's centred omnibox over the page. Its field joins this session,
+  // so everything below — suggestions, inline completion, the chip — works
+  // in it as in the address field; a commit opens a NEW tab.
+  // `toggle`: an open card closes instead (Ctrl+T again).
+  void ShowFloating(bool toggle);
+  // An empty window's way in under the Omnibox behaviour: the card a turn
+  // later, if the window is in front and still empty; else the field.
+  void OpenFloatingSoon();
+  void OnFloatingOpenTimer();
+  // Closes the card; `focus_content` hands the keys to the page (Escape),
+  // false leaves them where the user put them.
+  void HideFloating(bool focus_content);
+  bool floating_visible() const;
+  // For the card: its palette, the room the chip and the hint take in
+  // `edit` (0 unless they are in it), and their paint into `text` — the
+  // text's span without them.
+  PhiPalette CardPalette() const;
+  int ChipAdvance(HWND edit) const;
+  int HintAdvance(HWND edit) const;
+  void PaintKeywordIn(HDC dc,
+                      const RECT& text,
+                      const PhiPalette& palette,
+                      HWND edit);
+  // The card lost the activation (it is being dismissed) / is gone.
+  void OnFloatingDismissed();
+  void OnFloatingDestroyed(PhiFloatingOmnibox* card);
   // The EDIT only repaints on its own events, so a palette change (Space
   // swap ramp, instant switch) must invalidate it or it keeps the old wash.
   void Repaint();
@@ -729,6 +770,14 @@ class PhiOmniboxSession {
   void ExitKeyword(const std::wstring& text, bool requery);
   // Enter with the chip up: the engine's search URL for the text.
   void CommitKeyword(HWND edit);
+  // The floating card's field, or null.
+  HWND FloatingField() const;
+  // `edit` can carry the chip: the address field or the card's.
+  bool IsChipField(HWND edit) const;
+  // Re-seats `edit` for its chip / hint and repaints its box.
+  void RelayoutChip(HWND edit);
+  // Every commit's tail: the card closes and the page takes the keys.
+  void FinishCommit();
   // Enter or a click on a "Search X" row with no query: the engine's site
   // (PhiOmniboxEngineSite), the Mac's b0a536db. Beeps when the engine cannot
   // name one.
@@ -817,12 +866,18 @@ class PhiOmniboxSession {
   // Set by StartNewTab in omnibox mode: the next commit opens a NEW tab.
   bool new_tab_pending_ = false;
 
-  // The chip: the engine's keyword (empty = no chip) and display name, and
-  // the pill's measured width.
+  // The floating card while it is up (self-deleting; cleared from its
+  // OnNcDestroy and whenever it is closed).
+  RAW_PTR_EXCLUSION PhiFloatingOmnibox* floating_ = nullptr;
+  // The chip: the field it sits in, the engine's keyword (empty = no chip)
+  // and display name, and the pill's measured width.
+  HWND keyword_field_ = nullptr;
   std::wstring keyword_keyword_;
   std::wstring keyword_engine_;
   int chip_width_px_ = 0;
-  // The hint at the field's trailing end ("Tab to search X"), measured.
+  // The hint at the field's trailing end ("Tab to search X"), measured, and
+  // the field it is in.
+  HWND hint_field_ = nullptr;
   std::wstring hint_text_;
   int hint_width_px_ = 0;
 };

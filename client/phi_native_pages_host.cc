@@ -204,6 +204,19 @@ void PhiNativePagesHost::SyncNtpSlot(int slot, const Placement& want) {
   page->SetPlacement(want.tab_id, want.pane ? &want.rect : nullptr);
   const bool active = want.tab_id == 0 ||
                       want.tab_id == shell_->NativePagesActiveTabId();
+  // An empty window under the Omnibox behaviour: the page is only the
+  // blank ground under the floating omnibox (NativePagesBlankPlaceholder) —
+  // controls hidden, never focused.
+  const bool blank = !want.pane && shell_->NativePagesPlaceholding() &&
+                     shell_->NativePagesBlankPlaceholder();
+  if (page->visible() && blank) {
+    if (page->controls_hidden()) {
+      page->Refresh();  // A palette ramp repaints it with the chrome.
+    } else {
+      page->HideControls();
+    }
+    return;
+  }
   if (page->visible()) {
     // Controls blanked by a commit come back once that navigation is no
     // longer the active tab's business: another tab is active, or the load
@@ -221,6 +234,9 @@ void PhiNativePagesHost::SyncNtpSlot(int slot, const Placement& want) {
     return;
   }
   page->Show();
+  if (blank) {
+    page->HideControls();
+  }
   // Painted now, not on a later WM_PAINT: the shell sits on a translucent
   // backdrop, so a page shown but not yet painted lets the desktop through
   // the pane for a frame (switching to a new-tab tab blinked).
@@ -232,7 +248,7 @@ void PhiNativePagesHost::SyncNtpSlot(int slot, const Placement& want) {
     // only the ACTIVE pane's: a background window mounting its page must
     // not pull the focus over, and the other pane's page must not pull it
     // off the active pane.
-    if (active && ::GetForegroundWindow() == shell) {
+    if (active && !blank && ::GetForegroundWindow() == shell) {
       FocusNtpIfIdle();
     }
   }
