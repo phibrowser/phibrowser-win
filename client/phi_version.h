@@ -15,11 +15,11 @@
 // restores this source file. The full X.Y.Z.build version is used for update
 // comparison and displayed to users.
 #define PHI_WIN_VERSION_MAJOR 0
-#define PHI_WIN_VERSION_MINOR 2
+#define PHI_WIN_VERSION_MINOR 3
 #define PHI_WIN_VERSION_PATCH 0
 #define PHI_WIN_VERSION_BUILD 0
-#define PHI_WIN_VERSION_STRING "0.2.0"
-#define PHI_WIN_VERSION_WIDE L"0.2.0"
+#define PHI_WIN_VERSION_STRING "0.3.0"
+#define PHI_WIN_VERSION_WIDE L"0.3.0"
 
 #define PHI_WIN_VERSION_STRINGIFY_(x) #x
 #define PHI_WIN_VERSION_STRINGIFY(x) PHI_WIN_VERSION_STRINGIFY_(x)
