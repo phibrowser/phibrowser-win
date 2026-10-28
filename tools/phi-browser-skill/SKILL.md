@@ -326,7 +326,7 @@ three-rung extraction ladder, a coverage gate that rejects a truncated
 extraction, and the accessibility path that is the only way to read a PDF.
 The nav, comment thread, related-posts rail and cookie furniture a scrape has
 to be told to ignore are already gone, and the result is the same text the
-user sees when they press ⌘⌥R.
+user sees when they press Ctrl+Alt+R.
 
 ```js
 const a = await readerArticle()

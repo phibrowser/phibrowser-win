@@ -161,7 +161,7 @@ Other differences worth knowing:
   itself: no cookies, logins, or storage come in from the profile, nothing
   browsed there persists, and the session is destroyed when the window
   closes. Each incognito shadow window gets its OWN fresh session — isolated
-  from the user's Cmd+Shift+N incognito windows, from the Incognito Space,
+  from the user's Ctrl+Shift+N incognito windows, from the Incognito Space,
   and from other shadow tasks. `profile` still names the PARENT profile
   (extensions and settings come from it; per-profile agent permission
   applies), so `credentialStatus`/`fillCredential` vault access works but the

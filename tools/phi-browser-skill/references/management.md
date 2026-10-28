@@ -299,4 +299,4 @@ Controls are asynchronous inside the browser — after a pause/resume/cancel,
 re-read `getDownload(guid)` to confirm the new state rather than assuming it.
 To watch a download finish, poll `getDownload` until `done` (or `state` is no
 longer `in_progress`). The agent can observe and control downloads but cannot
-open a downloaded file or reveal it in Finder — those stay user actions.
+open a downloaded file or show it in File Explorer — those stay user actions.
