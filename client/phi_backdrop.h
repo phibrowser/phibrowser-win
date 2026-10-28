@@ -12,12 +12,14 @@ namespace phi_client {
 
 // Recover coverage from GDI's opaque RGB painting over a known ground.
 // Removing the ground contribution keeps antialiased glyph edges from
-// acquiring opaque halos on glass. A 50% tint remains over the OS backdrop.
+// acquiring opaque halos on glass. An 80% tint remains over the OS backdrop.
 // Inputs are packed RGB (0xRRGGBB); output is premultiplied ARGB for a DIB.
 //
 // The theme ground's opacity over the OS backdrop (sidebar, address row and
-// window ground alike): 128 = 50%, so the backdrop shows through by half.
-inline constexpr int kPhiBackdropTintAlpha = 128;
+// window ground alike): the Mac's fixed overlay alpha over its vibrancy
+// material (ThemeColorAdjustment.defaultOverlayAlpha, 0.8), so the backdrop
+// shows through by a fifth.
+inline constexpr int kPhiBackdropTintAlpha = 204;
 
 inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
   int coverage = 0;
@@ -34,11 +36,12 @@ inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
   return coverage;
 }
 
+// The tint is `pixel` read as one colour at kPhiBackdropTintAlpha over
+// `ground`, as the Mac lays its overlay colour over the material; only a
+// pixel too far from `ground` for that alpha takes more.
 inline uint32_t PhiBackdropPixel(uint32_t pixel, uint32_t ground) {
   const int alpha =
-      kPhiBackdropTintAlpha +
-      (PhiBackdropCoverage(pixel, ground) * (255 - kPhiBackdropTintAlpha) +
-       127) / 255;
+      std::max(kPhiBackdropTintAlpha, PhiBackdropCoverage(pixel, ground));
   uint32_t result = static_cast<uint32_t>(alpha) << 24;
   for (int shift : {0, 8, 16}) {
     const int c = (pixel >> shift) & 255;
