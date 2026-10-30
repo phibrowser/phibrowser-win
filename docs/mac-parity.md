@@ -116,6 +116,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Bookmarks bar (always / on new tab) | yes | yes | ✅ | |
 | Image preview window (zoom, export original — Mac `1705cb23`, 2026-10-15) | `UserInterface/ImagePreview` | none | 🔧 | Whole surface absent. New on the Mac this cycle. |
 | Picture-in-picture: auto Off / Normal / Park at edge | yes | yes | ✅ | `picture-in-picture.md`. |
+| Widevine DRM (Netflix, Spotify, Disney+ …) | fork only: component-updated CDM, `Phi Helper (CDM)` signed without library validation, VMP host files (`Phi Framework` + castLabs EVS `.sig`) | component-updated CDM; VMP host files `Phi.exe` + `framework\chrome.dll`, `.sig` beside each from `make-installer.sh --vmp` (EVS, after Authenticode) | ◐ | Ported 2026-10-30 (fork `cdm_host_file_path.cc` + `media_options.gni`, ship args `enable_widevine`), nuc-verified by `box-tests/suite-widevine.mjs` 4/4: CDM 4.10.3112.0 fetched by the component updater, license request, Shaka Widevine playback, host verification ran. No CDM helper needed (a macOS library-validation matter). Gap: no `.sig` ships yet — it needs a castLabs EVS account with Widevine 3PL access covering the Windows build; until then the host is unverified and services that demand VMP refuse a license. |
 | Sidebar Mini Player / native media controls | play/pause, ±10 s, tracks, volume, PiP, source switching; setting Off / Auto / compact / expanded | none | 🔧 | `docs/native-media-controls.md`. The Mac shipped nine Mini Player fixes 2026-10-13/14, so it is an active surface. Needs the framework's MediaSession bridge on Windows. |
 | Shorten links to selected text (Copy Link to Highlight) | Advanced setting | row not drawn | ⛔ | The copy callback reaches only the Mac bridge (`phi_settings_window.cc`, `analytics.md`). |
 | Apply theme to text selection on web pages | General setting | synced, nothing reads it | ⛔ | No web-selection tint on Windows (`phi_settings_window.cc`). |
@@ -188,7 +189,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Status | Rows |
 |---|---|
 | ✅ ported | 53 |
-| ◐ partial | 20 |
+| ◐ partial | 21 |
 | 🔧 to implement | 24 |
 | ⛔ deliberately left | 18 |
 | ❓ needs a decision | 0 |

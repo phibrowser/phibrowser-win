@@ -1154,6 +1154,11 @@ Section "Install"
     ${If} ${FileExists} "$INSTDIR\rollback\Phi.exe"
       RMDir /r "$INSTDIR\rollback"
     ${EndIf}
+    ; The Widevine VMP signature of the previous Phi.exe (make-installer.sh
+    ; --vmp; chrome.dll's went with framework\) - an update without one
+    ; would leave it behind, matching nothing and missing from the uninstall
+    ; list.
+    Delete "$INSTDIR\Phi.exe.sig"
 
   fresh_install:
   SetOutPath "$INSTDIR"

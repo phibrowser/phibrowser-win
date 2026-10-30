@@ -8,7 +8,7 @@
 # Usage: make-installer.sh [--version X.Y.Z] [--build-number N]
 #                          [--arch x64|arm64] [--out <out dir>]
 #                          [--telemetry phi_telemetry.json | --no-telemetry]
-#                          [--no-sign]
+#                          [--no-sign] [--vmp]
 #   --version    defaults to PHI_WIN_VERSION_STRING in client/phi_version.h
 #   --build-number  defaults to PHI_WIN_VERSION_BUILD in client/phi_version.h;
 #                   stamps the setup EXE's Windows file/product version.
@@ -30,6 +30,13 @@
 #                its phi-signing.env (the LAN rig's TEST chain or the release
 #                one; docs/static-build-plan.md) - when that env exists.
 #                Without it the build is unsigned and says so.
+#   --vmp        Widevine VMP-sign Phi.exe and framework\chrome.dll with the
+#                castLabs EVS client (python3 -m pip install castlabs-evs; an
+#                EVS account with Widevine 3PL access, EVS_ACCOUNT_NAME +
+#                EVS_PASSWD or a cached `python3 -m castlabs_evs.account
+#                reauth`). Fails the build if signing fails. Without it the
+#                CDM still plays, unverified, and services that demand VMP
+#                refuse a license.
 #
 # The staged tree (docs/static-build-plan.md §6): Phi.exe, WinSparkle.dll and
 # the client's own resources\ entries at the top (the list build-client.py
@@ -53,6 +60,7 @@ OUT=""
 TELEMETRY=""
 NO_TELEMETRY=no
 NO_SIGN=no
+VMP=no
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) VERSION="$2"; shift 2 ;;
@@ -62,6 +70,7 @@ while [[ $# -gt 0 ]]; do
     --telemetry) TELEMETRY="$2"; shift 2 ;;
     --no-telemetry) NO_TELEMETRY=yes; shift ;;
     --no-sign) NO_SIGN=yes; shift ;;
+    --vmp) VMP=yes; shift ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -192,6 +201,20 @@ elif [[ -x "$SIGN_TOOL" ]] && SIGN_ID=$("$SIGN_TOOL" --info 2>/dev/null); then
   SIGN_DEFINE=("-DPHI_SIGN_CMD=$SIGN_TOOL")
 else
   echo "signing: none (no $SIGN_TOOL with a phi-signing.env)"
+fi
+
+# Widevine VMP: a .sig beside Phi.exe and framework\chrome.dll, the host
+# files the CDM verifies (the fork's chrome/common/media/cdm_host_file_path.cc).
+# On Windows it must come after Authenticode - the VMP signature covers the
+# code-signed file.
+if [[ "$VMP" == yes ]]; then
+  for pe in "$STAGE/Phi.exe" "$FW/chrome.dll"; do
+    EVS_NO_ASK=1 python3 -m castlabs_evs.vmp sign "$pe" "$pe.sig"
+    [[ -s "$pe.sig" ]] || { echo "EVS wrote no $pe.sig" >&2; exit 1; }
+  done
+  echo "vmp: Phi.exe.sig, framework/chrome.dll.sig"
+else
+  echo "vmp: none (no --vmp; Widevine runs unverified)"
 fi
 
 # The window's look comes from the PhiSetupUI plugin (installer/ui, the
