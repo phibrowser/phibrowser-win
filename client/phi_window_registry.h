@@ -42,6 +42,9 @@ struct PendingCreation {
   // has opened, never before, so a request that fails leaves the page where
   // it was (PhiKioskWindow::OpenInSpace).
   std::vector<BrowserId> closing_kiosks;
+  // kSpace: answered by a parked window rebuilt rather than a fresh one, so it
+  // holds the user's tabs (windowOpened says false).
+  bool materialized_ghost = false;
   std::string task_id;     // kAgent / kShadow: the skill's taskId.
   std::string agent_name;  // kAgent: the driver's name for the watch pill.
   bool persistent = false;  // kAgent

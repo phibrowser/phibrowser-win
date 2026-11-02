@@ -728,6 +728,12 @@ class PhiCoordinator : public SidebarHost,
   PhiNotificationCards* notification_cards() {
     return notification_cards_.get();
   }
+  // Runs `open`, an open the user aimed at a Space, once no windowless session
+  // restore is pending: at once when there is nothing to restore, else after
+  // the restore in flight or the one this starts — the Mac's
+  // runAfterWindowlessRestore. A held open runs past this gate, so it never
+  // starts a second restore.
+  void RunAfterWindowlessRestore(const char* entry, std::function<void()> open);
   void OpenUserSpaceWindow(const std::string& space_id,
                            const std::string& url,
                            bool activate,
@@ -879,6 +885,19 @@ class PhiCoordinator : public SidebarHost,
   // are going away as a quit, not one closed by hand, so their secondary
   // restore rows stay (RetireClosingBrowser).
   bool closing_all_windows_ = false;
+  // RunAfterWindowlessRestore: a restore this process started with no user
+  // window up is in flight, or settled with its fallback shell still on its
+  // way, and these opens wait for it (a fallback shell they raced would stand
+  // beside the Space they open).
+  bool windowless_restore_in_flight_ = false;
+  bool awaiting_restore_fallback_ = false;
+  std::vector<std::function<void()>> opens_waiting_for_restore_;
+  void ReleaseOpensWaitingForRestore(const char* exit);
+  // The part of OpenUserSpaceWindow that runs once any restore is over.
+  void OpenUserSpaceWindowPastRestoreGate(const std::string& space_id,
+                                          const std::string& url,
+                                          bool activate,
+                                          int reply_id);
   // Moves to `next`, logging the move at INFO with `reason` (one word). A
   // move backwards is refused with a WARNING and the phase kept: the phases
   // are promises the rest of the coordinator relies on, and a promise once
@@ -1228,6 +1247,10 @@ class PhiCoordinator : public SidebarHost,
   // settles, open a default shell (lane 4 §6 item 6). Armed for the replay
   // to have its say, re-armed shorter once the park list has landed.
   static constexpr UINT_PTR kColdStartFallbackTimer = 6;
+  static constexpr UINT_PTR kWindowlessRestoreTimer = 7;
+  // How long opens wait for a windowless session restore before they go ahead
+  // on their ordinary path.
+  static constexpr unsigned kWindowlessRestoreWatchdogMs = 15 * 1000;
   // How long a RequestBrowser / CreateProfile request may stay unanswered
   // before the sweep presumes it lost and fails any waiting reply with
   // create_timeout. The framework has no failure callback for either.

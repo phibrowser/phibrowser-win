@@ -74,10 +74,12 @@ Space.
   first — a closed window is not a closed Space, and this is the one way
   to reach a Space when the user has no browser window at all: surfaced
   when `activate` is true, opened BEHIND the user's windows when false, so
-  a background open never moves their focus; the row then says
-  `windowOpened: true`, and the fresh window also carries its seed New Tab
-  beside yours (on Windows the requested page takes the seed tab's place,
-  so the window holds just your tab). On Windows a window cannot hold a
+  a background open never moves their focus. With `activate` and no user
+  window at all, Phi first restores the user's last session (when that
+  setting is on), so the tab may land in a restored window. The row says
+  `windowOpened: true` only when the open made a fresh window, which also
+  carries its seed New Tab beside yours (on Windows the requested page takes
+  the seed tab's place, so the window holds just your tab). On Windows a window cannot hold a
   Space hidden, so a background open is a window of its own placed behind
   the foreground one (never activated), and an `activate` open with no
   user window at all is a new window in front. This changes what the user sees — do it on their

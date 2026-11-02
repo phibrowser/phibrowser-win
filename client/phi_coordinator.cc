@@ -373,6 +373,9 @@ LRESULT CALLBACK PhiCoordinator::MsgWndProc(HWND hwnd,
       case kColdStartFallbackTimer:
         self->session_restore_->OnColdStartFallbackTimer();
         return 0;
+      case kWindowlessRestoreTimer:
+        self->ReleaseOpensWaitingForRestore("timer");
+        return 0;
       default:
         return 0;
     }
@@ -787,18 +790,22 @@ void PhiCoordinator::PostAskSpace() {
 
 void PhiCoordinator::RequestSpaceBrowser(const std::string& profile_id,
                                          PendingCreation pending) {
-  if (!pending.slot.valid()) {
-    // No slot to join: a shell of its own, as OpenUserSpaceWindow's is, which
-    // rebuilds a parked Space's window rather than doubling it. Behind the
-    // onboarding gate a shell would only sit hidden.
-    if (CanUseBrowser()) {
-      RequestSpaceBrowser(std::move(pending), /*pending=*/nullptr);
-    }
+  if (!pending.slot.valid() && !CanUseBrowser()) {
+    // No slot to join means a shell of its own, and behind the onboarding gate
+    // that would only sit hidden.
     return;
   }
-  const bool incognito = model::IsIncognitoSpaceId(pending.space_id);
-  RequestCreation(phi_framework::WindowKind::kSpace, profile_id, incognito,
-                  BrowserId(), std::move(pending));
+  // Through the request that rebuilds a parked Space's window: a fresh browser
+  // would stand beside it, and the settle pass then drops the parked one's
+  // tabs. One refused for now (a replay in flight) still opens the page,
+  // doubled, rather than losing it.
+  PendingCreation refused = pending;
+  if (!RequestSpaceBrowser(std::move(pending), /*pending=*/nullptr) &&
+      space_manager_->Find(refused.space_id)) {
+    const bool incognito = model::IsIncognitoSpaceId(refused.space_id);
+    RequestCreation(phi_framework::WindowKind::kSpace, profile_id, incognito,
+                    BrowserId(), std::move(refused));
+  }
 }
 
 std::string PhiCoordinator::ResolveIncognitoRouteSpace() {
@@ -1921,6 +1928,53 @@ void PhiCoordinator::OnRestoreSettled(const char* reason) {
     // Nothing sits between the two today; kept as distinct phases so a
     // post-settle step (a deferred migration, say) has a slot to land in.
     Transition(AppPhase::kRunning, "settled");
+  }
+  if (windowless_restore_in_flight_ && msg_hwnd_) {
+    // A held open must find the restored or rescued window, so a rescue shell
+    // on its way keeps it waiting (FinishRequestedSpaceBrowser). Else a turn
+    // later: this is the framework's settlement callback.
+    if (registry_.FindPendingSpace(SlotId(), DefaultSpaceId())) {
+      awaiting_restore_fallback_ = true;
+    } else {
+      ::SetTimer(msg_hwnd_, kWindowlessRestoreTimer, 1, nullptr);
+    }
+  }
+}
+
+void PhiCoordinator::RunAfterWindowlessRestore(const char* entry,
+                                               std::function<void()> open) {
+  if (windowless_restore_in_flight_) {
+    LOG(INFO) << "[PhiClient] " << entry << " waits for the session restore";
+    opens_waiting_for_restore_.push_back(std::move(open));
+    return;
+  }
+  if (registry_.FirstUserSlot().valid() || !framework_ || !msg_hwnd_ ||
+      !CanUseBrowser() || !preferences_.RestoreLastSession()) {
+    open();
+    return;
+  }
+  LOG(INFO) << "[PhiClient] " << entry << " with no user window: restoring";
+  opens_waiting_for_restore_.push_back(std::move(open));
+  windowless_restore_in_flight_ = true;
+  // The restore's settlement releases the opens; this is the backstop for one
+  // that never reports.
+  ::SetTimer(msg_hwnd_, kWindowlessRestoreTimer, kWindowlessRestoreWatchdogMs,
+             nullptr);
+  session_restore_->BeginWindowlessRestore();
+}
+
+void PhiCoordinator::ReleaseOpensWaitingForRestore(const char* exit) {
+  if (msg_hwnd_) {
+    ::KillTimer(msg_hwnd_, kWindowlessRestoreTimer);
+  }
+  windowless_restore_in_flight_ = false;
+  awaiting_restore_fallback_ = false;
+  std::vector<std::function<void()>> opens;
+  opens.swap(opens_waiting_for_restore_);
+  LOG(INFO) << "[PhiClient] windowless restore over (" << exit << "): "
+            << opens.size() << " open(s)";
+  for (const std::function<void()>& open : opens) {
+    open();
   }
 }
 
@@ -3918,7 +3972,12 @@ void PhiCoordinator::OpenUrlInMainWindow(const std::string& url) {
 void PhiCoordinator::MoveKioskPageToSpace(BrowserId kiosk,
                                           const std::string& space_id,
                                           const std::string& url) {
-  url_router_->RouteUrlToSpace(space_id, url, kiosk, kiosk);
+  RunAfterWindowlessRestore("Kiosk move", [this, kiosk, space_id, url] {
+    // A Kiosk closed while the move waited took its page with it.
+    if (registry_.Kiosk(kiosk)) {
+      url_router_->RouteUrlToSpace(space_id, url, kiosk, kiosk);
+    }
+  });
 }
 
 std::string PhiCoordinator::KioskTargetSpaceId() const {
@@ -5676,11 +5735,18 @@ void PhiCoordinator::FinishRequestedSpaceBrowser(
     base::DictValue reply;
     reply.Set("ok", true);
     reply.Set("windowId", static_cast<double>(browser.value));
-    reply.Set("windowOpened", true);
+    // True only for a window this request opened fresh: the skill closes the
+    // New Tabs it has not seen in one, which here would be the user's.
+    reply.Set("windowOpened", !pending.materialized_ghost);
     std::string json;
     base::JSONWriter::Write(reply, &json);
     dispatcher().CompletePendingReply(pending.pending_reply_id,
                                       std::move(json));
+  }
+  if (awaiting_restore_fallback_ && !pending.slot.valid() && msg_hwnd_) {
+    // The rescue shell landed; the opens waiting on it go a turn later, with
+    // its seed tab in place.
+    ::SetTimer(msg_hwnd_, kWindowlessRestoreTimer, 1, nullptr);
   }
 }
 
@@ -5688,6 +5754,22 @@ void PhiCoordinator::OpenUserSpaceWindow(const std::string& space_id,
                                          const std::string& url,
                                          bool activate,
                                          int reply_id) {
+  if (!activate) {
+    // A background open is not one the user aimed at, and must not bring
+    // their windows back.
+    OpenUserSpaceWindowPastRestoreGate(space_id, url, false, reply_id);
+    return;
+  }
+  RunAfterWindowlessRestore("agent open", [this, space_id, url, reply_id] {
+    OpenUserSpaceWindowPastRestoreGate(space_id, url, true, reply_id);
+  });
+}
+
+void PhiCoordinator::OpenUserSpaceWindowPastRestoreGate(
+    const std::string& space_id,
+    const std::string& url,
+    bool activate,
+    int reply_id) {
   const Space* space = space_manager_->Find(space_id);
   if (!space || model::IsIncognitoSpaceId(space_id) ||
       PhiIsAgentSpaceId(space_id)) {
@@ -5698,6 +5780,21 @@ void PhiCoordinator::OpenUserSpaceWindow(const std::string& space_id,
   if (!CanUseBrowser()) {
     // Behind the onboarding gate a shell would only sit hidden.
     dispatcher().CompletePendingReply(reply_id, kCreateFailedReply);
+    return;
+  }
+  // A restore that held this open may have brought the Space's window back.
+  if (const BrowserId restored = BrowserForSpace(space_id);
+      restored.valid() && framework_) {
+    if (!url.empty() && !PhiNewTabPage::IsNewTabUrl(url)) {
+      framework_->OpenTabBypassingSpaceRouting(restored.value, url.c_str());
+    }
+    base::DictValue reply;
+    reply.Set("ok", true);
+    reply.Set("windowId", static_cast<double>(restored.value));
+    reply.Set("windowOpened", false);
+    std::string json;
+    base::JSONWriter::Write(reply, &json);
+    dispatcher().CompletePendingReply(reply_id, std::move(json));
     return;
   }
   PendingCreation creation;
@@ -6366,6 +6463,7 @@ bool PhiCoordinator::RequestSpaceBrowser(PendingCreation creation,
     const BrowserId window_id = ghost->window_id;
     creation.profile_id = profile;
     creation.deadline_tick = ::GetTickCount64() + kCreateTimeoutMs;
+    creation.materialized_ghost = true;
     registry_.AddPendingGhost(window_id, creation);
     UpdateSweepTimer();
     const int outcome = framework_->MaterializeGhostWindow(

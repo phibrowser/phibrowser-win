@@ -1315,9 +1315,11 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        "create_timeout user_space_operations_disabled",
        "Opens a tab in a user Space's window, bypassing url routing. A Space "
        "with no window gets one first (surfaced when activate, else behind "
-       "the user's windows without taking focus) and the reply says "
-       "windowOpened:true; a New Tab URL is then the window's own seed tab. "
-       "A windowId never opens one."},
+       "the user's windows without taking focus; with activate and no user "
+       "window, the last session is restored first when that setting is on). "
+       "The reply says windowOpened:true only when the open made a fresh "
+       "window, whose own seed tab a New Tab URL then is. A windowId never "
+       "opens one."},
       {"agentSpace.spaces.focus", "", kScopeNone, kAgentSpace, kVerbPlain, {},
        false, false, &Call<&PhiControlDispatcher::VerbSpacesFocus>,
        "no_window",

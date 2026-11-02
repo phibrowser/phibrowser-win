@@ -181,6 +181,21 @@ void PhiSessionRestore::Settle(const char* reason) {
   host_.OnRestoreSettled(reason);
 }
 
+void PhiSessionRestore::BeginWindowlessRestore() {
+  // An unfiltered replay when the Space records are not loaded, as at a cold
+  // start: arming with nothing would park every window.
+  const bool armed = !ghosts_.Empty();
+  const std::vector<int> eager =
+      armed ? ghosts_.EagerWindowIds(LastActiveSpaceId()) : std::vector<int>();
+  awaiting_eager_.insert(eager.begin(), eager.end());
+  last_receipt_.clear();
+  LOG(INFO) << "[PhiClient] windowless restore: armed=" << armed << " space="
+            << LastActiveSpaceId() << " eager=" << eager.size();
+  framework_.RestorePreviousSession("", armed,
+                                    eager.empty() ? nullptr : eager.data(),
+                                    static_cast<int>(eager.size()));
+}
+
 void PhiSessionRestore::OnColdStartFallbackTimer() {
   // The replay had its say and no user window disarmed this: the cold
   // start is settled either way (the rescue opens a shell when the eager

@@ -115,6 +115,10 @@ class PhiSessionRestore {
   // the first user shell's first OnWindowChanged: drops the parked windows
   // no Space claims, then hands the rescue and the phase move to the Host.
   void Settle(const char* reason);
+  // Replays the last session with no user window up, as a cold start does:
+  // the last-active Space's windows come back and the rest park. It ends in
+  // OnSessionRestoreSettled.
+  void BeginWindowlessRestore();
   // The cold-start fallback fired: nothing disarmed it, so settle.
   void OnColdStartFallbackTimer();
   // A user window exists: the fallback has nothing to rescue.
