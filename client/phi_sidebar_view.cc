@@ -483,6 +483,13 @@ bool PhiSidebarView::OnStoredRowClick(POINT pt) {
         Apply(SidebarCloseSurface{bookmark.key});
         return true;
       }
+      if (bookmark.close_box.right > bookmark.close_box.left &&
+          ::PtInRect(&bookmark.close_box, pt)) {
+        if (!agent_holds_input_) {  // The Mac refuses its close under the agent.
+          Apply(SidebarClose{bookmark.key, -1});
+        }
+        return true;
+      }
       ArmDrag(bookmark.key, pt);
       if (bookmark.folder) {
         // A folder click discloses/collapses its children (the Mac's
@@ -861,6 +868,10 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
         row.folder ? PhiHitRole::kGroup : PhiHitRole::kListItem,
         row.folder ? row.expanded : row.active);
     note_focus(row.key, before);
+    if (row.close_box.right > row.close_box.left) {
+      add(row.close_box, kBookmarkKey + static_cast<int>(i) + 0x800,
+          PhiStr("app.closeTab"), PhiHitRole::kButton, false);
+    }
   }
   for (size_t i = 0; i < group_headers_.size(); ++i) {
     const GroupHeader& header = group_headers_[i];
@@ -1922,6 +1933,15 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
         const int mid = (row.frame.top + row.frame.bottom) / 2;
         row.surface_box = {row.frame.right - box - Scaled(4), mid - box / 2,
                            row.frame.right - Scaled(4), mid + box / 2};
+      }
+      row.close_box = RECT{};
+      if (row.open && !row.folder &&
+          row.attached_surface == SidebarSurface::kContent &&
+          row.bounds.right > row.bounds.left) {
+        const int box = Scaled(kCloseBoxSize);
+        const int mid = (row.frame.top + row.frame.bottom) / 2;
+        row.close_box = {row.frame.right - box - Scaled(4), mid - box / 2,
+                         row.frame.right - Scaled(4), mid + box / 2};
       }
     }
   }
@@ -3568,6 +3588,12 @@ void PhiSidebarView::PaintBand(HDC dc,
                    static_cast<int>(offset.dy));
       text.right = bookmark_badge.left - Scaled(4);
     }
+    const bool bookmark_close = bookmark_hovered && !bookmark_dragged &&
+                                !drag_active &&
+                                bookmark.close_box.right > bookmark.close_box.left;
+    if (bookmark_close) {
+      text.right = bookmark.close_box.left - Scaled(4);
+    }
     PhiDrawTextAA(dc, label.c_str(), -1, &text,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
                     DT_NOPREFIX);
@@ -3577,6 +3603,10 @@ void PhiSidebarView::PaintBand(HDC dc,
                           shell_->SidebarSurfaceTileHovered(),
                       bookmark.active ? kRowSelectedBg : kTintTop,
                       bookmark.tab_id, 20);
+    }
+    if (bookmark_close) {
+      PhiDrawIconGlyph(dc, bookmark.close_box, fluent::kRemove, Scaled(12),
+                       palette.label);
     }
   }
 

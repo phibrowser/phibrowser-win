@@ -49,6 +49,7 @@ inline constexpr wchar_t kChevronLeft[] = L"";
 inline constexpr wchar_t kChevronDown[] = L"";
 inline constexpr wchar_t kChevronUp[] = L"";
 inline constexpr wchar_t kCheckMark[] = L"";
+inline constexpr wchar_t kRemove[] = L"\uE738";
 inline constexpr wchar_t kCancel[] = L"";
 inline constexpr wchar_t kCopy[] = L"";
 inline constexpr wchar_t kUndo[] = L"";

@@ -475,6 +475,9 @@ struct ShortcutRow {
   // trailing slot on a bookmark row, a corner badge on a pinned cell).
   SidebarSurface attached_surface = SidebarSurface::kContent;
   RECT surface_box{};
+  // Bookmark rows while open: the hover minus that closes the bound tab and
+  // leaves the bookmark (the Mac's 7ec6e1b7).
+  RECT close_box{};
   // The bound tab's session id while `open` — what the hover preview asks
   // the framework for a snapshot of. A pinned PAIR binds both: `tab_id` is
   // this row's own tab, `tab_id_b` its partner's.
