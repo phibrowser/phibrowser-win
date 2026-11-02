@@ -118,8 +118,9 @@ class PhiSyncKeyService {
   };
 
   // KeyLayerViewModel.beginSetup's routes.
-  enum class SetupRoute { kDone, kReadyToPair, kNotSignedIn, kChooseJoin,
-                          kIntroduction, kNeedsReconfiguration, kError };
+  enum class SetupRoute { kDone, kReadyToPair, kConfirmRecovery, kNotSignedIn,
+                          kChooseJoin, kIntroduction, kNeedsReconfiguration,
+                          kError };
 
   struct DeviceList {
     keys::KeyStatus status;

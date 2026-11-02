@@ -9501,6 +9501,26 @@
    "comment": "Sync recovery after a server reset or incomplete local cleanup.",
    "en": "Set up sync again"
   },
+  "sync.recovery.entry.back": {
+   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / RecoveryCodeEntryView)",
+   "en": "Back"
+  },
+  "sync.recovery.entry.backHint": {
+   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / RecoveryCodeEntryView)",
+   "en": "Didn’t save it? Go back and save it now. The code can’t be shown after this window is closed."
+  },
+  "sync.recovery.entry.confirmExplanation": {
+   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / RecoveryCodeEntryView)",
+   "en": "Enter the recovery code you just saved. Sync will stay off until you confirm the code and finish setup."
+  },
+  "sync.recovery.entry.confirmTitle": {
+   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / RecoveryCodeEntryView)",
+   "en": "Confirm your recovery code"
+  },
+  "sync.recovery.save.oneTimeNotice": {
+   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / RecoveryCodeEntryView)",
+   "en": "This recovery code is shown only once. Save it somewhere safe. On the next screen, enter it to confirm you saved it before continuing sync setup."
+  },
   "sync.removal.resetConfirmAction": {
    "comment": "Mac key (translations by key); Delete all sync data — confirmation dialog button that removes this device and deletes the account's sync data (phi_settings_window.cc)",
    "en": "Delete All Sync Data"
@@ -9598,10 +9618,6 @@
   "sync.setup.applying": {
    "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",
    "en": "Applying your choices…"
-  },
-  "sync.setup.code.body": {
-   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",
-   "en": "Store this code somewhere safe. You will need it to add another device to your account."
   },
   "sync.setup.code.copied": {
    "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",
@@ -9826,6 +9842,10 @@
   "sync.setup.profiles.unreadable": {
    "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",
    "en": "Can’t be read right now — Phi keeps retrying in the background"
+  },
+  "sync.setup.saveFailed": {
+   "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / RecoveryCodeEntryView)",
+   "en": "Couldn’t save sync setup on this device. Try again."
   },
   "sync.setup.tryAgain": {
    "comment": "sync setup — phi_sync_setup_window.cc (Mac KeyLayerView / PairingWizard)",

@@ -83,7 +83,8 @@ std::string KeyStatusName(const KeyStatus& status) {
 bool IsPaired(const std::optional<EnrollmentRecord>& record,
               const std::string& device_key_id) {
   return record && !device_key_id.empty() && record->version == 1 &&
-         record->device_key_id == device_key_id && record->paired;
+         record->device_key_id == device_key_id && record->paired &&
+         !record->recovery_confirmation_required;
 }
 
 std::string NewLowercaseUuid() {
@@ -886,19 +887,37 @@ bool SyncKeyCore::IsPaired() {
   return keys::IsPaired(state_.Enrollment(), id);
 }
 
-KeyStatus SyncKeyCore::BeginEnrollment() {
+bool SyncKeyCore::RequiresRecoveryConfirmation() {
+  std::string id;
+  if (!CurrentDeviceKeyId(&id).ok()) {
+    return false;
+  }
+  const std::optional<EnrollmentRecord> record = state_.Enrollment();
+  return record && record->version == 1 && record->device_key_id == id &&
+         record->recovery_confirmation_required;
+}
+
+KeyStatus SyncKeyCore::SetRecoveryConfirmationRequired(bool required) {
   std::string id;
   KeyStatus status = CurrentDeviceKeyId(&id);
   if (!status.ok()) {
     return status;
   }
-  if (!state_.SetEnrollment(EnrollmentRecord{1, id, false})) {
+  if (!state_.SetEnrollment(EnrollmentRecord{1, id, false, required})) {
     return KeyStatus::Error(KeyErrorKind::kStorage, "enrollment");
   }
   return KeyStatus::Ok();
 }
 
+KeyStatus SyncKeyCore::BeginEnrollment() {
+  return SetRecoveryConfirmationRequired(RequiresRecoveryConfirmation());
+}
+
 KeyStatus SyncKeyCore::CompleteEnrollment() {
+  if (RequiresRecoveryConfirmation()) {
+    return KeyStatus::Error(KeyErrorKind::kStorage,
+                            "recovery confirmation required");
+  }
   // The post-registration identity: a revoked-key retry may have rotated it.
   std::string id;
   KeyStatus status = CurrentDeviceKeyId(&id);
@@ -912,7 +931,7 @@ KeyStatus SyncKeyCore::CompleteEnrollment() {
 }
 
 KeyStatus SyncKeyCore::InvalidateEnrollment() {
-  return BeginEnrollment();
+  return SetRecoveryConfirmationRequired(false);
 }
 
 void SyncKeyCore::ClearResolved() {

@@ -855,7 +855,9 @@ std::optional<keys::EnrollmentRecord> PhiKeyStateFile::Enrollment() const {
   if (!version || !id || !paired) {
     return std::nullopt;
   }
-  return keys::EnrollmentRecord{*version, *id, *paired};
+  return keys::EnrollmentRecord{
+      *version, *id, *paired,
+      dict->FindBool("recoveryConfirmationRequired").value_or(false)};
 }
 
 bool PhiKeyStateFile::SetEnrollment(const keys::EnrollmentRecord& record) {
@@ -864,6 +866,8 @@ bool PhiKeyStateFile::SetEnrollment(const keys::EnrollmentRecord& record) {
   dict.Set("version", record.version);
   dict.Set("deviceKeyID", record.device_key_id);
   dict.Set("paired", record.paired);
+  dict.Set("recoveryConfirmationRequired",
+           record.recovery_confirmation_required);
   return SetAndSaveLocked(kEnrollmentKey, std::move(dict));
 }
 

@@ -213,6 +213,9 @@ struct EnrollmentRecord {
   int version = 1;
   std::string device_key_id;
   bool paired = false;
+  // First-device setup sets this before bootstrap; until the recovery code
+  // shown then has been typed back the gate stays shut, across restarts too.
+  bool recovery_confirmation_required = false;
 };
 bool IsPaired(const std::optional<EnrollmentRecord>& record,
               const std::string& device_key_id);
@@ -577,11 +580,16 @@ class SyncKeyCore {
 
   // --- The pairing gate (ProfilePairingGate's enrollment) --------------------
   bool IsPaired();
-  // Writes paired:false for the current device id (sync pauses).
+  bool RequiresRecoveryConfirmation();
+  KeyStatus SetRecoveryConfirmationRequired(bool required);
+  // Writes paired:false for the current device id (sync pauses). A pending
+  // recovery confirmation survives this.
   KeyStatus BeginEnrollment();
-  // Writes paired:true for the device id the join ended with.
+  // Writes paired:true for the device id the join ended with; refused while a
+  // recovery confirmation is pending.
   KeyStatus CompleteEnrollment();
-  // Writes paired:false (removal / reconfiguration).
+  // Writes paired:false (removal / reconfiguration), and drops a pending
+  // recovery confirmation with the old enrollment.
   KeyStatus InvalidateEnrollment();
 
   // Startup/login: unlock, then resolve. Anything but kUnlocked clears.

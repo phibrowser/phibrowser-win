@@ -69,6 +69,9 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
     kChooseJoin,
     kWaiting,
     kEnterCode,
+    // The same field, for the code this account's setup just showed: sync stays
+    // off until it is typed back.
+    kConfirmCode,
     kDenied,
     kExpired,
     kError,
@@ -119,6 +122,7 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
     kNone,
     kContinue,
     kSaved,
+    kBackToCode,
     kCopy,
     kRequestApproval,
     kUseRecovery,
@@ -236,6 +240,9 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
   // A failed apply's message, shown once the reloaded Profiles page is up.
   std::wstring profiles_error_;
   std::wstring error_message_;
+  // In memory only, until it is typed back or the window closes: Back on the
+  // confirmation page shows it again; a reopened window has nothing to go back
+  // to.
   std::wstring recovery_code_;
   bool copied_ = false;
   std::string request_id_;
@@ -260,6 +267,7 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
   // The laid-out page (client pixels).
   RECT title_rect_{};
   RECT body_rect_{};
+  RECT back_hint_rect_{};
   RECT code_rect_{};
   RECT note_rect_{};
   RECT error_rect_{};

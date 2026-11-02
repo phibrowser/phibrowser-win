@@ -1008,7 +1008,9 @@ void PhiSyncKeyService::BeginSetup(
     if (status.ok()) {
       switch (result) {
         case keys::UnlockResult::kUnlocked:
-          if (w.core.IsPaired()) {
+          if (w.core.RequiresRecoveryConfirmation()) {
+            route = SetupRoute::kConfirmRecovery;
+          } else if (w.core.IsPaired()) {
             w.core.ResolveMappings(locals);
             route = SetupRoute::kDone;
           } else {
@@ -1024,8 +1026,10 @@ void PhiSyncKeyService::BeginSetup(
           bool exists = false;
           status = w.manager.AccountExists(&exists);
           route = !status.ok() ? SetupRoute::kError
-                  : exists     ? SetupRoute::kChooseJoin
-                               : SetupRoute::kIntroduction;
+                  : !exists    ? SetupRoute::kIntroduction
+                  : w.core.RequiresRecoveryConfirmation()
+                      ? SetupRoute::kConfirmRecovery
+                      : SetupRoute::kChooseJoin;
           break;
         }
       }
@@ -1040,10 +1044,19 @@ void PhiSyncKeyService::Bootstrap(
     std::string code;
     KeyStatus status = w.core.BeginEnrollment();
     if (status.ok()) {
-      status = w.manager.Bootstrap(&code);
-    }
-    if (status.ok()) {
-      w.unlock = Unlock::kUnlocked;
+      status = w.core.SetRecoveryConfirmationRequired(true);
+      if (status.ok()) {
+        status = w.manager.Bootstrap(&code);
+        if (status.ok()) {
+          w.unlock = Unlock::kUnlocked;
+        } else {
+          // No code reached the display: don't ask for one the user never saw.
+          const KeyStatus cleared = w.core.SetRecoveryConfirmationRequired(false);
+          if (!cleared.ok()) {
+            status = cleared;
+          }
+        }
+      }
     }
     return [done, status, code] { done(status, code); };
   });
@@ -1101,11 +1114,15 @@ void PhiSyncKeyService::JoinWithRecoveryCode(
     std::function<void(KeyStatus)> done) {
   Post([done = std::move(done), code](Worker& w) -> std::function<void()> {
     KeyStatus status = w.core.BeginEnrollment();
+    const bool confirming = w.core.RequiresRecoveryConfirmation();
     if (status.ok()) {
       status = w.manager.JoinWithRecoveryCode(code);
     }
     if (status.ok()) {
       w.unlock = Unlock::kUnlocked;
+      if (confirming) {
+        status = w.core.SetRecoveryConfirmationRequired(false);
+      }
     }
     return [done, status] { done(status); };
   });

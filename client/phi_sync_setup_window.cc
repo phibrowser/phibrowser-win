@@ -247,6 +247,7 @@ void PhiSyncSetupWindow::OnEscape() {
 void PhiSyncSetupWindow::OnEnter() {
   switch (page_) {
     case Page::kEnterCode:
+    case Page::kConfirmCode:
       SubmitRecoveryCode();
       break;
     case Page::kIntroduction:
@@ -293,19 +294,21 @@ void PhiSyncSetupWindow::ShowPage(Page page) {
     countdown_.Stop();
     poll_in_flight_ = false;
   }
-  if (page != Page::kEnterCode) {
+  const bool enters_code =
+      page == Page::kEnterCode || page == Page::kConfirmCode;
+  if (!enters_code) {
     input_error_.clear();
   }
-  if (page == Page::kEnterCode) {
+  if (enters_code) {
     EnsureCodeField();
     ::SetWindowTextW(code_field_, L"");
   }
   if (code_field_) {
-    ::ShowWindow(code_field_, page == Page::kEnterCode ? SW_SHOW : SW_HIDE);
+    ::ShowWindow(code_field_, enters_code ? SW_SHOW : SW_HIDE);
   }
   Layout();
   Invalidate();
-  if (page == Page::kEnterCode) {
+  if (enters_code) {
     ::SetFocus(code_field_);
   }
 }
@@ -336,6 +339,9 @@ void PhiSyncSetupWindow::BeginSetup() {
         return;
       case PhiSyncKeyService::SetupRoute::kReadyToPair:
         LoadPairing();
+        return;
+      case PhiSyncKeyService::SetupRoute::kConfirmRecovery:
+        ShowPage(Page::kConfirmCode);
         return;
       case PhiSyncKeyService::SetupRoute::kNotSignedIn:
         ShowError(PhiStr("sync.setup.error.signInRequired"));
@@ -380,7 +386,9 @@ void PhiSyncSetupWindow::StartBootstrap() {
     } else {
       LOG(WARNING) << "[SyncSetup] bootstrap failed: "
                    << keys::KeyStatusName(status);
-      ShowError(PhiStr("sync.setup.error.connection"));
+      ShowError(status.kind == keys::KeyErrorKind::kStorage
+                    ? PhiStr("sync.setup.saveFailed")
+                    : PhiStr("sync.setup.error.connection"));
     }
   });
 }
@@ -489,7 +497,9 @@ void PhiSyncSetupWindow::ShowRecoveryEntry() {
 void PhiSyncSetupWindow::SubmitRecoveryCode() {
   PhiSyncKeyService* keys = host_->SyncKeys();
   const std::wstring code = CodeFieldText();
-  if (!keys || busy_ || page_ != Page::kEnterCode || code.empty()) {
+  if (!keys || busy_ ||
+      (page_ != Page::kEnterCode && page_ != Page::kConfirmCode) ||
+      code.empty()) {
     return;
   }
   busy_ = true;
@@ -504,11 +514,14 @@ void PhiSyncSetupWindow::SubmitRecoveryCode() {
         }
         busy_ = false;
         if (status.ok()) {
+          recovery_code_.clear();
           LoadPairing();
           return;
         }
         if (status.kind == keys::KeyErrorKind::kBadRecoveryCode) {
           input_error_ = PhiStr("sync.setup.error.badRecoveryCode");
+        } else if (status.kind == keys::KeyErrorKind::kStorage) {
+          input_error_ = PhiStr("sync.setup.saveFailed");
         } else if (status.kind == keys::KeyErrorKind::kHttp &&
                    status.http_status == 401) {
           input_error_ = PhiStr("sync.setup.error.signInRequired");
@@ -1029,6 +1042,8 @@ std::wstring PhiSyncSetupWindow::TitleText() const {
       return PhiStr("sync.setup.waiting.title");
     case Page::kEnterCode:
       return PhiStr("sync.setup.enter.title");
+    case Page::kConfirmCode:
+      return PhiStr("sync.recovery.entry.confirmTitle");
     case Page::kDenied:
       return PhiStr("sync.setup.denied.title");
     case Page::kExpired:
@@ -1049,13 +1064,15 @@ std::wstring PhiSyncSetupWindow::BodyText() const {
     case Page::kIntroduction:
       return PhiStr("sync.setup.intro.body");
     case Page::kShowingCode:
-      return PhiStr("sync.setup.code.body");
+      return PhiStr("sync.recovery.save.oneTimeNotice");
     case Page::kChooseJoin:
       return PhiStr("sync.setup.join.body");
     case Page::kWaiting:
       return PhiStr("sync.setup.waiting.body");
     case Page::kEnterCode:
       return PhiStr("sync.setup.enter.body");
+    case Page::kConfirmCode:
+      return PhiStr("sync.recovery.entry.confirmExplanation");
     case Page::kDenied:
       return PhiStr("sync.setup.denied.body");
     case Page::kExpired:
@@ -1101,7 +1118,7 @@ void PhiSyncSetupWindow::Layout() {
   rows_.clear();
   remote_header_index_ = -1;
   title_rect_ = body_rect_ = code_rect_ = note_rect_ = error_rect_ =
-      section_rect_ = RECT{};
+      section_rect_ = back_hint_rect_ = RECT{};
   note_text_.clear();
   const RECT content = ContentRect();
   const int pad = Scaled(kPadDip);
@@ -1196,7 +1213,8 @@ void PhiSyncSetupWindow::Layout() {
                    bottom);
       break;
     }
-    case Page::kEnterCode: {
+    case Page::kEnterCode:
+    case Page::kConfirmCode: {
       code_rect_ = {left, y, left + width, y + Scaled(48)};
       if (code_field_) {
         ::MoveWindow(code_field_, code_rect_.left + Scaled(12),
@@ -1209,9 +1227,22 @@ void PhiSyncSetupWindow::Layout() {
         error_rect_ = {left, y, left + width,
                        y + MeasureHeight(BodyFont(), input_error_, width)};
       }
-      AddButtonRow({primary(Control::kSubmit, PhiStr("sync.setup.enter.submit"),
-                            !busy_ && !CodeFieldText().empty())},
-                   bottom);
+      Button submit =
+          primary(Control::kSubmit, PhiStr("sync.setup.enter.submit"),
+                  !busy_ && !CodeFieldText().empty());
+      if (page_ == Page::kConfirmCode && !recovery_code_.empty()) {
+        const std::wstring hint = PhiStr("sync.recovery.entry.backHint");
+        const int hint_bottom = bottom - Scaled(kButtonHeightDip + 12);
+        back_hint_rect_ = {left,
+                           hint_bottom - MeasureHeight(SmallFont(), hint, width),
+                           left + width, hint_bottom};
+        AddButtonRow({secondary(Control::kBackToCode,
+                                PhiStr("sync.recovery.entry.back"), !busy_),
+                      std::move(submit)},
+                     bottom);
+      } else {
+        AddButtonRow({std::move(submit)}, bottom);
+      }
       break;
     }
     case Page::kDenied:
@@ -1355,9 +1386,9 @@ void PhiSyncSetupWindow::Paint(HDC dc, const RECT&) {
        DT_WORDBREAK | (centred ? DT_CENTER : 0));
 
   if (page_ == Page::kShowingCode || page_ == Page::kWaiting ||
-      page_ == Page::kEnterCode) {
+      page_ == Page::kEnterCode || page_ == Page::kConfirmCode) {
     PhiPopupPaintWell(dc, code_rect_, c, dpi());
-    if (page_ != Page::kEnterCode) {
+    if (page_ == Page::kShowingCode || page_ == Page::kWaiting) {
       text(CodeFont(), c.label_strong,
            page_ == Page::kShowingCode ? recovery_code_ : verification_code_,
            code_rect_, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
@@ -1365,6 +1396,10 @@ void PhiSyncSetupWindow::Paint(HDC dc, const RECT&) {
   }
   text(SmallFont(), c.secondary, note_text_, note_rect_, DT_SINGLELINE);
   text(BodyFont(), c.error, input_error_, error_rect_, DT_WORDBREAK);
+  if (page_ == Page::kConfirmCode && !recovery_code_.empty()) {
+    text(SmallFont(), c.secondary, PhiStr("sync.recovery.entry.backHint"),
+         back_hint_rect_, DT_WORDBREAK);
+  }
   if (page_ == Page::kProfiles) {
     text(SmallFont(), c.secondary, PhiStr("sync.setup.profiles.unclaimed"),
          section_rect_, DT_WORDBREAK);
@@ -1435,8 +1470,12 @@ void PhiSyncSetupWindow::OnClick(int hit, POINT) {
       StartBootstrap();
       break;
     case Control::kSaved:
-      recovery_code_.clear();
-      LoadPairing();
+      ShowPage(Page::kConfirmCode);
+      break;
+    case Control::kBackToCode:
+      if (!busy_) {
+        ShowPage(Page::kShowingCode);
+      }
       break;
     case Control::kCopy:
       CopyToClipboard(recovery_code_);
@@ -1645,6 +1684,8 @@ const char* PhiSyncSetupWindow::PageName(Page page) {
       return "waitingForApproval";
     case Page::kEnterCode:
       return "enteringRecoveryCode";
+    case Page::kConfirmCode:
+      return "confirmingRecoveryCode";
     case Page::kDenied:
       return "joinDenied";
     case Page::kExpired:
@@ -1665,6 +1706,9 @@ std::string PhiSyncSetupWindow::StateJson() const {
   out.Set("busy", busy_);
   out.Set("canClose", CanClose());
   out.Set("title", base::WideToUTF8(TitleText()));
+  if (page_ == Page::kConfirmCode) {
+    out.Set("canGoBack", !recovery_code_.empty());
+  }
   if (!input_error_.empty()) {
     out.Set("inputError", base::WideToUTF8(input_error_));
   }
@@ -1720,8 +1764,10 @@ std::string PhiSyncSetupWindow::Drive(const std::string& action,
   if (action == "continue" && on(Page::kIntroduction)) {
     StartBootstrap();
   } else if (action == "saved" && on(Page::kShowingCode)) {
-    recovery_code_.clear();
-    LoadPairing();
+    ShowPage(Page::kConfirmCode);
+  } else if (action == "back" && on(Page::kConfirmCode) &&
+             !recovery_code_.empty() && !busy_) {
+    ShowPage(Page::kShowingCode);
   } else if (action == "copy" && on(Page::kShowingCode)) {
     CopyToClipboard(recovery_code_);
   } else if (action == "requestApproval" && on(Page::kChooseJoin)) {
@@ -1732,9 +1778,11 @@ std::string PhiSyncSetupWindow::Drive(const std::string& action,
   } else if (action == "cancel" && on(Page::kWaiting)) {
     CancelJoin();
     ShowPage(Page::kChooseJoin);
-  } else if (action == "code" && on(Page::kEnterCode)) {
+  } else if (action == "code" &&
+             (on(Page::kEnterCode) || on(Page::kConfirmCode))) {
     ::SetWindowTextW(code_field_, base::UTF8ToWide(value).c_str());
-  } else if (action == "submit" && on(Page::kEnterCode)) {
+  } else if (action == "submit" &&
+             (on(Page::kEnterCode) || on(Page::kConfirmCode))) {
     SubmitRecoveryCode();
   } else if (action == "tryAnother" && (on(Page::kDenied) || on(Page::kExpired))) {
     ShowPage(Page::kChooseJoin);
@@ -1797,7 +1845,8 @@ std::string PhiSyncSetupWindow::Drive(const std::string& action,
     }
     FinishLater();
   } else {
-    return action == "continue" || action == "saved" || action == "copy" ||
+    return action == "continue" || action == "saved" || action == "back" ||
+                   action == "copy" ||
                    action == "requestApproval" || action == "useRecovery" ||
                    action == "cancel" || action == "code" ||
                    action == "submit" || action == "tryAnother" ||
