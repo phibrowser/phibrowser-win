@@ -32,6 +32,20 @@
    "comment": "sidebar — hint at the address field's trailing end when Tab or Space picks the highlighted search engine; {0} is the engine name (used at phi_omnibox_session.cc)",
    "en": "Tab or Space to search {0}"
   },
+  "addressBar.suggestions.addOpenTabToSplitHintCtrl": {
+   "comment": "omnibox — used in phi_omnibox_session.cc; the Mac addressBar.suggestions.addOpenTabToSplitHint with Ctrl for Cmd",
+   "en": "Hold Ctrl to add split",
+   "translations": {
+    "de": "Ctrl halten für Split View",
+    "es": "Mantén Ctrl para dividir",
+    "fr": "Maintenez Ctrl pour ajouter à la Split View",
+    "ja": "Ctrlを押したまま分割表示に追加",
+    "ko": "Ctrl 키를 누른 채 분할 추가",
+    "nl": "Houd Ctrl ingedrukt om te splitsen",
+    "zh-Hans": "按住 Ctrl 加入分屏",
+    "zh-Hant": "按住 Ctrl 加入分割畫面"
+   }
+  },
   "addressBar.suggestions.switchToOpenTabHintCtrl": {
    "comment": "omnibox — used in phi_omnibox_session.cc; the Mac's addressBar.suggestions.switchToOpenTabHint with Ctrl for ⌘",
    "en": "Hold Ctrl to switch →",
@@ -839,6 +853,10 @@
   "app.spacesMenu.urlRules": {
    "comment": "settings — used at phi_settings_window.cc:1248",
    "en": "URL Rules…"
+  },
+  "app.tabMenu.splitWithNewTab": {
+   "comment": "app menu — Mac key (translations by key)",
+   "en": "Split with New Tab"
   },
   "app.theImportDidNotFinish": {
    "comment": "app — used at phi_coordinator.cc:6348",
@@ -7972,6 +7990,10 @@
   "settings.shortcuts.command.showHistory": {
    "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
    "en": "Show History"
+  },
+  "settings.shortcuts.command.splitWithNewTab": {
+   "comment": "shortcuts — Mac key (translations by key)",
+   "en": "Split with New Tab"
   },
   "settings.shortcuts.command.toggleBookmarkBar": {
    "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",

@@ -100,6 +100,17 @@
    "zh-Hans": "按 Tab 键或空格键搜索 {0}",
    "zh-Hant": "按 Tab 鍵或空白鍵搜尋 {0}"
   },
+  "addressBar.suggestions.addOpenTabToSplitHintCtrl": {
+   "de": "Ctrl halten für Split View",
+   "en": "Hold Ctrl to add split",
+   "es": "Mantén Ctrl para dividir",
+   "fr": "Maintenez Ctrl pour ajouter à la Split View",
+   "ja": "Ctrlを押したまま分割表示に追加",
+   "ko": "Ctrl 키를 누른 채 분할 추가",
+   "nl": "Houd Ctrl ingedrukt om te splitsen",
+   "zh-Hans": "按住 Ctrl 加入分屏",
+   "zh-Hant": "按住 Ctrl 加入分割畫面"
+  },
   "addressBar.suggestions.switchToOpenTabHintCtrl": {
    "de": "Ctrl halten zum Wechseln →",
    "en": "Hold Ctrl to switch →",
@@ -1221,6 +1232,17 @@
    "nl": "URL-regels…",
    "zh-Hans": "网址规则…",
    "zh-Hant": "網址規則…"
+  },
+  "app.tabMenu.splitWithNewTab": {
+   "de": "Split View mit neuem Tab",
+   "en": "Split with New Tab",
+   "es": "Dividir con nueva pestaña",
+   "fr": "Créer une Split View avec un nouvel onglet",
+   "ja": "新しいタブと分割表示にする",
+   "ko": "새 탭과 분할",
+   "nl": "Splits met nieuw tabblad",
+   "zh-Hans": "与新标签页分屏",
+   "zh-Hant": "以新分頁分割畫面"
   },
   "app.theImportDidNotFinish": {
    "de": "Der Import wurde nicht abgeschlossen. Schließe Google Chrome ",
@@ -10063,6 +10085,17 @@
    "nl": "Toon geschiedenis",
    "zh-Hans": "显示历史记录",
    "zh-Hant": "顯示歷史記錄"
+  },
+  "settings.shortcuts.command.splitWithNewTab": {
+   "de": "Split View mit neuem Tab",
+   "en": "Split with New Tab",
+   "es": "Dividir con nueva pestaña",
+   "fr": "Créer une Split View avec un nouvel onglet",
+   "ja": "新しいタブと分割表示にする",
+   "ko": "새 탭과 분할",
+   "nl": "Splits met nieuw tabblad",
+   "zh-Hans": "与新标签页分屏",
+   "zh-Hant": "以新分頁分割畫面"
   },
   "settings.shortcuts.command.toggleBookmarkBar": {
    "de": "Lesezeichenleiste ein-/ausblenden",

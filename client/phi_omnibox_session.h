@@ -499,6 +499,8 @@ class PhiOmniboxShell {
  public:
   // The window the field, the popup and every repaint belong to.
   virtual HWND OmniboxShellWindow() const = 0;
+  // Joins `anchor` and the active tab in a split, unless they are one tab.
+  virtual void OmniboxPairSplit(TabId anchor) = 0;
   // The shell is being torn down: the field's remaining messages must not
   // reach the framework for a window that is going.
   virtual bool OmniboxShellDestroying() const = 0;
@@ -633,6 +635,10 @@ class PhiOmniboxSession {
   // in it as in the address field; a commit opens a NEW tab.
   // `toggle`: an open card closes instead (Ctrl+T again).
   void ShowFloating(bool toggle);
+  // The Mac's Split with New Tab under the Omnibox behaviour: the card opens,
+  // and what it commits becomes `anchor`'s split pane; a row's open tab, with
+  // Ctrl held, pairs that tab. False under the New Tab Page behaviour.
+  bool StartSplitWithNewTab(TabId anchor);
   // An empty window's way in under the Omnibox behaviour: the card a turn
   // later, if the window is in front and still empty; else the field.
   void OpenFloatingSoon();
@@ -865,6 +871,7 @@ class PhiOmniboxSession {
   bool programmatic_ = false;  // Suppresses EN_CHANGE feedback.
   // Set by StartNewTab in omnibox mode: the next commit opens a NEW tab.
   bool new_tab_pending_ = false;
+  TabId split_anchor_;  // StartSplitWithNewTab: cleared on commit or Escape.
 
   // The floating card while it is up (self-deleting; cleared from its
   // OnNcDestroy and whenever it is closed).

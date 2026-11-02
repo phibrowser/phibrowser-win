@@ -123,6 +123,7 @@ enum : UINT {
   kCmdBookmarkManager,
   // Tab
   kCmdNewTabToRight,
+  kCmdSplitWithNewTab,
   kCmdNextTab,
   kCmdPreviousTab,
   kCmdDuplicateTab,
@@ -259,6 +260,9 @@ class PhiAppMenuShell {
   // A Spaces menu row / Ctrl+N pick: PhiShellWindow::SwitchToSpace.
   virtual void MenuSwitchSpace(const std::string& space_id) = 0;
   virtual void MenuNewTab() = 0;
+  // The Mac's Split with New Tab: the active tab joined by a new pane.
+  virtual bool MenuCanSplitWithNewTab() const = 0;
+  virtual void MenuSplitWithNewTab() = 0;
   virtual void MenuToggleSidebar() = 0;
   // `from_accelerator`: the chord rather than the View menu row (the
   // reader's usage metric names the two differently).

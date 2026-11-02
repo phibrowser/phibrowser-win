@@ -221,6 +221,7 @@ void PhiAppMenu::BuildStatic() {
     return r;
   };
   row(root_, kCmdNewTab, "appMenu.newTab", fluent::kAdd);
+  row(root_, kCmdSplitWithNewTab, "app.tabMenu.splitWithNewTab", nullptr, false);
   row(root_, kCmdNewWindow, "appMenu.newWindow", fluent::kNewWindow);
   row(root_, kCmdNewIncognitoWindow, "appMenu.newIncognitoWindow",
       fluent::kIncognito, false);
@@ -369,6 +370,7 @@ void PhiAppMenu::RefreshChromiumCommands() {
 
 void PhiAppMenu::RefreshRoot() {
   services_->MenuRefreshNavState();
+  SetEnabled(root_, kCmdSplitWithNewTab, services_->MenuCanSplitWithNewTab());
   SetEnabled(root_, kCmdPreferences, services_->MenuWindowHost() != nullptr);
   // Reader View is offered where it has something to show, and ticked
   // while its surface is up.
@@ -865,6 +867,7 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
     switch (id) {
       case kCmdNewTab:
       case kCmdNewTabToRight:
+      case kCmdSplitWithNewTab:
       case kCmdCloseTab:
       case kCmdReopenClosedTab:
       case kCmdDuplicateTab:
@@ -1335,6 +1338,9 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       if (c->MenuWindowHost()) {
         c->MenuWindowHost()->RequestBrowserImport();
       }
+      return true;
+    case kCmdSplitWithNewTab:
+      c->MenuSplitWithNewTab();
       return true;
     case kCmdNewTabToRight: {
       // Composed from the primitives: IDC_NEW_TAB_TO_RIGHT stays disabled in

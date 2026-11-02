@@ -420,6 +420,16 @@ void PhiOmniboxSession::StartNewTab() {
   }
 }
 
+bool PhiOmniboxSession::StartSplitWithNewTab(TabId anchor) {
+  if (!shell_->OmniboxNewTabFocusesField()) {
+    return false;
+  }
+  HideFloating(/*focus_content=*/false);
+  ShowFloating(/*toggle=*/false);
+  split_anchor_ = floating_ ? anchor : TabId();
+  return true;
+}
+
 HWND PhiOmniboxSession::FloatingField() const {
   return floating_ ? floating_->field() : nullptr;
 }
@@ -534,9 +544,12 @@ PhiPalette PhiOmniboxSession::CardPalette() const {
 }
 
 void PhiOmniboxSession::FinishCommit() {
+  const TabId split_anchor = split_anchor_;
+  split_anchor_ = TabId();
   // The floating card goes with the commit (inside its opening grace the
   // focus change alone would not dismiss it), then keys belong to the page.
   HideFloating(/*focus_content=*/false);
+  shell_->OmniboxPairSplit(split_anchor);
   shell_->OmniboxFocusContent();
 }
 
@@ -994,6 +1007,7 @@ void PhiOmniboxSession::ClosePopup(bool stop_query) {
   HidePopup();
   if (stop_query) {
     new_tab_pending_ = false;  // The gesture was abandoned.
+    split_anchor_ = TabId();
   }
   const BrowserId browser = shell_->OmniboxBrowser();
   phi_framework::PhiFramework* framework = shell_->OmniboxFramework();
@@ -1240,7 +1254,9 @@ void PhiOmniboxSession::PaintPopup(HWND popup, HDC dc) {
     }
     if (row.has_tab_match) {
       const wchar_t* hint =
-          PhiStr("addressBar.suggestions.switchToOpenTabHintCtrl");
+          PhiStr(split_anchor_.valid()
+                     ? "addressBar.suggestions.addOpenTabToSplitHintCtrl"
+                     : "addressBar.suggestions.switchToOpenTabHintCtrl");
       HGDIOBJ previous = hint_font ? ::SelectObject(dc, hint_font) : nullptr;
       RECT measure = text_rc;
       PhiDrawTextAA(dc, hint, -1, &measure,

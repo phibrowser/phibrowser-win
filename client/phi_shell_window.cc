@@ -176,6 +176,8 @@ constexpr UINT_PTR kDeferredCloseTimer = 0x525;
 constexpr UINT_PTR kSplitChipTimer = 0x526;
 // The chrome tooltip's dwell (UpdateChromeTip).
 constexpr UINT_PTR kChromeTipTimer = 0x527;
+// Split with New Tab: looks for the card's tab until it is the active one.
+constexpr UINT_PTR kPairSplitTimer = 0x528;
 constexpr UINT kDeferredCloseRetryMs = 50;
 
 // The row metrics the sidebar owns and the chrome below shares — the pill
@@ -1805,6 +1807,53 @@ void PhiShellWindow::MenuSwitchSpace(const std::string& space_id) {
 
 void PhiShellWindow::MenuNewTab() {
   StartNewTab();  // Honors the "New tab behavior" setting.
+}
+
+bool PhiShellWindow::MenuCanSplitWithNewTab() const {
+  return !AgentHoldsInput() && MenuActiveTab().valid() && !ActiveTabIsSplit();
+}
+
+void PhiShellWindow::MenuSplitWithNewTab() {
+  if (!MenuCanSplitWithNewTab() || !framework_) {
+    return;
+  }
+  const TabId anchor = MenuActiveTab();
+  // Under the Omnibox behaviour the card picks the pane, with no preview of a
+  // blank one: a window hosted as a whole has no pane to show before the split.
+  if (omnibox_->StartSplitWithNewTab(anchor)) {
+    return;
+  }
+  const BrowserId browser = active_browser_id();
+  const TabId fresh = framework_->OpenTab(browser, "");
+  if (fresh.valid()) {
+    framework_->ActivateTabById(browser.value, anchor.value);
+    sidebar_->SplitTabsNormalized(browser, anchor, fresh);
+  }
+}
+
+void PhiShellWindow::OmniboxPairSplit(TabId anchor) {
+  if (!anchor.valid()) {
+    return;
+  }
+  // A row's tab arrives after the commit returns: the pairing waits for the
+  // active tab to change, a moment at most.
+  pending_split_anchor_ = anchor;
+  pending_split_deadline_ = ::GetTickCount64() + 3000;
+  ::SetTimer(shell_hwnd_, kPairSplitTimer, 100, nullptr);
+}
+
+void PhiShellWindow::PairPendingSplit() {
+  const TabId anchor = pending_split_anchor_;
+  const TabId active = active_tab_id();
+  const bool ready = anchor.valid() && active.valid() && active != anchor;
+  if (!ready && anchor.valid() && ::GetTickCount64() <= pending_split_deadline_) {
+    return;  // Not yet: the timer looks again.
+  }
+  ::KillTimer(shell_hwnd_, kPairSplitTimer);
+  pending_split_anchor_ = TabId();
+  if (ready) {
+    sidebar_->SplitTabsNormalized(active_browser_id(), anchor, active);
+  }
 }
 
 void PhiShellWindow::MenuToggleSidebar() {
@@ -9024,6 +9073,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       }
       break;
     case WM_TIMER:
+      if (self && wparam == kPairSplitTimer) {
+        self->PairPendingSplit();
+        return 0;
+      }
       if (self && self->tab_preview_ && self->tab_preview_->OnTimer(wparam)) {
         return 0;
       }

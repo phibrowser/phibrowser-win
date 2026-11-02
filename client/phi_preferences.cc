@@ -60,6 +60,9 @@ constexpr RebindableShortcut kRebindableShortcuts[] = {
      kCmdSaveToFolio, {'S', true, false, true}},
     {"openLocation", "File", "settings.shortcuts.command.focusAddressBar",
      kCmdOpenLocation, {'L', true, false, false}},
+    // The Mac's Ctrl+Shift+= is zoom-in on this platform (accelerator_table.cc).
+    {"splitWithNewTab", "Tab", "settings.shortcuts.command.splitWithNewTab",
+     kCmdSplitWithNewTab, {VK_OEM_5, true, true, false}},
     {"closeTab", "File", "settings.shortcuts.command.closeTab", kCmdCloseTab,
      {'W', true, false, false}},
     {"closeWindow", "File", "settings.shortcuts.command.closeWindow",

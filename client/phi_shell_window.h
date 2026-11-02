@@ -1824,6 +1824,11 @@ class PhiShellWindow : public PhiHitSource,
   std::vector<PhiAgentPipView> MenuAgentSpaces() const override;
   void MenuSwitchSpace(const std::string& space_id) override;
   void MenuNewTab() override;
+  void PairPendingSplit();
+  TabId pending_split_anchor_;
+  uint64_t pending_split_deadline_ = 0;
+  bool MenuCanSplitWithNewTab() const override;
+  void MenuSplitWithNewTab() override;
   void MenuToggleSidebar() override;
   void MenuToggleReader(bool from_accelerator) override;
   bool MenuAgentHoldsInput() const override;
@@ -1867,6 +1872,7 @@ class PhiShellWindow : public PhiHitSource,
 
   // --- PhiOmniboxShell: what the session asks of its shell ------------------
   HWND OmniboxShellWindow() const override;
+  void OmniboxPairSplit(TabId anchor) override;
   bool OmniboxShellDestroying() const override;
   int OmniboxScaled(int design_units) const override;
   HFONT OmniboxTextFont() const override;
