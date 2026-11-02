@@ -233,7 +233,10 @@ PhiPalette ResolveFromColors(const PhiThemeColors& colors,
   palette.ground_stops.fill(palette.ground_top);
   palette.ground_stop_count = 1;
   palette.accent = colors.accent;
-  palette.window_bg = colors.background;
+  // One default surface for the address row, the active strip tab and the page
+  // (the Mac's 5e434655), on the design's #2B2B2B in dark (§2.3), which is the
+  // new-tab page's `card`: the theme's own dark colour left a seam against it.
+  palette.window_bg = dark ? PhiRgb(0x2B, 0x2B, 0x2B) : colors.background;
   // The ink the Mac's percentage overlays are made of.
   const PhiColor ink = dark ? PhiRgb(0xFF, 0xFF, 0xFF) : PhiRgb(0, 0, 0);
   palette.ink = ink;

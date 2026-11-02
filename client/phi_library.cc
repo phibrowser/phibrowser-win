@@ -568,25 +568,10 @@ class LibraryView : public PhiPanel, private PhiCreateSpaceFormHost {
   }
 
   // Colours.
-  // The rail's and card's ground: the Mac's windowBackground, which is the
-  // same material the sidebar paints its ground with (PaintChrome's
-  // `ground_top` of CurrentPalette) — so a Space with a linked palette
-  // colours the Library as it colours the window chrome.
-  COLORREF CardGround() const { return palette().ground_top; }
-  COLORREF ContentGround() const {
-    // The Mac's contentOverlayBackground (white; in dark the window's
-    // resolved overlay made opaque — the linked palette's when the Space
-    // carries one) under a 2.5 % accent wash.
-    const PhiPalette& p = palette();
-    COLORREF base = PhiRgb(0xFF, 0xFF, 0xFF);
-    if (p.dark) {
-      base = shell_->spaces_host()
-                 ? OverlayFor(*shell_->spaces_host(), shell_->active_space(),
-                              /*dark=*/true)
-                 : p.ground_top;
-    }
-    return PhiBlend(p.accent, base, 6);
-  }
+  // Neutral, whatever the Space's colours (the Mac's 294d4d02): the rail and
+  // cards on the Windows settings ground, the content on the card surface.
+  COLORREF CardGround() const { return palette().ground_fixed; }
+  COLORREF ContentGround() const { return palette().card; }
   // The search pill's fill, which its EDIT paints with too: ink over the
   // CONTENT ground (hover_strong sits over the sidebar's ground_top and
   // would read as a block on the white content).
