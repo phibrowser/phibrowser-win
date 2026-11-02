@@ -341,9 +341,11 @@ open; a reopened window offers re-entry alone. Verified on nuc against a stub
 `/keys/v1` on loopback (`PHI_SYNC_BASE_URL`, dev-hooks only), because the real
 account already has keys: bootstrap, wrong code refused, Back shows the same code,
 close and reopen, restart, right code pairs, bootstrap answering 500 and 409 clear
-the flag. Not verified: a second device joining that account, and the real server
-(the stub answers a repeat `POST /keys/v1/devices` with 200, as the Mac's flow
-expects of it).
+the flag. The stub's 200 for a repeat `POST /keys/v1/devices` was an assumption; the
+real server answers 204. Verified 2026-11-02 on staging with a throwaway account,
+as two profiles on nuc: the first device confirms its code with no rotation, the
+second joins with the code, bookmarks cross both ways, and both unlock after a
+restart. Not verified: two separate machines, a Mac on the same account, production.
 
 **Leads, reproduced first on nuc.** A link forwarded while only a Kiosk is alive
 landed inside the Kiosk with restore off: real, fixed in the fork (a Kiosk or agent
