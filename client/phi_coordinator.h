@@ -308,12 +308,12 @@ class PhiCoordinator : public SidebarHost,
   // Opens `url` as a foreground tab in the first shell window and raises it —
   // how a Kiosk window hands its page over when the user expands it.
   void OpenUrlInMainWindow(const std::string& url);
-  // Routes `url` into `space_id` on the user's behalf — the Kiosk's Space
-  // menu. The framework's own callback of this name goes straight to the
-  // router through PhiFrameworkDispatcher; this is the in-app entry point.
-  void OnOpenLinkInSpace(int64_t source_window_id,
-                         const char* space_id,
-                         const char* url);
+  // Routes the Kiosk `kiosk`'s page `url` into `space_id` — its Space menu —
+  // and closes the Kiosk once the page has opened there. May tear the Kiosk
+  // down before it returns.
+  void MoveKioskPageToSpace(BrowserId kiosk,
+                            const std::string& space_id,
+                            const std::string& url);
   // The Space a Kiosk offers to hand its page to: the main window's ACTIVE
   // Space, the Space holding the default role when no window is up — the
   // Mac's KioskSpaceMenuTargetResolver.primarySpace.

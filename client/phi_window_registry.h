@@ -38,6 +38,10 @@ struct PendingCreation {
   // (Open Link in Space / a routed URL into a cold Space, and a re-profiled
   // Space's tabs). One list: the order is the order they were asked in.
   std::vector<std::string> open_urls;
+  // kSpace: Kiosks whose page is among `open_urls`. Each closes once its page
+  // has opened, never before, so a request that fails leaves the page where
+  // it was (PhiKioskWindow::OpenInSpace).
+  std::vector<BrowserId> closing_kiosks;
   std::string task_id;     // kAgent / kShadow: the skill's taskId.
   std::string agent_name;  // kAgent: the driver's name for the watch pill.
   bool persistent = false;  // kAgent

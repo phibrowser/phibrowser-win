@@ -561,10 +561,13 @@ class PhiUrlRouter {
   // cold Space. The two ACTION targets take their own exits: Incognito
   // opens in the source profile's off-the-record window (an open one, else
   // a new one — the Mac's resolveIncognitoRouteTarget, created on demand);
-  // Kiosk opens a fresh ephemeral Kiosk window.
+  // Kiosk opens a fresh ephemeral Kiosk window. `moving_kiosk`, when valid,
+  // is the Kiosk this page is leaving: it closes once the page has opened in
+  // the Space, and stays open when the route drops the page.
   void RouteUrlToSpace(const std::string& space_id,
                        const std::string& url,
-                       BrowserId source_window);
+                       BrowserId source_window,
+                       BrowserId moving_kiosk = BrowserId());
 
   // --- The framework's copy -------------------------------------------------
   // Compiles the live rules plus the Space -> VISIBLE browser map into the

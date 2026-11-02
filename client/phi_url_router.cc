@@ -269,7 +269,8 @@ void PhiUrlRouter::RunPendingAsk() {
 
 void PhiUrlRouter::RouteUrlToSpace(const std::string& space_id,
                                    const std::string& url,
-                                   BrowserId source_window) {
+                                   BrowserId source_window,
+                                   BrowserId moving_kiosk) {
   if (UrlRuleTargetIsKiosk(space_id)) {
     // An ephemeral Kiosk in the source's profile; the framework announces
     // it as WindowKind::kKiosk and the coordinator hosts it. A refusal
@@ -291,7 +292,7 @@ void PhiUrlRouter::RouteUrlToSpace(const std::string& space_id,
                                               url.c_str());
       return;
     }
-    RouteUrlToSpace(incognito_space, url, source_window);
+    RouteUrlToSpace(incognito_space, url, source_window, moving_kiosk);
     return;
   }
   // A slot that already holds the Space: switch to it there and open the
@@ -312,6 +313,9 @@ void PhiUrlRouter::RouteUrlToSpace(const std::string& space_id,
     }
     controller->ScheduleRefresh();
     host_.SchedulePushSpaceMenu();  // The visible-Space routing map changed.
+    if (moving_kiosk.valid()) {
+      framework_.CloseBrowserWindow(moving_kiosk.value);
+    }
     return;
   }
   // Cold Space: ask for its browser in its profile; the link opens once the
@@ -335,17 +339,22 @@ void PhiUrlRouter::RouteUrlToSpace(const std::string& space_id,
       source && (source->is_incognito() || source->is_agent())) {
     slot = registry_.FirstUserSlot();
   }
-  if (!slot.valid()) {
-    return;
-  }
+  // No user window left (the last shell closed while a Kiosk or an agent
+  // window keeps the process up): the invalid slot asks for a shell of its own.
   if (PendingCreation* in_flight = registry_.FindPendingSpace(slot, space_id)) {
     in_flight->open_urls.push_back(url);
+    if (moving_kiosk.valid()) {
+      in_flight->closing_kiosks.push_back(moving_kiosk);
+    }
     return;
   }
   PendingCreation pending;
   pending.slot = slot;
   pending.space_id = space_id;
   pending.open_urls.push_back(url);
+  if (moving_kiosk.valid()) {
+    pending.closing_kiosks.push_back(moving_kiosk);
+  }
   host_.RequestSpaceBrowser(profile_id, std::move(pending));
 }
 

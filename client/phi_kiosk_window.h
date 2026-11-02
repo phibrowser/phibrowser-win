@@ -136,8 +136,9 @@ class PhiKioskWindow : public PhiSecondaryWindow {
   void RefreshProfile();
   void RefreshSpaces();
   void CopyUrl();
-  // Hands the page to `space_id` and lets this ephemeral window go — the
-  // Mac's Kiosk space menu, and what the old expand button did.
+  // Hands the page to `space_id`; this ephemeral window goes once the page
+  // has opened there — the Mac's Kiosk space menu, and what the old expand
+  // button did.
   void OpenInSpace(const std::string& space_id);
   void ShowSpaceList(const RECT& anchor);
 
@@ -179,6 +180,9 @@ class PhiKioskWindow : public PhiSecondaryWindow {
   // pick (lane 3 §4.1).
   bool copy_flash_ = false;
   Timer copy_flash_timer_;
+
+  // When "Open in" last handed the page over (GetTickCount64 ms), 0 if never.
+  uint64_t moved_at_tick_ = 0;
 
   // Which toolbar control the cursor is over, for the hover wash. Indexes
   // the same order Layout declares them; -1 for none. The WINDOW controls

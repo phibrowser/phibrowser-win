@@ -787,6 +787,15 @@ void PhiCoordinator::PostAskSpace() {
 
 void PhiCoordinator::RequestSpaceBrowser(const std::string& profile_id,
                                          PendingCreation pending) {
+  if (!pending.slot.valid()) {
+    // No slot to join: a shell of its own, as OpenUserSpaceWindow's is, which
+    // rebuilds a parked Space's window rather than doubling it. Behind the
+    // onboarding gate a shell would only sit hidden.
+    if (CanUseBrowser()) {
+      RequestSpaceBrowser(std::move(pending), /*pending=*/nullptr);
+    }
+    return;
+  }
   const bool incognito = model::IsIncognitoSpaceId(pending.space_id);
   RequestCreation(phi_framework::WindowKind::kSpace, profile_id, incognito,
                   BrowserId(), std::move(pending));
@@ -3906,10 +3915,10 @@ void PhiCoordinator::OpenUrlInMainWindow(const std::string& url) {
   }
 }
 
-void PhiCoordinator::OnOpenLinkInSpace(int64_t source_window_id,
-                                       const char* space_id,
-                                       const char* url) {
-  url_router_->OnOpenLinkInSpace(source_window_id, space_id, url);
+void PhiCoordinator::MoveKioskPageToSpace(BrowserId kiosk,
+                                          const std::string& space_id,
+                                          const std::string& url) {
+  url_router_->RouteUrlToSpace(space_id, url, kiosk, kiosk);
 }
 
 std::string PhiCoordinator::KioskTargetSpaceId() const {
@@ -5654,6 +5663,13 @@ void PhiCoordinator::FinishRequestedSpaceBrowser(
   for (const std::string& url : pending.open_urls) {
     if (framework_) {
       framework_->OpenTabBypassingSpaceRouting(browser.value, url.c_str());
+    }
+  }
+  // A Kiosk whose page just opened here. Posted: this runs inside the new
+  // browser's creation announcement, too early for another browser's close.
+  for (const BrowserId moved_from : pending.closing_kiosks) {
+    if (PhiKioskWindow* kiosk = registry_.Kiosk(moved_from)) {
+      ::PostMessageW(kiosk->hwnd(), WM_CLOSE, 0, 0);
     }
   }
   if (pending.pending_reply_id) {

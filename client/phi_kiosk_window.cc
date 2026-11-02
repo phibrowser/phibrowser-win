@@ -71,6 +71,10 @@ constexpr char kNewIncognitoSpaceRow[] = "new incognito space";
 // The trailing cluster's breath before the window controls, as the shell's
 // band gives its own (kBandTrailingGap).
 constexpr int kCaptionGap = 12;
+// A cold Space's browser takes a moment and this window stays up meanwhile, so
+// a second "Open in" within this long is ignored: it would open the page twice.
+// A time rather than a flag: a request that fails must not leave the button dead.
+constexpr uint64_t kMoveRetryMs = 5000;
 // Below this the capsule is too narrow to hold anything but the domain.
 constexpr int kCapsuleContentsMinimum = 132;
 
@@ -787,6 +791,10 @@ void PhiKioskWindow::OpenInSpace(const std::string& requested) {
   if (!framework_ || !coordinator_ || requested.empty()) {
     return;
   }
+  const uint64_t now = ::GetTickCount64();
+  if (moved_at_tick_ && now - moved_at_tick_ < kMoveRetryMs) {
+    return;
+  }
   std::string space_id = requested;
   if (incognito_) {
     // Off the record: an Incognito Space only, made now if the row said so.
@@ -807,11 +815,12 @@ void PhiKioskWindow::OpenInSpace(const std::string& requested) {
       kAnalyticsModuleKiosk, kEventKioskOpenedInSpace,
       PhiSpaceSwitchedProperties(
           static_cast<int>(coordinator_->spaces_model().spaces.size())));
-  coordinator_->OnOpenLinkInSpace(window_id_.value, space_id.c_str(),
-                                  url.c_str());
-  // Closing tears this object down through OnBrowserWindowClosing: touch
-  // nothing after it.
-  framework_->CloseBrowserWindow(window_id_.value);
+  moved_at_tick_ = now;
+  // Closing tears this object down through OnBrowserWindowClosing, and a
+  // Space that is already open closes it right here: touch nothing after it.
+  // A cold Space closes it later, because with no user window left this Kiosk
+  // may be the last Browser, and Chromium would exit with it.
+  coordinator_->MoveKioskPageToSpace(window_id_, space_id, url);
 }
 
 void PhiKioskWindow::ShowSpaceList(const RECT& anchor) {
@@ -848,7 +857,7 @@ void PhiKioskWindow::ShowSpaceList(const RECT& anchor) {
     ::DeleteObject(bitmap);
   }
   if (chosen >= 1 && chosen <= spaces_.size()) {
-    OpenInSpace(spaces_[chosen - 1].id);  // Tears this object down.
+    OpenInSpace(spaces_[chosen - 1].id);  // May tear this object down.
   }
 }
 
@@ -867,7 +876,7 @@ void PhiKioskWindow::OnToolbarClick(POINT pt) {
   } else if (::PtInRect(&layout.copy, pt)) {
     CopyUrl();
   } else if (::PtInRect(&layout.space_primary, pt)) {
-    OpenInSpace(target_space_id_);  // Tears this object down.
+    OpenInSpace(target_space_id_);  // May tear this object down.
   } else if (::PtInRect(&layout.space_chevron, pt)) {
     ShowSpaceList(layout.space_menu);  // May tear this object down.
   }
