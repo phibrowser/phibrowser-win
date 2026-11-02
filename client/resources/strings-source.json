@@ -5631,6 +5631,14 @@
    "comment": "profile button — Mac key (translations by key); the sidebar bottom bar's avatar button, tooltip and accessible name; used at phi_shell_window.cc",
    "en": "Profile menu"
   },
+  "profile.card.accessibilitySummary": {
+   "comment": "onboarding and Settings — Mac key (translations by key); the card for a screen reader",
+   "en": "Phi member card, {0}, joined {1}"
+  },
+  "profile.card.accessibilitySummaryWithoutDate": {
+   "comment": "onboarding and Settings — Mac key (translations by key); the card with no join date",
+   "en": "Phi member card, {0}"
+  },
   "profile.card.dateJoined": {
    "comment": "membership card — Mac key (translations by key); used at phi_holographic_card.cc",
    "en": "Date Joined"

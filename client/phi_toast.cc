@@ -53,55 +53,6 @@ constexpr int kActionKey = 1;
 constexpr UINT kWrapFlags =
     DT_CENTER | DT_WORDBREAK | DT_EDITCONTROL | DT_END_ELLIPSIS | DT_NOPREFIX;
 
-// Screen readers learn of a toast through a UIA notification
-// (UiaRaiseNotificationEvent, Windows 10 1709+). uiautomationcore.dll is
-// resolved by hand, as phi_uia.cc does: the framework's link recipe carries
-// no uiautomationcore.lib, and an older system just stays silent.
-void AnnounceToScreenReaders(HWND hwnd, const std::wstring& text) {
-  using HostFromHwnd = decltype(&::UiaHostProviderFromHwnd);
-  using ClientsListening = decltype(&::UiaClientsAreListening);
-  using RaiseNotification = decltype(&::UiaRaiseNotificationEvent);
-  struct Api {
-    HostFromHwnd host_from_hwnd = nullptr;
-    ClientsListening clients_listening = nullptr;
-    RaiseNotification raise = nullptr;
-  };
-  static const Api api = [] {
-    Api loaded;
-    HMODULE core = ::LoadLibraryExW(L"uiautomationcore.dll", nullptr,
-                                    LOAD_LIBRARY_SEARCH_SYSTEM32);
-    if (!core) {
-      return loaded;
-    }
-    loaded.host_from_hwnd = reinterpret_cast<HostFromHwnd>(
-        ::GetProcAddress(core, "UiaHostProviderFromHwnd"));
-    loaded.clients_listening = reinterpret_cast<ClientsListening>(
-        ::GetProcAddress(core, "UiaClientsAreListening"));
-    loaded.raise = reinterpret_cast<RaiseNotification>(
-        ::GetProcAddress(core, "UiaRaiseNotificationEvent"));
-    return loaded;
-  }();
-  if (!api.host_from_hwnd || !api.clients_listening || !api.raise ||
-      !hwnd || text.empty() || !api.clients_listening()) {
-    return;
-  }
-  IRawElementProviderSimple* provider = nullptr;
-  if (FAILED(api.host_from_hwnd(hwnd, &provider)) || !provider) {
-    return;
-  }
-  BSTR display =
-      ::SysAllocStringLen(text.c_str(), static_cast<UINT>(text.size()));
-  BSTR activity = ::SysAllocString(L"PhiToast");
-  if (display && activity) {
-    // A newer toast replaces the one before it, so the reader may drop a
-    // superseded one.
-    api.raise(provider, NotificationKind_Other,
-              NotificationProcessing_ImportantMostRecent, display, activity);
-  }
-  ::SysFreeString(display);
-  ::SysFreeString(activity);
-  provider->Release();
-}
 
 // The Mac queues toasts; replacement is still the simpler v1, so exactly
 // one lives at a time.
@@ -164,7 +115,7 @@ class Toast : public PhiPopover {
     Show();
     // Raised on the owner, the window the reader is in: the toast itself
     // is click-through and never focused.
-    AnnounceToScreenReaders(
+    PhiAnnounceToScreenReaders(
         owner, message_.empty() ? title_ : title_ + L"\n" + message_);
 
     PhiAnimator::ForThread().Animate(
@@ -381,6 +332,56 @@ class Toast : public PhiPopover {
 };
 
 }  // namespace
+
+// Screen readers learn of a toast or a page through a UIA notification
+// (UiaRaiseNotificationEvent, Windows 10 1709+). uiautomationcore.dll is
+// resolved by hand, as phi_uia.cc does: the framework's link recipe carries
+// no uiautomationcore.lib, and an older system just stays silent.
+void PhiAnnounceToScreenReaders(HWND hwnd, const std::wstring& text) {
+  using HostFromHwnd = decltype(&::UiaHostProviderFromHwnd);
+  using ClientsListening = decltype(&::UiaClientsAreListening);
+  using RaiseNotification = decltype(&::UiaRaiseNotificationEvent);
+  struct Api {
+    HostFromHwnd host_from_hwnd = nullptr;
+    ClientsListening clients_listening = nullptr;
+    RaiseNotification raise = nullptr;
+  };
+  static const Api api = [] {
+    Api loaded;
+    HMODULE core = ::LoadLibraryExW(L"uiautomationcore.dll", nullptr,
+                                    LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!core) {
+      return loaded;
+    }
+    loaded.host_from_hwnd = reinterpret_cast<HostFromHwnd>(
+        ::GetProcAddress(core, "UiaHostProviderFromHwnd"));
+    loaded.clients_listening = reinterpret_cast<ClientsListening>(
+        ::GetProcAddress(core, "UiaClientsAreListening"));
+    loaded.raise = reinterpret_cast<RaiseNotification>(
+        ::GetProcAddress(core, "UiaRaiseNotificationEvent"));
+    return loaded;
+  }();
+  if (!api.host_from_hwnd || !api.clients_listening || !api.raise ||
+      !hwnd || text.empty() || !api.clients_listening()) {
+    return;
+  }
+  IRawElementProviderSimple* provider = nullptr;
+  if (FAILED(api.host_from_hwnd(hwnd, &provider)) || !provider) {
+    return;
+  }
+  BSTR display =
+      ::SysAllocStringLen(text.c_str(), static_cast<UINT>(text.size()));
+  BSTR activity = ::SysAllocString(L"PhiToast");
+  if (display && activity) {
+    // A newer toast replaces the one before it, so the reader may drop a
+    // superseded one.
+    api.raise(provider, NotificationKind_Other,
+              NotificationProcessing_ImportantMostRecent, display, activity);
+  }
+  ::SysFreeString(display);
+  ::SysFreeString(activity);
+  provider->Release();
+}
 
 void PhiShowToast(HWND owner,
                   const PhiPalette& palette,

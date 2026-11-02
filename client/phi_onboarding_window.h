@@ -163,6 +163,15 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
 
  private:
   struct Image;
+  // Keyboard: Tab walks the page's controls and Space presses the one with
+  // focus. An index into hits_; -1 is none, or on Set Name the name field.
+  int kb_focus_ = -1;
+  void MoveKeyboardFocus(bool backward);
+  // What a screen reader reads of a page beyond its controls. After the
+  // controls, so a hit's index stays its index in hits_.
+  void AddPageText();
+  void AddText(const RECT& bounds, std::wstring text);
+  std::wstring PageTitle() const;
   // One clickable region of a page, in dips relative to the content rect.
   enum class Control {
     kNone,

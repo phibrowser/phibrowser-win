@@ -5,6 +5,7 @@
 #include "phibrowser-win/client/phi_onboarding_window.h"
 
 #include <commctrl.h>
+#include <oleacc.h>
 #include <windowsx.h>
 #include <wincodec.h>
 #include <wrl/client.h>
@@ -30,6 +31,8 @@
 #include "phibrowser-win/client/phi_preferences.h"
 #include "phibrowser-win/client/phi_prompt.h"
 #include "phibrowser-win/client/phi_theme.h"
+#include "phibrowser-win/client/phi_uia.h"
+#include "phibrowser-win/client/phi_toast.h"
 
 #pragma comment(lib, "windowscodecs.lib")
 #pragma comment(lib, "comctl32.lib")
@@ -39,6 +42,21 @@ namespace phi_client {
 namespace {
 
 using Microsoft::WRL::ComPtr;
+
+// An EDIT takes its accessible name from a label beside it, and this window
+// paints its labels. PROPID_ACC_NAME, spelled here so nothing links oleacc.
+void NameForScreenReaders(HWND control, const std::wstring& name) {
+  static const GUID kAccName = {
+      0x608d3df8, 0x8128, 0x4aa7, {0xa4, 0x28, 0xf5, 0x5e, 0x49, 0x26, 0x72, 0x91}};
+  static const CLSID kAccPropServices = {
+      0xb5f8350b, 0x0548, 0x48b1, {0xa6, 0xee, 0x88, 0xbd, 0x00, 0xb4, 0xa5, 0xe7}};
+  ComPtr<IAccPropServices> services;
+  if (SUCCEEDED(::CoCreateInstance(kAccPropServices, nullptr, CLSCTX_INPROC_SERVER,
+                                   IID_PPV_ARGS(&services)))) {
+    services->SetHwndPropStr(control, static_cast<DWORD>(OBJID_CLIENT),
+                             CHILDID_SELF, kAccName, name.c_str());
+  }
+}
 
 constexpr wchar_t kClassName[] = L"PhiOnboardingWindow";
 // The Mac window's content, in dips.
@@ -431,7 +449,7 @@ bool PhiOnboardingWindow::Open(Page page) {
   spec.name = kClassName;
   Options options;
   options.caption_buttons = kPhiCaptionClose;
-  options.dialog_keys = kPhiDialogTab;
+  options.dialog_keys = kPhiDialogNone;  // Tab walks the drawn controls (OnKey).
   const RECT bounds = {CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT + 100,
                        CW_USEDEFAULT + 100};
   if (!CreateSecondary(spec, 0,
@@ -463,6 +481,8 @@ void PhiOnboardingWindow::ShowPage(Page page) {
   page_ = page;
   pressed_ = -1;
   scroll_ = 0;
+  kb_focus_ = -1;
+  PhiUiaSetFocusedHit(this, -1, /*announce=*/false);
   oobe_.Present(StepFor(page), Uptime());
   if (page == Page::kSetName) {
     std::string name;
@@ -478,6 +498,9 @@ void PhiOnboardingWindow::ShowPage(Page page) {
   } else if (name_field_) {
     ::ShowWindow(name_field_, SW_HIDE);
   }
+  if (page != Page::kSetName && page != Page::kSigningIn && alive()) {
+    ::SetFocus(hwnd());  // The window's keys, not a hidden field's.
+  }
   if (page == Page::kWelcome) {
     theme_id_ = prefs_->ThemeId();
     LoadCard();
@@ -491,6 +514,7 @@ void PhiOnboardingWindow::ShowPage(Page page) {
   PlaceEmbeddedBrowser();
   Layout();
   Invalidate();
+  PhiAnnounceToScreenReaders(hwnd(), PageTitle());
 }
 
 RECT PhiOnboardingWindow::ContentDip(int x, int y, int w, int h) const {
@@ -633,10 +657,16 @@ void PhiOnboardingWindow::Layout() {
       const int row_left = card_left + kCardPad;
       const int row_width = kCardWidth - 2 * kCardPad;
       const RECT legal = ContentDip(row_left, rows_top, row_width, 22);
+      // The sentence as it reads, links filled in: a screen reader must not
+      // say "open brace zero".
       AddControl(Control::kLegalCheck, 0, legal,
-                 PhiStr(page_ == Page::kGuestPrivacy
-                            ? "oobe.guestPrivacy.legalAgreement"
-                            : "oobe.nextSteps.legalAgreement"),
+                 page_ == Page::kGuestPrivacy
+                     ? PhiStrF("oobe.guestPrivacy.legalAgreement",
+                               {PhiStr("oobe.guestPrivacy.privacyPolicyLink"),
+                                PhiStr("oobe.guestPrivacy.termsOfServiceLink")})
+                     : PhiStrF("oobe.nextSteps.legalAgreement",
+                               {PhiStr("oobe.nextSteps.privacyLink"),
+                                PhiStr("oobe.nextSteps.termsLink")}),
                  PhiHitRole::kToggle, legal_checked_, true);
       if (page_ == Page::kGuestPrivacy) {
         AddConsentLinks(legal, "oobe.guestPrivacy.legalAgreement",
@@ -683,8 +713,21 @@ void PhiOnboardingWindow::Layout() {
       // The membership card, centred, and the dice under it.
       std::string name;
       account_->AccountInfo(&name, nullptr);
-      AddControl(Control::kCard, 0, CardRect(), base::UTF8ToWide(name),
-                 PhiHitRole::kImage, false, true);
+      const std::string sub = account_->auth().user().sub;
+      const std::optional<PhiAccountProfile>& profile =
+          account_->Profile().profile();
+      const std::string joined =
+          profile && profile->auth0_id == sub
+              ? PhiHolographicCard::FormatJoinDate(profile->created_at)
+              : std::string();
+      AddControl(
+          Control::kCard, 0, CardRect(),
+          joined.empty()
+              ? PhiStrF("profile.card.accessibilitySummaryWithoutDate",
+                        {base::UTF8ToWide(name)})
+              : PhiStrF("profile.card.accessibilitySummary",
+                        {base::UTF8ToWide(name), base::UTF8ToWide(joined)}),
+          PhiHitRole::kImage, false, true);
       AddControl(Control::kDice, 0,
                  ContentDip((kWidth - kDiceSize) / 2, kDiceTop, kDiceSize, kDiceSize),
                  PhiStr("oobe.welcome.randomizeCard"), PhiHitRole::kButton, false,
@@ -718,6 +761,77 @@ void PhiOnboardingWindow::Layout() {
                             kPillHeight),
                  PhiStr("oobe.navigation.continueButton"), PhiHitRole::kButton,
                  false, true);
+      break;
+    }
+  }
+  AddPageText();
+}
+
+void PhiOnboardingWindow::AddText(const RECT& bounds, std::wstring text) {
+  AddHit(bounds, -1, std::move(text), PhiHitRole::kText);  // HitOf: no control.
+}
+
+std::wstring PhiOnboardingWindow::PageTitle() const {
+  switch (page_) {
+    case Page::kLogin:
+      return L"Phi";
+    case Page::kSigningIn:
+      return PhiStr("oobe.login.progressTitle");
+    case Page::kGuestPrivacy:
+      return PhiStr("oobe.guestPrivacy.title");
+    case Page::kSetName:
+      return PhiStr("oobe.setName.title");
+    case Page::kWelcome:
+      return PhiStr("oobe.welcome.randomizeCard");
+    case Page::kLayout:
+      return PhiStr("oobe.layoutSelection.title");
+    case Page::kNextSteps:
+      return PhiStr("oobe.nextSteps.title");
+  }
+  return std::wstring();
+}
+
+void PhiOnboardingWindow::AddPageText() {
+  const RECT title = ContentDip(30, kTitleTop, kWidth - 60, kTitleHeight);
+  switch (page_) {
+    case Page::kLogin:
+      AddText(ContentDip((kWidth - 39) / 2, 91, 39, 20), PageTitle());
+      break;
+    case Page::kSigningIn:
+    case Page::kWelcome:  // No title: the card IS the page.
+      break;
+    case Page::kGuestPrivacy: {
+      AddText(title, PageTitle());
+      const std::array<const char*, 3> bullets = {
+          "oobe.guestPrivacy.aiFeaturesUnavailable",
+          "oobe.guestPrivacy.browserMemoryUnavailable",
+          "oobe.guestPrivacy.signInAnytime"};
+      int y = kTitleTop + kTitleHeight + 12 + 20 + (kGuideHeight - 124) / 2;
+      for (const char* key : bullets) {
+        AddText(ContentDip((kWidth - kCardWidth) / 2 + kCardPad + 26, y,
+                           kCardWidth - 2 * kCardPad - 26, 28),
+                PhiStr(key));
+        y += 48;
+      }
+      break;
+    }
+    case Page::kSetName:
+    case Page::kLayout:
+      AddText(title, PageTitle());
+      break;
+    case Page::kNextSteps: {
+      AddText(title, PageTitle());
+      const std::array<const char*, 4> steps = {
+          "oobe.nextSteps.onboardAssistant", "oobe.nextSteps.importBrowserData",
+          "oobe.nextSteps.understandFinePrint", "oobe.nextSteps.enjoyPhi"};
+      int y = kHeight - kButtonBottom - kPillHeight - 24 - kCardHeight + 28;
+      for (size_t i = 0; i < steps.size(); ++i) {
+        AddText(ContentDip((kWidth - kCardWidth) / 2 + kCardPad + kStepMarker + 14,
+                           y, kCardWidth - 2 * kCardPad - kStepMarker - 14,
+                           kStepMarker),
+                std::to_wstring(i + 1) + L", " + PhiStr(steps[i]));
+        y += kStepMarker + kStepGap + 12;
+      }
       break;
     }
   }
@@ -891,6 +1005,11 @@ void PhiOnboardingWindow::Paint(HDC dc, const RECT&) {
                         content.right - Scaled(3),
                         thumb_top + thumb_h - Scaled(2)};
     PhiFillCapsuleAA(dc, thumb, RGB(0x8A, 0x8A, 0x8A));
+  }
+  if (kb_focus_ >= 0 && kb_focus_ < static_cast<int>(hits_.size())) {
+    RECT ring = hits_[static_cast<size_t>(kb_focus_)].bounds;
+    ::InflateRect(&ring, Scaled(3), Scaled(3));
+    PhiStrokeRoundRectAA(dc, ring, Scaled(6), RGB(255, 255, 255), Scaled(2));
   }
   PaintBand(dc);
 }
@@ -1467,7 +1586,60 @@ void PhiOnboardingWindow::OnWheel(int delta, POINT) {
   }
 }
 
+void PhiOnboardingWindow::MoveKeyboardFocus(bool backward) {
+  std::vector<int> stops;
+  if (page_ == Page::kSetName && name_field_) {
+    stops.push_back(-1);
+  }
+  for (size_t i = 0; i < hits_.size(); ++i) {
+    const Hit& hit = hits_[i];
+    if (hit.enabled && hit.control != Control::kCard &&
+        hit.control != Control::kNone) {
+      stops.push_back(static_cast<int>(i));
+    }
+  }
+  if (stops.empty()) {
+    return;
+  }
+  const auto at = std::find(stops.begin(), stops.end(), kb_focus_);
+  if (at == stops.end()) {
+    kb_focus_ = backward ? stops.back() : stops.front();
+  } else {
+    const size_t index = static_cast<size_t>(at - stops.begin());
+    kb_focus_ = stops[(index + (backward ? stops.size() - 1 : 1)) % stops.size()];
+  }
+  if (kb_focus_ < 0) {
+    ::SetFocus(name_field_);
+    Invalidate();
+    return;
+  }
+  ::SetFocus(hwnd());
+  // A split page brings a control under the footer or above the top into view.
+  const RECT bounds = hits_[static_cast<size_t>(kb_focus_)].bounds;
+  if (MaxScroll() > 0 && bounds.top < FooterSplit()) {
+    const RECT content = ContentRect();
+    if (bounds.bottom > FooterSplit()) {
+      ScrollTo(scroll_ + bounds.bottom - FooterSplit() + Scaled(8));
+    } else if (bounds.top < content.top) {
+      ScrollTo(scroll_ - (content.top - bounds.top) - Scaled(8));
+    }
+  }
+  PhiUiaSetFocusedHit(this, kb_focus_, /*announce=*/true);
+  Invalidate();
+}
+
 bool PhiOnboardingWindow::OnKey(WPARAM virtual_key) {
+  if (virtual_key == VK_TAB) {
+    MoveKeyboardFocus(::GetKeyState(VK_SHIFT) < 0);
+    return true;
+  }
+  if ((virtual_key == VK_SPACE || virtual_key == VK_RETURN) && kb_focus_ >= 0 &&
+      kb_focus_ < static_cast<int>(hits_.size()) &&
+      hits_[static_cast<size_t>(kb_focus_)].enabled) {
+    const Hit copy = hits_[static_cast<size_t>(kb_focus_)];
+    Activate(copy);
+    return true;
+  }
   // A split page scrolls from the keyboard too; the footer's button stays
   // reachable with Enter regardless.
   const int max = MaxScroll();
@@ -1701,6 +1873,10 @@ void PhiOnboardingWindow::EnsureNameField() {
             self->SubmitName();
             return 0;
           }
+          if (msg == WM_KEYDOWN && wparam == VK_TAB) {
+            self->MoveKeyboardFocus(::GetKeyState(VK_SHIFT) < 0);
+            return 0;
+          }
           if (msg == WM_CHAR && (wparam == VK_RETURN || wparam == VK_TAB)) {
             return 0;  // No beep for the keys the window owns.
           }
@@ -1709,6 +1885,7 @@ void PhiOnboardingWindow::EnsureNameField() {
         kIdNameField, reinterpret_cast<DWORD_PTR>(this));
     ::SendMessageW(name_field_, WM_SETFONT,
                    reinterpret_cast<WPARAM>(fonts().Get(24, FW_NORMAL)), TRUE);
+    NameForScreenReaders(name_field_, PhiStr("oobe.setName.title"));
     field_brush_ = ::CreateSolidBrush(RGB(0x1A, 0x1A, 0x1A));
   } else {
     ::SetWindowPos(name_field_, nullptr, field.left, field.top,

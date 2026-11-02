@@ -4919,15 +4919,7 @@
    "zh-Hant": "登入 Phi 帳號後即可傳送意見回饋。要立即登入嗎？"
   },
   "feedback.form.termsOfServiceLink": {
-   "de": "Nutzungsbedingungen",
-   "en": "Terms of Service",
-   "es": "Términos del Servicio",
-   "fr": "Conditions d'utilisation",
-   "ja": "利用規約",
-   "ko": "서비스 이용약관",
-   "nl": "Servicevoorwaarden",
-   "zh-Hans": "服务条款",
-   "zh-Hant": "服務條款"
+   "en": "Terms of Service"
   },
   "feedback.form.urlField.label": {
    "de": "URL",
@@ -6041,15 +6033,15 @@
    "zh-Hant": "瀏覽器記憶也無法使用"
   },
   "oobe.guestPrivacy.legalAgreement": {
-   "de": "Ich stimme der {0} und den {1} zu",
+   "de": "Ich stimme den {1} und der {0} zu",
    "en": "I agree to the {0} and {1}",
-   "es": "Acepto la {0} y los {1}",
-   "fr": "J'accepte la {0} et les {1}",
-   "ja": "{0}と{1}に同意します",
-   "ko": "{0} 및 {1}에 동의해요",
-   "nl": "Ik ga akkoord met het {0} en de {1}",
-   "zh-Hans": "我同意 {0} 和 {1}",
-   "zh-Hant": "我同意 {0} 和 {1}"
+   "es": "Acepto los {1} y la {0}",
+   "fr": "J'accepte les {1} et la {0}",
+   "ja": "{1}と{0}に同意します",
+   "ko": "{1} 및 {0}에 동의해요",
+   "nl": "Ik ga akkoord met de {1} en het {0}",
+   "zh-Hans": "我同意{1}和{0}",
+   "zh-Hant": "我同意{1}和{0}"
   },
   "oobe.guestPrivacy.metricsConsent": {
    "de": "Hilf mit, Phi zu verbessern, indem du Nutzungsstatistiken und Absturzberichte teilst",
@@ -6087,13 +6079,13 @@
   "oobe.guestPrivacy.termsOfServiceLink": {
    "de": "Nutzungsbedingungen",
    "en": "Terms of Service",
-   "es": "Términos del Servicio",
+   "es": "Términos de uso",
    "fr": "Conditions d'utilisation",
    "ja": "利用規約",
-   "ko": "서비스 이용약관",
-   "nl": "Servicevoorwaarden",
-   "zh-Hans": "服务条款",
-   "zh-Hant": "服務條款"
+   "ko": "이용 약관",
+   "nl": "Gebruiksvoorwaarden",
+   "zh-Hans": "使用条款",
+   "zh-Hant": "使用條款"
   },
   "oobe.guestPrivacy.title": {
    "de": "Bevor es losgeht",
@@ -6444,8 +6436,8 @@
    "ja": "{0}と{1}に同意します",
    "ko": "{0} 및 {1}에 동의해요",
    "nl": "Ik ga akkoord met {0} en {1}",
-   "zh-Hans": "我同意 {0} 和 {1}",
-   "zh-Hant": "我同意 {0} 和 {1}"
+   "zh-Hans": "我同意{0}和{1}",
+   "zh-Hant": "我同意{0}和{1}"
   },
   "oobe.nextSteps.metricsConsent": {
    "de": "Hilf mit, Phi zu verbessern, indem du Nutzungsstatistiken und Absturzberichte teilst",
@@ -6472,24 +6464,24 @@
   "oobe.nextSteps.privacyLink": {
    "de": "Datenschutzerklärung",
    "en": "Privacy",
-   "es": "Privacidad",
+   "es": "Política de Privacidad",
    "fr": "Politique de confidentialité",
-   "ja": "プライバシー",
+   "ja": "プライバシーポリシー",
    "ko": "개인정보 처리방침",
-   "nl": "Privacy",
+   "nl": "Privacybeleid",
    "zh-Hans": "隐私政策",
    "zh-Hant": "隱私權政策"
   },
   "oobe.nextSteps.termsLink": {
    "de": "Nutzungsbedingungen",
    "en": "Terms",
-   "es": "Términos",
+   "es": "Términos de uso",
    "fr": "Conditions d'utilisation",
    "ja": "利用規約",
-   "ko": "이용약관",
-   "nl": "Voorwaarden",
-   "zh-Hans": "条款",
-   "zh-Hant": "服務條款"
+   "ko": "이용 약관",
+   "nl": "Gebruiksvoorwaarden",
+   "zh-Hans": "使用条款",
+   "zh-Hant": "使用條款"
   },
   "oobe.nextSteps.title": {
    "de": "Nächste Schritte",
@@ -6644,6 +6636,12 @@
    "nl": "Profielmenu",
    "zh-Hans": "个人资料菜单",
    "zh-Hant": "設定檔選單"
+  },
+  "profile.card.accessibilitySummary": {
+   "en": "Phi member card, {0}, joined {1}"
+  },
+  "profile.card.accessibilitySummaryWithoutDate": {
+   "en": "Phi member card, {0}"
   },
   "profile.card.dateJoined": {
    "de": "Mitglied seit",

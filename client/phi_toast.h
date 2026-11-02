@@ -14,6 +14,10 @@
 
 namespace phi_client {
 
+// Tells a screen reader `text` without moving its focus (a page changed, a
+// toast appeared). Silent with no reader listening or on an older system.
+void PhiAnnounceToScreenReaders(HWND hwnd, const std::wstring& text);
+
 // The Mac OverlayToastCenter: a transient top-center text toast over
 // `owner`. One toast at a time — a new one replaces the current (the Mac
 // queues; replacement is the simpler v1). Click-through, non-activating,
