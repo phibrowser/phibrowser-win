@@ -608,31 +608,32 @@ PhiVerbResult PhiControlDispatcher::VerbAgentListProfiles(
 
 PhiVerbResult PhiControlDispatcher::VerbAgentPanelSize(
     const PhiVerbContext& ctx) {
-  // The Mac's visible content panel size, so a driver can size its
-  // captures to what the user would see: the watched agent window's
-  // content, else the first user window's, else no_visible_panel. A
-  // {taskId} that names no task is refused like every task verb.
+  // The Mac's page area: the size a page renders at in the task's agent
+  // Space, so a driver's emulated viewport lays it out as the user would see
+  // it. The shell hosting the Space while it is watched, else the user window
+  // that would host it; the hidden agent shell's own frame is a fixed size
+  // and answers only with no user window up. A {taskId} that names no task is
+  // refused like every task verb.
   if (!ctx.scope.valid()) {
     return PhiVerbResult::Fail(ctx.scope.error);
   }
-  PhiShellWindow* shell = nullptr;
-  const std::string& watched = coordinator_->agent_manager().watched_task();
-  if (!watched.empty()) {
-    if (PhiAgentSpaces::Space* space =
-            coordinator_->agent_spaces().Find(watched)) {
-      shell = coordinator_->AgentWindowShell(space->window_id);
+  PhiShellWindow* shell = ctx.scope.controller;
+  if (ctx.scope.kind == Scope::Kind::kAgent && (!shell || shell->is_agent())) {
+    if (PhiShellWindow* user = coordinator_->FocusedUserController()) {
+      shell = user;
     }
-  }
-  if (!shell) {
-    shell = coordinator_->FirstUserShell();
   }
   if (!shell || !shell->shell_hwnd()) {
     return PhiVerbResult::Fail("no_visible_panel");
   }
+  // The layout is in physical pixels; a viewport override takes CSS pixels,
+  // rounded up as Chromium rounds a view's size at a fractional scale.
   const RECT content = shell->ContentRect();
+  const int dpi = static_cast<int>(shell->dpi());
+  const auto css = [dpi](int px) { return (px * 96 + dpi - 1) / dpi; };
   base::DictValue out;
-  out.Set("width", static_cast<int>(content.right - content.left));
-  out.Set("height", static_cast<int>(content.bottom - content.top));
+  out.Set("width", css(content.right - content.left));
+  out.Set("height", css(content.bottom - content.top));
   return PhiVerbResult::Ok(std::move(out));
 }
 

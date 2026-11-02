@@ -302,13 +302,15 @@ The profiles an agent Space may be created in.
 
 #### `agentSpace.panelSize`
 
-The agent surface's content size.
+The size a page renders at in the task's agent Space, in CSS pixels.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
 - **Errors**: `unknown_task`, `no_visible_panel`
 
-*No payload fields.*
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `taskId` | string | yes | — | The task the verb acts on. |
 
 #### `agentSpace.cursor`
 

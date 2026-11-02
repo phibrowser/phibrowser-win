@@ -174,7 +174,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Feature | Mac | Windows | Status | Gap / decision |
 |---|---|---|---|---|
 | Agent Spaces: overlay, fog, ring, pill (Take control / Hand back / Finish), "The agent needs you", Autoview | yes | yes | ✅ | Agent cues D26–D30 deferred: brand accent per agent, pulsing ring, window title, ⋯ on the capsule, omnibox dim/eye. |
-| Agent viewport follows the agent Space's own page area (Mac `1c39d48c`, 2026-10-29) | `agentSpace.panelSize` answers for the aimed Space, re-measured before each action | `VerbAgentPanelSize` answers the watched or first user shell in physical pixels; the skill re-measures only when the agent window's OS size changes | ◐ | By code reading, no box run: at 150 % the emulated viewport comes out 1.5× too large, and a sidebar toggle or a user resize is never picked up (the parked shell has a fixed size). Needs the verb to resolve from `ctx.scope` and answer in DIP, plus the Mac's `agentPageArea` / `maybeTrackPageArea` skill hunks. |
+| Agent viewport follows the agent Space's own page area (Mac `1c39d48c`, 2026-10-29) | `agentSpace.panelSize` answers for the aimed Space, re-measured before each action | same; `VerbAgentPanelSize` answers in CSS pixels for the shell hosting the watched Space, else the focused user window, else the parked agent shell | ✅ | Ported 2026-11-02, box-verified on nuc at 300 % and 150 %: an agent tab matches a real tab's size hidden and watched, and follows sidebar and window changes at the next action. Before, the skill's un-aimed call was refused (`scope_not_allowed`), so agent pages laid out at the parked shell's fixed frame (1027×684 at 300 %, 1386×849 at 150 %) whatever the user's window was. The skill names the task, not the Mac's `windowId`, which resolves to the user's shell while watched. |
 | Agent Transcript console | View menu, pip "Show Transcript" | built, `kPhiTranscriptEnabled = false` | ⛔ | Decided off 2026-09-09 (`phi_features.h`). |
 | Agent approval (Allow Once / Always / Deny per agent) | yes | one admission switch | ⛔ | See Developer row in §4. |
 | Companion apps (Folio.app): signed admission past the agent switch, an allowlisted channel, `pageActions.*` rows in File and the page context menu, built-in Folio stepping aside (Mac `6a54718b`, `dc18d2c5`, fork `03d1b24aa3b`, 2026-10-30) | yes, `docs/companion-apps.md` | none. The fork half is compiled but dormant: nothing fills `PhiPageActionMenuRegistry`, so no row shows and the `PhiBridgeWrapper::InvokePageAction` stub is unreachable | ⛔ | Decided 2026-11-02: not needed for now. Reopen when a Windows companion app exists. Admission would need its own decision first: the pipe has no peer identity (decided 2026-09-08), and the Mac's check rests on kernel facts Windows lacks (live code signature, responsible process), so an Authenticode check of the image on disk proves less. |
@@ -194,8 +194,8 @@ Two standing decisions cover many rows and are not repeated in full:
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 51 |
-| ◐ partial | 27 |
+| ✅ ported | 52 |
+| ◐ partial | 26 |
 | 🔧 to implement | 26 |
 | ⛔ deliberately left | 19 |
 | ❓ needs a decision | 0 |
@@ -291,10 +291,10 @@ One table per pass, newest first. Commits are in Mac history order.
 
 ### 2026-11-02 — phibrowser-mac `f7d850a3` → `8c0b8596` (66 commits; release/2.15.0 merged into main and dev)
 
-**Port recommendations this pass (21 commits in 12 ports; only the page-loss
-half of the first has been done). The other Windows findings are from reading
-code at `098dcb3` and were not built or run on a box, so their bug claims still
-need reproducing. In order of user impact:**
+**Port recommendations this pass (21 commits in 12 ports; the second and the
+page-loss half of the first have been done). The other Windows findings are
+from reading code at `098dcb3` and were not built or run on a box, so their bug
+claims still need reproducing. In order of user impact:**
 
 1. `74cb2bce` + `ea04bb00` + `2028f868` **windowless opens**. Closing the last
    shell leaves a Kiosk or agent window alive with the process up. "Open in" a
@@ -307,9 +307,11 @@ need reproducing. In order of user impact:**
    click, a live Space, a cold Space, a parked Space. Still open, M: a restore
    gate so the windowless case brings the last session back first, covering the
    agent open and its `windowOpened` answer.
-2. `1c39d48c` **agent viewport**. `agentSpace.panelSize` answers the wrong
-   shell in physical pixels, so at 150 % the viewport is 1.5× too large, and
-   sidebar toggles and user resizes are never followed. M, client verb + skill.
+2. `1c39d48c` **agent viewport**. **Done 2026-11-02, box-verified on nuc at
+   300 % and 150 %.** Code reading first said the viewport came out 1.5× too
+   large; the box showed the skill's un-aimed `agentSpace.panelSize` was
+   refused, so it never saw the physical-pixel answer and stayed at the parked
+   shell's fixed frame, following no sidebar or window change.
 3. `79b11061` **Kiosk page focus on open**. Keys like Space may do nothing until
    a click, on every Kiosk open. S; check on a box first (Ctrl+Alt-click a link,
    press Space).
@@ -381,7 +383,7 @@ need reproducing. In order of user impact:**
 | `8fb61ef5` | fix: keep the randomized onboarding card style across navigation | port | S. `PhiOnboardingWindow::RandomizeCard`: `SetProfileCardStyle` first, `PhiNotice` on failure and no card change. Matters even without Back: close and resume reloads the old style while the randomized theme is already saved. |
 | `10a47dc9` | feat: sign in from the onboarding login page with the Enter key | done | `PhiOnboardingWindow::OnEnter` `kLogin`, guarded by `!AccountSigningIn()`. Not tested on a box. |
 | `59fa1cfb` | fix: keep peek and reader pages from washing out lighter in dark mode | skip | AppKit Plus Lighter vibrancy. The Windows panels parent a whole browser HWND with no vibrancy. |
-| `1c39d48c` | fix: size the agent viewport from the agent Space's own page area | port | M. `VerbAgentPanelSize` (`phi_verbs_lifecycle.cc`) resolves from `ctx.scope` (the slot hosting the task, else the focused user controller, else the agent shell) and answers in DIP. Copy the `agentPageArea` / `maybeTrackPageArea` hunks of `helpers.mjs` and the doc hunks of `SKILL.md`, `observation.md`, `lifecycle.md`. Box test at 150 %. New §6 row. |
+| `1c39d48c` | fix: size the agent viewport from the agent Space's own page area | done | Ported 2026-11-02, box-verified on nuc at 300 % and 150 %, hidden and watched (§6 row). `VerbAgentPanelSize` (`phi_verbs_lifecycle.cc`) answers from `ctx.scope` in CSS pixels, rounded up as Chromium rounds a view; `helpers.mjs` and the skill docs took the Mac's patch, naming the task and dropping the AI Chat panel. The skill selftest passes as far as the old skill's: both stop at `Storage.setCookies`. Its drag step needs a page area about 674 px tall (the fixture's target gets centred), which nuc at 300 % cannot give; it passes at 150 %. |
 | `9f5b887f` | fix: align sidebar extension shelf spacing with the design | skip | No sidebar shelf; the address-in-sidebar layout (Performance) is removed on Windows. |
 | `c87fde81` | i18n: drop the spaces around the link placeholders in the Chinese legal agreement sentences | port | Comes with the catalog regen above. |
 | `5196706b` | feat: default to omnibox after guest onboarding | port | S. `PhiCoordinator::OnboardingContinueAsGuest`: set the Omnibox new-tab behaviour beside `RequestLayoutMode`. The floating omnibox it opens landed 2026-10-28. |

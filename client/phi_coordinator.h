@@ -656,9 +656,6 @@ class PhiCoordinator : public SidebarHost,
   // private): the pips repaint, the Autoview edge, the shells.
   void InvalidateAgentPips() { registry_.InvalidateUserSlots(); }
   void NoteAgentRunStateChanged() { AgentRunStateChanged(); }
-  PhiShellWindow* AgentWindowShell(BrowserId window_id) {
-    return ControllerForAgentWindow(window_id);
-  }
   PhiShellWindow* FirstUserShell() { return FirstUserController(); }
   // The profile service (docs/architecture-review.md §3.4) and the seams the
   // verb ladder reaches it through. `PendingProfile` keeps its old spelling
