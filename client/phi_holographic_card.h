@@ -51,6 +51,8 @@ struct PhiHolographicCardStyle {
   // The palette <-> theme id pairing (silver <-> pure, green <-> mint, ...);
   // an unknown theme id is silver.
   static Palette PaletteForTheme(const std::string& theme_id);
+  // The canvas the flat PNG export sits on.
+  COLORREF ExportCanvas() const;
   static const char* ThemeIdFor(Palette palette);
   // The Mac's raw values ("silver", "arcs", "lace") — the persisted shape.
   static const char* Name(Palette palette);
@@ -114,6 +116,8 @@ class PhiHolographicCard {
                    const std::string& joined);
   // A new style keeps showing the old one until its materials land.
   void SetStyle(const PhiHolographicCardStyle& style);
+  // The soft shadow under the card (on by default; Settings has none).
+  void SetShowsShadow(bool shows) { shows_shadow_ = shows; }
   const PhiHolographicCardStyle& style() const { return style_; }
 
   // Starts rasterising style()'s materials for a card of `card_rect`'s
@@ -154,6 +158,7 @@ class PhiHolographicCard {
   static std::string FormatJoinDate(const std::string& iso);
 
  private:
+  bool shows_shadow_ = true;
   struct Material;   // The worker's product for one (style, size).
   struct Mailbox;    // Where workers leave finished materials.
   struct Job;

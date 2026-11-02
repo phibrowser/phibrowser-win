@@ -32,6 +32,7 @@
 #include "phibrowser-win/client/phi_fonts.h"
 #include "phibrowser-win/client/phi_gdiplus.h"
 #include "phibrowser-win/client/phi_i18n.h"
+#include "phibrowser-win/client/phi_popup_chrome.h"
 #include "third_party/boringssl/src/include/openssl/sha.h"
 
 #pragma comment(lib, "windowscodecs.lib")
@@ -592,6 +593,22 @@ constexpr std::array<std::array<uint32_t, 3>, Style::kPaletteCount> kPaletteColo
     {0xF9857B, 0xF5D781, 0xBF75D4},
     {0xF6D879, 0xA6DFBB, 0xE88B9E},
 }};
+
+}  // namespace
+
+COLORREF PhiHolographicCardStyle::ExportCanvas() const {
+  // The Mac's exportImage: the palette's primary hue at saturation .65,
+  // brightness .28; black for silver.
+  if (palette == Palette::kSilver) {
+    return RGB(0, 0, 0);
+  }
+  const uint32_t primary = kPaletteColors[static_cast<size_t>(palette)][0];
+  return PhiHsbColor(PhiHueOf(RGB((primary >> 16) & 255, (primary >> 8) & 255,
+                                  primary & 255)),
+                     0.65, 0.28);
+}
+
+namespace {
 
 template <typename E, size_t N>
 E ParseName(const std::array<const char*, N>& names, const std::string& value, E fallback) {
@@ -1513,7 +1530,6 @@ void PhiHolographicCard::EnsureStatics(int width, int height, const PhiHolograph
     const std::wstring name = base::UTF8ToWide(name_);
     draw(name, PhiBrandFaceRenders(name) ? L"IvyPresto Headline Light" : L"Segoe UI Light",
          FW_LIGHT, 31, 23.36, 304, 247, 42, 1.0);
-    draw(base::UTF8ToWide(member_id_), L"Consolas", FW_NORMAL, 10, 23.36, 348, 210, 15, 1.0);
     if (!joined_.empty()) {
       draw(PhiStr(kDateJoinedKey), L"Segoe UI", FW_NORMAL, 7, 23.36, 377, 145, 12, 0.66);
       draw(base::UTF8ToWide(joined_), L"Segoe UI", FW_NORMAL, 11, 23.36, 390, 155, 16, 1.0);
@@ -1602,35 +1618,12 @@ std::vector<uint8_t> PhiHolographicCard::ComposeFace(const Material& material,
     const int sheen_a = static_cast<int>(std::lround((silver ? 0.6 : 0.95) * 255));
     const int irid_a = static_cast<int>(std::lround(kIridescenceOpacity * 255));
     const int foil_a = static_cast<int>(std::lround(kTextureOpacity * 255));
-    // The radial highlight (not for silver): white 85/255 at its centre to
-    // nothing at 52% of an ellipse spanning 1.25 of the card, both scaled by
-    // the group's opacity.
-    const double mx = 0.5 + light.x * 0.35, my = 0.5 + light.y * 0.35;
-    const double rcx = mx * kDesignW, rcy = my * design_h;
-    const double rx = std::max(std::abs(mx), std::abs(1 - mx)) * kDesignW * 1.25 * std::sqrt(2.0);
-    const double ry = std::max(std::abs(my), std::abs(1 - my)) * design_h * 1.25 * std::sqrt(2.0);
-    std::array<uint8_t, 1024> radial{};
-    for (size_t i = 0; i < radial.size(); ++i) {
-      const double q = i / 1024.0 * 0.2704;
-      const double t = std::sqrt(q);
-      radial[i] = static_cast<uint8_t>(std::lround(
-          std::max(0.0, 1 - t / 0.52) * 85 / 255.0 * kIridescenceOpacity * 255));
-    }
     for (int y = 0; y < height; ++y) {
       const double uy = (y + 0.5) / s;
-      const double dyr = (uy - rcy) / ry;
       for (int x = 0; x < width; ++x) {
         const double ux = (x + 0.5) / s;
         const size_t p = (static_cast<size_t>(y) * width + x) * 4;
         const uint32_t ic = irid_lut[index(irid.At(ux, uy))];
-        int ra = 0;
-        if (!silver) {
-          const double dxr = (ux - rcx) / rx;
-          const double q = dxr * dxr + dyr * dyr;
-          if (q < 0.2704) {
-            ra = radial[static_cast<size_t>(q / 0.2704 * 1023)];
-          }
-        }
         const uint32_t sc = sheen_lut[index(sheen.At(ux, uy))];
         const int sa = Mul255(static_cast<int>(sc >> 24), sheen_a);
         for (size_t c = 0; c < 3; ++c) {
@@ -1638,9 +1631,6 @@ std::vector<uint8_t> PhiHolographicCard::ComposeFace(const Material& material,
           const int ir = static_cast<int>((ic >> (8 * c)) & 255);
           v = silver ? Lerp255(v, sl[static_cast<size_t>(v) * 256 + ir], irid_a)
                      : Lerp255(v, ir, irid_a);
-          if (ra) {
-            v = Lerp255(v, 255, ra);
-          }
           v = Lerp255(v, ov[static_cast<size_t>(v) * 256 + material.foil[p + c]], foil_a);
           if (sa) {
             const int src = static_cast<int>((sc >> (8 * c)) & 255);
@@ -1706,6 +1696,9 @@ std::vector<uint8_t> PhiHolographicCard::ComposeFace(const Material& material,
   if (!back && st.logo_box.right > st.logo_box.left) {
     const Grad sweep = MakeGrad(light_angle, 2.2, true, light.x, light.y, kDesignW, design_h);
     const Lut& lut = SweepLut();
+    // Dark at rest and in the export; the sweep comes in with the tilt.
+    const int sweep_a = static_cast<int>(std::lround(
+        255 * std::min(1.0, std::hypot(light.x, light.y) / 0.35)));
     for (int y = st.logo_box.top; y < st.logo_box.bottom; ++y) {
       const double uy = (y + 0.5) / s;
       for (int x = st.logo_box.left; x < st.logo_box.right; ++x) {
@@ -1714,7 +1707,7 @@ std::vector<uint8_t> PhiHolographicCard::ComposeFace(const Material& material,
         if (!cov) {
           continue;
         }
-        const int a = Mul255(static_cast<int>(lut[index(sweep.At((x + 0.5) / s, uy))] >> 24), cov);
+        const int a = Mul255(Mul255(static_cast<int>(lut[index(sweep.At((x + 0.5) / s, uy))] >> 24), cov), sweep_a);
         if (!a) {
           continue;
         }
@@ -1815,7 +1808,9 @@ std::vector<uint8_t> PhiHolographicCard::ComposeLayer(const Material& material, 
 
   // The shadow, fading in with the entrance.
   std::vector<uint8_t> layer = st.shadow;
-  if (entrance < 1) {
+  if (!shows_shadow_) {
+    std::fill(layer.begin(), layer.end(), uint8_t{0});
+  } else if (entrance < 1) {
     for (size_t i = 3; i < layer.size(); i += 4) {
       layer[i] = static_cast<uint8_t>(std::lround(layer[i] * entrance * opacity));
     }

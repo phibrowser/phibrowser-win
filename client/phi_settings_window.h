@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -139,6 +140,10 @@ class PhiSettingsHost {
 
   // --- Browsing -------------------------------------------------------------
   virtual void SetNewTabBehavior(PhiNewTabBehavior behavior) = 0;
+  // Saves the account's membership card style; false when the write failed.
+  virtual bool SetProfileCardStyle(
+      const std::string& sub,
+      const std::map<std::string, std::string>& style) = 0;
   virtual void SetAutoPictureInPictureMode(const std::string& mode) = 0;
   virtual void SetAlwaysShowFullUrl(bool enabled) = 0;
   // GeneralSettings.showTabPreviews — the hover cards on tab, pin and

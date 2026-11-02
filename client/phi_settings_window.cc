@@ -3104,18 +3104,44 @@ void PhiSettingsWindow::BuildAccount(int* y) {
     Item card;
     card.kind = ItemKind::kProfileCard;
     card.action = "card";  // Hit-tested so the pointer lights it; Apply ignores it.
+    {
+      // Paint reads the live name and date; this is the card for a screen reader.
+      std::string card_name;
+      account_->AccountInfo(&card_name, nullptr);
+      const std::optional<PhiAccountProfile>& card_profile =
+          account_->Profile().profile();
+      const std::string joined =
+          card_profile && card_profile->auth0_id == account_->auth().user().sub
+              ? PhiHolographicCard::FormatJoinDate(card_profile->created_at)
+              : std::string();
+      card.text = joined.empty()
+                      ? PhiStrF("profile.card.accessibilitySummaryWithoutDate",
+                                {base::UTF8ToWide(card_name)})
+                      : PhiStrF("profile.card.accessibilitySummary",
+                                {base::UTF8ToWide(card_name),
+                                 base::UTF8ToWide(joined)});
+    }
     card.bounds = {left, top, left + card_w, top + card_h};
     items_.push_back(std::move(card));
-    // The Mac's rounded "Download image" button, centred under the card
-    // (shadow padding 10 + 4).
+    // The Mac's Randomize and rounded "Download image" buttons, centred under
+    // the card (shadow padding 10 + 4). A word here, where the Mac has a dice.
+    const int button_w = Scaled(150);
+    Item randomize;
+    randomize.kind = ItemKind::kButton;
+    randomize.text = PhiStr("settings.account.card.randomizeButton");
+    randomize.action = "randomizecard";
+    randomize.bounds = {left + (card_w - button_w) / 2, top + card_h + Scaled(14),
+                        left + (card_w + button_w) / 2,
+                        top + card_h + Scaled(14) + Scaled(24)};
+    const int download_top = randomize.bounds.bottom + Scaled(8);
+    items_.push_back(std::move(randomize));
     Item download;
     download.kind = ItemKind::kButton;
     download.text = PhiStr("settings.account.sharing.downloadImageButton");
     download.action = "downloadcard";
-    const int button_w = Scaled(150);
-    download.bounds = {left + (card_w - button_w) / 2, top + card_h + Scaled(14),
+    download.bounds = {left + (card_w - button_w) / 2, download_top,
                        left + (card_w + button_w) / 2,
-                       top + card_h + Scaled(14) + Scaled(24)};
+                       download_top + Scaled(24)};
     bottom = download.bounds.bottom;
     items_.push_back(std::move(download));
   }
@@ -3974,6 +4000,9 @@ void PhiSettingsWindow::PublishHits() {
     }
     PhiHitRole role = PhiHitRole::kButton;
     switch (item.kind) {
+      case ItemKind::kProfileCard:
+        role = PhiHitRole::kImage;
+        break;
       case ItemKind::kToolbarItem:
       case ItemKind::kAccountBlock:  // The Account page's rail entry.
         role = PhiHitRole::kTab;
@@ -5525,13 +5554,12 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
       }
       case ItemKind::kProfileCard: {
         // The membership card, like the Mac's ProfileCardViewController:
-        // the account's saved style under the CURRENT theme's palette
-        // (re-applied here on every theme or appearance change), the name,
+        // the account's saved style, whatever the theme (the Mac's 40ede7a7), the name,
         // the member id from the Auth0 subject and the join month.
         const std::string sub = account_->auth().user().sub;
         PhiHolographicCardStyle style =
             PhiHolographicCardStyle::FromMap(prefs_->ProfileCardStyle(sub));
-        style.palette = PhiHolographicCardStyle::PaletteForTheme(prefs_->ThemeId());
+        profile_card_.SetShowsShadow(false);
         profile_card_.SetStyle(style);
         std::string name;
         account_->AccountInfo(&name, nullptr);
@@ -6679,15 +6707,18 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
   } else if (item.action == "avatar") {
     account_->RequestEditAvatar();
   } else if (item.action == "downloadcard") {
-    // The Mac's exportImage canvas: the theme's hue at saturation .65,
-    // brightness .28; black for Pure.
-    const PhiTheme& theme = PhiThemeById(prefs_->ThemeId());
-    const bool dark = prefs_->Palette().dark;
-    const COLORREF overlay = dark ? theme.dark.overlay : theme.light.overlay;
-    const COLORREF canvas = prefs_->ThemeId() == "pure"
-                                ? RGB(0, 0, 0)
-                                : PhiHsbColor(PhiHueOf(overlay), 0.65, 0.28);
-    profile_card_.ExportPng(hwnd(), canvas);
+    profile_card_.ExportPng(
+        hwnd(), PhiHolographicCardStyle::FromMap(
+                    prefs_->ProfileCardStyle(account_->auth().user().sub))
+                    .ExportCanvas());
+  } else if (item.action == "randomizecard") {
+    // The Mac's randomizeCard: saved first, and the theme stays what it is.
+    const PhiHolographicCardStyle style = PhiHolographicCardStyle::Random();
+    if (!host_->SetProfileCardStyle(account_->auth().user().sub, style.ToMap())) {
+      PhiNotice(hwnd(), PhiStr("settings.account.card.saveFailed"), L"");
+      return;
+    }
+    Invalidate();
   } else if (item.action == "card") {
     // The card only follows the pointer (WM_MOUSEMOVE); nothing on click.
   } else if (item.action == "autopip") {
