@@ -135,6 +135,7 @@ class PhiKioskWindow : public PhiSecondaryWindow {
   void PositionContent();
   void RefreshProfile();
   void RefreshSpaces();
+  void FocusFirstPage();
   void CopyUrl();
   // Hands the page to `space_id`; this ephemeral window goes once the page
   // has opened there — the Mac's Kiosk space menu, and what the old expand
@@ -180,6 +181,8 @@ class PhiKioskWindow : public PhiSecondaryWindow {
   // pick (lane 3 §4.1).
   bool copy_flash_ = false;
   Timer copy_flash_timer_;
+
+  bool first_page_focused_ = false;
 
   // When "Open in" last handed the page over (GetTickCount64 ms), 0 if never.
   uint64_t moved_at_tick_ = 0;

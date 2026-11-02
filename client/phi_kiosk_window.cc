@@ -265,6 +265,19 @@ const phi_framework::WindowSnapshot* PhiKioskWindow::CurrentSnapshot(
                                                               : nullptr;
 }
 
+void PhiKioskWindow::FocusFirstPage() {
+  // The Mac's focusPageIfUnclaimed: keys like Space did nothing until a click.
+  // The page arrives while the browser is still hidden, so nothing gives it the
+  // keyboard; Win32 focus on the browser's HWND does not reach the page. Once,
+  // with the window in front and the page there.
+  if (first_page_focused_ || url_.empty() || title_.empty() || !alive() ||
+      ::GetForegroundWindow() != hwnd()) {
+    return;
+  }
+  first_page_focused_ = true;
+  framework_->FocusActivePage(window_id_.value);
+}
+
 void PhiKioskWindow::RefreshState() {
   if (!framework_) {
     return;
@@ -276,6 +289,7 @@ void PhiKioskWindow::RefreshState() {
     title_ = Widen(snapshot->nav.title);
     can_go_back_ = snapshot->nav.can_go_back;
   }
+  FocusFirstPage();
   RefreshSpaces();
   MeasureLabels();
   if (alive()) {
@@ -969,12 +983,18 @@ LRESULT PhiKioskWindow::OnWindowMessage(UINT msg,
         RefreshSpaces();
         MeasureLabels();
         Invalidate();
+        FocusFirstPage();
       }
       break;  // Activation is still the frame's and the system's to finish.
     case WM_SETFOCUS:
       // Keystrokes belong to the page, never to this bare chrome.
       if (browser_hwnd_ && ::IsWindow(browser_hwnd_)) {
         ::SetFocus(browser_hwnd_);
+        // The browser's own frame is a child and sees no activation, so the
+        // page has to be told, as the shell tells its own.
+        if (framework_) {
+          framework_->FocusBrowserWindow(window_id_.value);
+        }
       }
       *handled = true;
       return 0;
