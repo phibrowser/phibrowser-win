@@ -437,12 +437,24 @@ void PhiAgentSpaceManager::RefreshOverlay() {
                         mark, status, waiting);
 }
 
+void PhiAgentSpaceManager::NoteAgentDriving(const std::string& task_id) {
+  // The Mac's setAgentMode: the window suppresses activation and fullscreen
+  // only while the agent holds it, so a user in control can use them.
+  const PhiAgentSpaces::Space* space = spaces_.Find(task_id);
+  if (space && framework_) {
+    framework_->SetAgentMode(
+        space->window_id.value,
+        space->ownership == PhiAgentSpaces::Ownership::kAgent);
+  }
+}
+
 void PhiAgentSpaceManager::RequestTakeControl(const std::string& task_id) {
   if (!spaces_.Find(task_id)) {
     return;
   }
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kUser,
                        static_cast<uint64_t>(::GetTickCount64()));
+  NoteAgentDriving(task_id);
   AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
                    "You took control");
   PushOwnershipChanged(task_id);  // The driver must learn it lost control.
@@ -461,6 +473,7 @@ void PhiAgentSpaceManager::RequestHandBack(const std::string& task_id) {
   // turn, which the Mac's terminalNudgeHint says on the line.
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kAgent,
                        static_cast<uint64_t>(::GetTickCount64()));
+  NoteAgentDriving(task_id);
   AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
                    "You handed control back to the agent",
                    TerminalNudgeHint(*space));
@@ -501,6 +514,10 @@ void PhiAgentSpaceManager::CompleteTask(const std::string& task_id,
     space->error_message = success ? std::string() : message;
     space->ownership = PhiAgentSpaces::Ownership::kAgent;
     space->keepalive_deadline_ms = 0;
+    // Nobody drives a finished Space until the next re-bind.
+    if (framework_) {
+      framework_->SetAgentMode(space->window_id.value, false);
+    }
     transcript_.NoteTaskEnded(task_id, EpochMsNow());
     PhiAgentOverlay::Hide();
     host_.InvalidateUserSlots();
@@ -517,6 +534,7 @@ void PhiAgentSpaceManager::HandoffToUser(const std::string& task_id,
   }
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kUser,
                        static_cast<uint64_t>(::GetTickCount64()));
+  NoteAgentDriving(task_id);
   AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
                    "Agent handed control to you", message);
   PushOwnershipChanged(task_id);
@@ -532,6 +550,7 @@ void PhiAgentSpaceManager::ResumeAgentControl(const std::string& task_id) {
   }
   const uint64_t now = static_cast<uint64_t>(::GetTickCount64());
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kAgent, now);
+  NoteAgentDriving(task_id);
   // Explicit: the resume starts a driving round, not a banked wait.
   spaces_.ResetTtl(task_id, PhiAgentSpaces::kDefaultTtlSeconds, now);
   AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,

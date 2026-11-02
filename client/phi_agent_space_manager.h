@@ -193,6 +193,8 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
 
   // --- Ownership -----------------------------------------------------------
   void RequestTakeControl(const std::string& task_id);
+  // Tells the framework who drives the task's window, from its ownership.
+  void NoteAgentDriving(const std::string& task_id);
   void RequestHandBack(const std::string& task_id);
   // The pill's Finish (user-owned): completes the task successfully,
   // keeping a persistent Space — the Mac's finishAgentTask.

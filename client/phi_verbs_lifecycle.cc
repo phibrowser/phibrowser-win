@@ -234,6 +234,7 @@ PhiVerbResult PhiControlDispatcher::VerbAgentCreate(
       coordinator_->agent_spaces().Create(task_id, existing->window_id,
                                           existing->profile_id,
                                           existing->persistent, ctx.now_ms);
+      coordinator_->agent_manager().NoteAgentDriving(task_id);
       RecordTask(ctx.principal, task_id);  // A re-bind (or an adoption).
       // The Mac counts a re-bind as a task start too (its record is
       // "created or rebound").
