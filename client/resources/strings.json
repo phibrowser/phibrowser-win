@@ -5999,20 +5999,20 @@
    "zh-Hans": "上一条",
    "zh-Hant": "上一則"
   },
-  "oobe.guestPrivacy.aiFeaturesUnavailable": {
-   "de": "KI-Funktionen erst nach der Anmeldung",
-   "en": "No AI features until you sign in",
-   "es": "Sin funciones de IA hasta que inicies sesión",
-   "fr": "Aucune fonctionnalité IA sans connexion",
-   "ja": "ログインするまでAI機能は利用できません",
-   "ko": "로그인하기 전에는 AI 기능을 사용할 수 없어요",
-   "nl": "Geen AI-functies totdat je inlogt",
-   "zh-Hans": "登录后才能使用 AI 功能",
-   "zh-Hant": "登入後才能使用 AI 功能"
+  "oobe.guestPrivacy.availableNow": {
+   "de": "Jetzt verfügbar",
+   "en": "Available now",
+   "es": "Disponible ahora",
+   "fr": "Disponible dès maintenant",
+   "ja": "今すぐ利用可能",
+   "ko": "지금 바로 사용 가능",
+   "nl": "Nu beschikbaar",
+   "zh-Hans": "现在即可使用",
+   "zh-Hant": "現在就能使用"
   },
   "oobe.guestPrivacy.beginButton": {
    "de": "Los geht’s",
-   "en": "Let's Begin",
+   "en": "Let’s begin",
    "es": "Empecemos",
    "fr": "Commencer",
    "ja": "はじめる",
@@ -6021,20 +6021,31 @@
    "zh-Hans": "开始使用",
    "zh-Hant": "開始使用"
   },
-  "oobe.guestPrivacy.browserMemoryUnavailable": {
-   "de": "Auch keine Browser-Erinnerung",
-   "en": "No Browser Memory either",
-   "es": "Tampoco habrá Memoria del navegador",
-   "fr": "Pas de Mémoire de navigation non plus",
-   "ja": "ブラウザメモリも利用できません",
-   "ko": "브라우저 메모리도 사용할 수 없어요",
-   "nl": "Ook geen Browsergeheugen",
-   "zh-Hans": "浏览器记忆也无法使用",
-   "zh-Hant": "瀏覽器記憶也無法使用"
+  "oobe.guestPrivacy.browserDescription": {
+   "de": "Alle Browserfunktionen, einschließlich Tabs, Profile, Spaces und Entwicklertools",
+   "en": "All browser features, including Tabs, Profiles, Spaces and Developer Tools",
+   "es": "Todas las funciones del navegador, incluidas pestañas, perfiles, Espacios y herramientas para desarrolladores",
+   "fr": "Toutes les fonctionnalités du navigateur, y compris les onglets, les profils, les Espaces et les outils de développement",
+   "ja": "タブ、プロファイル、スペース、デベロッパーツールなど、すべてのブラウザ機能",
+   "ko": "탭, 프로필, 스페이스, 개발자 도구를 포함한 모든 브라우저 기능",
+   "nl": "Alle browserfuncties, inclusief tabbladen, profielen, Spaces en hulpprogramma's voor ontwikkelaars",
+   "zh-Hans": "全部浏览器功能，包括标签页、个人资料、空间和开发者工具",
+   "zh-Hant": "所有瀏覽器功能，包括分頁、設定檔、空間和開發人員工具"
+  },
+  "oobe.guestPrivacy.browserTitle": {
+   "de": "Vollwertiger Browser",
+   "en": "Full-fledged browser",
+   "es": "Navegador completo",
+   "fr": "Navigateur complet",
+   "ja": "フル機能のブラウザ",
+   "ko": "모든 기능을 갖춘 브라우저",
+   "nl": "Volwaardige browser",
+   "zh-Hans": "功能完备的浏览器",
+   "zh-Hant": "功能完整的瀏覽器"
   },
   "oobe.guestPrivacy.legalAgreement": {
    "de": "Ich stimme den {1} und der {0} zu",
-   "en": "I agree to the {0} and {1}",
+   "en": "I agree to the {1} and {0}",
    "es": "Acepto los {1} y la {0}",
    "fr": "J'accepte les {1} et la {0}",
    "ja": "{1}と{0}に同意します",
@@ -6065,20 +6076,42 @@
    "zh-Hans": "隐私政策",
    "zh-Hant": "隱私權政策"
   },
-  "oobe.guestPrivacy.signInAnytime": {
-   "de": "Melde dich an, wann immer du bereit bist",
-   "en": "Sign in whenever you're ready",
-   "es": "Inicia sesión cuando quieras",
-   "fr": "Connectez-vous quand vous le souhaitez",
-   "ja": "準備ができたらいつでもログインできます",
-   "ko": "준비되면 언제든지 로그인하세요",
-   "nl": "Log in wanneer je er klaar voor bent",
-   "zh-Hans": "准备好后随时登录",
-   "zh-Hant": "等你準備好，隨時都能登入"
+  "oobe.guestPrivacy.requiresSignIn": {
+   "de": "Phi-Konto und Anmeldung erforderlich",
+   "en": "Requires a Phi account and sign-in",
+   "es": "Requiere una cuenta de Phi e iniciar sesión",
+   "fr": "Nécessite un compte Phi et une connexion",
+   "ja": "Phiアカウントとログインが必要",
+   "ko": "Phi 계정 및 로그인 필요",
+   "nl": "Vereist een Phi-account en inloggen",
+   "zh-Hans": "需要 Phi 账号并登录",
+   "zh-Hant": "需要 Phi 帳號並登入"
+  },
+  "oobe.guestPrivacy.signInInstead": {
+   "de": "Stattdessen anmelden",
+   "en": "Sign in instead",
+   "es": "Mejor iniciar sesión",
+   "fr": "Se connecter plutôt",
+   "ja": "ログインに戻る",
+   "ko": "대신 로그인하기",
+   "nl": "Toch inloggen",
+   "zh-Hans": "改为登录",
+   "zh-Hant": "改為登入"
+  },
+  "oobe.guestPrivacy.sync": {
+   "de": "Synchronisierung",
+   "en": "Sync",
+   "es": "Sincronización",
+   "fr": "Synchronisation",
+   "ja": "同期",
+   "ko": "동기화",
+   "nl": "Synchronisatie",
+   "zh-Hans": "同步",
+   "zh-Hant": "同步"
   },
   "oobe.guestPrivacy.termsOfServiceLink": {
    "de": "Nutzungsbedingungen",
-   "en": "Terms of Service",
+   "en": "Terms of Use",
    "es": "Términos de uso",
    "fr": "Conditions d'utilisation",
    "ja": "利用規約",
@@ -6384,6 +6417,17 @@
    "zh-Hans": "请在浏览器中完成登录",
    "zh-Hant": "請在瀏覽器中完成登入"
   },
+  "oobe.navigation.backButton": {
+   "de": "Zurück",
+   "en": "Back",
+   "es": "Atrás",
+   "fr": "Retour",
+   "ja": "戻る",
+   "ko": "뒤로",
+   "nl": "Terug",
+   "zh-Hans": "返回",
+   "zh-Hant": "上一步"
+  },
   "oobe.navigation.continueButton": {
    "de": "Weiter",
    "en": "Next",
@@ -6397,7 +6441,7 @@
   },
   "oobe.nextSteps.beginButton": {
    "de": "Los geht’s",
-   "en": "Let's Begin",
+   "en": "Let's begin",
    "es": "Empecemos",
    "fr": "Commencer",
    "ja": "はじめる",
@@ -6463,7 +6507,7 @@
   },
   "oobe.nextSteps.privacyLink": {
    "de": "Datenschutzerklärung",
-   "en": "Privacy",
+   "en": "Privacy Policy",
    "es": "Política de Privacidad",
    "fr": "Politique de confidentialité",
    "ja": "プライバシーポリシー",
@@ -6474,7 +6518,7 @@
   },
   "oobe.nextSteps.termsLink": {
    "de": "Nutzungsbedingungen",
-   "en": "Terms",
+   "en": "Terms of Use",
    "es": "Términos de uso",
    "fr": "Conditions d'utilisation",
    "ja": "利用規約",
@@ -7148,6 +7192,28 @@
    "nl": "Annuleer",
    "zh-Hans": "取消",
    "zh-Hant": "取消"
+  },
+  "settings.account.card.randomizeButton": {
+   "de": "Zufällig auswählen",
+   "en": "Randomize",
+   "es": "Aleatorio",
+   "fr": "Aléatoire",
+   "ja": "ランダムに選択",
+   "ko": "무작위 선택",
+   "nl": "Willekeurig",
+   "zh-Hans": "随机",
+   "zh-Hant": "隨機"
+  },
+  "settings.account.card.saveFailed": {
+   "de": "Deine Karte konnte nicht gespeichert werden. Bitte versuche es erneut.",
+   "en": "Your card could not be saved. Please try again.",
+   "es": "No se pudo guardar tu tarjeta. Vuelve a intentarlo.",
+   "fr": "Impossible d'enregistrer votre carte. Veuillez réessayer.",
+   "ja": "カードを保存できませんでした。もう一度お試しください。",
+   "ko": "카드를 저장하지 못했어요. 다시 시도해 주세요.",
+   "nl": "Je kaart kan niet worden bewaard. Probeer het opnieuw.",
+   "zh-Hans": "无法保存你的卡片。请重试。",
+   "zh-Hant": "無法儲存你的卡片。請再試一次。"
   },
   "settings.account.defaultBrowser.defaultStatus": {
    "de": "Phi ist dein Standardbrowser",

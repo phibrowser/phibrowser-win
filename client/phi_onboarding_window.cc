@@ -45,6 +45,38 @@ using Microsoft::WRL::ComPtr;
 
 // An EDIT takes its accessible name from a label beside it, and this window
 // paints its labels. PROPID_ACC_NAME, spelled here so nothing links oleacc.
+// The guest page's list (the Mac's 28c0618b, without the AI features this
+// client leaves off). Offsets in dips from the top of the guide area.
+struct GuestRow {
+  const char* key;
+  int top;
+  int height;
+  int size;
+  bool heading;
+};
+constexpr std::array<GuestRow, 5> kGuestRows = {{
+    {"oobe.guestPrivacy.availableNow", 24, 20, 13, true},
+    {"oobe.guestPrivacy.browserTitle", 50, 28, 20, false},
+    {"oobe.guestPrivacy.browserDescription", 80, 44, 14, false},
+    {"oobe.guestPrivacy.requiresSignIn", 146, 20, 13, true},
+    {"oobe.guestPrivacy.sync", 172, 28, 20, false},
+}};
+
+// The part before the @ when `name` reads as an email address, else empty.
+std::string EmailLocalPart(const std::string& name) {
+  const size_t at = name.find('@');
+  if (at == std::string::npos || at == 0 ||
+      name.find_first_of(" \t\r\n") != std::string::npos ||
+      name.find('@', at + 1) != std::string::npos) {
+    return std::string();
+  }
+  const size_t dot = name.find('.', at + 2);
+  if (dot == std::string::npos || dot + 1 == name.size()) {
+    return std::string();
+  }
+  return name.substr(0, at);
+}
+
 void NameForScreenReaders(HWND control, const std::wstring& name) {
   static const GUID kAccName = {
       0x608d3df8, 0x8128, 0x4aa7, {0xa4, 0x28, 0xf5, 0x5e, 0x49, 0x26, 0x72, 0x91}};
@@ -393,6 +425,10 @@ std::string PhiOnboardingWindow::Drive(const std::string& action,
     hit.control = Control::kLegalCheck;
   } else if (action == "metrics") {
     hit.control = Control::kMetricsCheck;
+  } else if (action == "back") {
+    hit.control = Control::kBack;
+  } else if (action == "signInInstead") {
+    hit.control = Control::kSignInInstead;
   } else if (action == "next") {
     OnEnter();
     return std::string();
@@ -491,7 +527,14 @@ void PhiOnboardingWindow::ShowPage(Page page) {
     name_error_.clear();
     name_submitting_ = false;
     EnsureNameField();
-    ::SetWindowTextW(name_field_, base::UTF8ToWide(name).c_str());
+    // An account named by its email offers the part before the @ (the Mac's
+    // 1cf61180); the email stays the baseline for the update.
+    prefilled_local_part_ = EmailLocalPart(name);
+    ::SetWindowTextW(name_field_,
+                     base::UTF8ToWide(prefilled_local_part_.empty()
+                                          ? name
+                                          : prefilled_local_part_)
+                         .c_str());
     ::ShowWindow(name_field_, SW_SHOW);
     ::SetFocus(name_field_);
     ::SendMessageW(name_field_, EM_SETSEL, 0, -1);
@@ -597,6 +640,8 @@ void PhiOnboardingWindow::AddControl(Control control, int key,
     const RECT content = ContentRect();
     const int split = FooterSplit();
     const bool footer = control == Control::kNext ||
+                        control == Control::kBack ||
+                        control == Control::kSignInInstead ||
                         control == Control::kSignIn ||
                         control == Control::kContinueAsGuest;
     const RECT region = {content.left, footer ? split : content.top,
@@ -694,11 +739,19 @@ void PhiOnboardingWindow::Layout() {
       const int pill_w = std::clamp(
           static_cast<int>(std::lround(text_w / (dpi() / 96.0))) + 32,
           kPillWidth, kCardWidth);
+      if (page_ == Page::kNextSteps) {
+        AddBackAndNext(pill_w, begin, legal_checked_);
+        break;
+      }
       AddControl(Control::kNext, 0,
                  ContentDip((kWidth - pill_w) / 2,
                             kHeight - kButtonBottom - kPillHeight, pill_w,
                             kPillHeight),
                  begin, PhiHitRole::kButton, false, legal_checked_);
+      AddControl(Control::kSignInInstead, 0,
+                 ContentDip(120, kHeight - kButtonBottom + 12, kWidth - 240, 22),
+                 PhiStr("oobe.guestPrivacy.signInInstead"), PhiHitRole::kButton,
+                 false, true);
       break;
     }
     case Page::kSetName:
@@ -732,12 +785,7 @@ void PhiOnboardingWindow::Layout() {
                  ContentDip((kWidth - kDiceSize) / 2, kDiceTop, kDiceSize, kDiceSize),
                  PhiStr("oobe.welcome.randomizeCard"), PhiHitRole::kButton, false,
                  true);
-      AddControl(Control::kNext, 0,
-                 ContentDip((kWidth - kPillWidth) / 2,
-                            kHeight - kButtonBottom - kPillHeight, kPillWidth,
-                            kPillHeight),
-                 PhiStr("oobe.welcome.nextButton"), PhiHitRole::kButton, false,
-                 true);
+      AddBackAndNext(kPillWidth, PhiStr("oobe.welcome.nextButton"), true);
       break;
     }
     case Page::kLayout: {
@@ -755,16 +803,25 @@ void PhiOnboardingWindow::Layout() {
                    PhiStr(rows[i].second), PhiHitRole::kListItem,
                    layout_choice_ == static_cast<int>(rows[i].first), true);
       }
-      AddControl(Control::kNext, 0,
-                 ContentDip((kWidth - kPillWidth) / 2,
-                            kHeight - kButtonBottom - kPillHeight, kPillWidth,
-                            kPillHeight),
-                 PhiStr("oobe.navigation.continueButton"), PhiHitRole::kButton,
-                 false, true);
+      AddBackAndNext(kPillWidth, PhiStr("oobe.navigation.continueButton"), true);
       break;
     }
   }
   AddPageText();
+}
+
+void PhiOnboardingWindow::AddBackAndNext(int next_width,
+                                         const std::wstring& next,
+                                         bool next_enabled) {
+  const int gap = 16;
+  const int left = (kWidth - kPillWidth - gap - next_width) / 2;
+  const int top = kHeight - kButtonBottom - kPillHeight;
+  AddControl(Control::kBack, 0, ContentDip(left, top, kPillWidth, kPillHeight),
+             PhiStr("oobe.navigation.backButton"), PhiHitRole::kButton, false,
+             true);
+  AddControl(Control::kNext, 0,
+             ContentDip(left + kPillWidth + gap, top, next_width, kPillHeight),
+             next, PhiHitRole::kButton, false, next_enabled);
 }
 
 void PhiOnboardingWindow::AddText(const RECT& bounds, std::wstring text) {
@@ -802,16 +859,11 @@ void PhiOnboardingWindow::AddPageText() {
       break;
     case Page::kGuestPrivacy: {
       AddText(title, PageTitle());
-      const std::array<const char*, 3> bullets = {
-          "oobe.guestPrivacy.aiFeaturesUnavailable",
-          "oobe.guestPrivacy.browserMemoryUnavailable",
-          "oobe.guestPrivacy.signInAnytime"};
-      int y = kTitleTop + kTitleHeight + 12 + 20 + (kGuideHeight - 124) / 2;
-      for (const char* key : bullets) {
-        AddText(ContentDip((kWidth - kCardWidth) / 2 + kCardPad + 26, y,
-                           kCardWidth - 2 * kCardPad - 26, 28),
-                PhiStr(key));
-        y += 48;
+      const int top = kTitleTop + kTitleHeight + 12 + 20;
+      const int left = (kWidth - kCardWidth) / 2 + kCardPad;
+      for (const GuestRow& row : kGuestRows) {
+        AddText(ContentDip(left, top + row.top, kCardWidth - 2 * kCardPad, row.height),
+                PhiStr(row.key));
       }
       break;
     }
@@ -923,6 +975,9 @@ void PhiOnboardingWindow::LoadCard() {
   const std::string sub = account_->auth().user().sub;
   std::string name;
   account_->AccountInfo(&name, nullptr);
+  if (!card_name_override_.empty()) {
+    name = card_name_override_;
+  }
   const std::optional<PhiAccountProfile>& profile = account_->Profile().profile();
   const bool profile_matches = profile && profile->auth0_id == sub;
   card_.SetIdentity(name.empty() ? "Phi" : name, PhiHolographicCard::MemberId(sub),
@@ -942,8 +997,14 @@ void PhiOnboardingWindow::ApplyTheme(const std::string& theme_id) {
 
 void PhiOnboardingWindow::RandomizeCard() {
   // The Mac's randomizeCard: every selection anew, and the app theme
-  // follows the palette.
-  card_style_ = PhiHolographicCardStyle::Random();
+  // follows the palette. Saved first: Back and a resumed flow reload it, and
+  // the theme is already saved (the Mac's 8fb61ef5).
+  const PhiHolographicCardStyle style = PhiHolographicCardStyle::Random();
+  if (!prefs_->SetProfileCardStyle(account_->auth().user().sub, style.ToMap())) {
+    PhiNotice(hwnd(), PhiStr("oobe.welcome.cardSaveFailed"), L"");
+    return;
+  }
+  card_style_ = style;
   const std::string theme_id = PhiHolographicCardStyle::ThemeIdFor(card_style_.palette);
   prefs_->SetThemeId(theme_id);
   ApplyTheme(theme_id);
@@ -1073,6 +1134,17 @@ void PhiOnboardingWindow::PaintFooterControls(HDC dc) {
       PhiDrawTextAA(dc, PhiStr("oobe.login.continueAsGuestButton"), -1, &rc,
                     DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
       ::SelectObject(dc, old_font);
+    } else if (hit.control == Control::kSignInInstead) {
+      HGDIOBJ old_font = ::SelectObject(dc, fonts().Get(13, FW_NORMAL));
+      ::SetTextColor(dc, hot ? RGB(0xFF, 0xFF, 0xFF) : RGB(0xA6, 0xA6, 0xA6));
+      RECT rc = hit.bounds;
+      PhiDrawTextAA(dc, PhiStr("oobe.guestPrivacy.signInInstead"), -1, &rc,
+                    DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+      ::SelectObject(dc, old_font);
+    } else if (hit.control == Control::kBack) {
+      PaintPillButton(dc, hit.bounds, PhiStr("oobe.navigation.backButton"),
+                      hit.enabled, hot, false, RGB(255, 255, 255),
+                      RGB(0x80, 0x80, 0x80), RGB(0, 0, 0));
     } else if (hit.control == Control::kNext && page_ == Page::kWelcome) {
       PaintPillButton(dc, hit.bounds, PhiStr("oobe.welcome.nextButton"),
                       hit.enabled, hot, true, RGB(255, 255, 255),
@@ -1338,29 +1410,19 @@ void PhiOnboardingWindow::PaintGuestPrivacy(HDC dc, const RECT& content) {
   const RECT card = ContentDip((kWidth - kCardWidth) / 2, card_top, kCardWidth,
                                kCardHeight);
   PhiFillRoundRectAA(dc, card, Scaled(kCardRadius), RGB(0x2A, 0x2A, 0x2A));
-  // The three bullets, centred in the guide's height.
-  const std::array<const char*, 3> bullets = {
-      "oobe.guestPrivacy.aiFeaturesUnavailable",
-      "oobe.guestPrivacy.browserMemoryUnavailable",
-      "oobe.guestPrivacy.signInAnytime"};
-  const int row_h = Scaled(28), row_gap = Scaled(20);
-  const int block = 3 * row_h + 2 * row_gap;
-  int y = card.top + Scaled(20) + (Scaled(kGuideHeight) - block) / 2;
-  HFONT dot_font = fonts().Get(28, FW_MEDIUM);
-  HFONT text_font = fonts().Get(20, FW_NORMAL);
-  ::SetTextColor(dc, RGB(0xE6, 0xE6, 0xE6));
-  for (const char* key : bullets) {
-    RECT dot = {card.left + Scaled(kCardPad), y, card.left + Scaled(kCardPad + 14),
-                y + row_h};
-    HGDIOBJ old_font = ::SelectObject(dc, dot_font);
-    PhiDrawTextAA(dc, L"·", -1, &dot, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-    ::SelectObject(dc, text_font);
-    RECT rc = {dot.right + Scaled(12), y, card.right - Scaled(kCardPad), y + row_h};
-    PhiDrawTextAA(dc, PhiStr(key), -1, &rc,
-                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
-                      DT_NOPREFIX);
+  // What works now and what signing in adds.
+  for (const GuestRow& row : kGuestRows) {
+    RECT rc = {card.left + Scaled(kCardPad), card.top + Scaled(20 + row.top),
+               card.right - Scaled(kCardPad),
+               card.top + Scaled(20 + row.top + row.height)};
+    HGDIOBJ old_font = ::SelectObject(
+        dc, fonts().Get(row.size, row.heading ? FW_MEDIUM : FW_NORMAL));
+    ::SetTextColor(dc, row.heading || row.size < 16 ? RGB(0xA6, 0xA6, 0xA6)
+                                                    : RGB(0xE6, 0xE6, 0xE6));
+    PhiDrawTextAA(dc, PhiStr(row.key), -1, &rc,
+                  (row.size < 16 && !row.heading ? DT_WORDBREAK : DT_VCENTER | DT_SINGLELINE) |
+                      DT_LEFT | DT_END_ELLIPSIS | DT_NOPREFIX);
     ::SelectObject(dc, old_font);
-    y += row_h + row_gap;
   }
   // The divider and the consents.
   const int divider_y = card_top + 20 + kGuideHeight + 20;
@@ -1629,6 +1691,16 @@ void PhiOnboardingWindow::MoveKeyboardFocus(bool backward) {
 }
 
 bool PhiOnboardingWindow::OnKey(WPARAM virtual_key) {
+  if (page_ == Page::kLayout &&
+      (virtual_key == VK_UP || virtual_key == VK_DOWN)) {
+    // The two rows, as the Mac's arrow keys walk its selection.
+    layout_choice_ = static_cast<int>(virtual_key == VK_UP
+                                          ? PhiLayoutMode::kBalanced
+                                          : PhiLayoutMode::kComfortable);
+    Layout();
+    Invalidate();
+    return true;
+  }
   if (virtual_key == VK_TAB) {
     MoveKeyboardFocus(::GetKeyState(VK_SHIFT) < 0);
     return true;
@@ -1739,10 +1811,28 @@ void PhiOnboardingWindow::Activate(const Hit& hit) {
     case Control::kNext:
       OnEnter();
       break;
+    case Control::kBack:
+      GoBack();
+      break;
+    case Control::kSignInInstead:
+      ShowPage(Page::kLogin);
+      break;
     case Control::kCard:
     case Control::kNone:
       break;
   }
+}
+
+void PhiOnboardingWindow::GoBack() {
+  const Page target = page_ == Page::kWelcome  ? Page::kSetName
+                      : page_ == Page::kLayout ? Page::kWelcome
+                      : page_ == Page::kNextSteps ? Page::kLayout
+                                                  : page_;
+  if (target == page_) {
+    return;
+  }
+  host_->OnboardingSetPhase(PhaseForPage(target));
+  ShowPage(target);
 }
 
 void PhiOnboardingWindow::OnEnter() {
@@ -1808,6 +1898,8 @@ void PhiOnboardingWindow::OnEscape() {
     ShowPage(Page::kLogin);
   } else if (page_ == Page::kGuestPrivacy) {
     ShowPage(Page::kLogin);
+  } else {
+    GoBack();
   }
 }
 
@@ -1922,6 +2014,7 @@ void PhiOnboardingWindow::SubmitName() {
     return;
   }
   name_submitting_ = true;
+  submitted_name_ = utf8;
   account_->RequestRenameAccount(utf8);
   Layout();
   Invalidate();
@@ -2032,6 +2125,16 @@ void PhiOnboardingWindow::OnAccountChanged() {
   if (page_ == Page::kSetName && name_submitting_ && !account_->AccountBusy()) {
     name_submitting_ = false;
     const std::string error = account_->AccountLastError();
+    if (!error.empty() && !prefilled_local_part_.empty() &&
+        submitted_name_ == prefilled_local_part_) {
+      // The user did not choose that name, so its failing must not block the
+      // flow. The card shows it all the same.
+      LOG(WARNING) << "[Onboarding] continuing with the prefilled name";
+      card_name_override_ = submitted_name_;
+      host_->OnboardingSetPhase(2);
+      AdvanceTo(Page::kWelcome);
+      return;
+    }
     if (!error.empty()) {
       name_error_ = PhiStr(error == "update" ? "settings.account.error.update"
                                              : "settings.account.error.profile");

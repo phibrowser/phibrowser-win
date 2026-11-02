@@ -167,14 +167,22 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   // focus. An index into hits_; -1 is none, or on Set Name the name field.
   int kb_focus_ = -1;
   void MoveKeyboardFocus(bool backward);
+  // Back and Escape on a later page: the page before it, not completed, with
+  // the phase rewound so a closed window resumes there (the Mac's 28c0618b).
+  void GoBack();
   // What a screen reader reads of a page beyond its controls. After the
   // controls, so a hit's index stays its index in hits_.
   void AddPageText();
+  void AddBackAndNext(int next_width,
+                      const std::wstring& next,
+                      bool next_enabled);
   void AddText(const RECT& bounds, std::wstring text);
   std::wstring PageTitle() const;
   // One clickable region of a page, in dips relative to the content rect.
   enum class Control {
     kNone,
+    kBack,
+    kSignInInstead,
     kSignIn,
     kContinueAsGuest,
     kCancelSignIn,
@@ -291,6 +299,9 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   std::wstring name_error_;
   bool name_submitting_ = false;
   std::string original_name_;
+  std::string prefilled_local_part_;
+  std::string submitted_name_;
+  std::string card_name_override_;
   HWND name_field_ = nullptr;
   HBRUSH field_brush_ = nullptr;
   // The embedded browser.

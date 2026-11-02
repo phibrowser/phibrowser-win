@@ -4496,7 +4496,15 @@ void PhiCoordinator::OnboardingContinueAsGuest(bool share_metrics) {
   preferences_.SetGuestModeEnabled(true);
   // Guests get the Comfortable layout (the Mac's completeGuestOOBE).
   preferences_.RequestLayoutMode(PhiLayoutMode::kComfortable);
+  // And open new tabs with the Omnibox (the Mac's 5196706b).
+  SetNewTabBehavior(PhiNewTabBehavior::kOmnibox);
   GrantAccess(Access::kGuest);
+}
+
+bool PhiCoordinator::SetProfileCardStyle(
+    const std::string& sub,
+    const std::map<std::string, std::string>& style) {
+  return preferences_.SetProfileCardStyle(sub, style);
 }
 
 void PhiCoordinator::OnboardingSetPhase(int phase) {

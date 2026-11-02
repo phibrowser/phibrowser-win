@@ -5359,21 +5359,25 @@
     "zh-Hant": "上一則"
    }
   },
-  "oobe.guestPrivacy.aiFeaturesUnavailable": {
+  "oobe.guestPrivacy.availableNow": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "No AI features until you sign in"
+   "en": "Available now"
   },
   "oobe.guestPrivacy.beginButton": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "Let's Begin"
+   "en": "Let’s begin"
   },
-  "oobe.guestPrivacy.browserMemoryUnavailable": {
+  "oobe.guestPrivacy.browserDescription": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "No Browser Memory either"
+   "en": "All browser features, including Tabs, Profiles, Spaces and Developer Tools"
+  },
+  "oobe.guestPrivacy.browserTitle": {
+   "comment": "onboarding — Mac key (translations by key)",
+   "en": "Full-fledged browser"
   },
   "oobe.guestPrivacy.legalAgreement": {
-   "comment": "onboarding — Mac key (translations by key)",
-   "en": "I agree to the {0} and {1}"
+   "comment": "onboarding — Mac key (translations by key); {0} is the Privacy Policy link, {1} the Terms of Use link",
+   "en": "I agree to the {1} and {0}"
   },
   "oobe.guestPrivacy.metricsConsent": {
    "comment": "onboarding — Mac key (translations by key)",
@@ -5383,13 +5387,21 @@
    "comment": "onboarding — Mac key (translations by key)",
    "en": "Privacy Policy"
   },
-  "oobe.guestPrivacy.signInAnytime": {
+  "oobe.guestPrivacy.requiresSignIn": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "Sign in whenever you're ready"
+   "en": "Requires a Phi account and sign-in"
+  },
+  "oobe.guestPrivacy.signInInstead": {
+   "comment": "onboarding — Mac key (translations by key)",
+   "en": "Sign in instead"
+  },
+  "oobe.guestPrivacy.sync": {
+   "comment": "onboarding — Mac key (translations by key)",
+   "en": "Sync"
   },
   "oobe.guestPrivacy.termsOfServiceLink": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "Terms of Service"
+   "en": "Terms of Use"
   },
   "oobe.guestPrivacy.title": {
    "comment": "onboarding — Mac key (translations by key)",
@@ -5539,13 +5551,17 @@
    "comment": "onboarding — Mac key (translations by key)",
    "en": "Finish signing in in your browser"
   },
+  "oobe.navigation.backButton": {
+   "comment": "onboarding — Mac key (translations by key)",
+   "en": "Back"
+  },
   "oobe.navigation.continueButton": {
    "comment": "onboarding — Mac key (translations by key)",
    "en": "Next"
   },
   "oobe.nextSteps.beginButton": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "Let's Begin"
+   "en": "Let's begin"
   },
   "oobe.nextSteps.enjoyPhi": {
    "comment": "onboarding — Mac key (translations by key)",
@@ -5569,11 +5585,11 @@
   },
   "oobe.nextSteps.privacyLink": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "Privacy"
+   "en": "Privacy Policy"
   },
   "oobe.nextSteps.termsLink": {
    "comment": "onboarding — Mac key (translations by key)",
-   "en": "Terms"
+   "en": "Terms of Use"
   },
   "oobe.nextSteps.title": {
    "comment": "onboarding — Mac key (translations by key)",
@@ -6092,6 +6108,14 @@
   "settings.account.cancelSignIn": {
    "comment": "account — Windows-only",
    "en": "Cancel"
+  },
+  "settings.account.card.randomizeButton": {
+   "comment": "settings — Mac key (translations by key); chooses a random card style",
+   "en": "Randomize"
+  },
+  "settings.account.card.saveFailed": {
+   "comment": "settings — Mac key (translations by key)",
+   "en": "Your card could not be saved. Please try again."
   },
   "settings.account.defaultBrowser.defaultStatus": {
    "comment": "Account settings - Status text when Phi is the default browser",
