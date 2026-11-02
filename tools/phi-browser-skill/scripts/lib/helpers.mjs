@@ -130,6 +130,16 @@ async function cdpClient() {
     if (state.task && state.task.taskId === taskId) {
       state.task.ownership = owner
       state.ownerCheckedAt = Date.now()
+      // The pill's Take control and Hand back reach the agent only here. A page
+      // the user drives must not stay pinned at the agent's size, or resizing
+      // the window would leave it behind; and it needs that size back after.
+      if (contextKind() === 'agent' && state.sessionId) {
+        const pending = owner === 'user'
+          ? state.cdp.send('Emulation.clearDeviceMetricsOverride', {}, state.sessionId)
+          : applyAgentViewport(state.cdp, state.sessionId, state.targetId,
+                               state.viewportByTarget.get(state.targetId)?.request ?? null)
+        Promise.resolve(pending).catch(() => {})
+      }
     }
   })
   return state.cdp
