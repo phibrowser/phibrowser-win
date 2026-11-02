@@ -18,7 +18,7 @@ namespace phi_client {
 class PhiPopover;
 class PhiShellWindow;
 
-// The Mac's SpaceThemeEditorView (ThemeOpacitySlider.swift, 3d045cf6 /
+// The Mac's SpaceThemeEditorView (SpaceThemeEditorView.swift, 3d045cf6 /
 // 4c9d919e / 23c728d9), shown from a Space menu's "Set Theme" item: a
 // 260x296 popover holding a 244-pt colour field — hue is the angle through
 // the Figma spectrum stops, saturation the radius, with the linked

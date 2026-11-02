@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
+#include "base/no_destructor.h"
 #include "phibrowser-win/client/phi_dwrite.h"
 #include "phibrowser-win/client/phi_i18n.h"
 #include "phibrowser-win/client/phi_modal_scope.h"
@@ -270,7 +271,6 @@ class Panel : public PhiPopover {
   }
 
   void OnDpiChanged(UINT) override {
-    fields_.clear();
     BuildLayout();
     ::SetWindowPos(hwnd(), nullptr, 0, 0, Scaled(kPanelWidth),
                    Scaled(kPanelHeight),
@@ -646,13 +646,18 @@ class Panel : public PhiPopover {
 
   const std::vector<uint8_t>& FieldBitmap(double brightness, bool dark,
                                           int size) {
+    // For the process, not the panel: a field costs a visible beat at a high
+    // scale (31 ms at 366 px on a 2018 laptop, the Mac's a6e3a27a), and the
+    // editor reopens at the same size.
+    static base::NoDestructor<std::vector<Field>> cache;
+    std::vector<Field>& fields_ = *cache;
     for (const Field& field : fields_) {
       if (field.dark == dark && field.size == size &&
           std::fabs(field.brightness - brightness) < 0.0005) {
         return field.bgra;
       }
     }
-    if (fields_.size() >= 2) {
+    if (fields_.size() >= 4) {
       fields_.erase(fields_.begin());
     }
     fields_.push_back({dark, brightness, size, RenderField(brightness, dark, size)});
@@ -829,8 +834,6 @@ class Panel : public PhiPopover {
   const bool draft_ = false;
   PhiThemeDraftEditor editor_;
   std::function<void()> on_closed_;
-  // The field bitmaps, one per appearance (brightness and dpi keyed).
-  std::vector<Field> fields_;
   // The drag.
   Capture capture_;
   bool dragging_ = false;
