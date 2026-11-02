@@ -766,6 +766,9 @@ void PhiOnboardingWindow::Layout() {
       // The membership card, centred, and the dice under it.
       std::string name;
       account_->AccountInfo(&name, nullptr);
+      if (!card_name_override_.empty()) {
+        name = card_name_override_;
+      }
       const std::string sub = account_->auth().user().sub;
       const std::optional<PhiAccountProfile>& profile =
           account_->Profile().profile();
@@ -2006,6 +2009,7 @@ void PhiOnboardingWindow::SubmitName() {
     return;
   }
   name_error_.clear();
+  card_name_override_.clear();
   const std::string utf8 = base::WideToUTF8(name);
   if (utf8 == original_name_) {
     // Unchanged: no round trip, the Mac's shortcut.
