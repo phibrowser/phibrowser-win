@@ -245,7 +245,8 @@ void PhiOmniboxSession::Position() {
       KeywordTrailingAdvance()));
   // Idempotent, because the paint path calls this too: the in-field
   // accessory set changes with the page — the reader button comes and goes —
-  // and the EDIT is a real child window, so a stale width paints straight
+  // and with the pointer — the hover-only slots appear on hover — and the
+  // EDIT is a real child window, so a stale width paints straight
   // over whatever just appeared beside it. Moving only on a real change
   // keeps that call from feeding itself more paints.
   RECT placed = target;

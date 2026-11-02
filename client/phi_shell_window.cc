@@ -2440,9 +2440,17 @@ PhiOmniboxCapsule PhiShellWindow::OmniboxCapsule() {
   capsule.field = to_pure(layout.url_field);
   capsule.page_icon = to_pure(layout.page_icon);
   capsule.field_ext_strip = to_pure(layout.field_ext_strip);
-  capsule.reader = to_pure(layout.reader);
-  capsule.copy_link = to_pure(layout.copy_link);
-  capsule.site_menu = to_pure(layout.site_menu);
+  // The hover-only slots hold the text back only while they are on show: the
+  // Mac keeps the text frame under them and cuts it off at the controls once
+  // they appear. Their rects stay in the layout for the paint and the clicks.
+  const bool field_tools = FieldToolsShown();
+  if (field_tools || ActiveTabShowsReader()) {
+    capsule.reader = to_pure(layout.reader);
+  }
+  if (field_tools) {
+    capsule.copy_link = to_pure(layout.copy_link);
+    capsule.site_menu = to_pure(layout.site_menu);
+  }
   capsule.extensions = to_pure(layout.extensions);
   return capsule;
 }
@@ -4608,8 +4616,11 @@ void PhiShellWindow::InvalidateChangedBands(
       };
   if (after.layout != before.layout) {
     // The geometry itself moved (a reader slot, the bookmark bar, a band's
-    // row count): every band is placed anew.
+    // row count): every band is placed anew. The EDIT is a child this does
+    // not reach and it may not move, but the page colour can change with the
+    // geometry (leaving a page that offers the reader).
     ::InvalidateRect(shell_hwnd_, nullptr, FALSE);
+    omnibox_->Repaint();
     return;
   }
   const Layout layout = ComputeLayout();
@@ -8123,12 +8134,14 @@ void PhiShellWindow::PaintChrome(HDC dc,
                        ? layout.page_icon.right + Scaled(4)
                        : url_rc.left + Scaled(kFieldTextInset)) +
                   omnibox_->KeywordLeadingAdvance();
-    // Stop before the in-field trailing stack when it exists — the leftmost
-    // accessory that actually sits inside the capsule (the same rule
+    // Stop before the in-field trailing stack when it is on show — the
+    // leftmost accessory that actually sits inside the capsule (the same rule
     // PhiOmniboxTextRect applies to the EDIT).
     int text_right = url_rc.right;
     for (const RECT& accessory :
-         {layout.reader, layout.copy_link, layout.site_menu}) {
+         {field_tools || ActiveTabShowsReader() ? layout.reader : RECT{},
+          field_tools ? layout.copy_link : RECT{},
+          field_tools ? layout.site_menu : RECT{}}) {
       if (accessory.right > accessory.left &&
           accessory.left > layout.url_field.left &&
           accessory.left < text_right) {

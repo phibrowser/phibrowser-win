@@ -28,9 +28,10 @@
 namespace phi_client {
 
 // The address capsule as the session needs it: the box itself and every
-// accessory that can sit INSIDE it. Which accessories exist varies by layout
-// mode and by page (the reader button comes and goes), so the session reads
-// them rather than assuming a set.
+// accessory on show INSIDE it. Which accessories exist varies by layout mode,
+// by page (the reader button comes and goes) and by hover (a hidden one is an
+// empty rect here and leaves the text its room), so the session reads them
+// rather than assuming a set.
 struct PhiOmniboxCapsule {
   SidebarRect field;            // The painted pill.
   SidebarRect page_icon;        // Comfortable's leading site chip.
