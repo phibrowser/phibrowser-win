@@ -8263,7 +8263,9 @@ void PhiShellWindow::PaintChrome(HDC dc,
       // centred in the hit box. Signed in with a picture: the account's
       // avatar circle-clipped under a 1 px ring at ink 8 % (the Mac's
       // commonBorder); Guest Mode, signed out or no picture yet: the
-      // Contact glyph (its person.crop.circle.fill), ringless.
+      // Contact glyph (its person.crop.circle.fill), ringless, at the bar's
+      // 16 dip icon size — a bare outline at the disc's 24 dwarfs the
+      // Downloads and Feedback glyphs beside it.
       const RECT& b = layout.sidebar_profile;
       const int px = Scaled(24);
       const int left = (b.left + b.right - px) / 2;
@@ -8284,7 +8286,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
       if (drew_avatar) {
         avatar_disc_ = disc;
       } else {
-        PhiDrawIconGlyph(dc, disc, fluent::kContact, px, kLabelDim);
+        PhiDrawIconGlyph(dc, disc, fluent::kContact,
+                         Scaled(fluent::kIconToolbar), kLabelDim);
       }
     }
     if (layout.sidebar_downloads.right > layout.sidebar_downloads.left) {
