@@ -7,8 +7,8 @@ either the decision to leave it out or that it still needs to be built.
 It is a list of surfaces, not of code: how a feature is implemented is in
 the owning doc each row points to.
 
-**Checked against phibrowser-mac `8c0b8596` (2026-11-02) and
-phibrowser-win `b4c9298`, on 2026-11-02.**
+**Checked against phibrowser-mac `597d76b5` (2026-11-03) and
+phibrowser-win `f49b60e`, on 2026-11-03.**
 
 ## Legend
 
@@ -82,11 +82,15 @@ Two standing decisions cover many rows and are not repeated in full:
 | Ctrl/⌃+Tab MRU switcher | yes | yes | ✅ | |
 | Tab Search (⇧⌘A / Ctrl+Shift+A) | open, pinned, bookmarks, recently closed | same | ✅ | |
 | Multi-selection of tabs / bookmarks with batch menu | `TabMultiSelectionMenu` | strings imported, no selection model | 🔧 | `common.tabMultiSelectionContextMenu.*` keys exist in `strings.json`; nothing draws them. When it lands: the fork's batch `TabsProxy::CloseTabs` / `DuplicateTabs` (`4d9bceef9d9`, Mac `5787c25a`) need exporting through `phi_framework_api.h`, and the range anchor resets on an active-tab change (`17c0d54c`). |
+| Double-click an ordinary tab to close it (Mac `9897f718`, 2026-10-30) | Advanced toggle, off by default; an unmodified double-click on a sidebar row, group member, split pane or strip cell closes that tab; pinned tabs and bookmarks keep their own double-click | none: `WM_LBUTTONDBLCLK` treats a second press as a plain click, except on a group header | 🔧 | Recommended 2026-11-03, see §9. |
+| Close the tabs above / below / left / right of a tab or group (Mac `b47255d6`, 2026-10-31) | tab and group context menus, titles follow the layout; Advanced toggle, on by default; a split counts as one unit and a whole group protects its range; pins and bookmark-bound tabs stay | Close Other Tabs only (`tab.closeOthers`, which already leaves bound tabs alone) | 🔧 | Recommended 2026-11-03, see §9. The Mac also routes `IDC_WINDOW_CLOSE_OTHER_TABS` and `IDC_WINDOW_CLOSE_TABS_TO_RIGHT` through the same rules; the Windows client routes neither. |
+| Clear All Tabs with Undo (Mac `06bee451`, `af8702c3`, `ea18f661`, 2026-11-02) | File menu, rebindable ⇧⌘K, sidebar separator button; closes ordinary background tabs and keeps the foreground tab, its split, a visible Peek, pins and bookmark-bound tabs; Edit ▸ Undo and Redo per window bring the pages back unloaded with their order, groups and splits; a toast names the shortcut (`docs/architecture/clear-tabs.md`) | none | 🔧 | Recommended 2026-11-03 with two decisions, see §9. The fork already has `TabsProxy::RestoreTabs` (`dcaee2a5f2c`) but only the Mac bridge calls it; `phi_framework_api.h` does not export it. |
 | Pinned tabs: scope App / Profile / Space, split pins, rename, edit URL | yes | yes | ✅ | |
 | Edit pinned tab icon | Edit… dialog has icon | Rename… / Edit URL… only | ◐ | No icon override on a pin. |
 | Bookmark favicon actions: Separate From Bookmark / Back to Saved URL | row favicon menu | none | 🔧 | The "bookmark drifted from its saved URL" affordance. |
 | Bookmark folder icon picker | yes | yes (24 symbols) | ✅ | |
 | Close an open bookmark from its row (hover minus, Mac `7ec6e1b7`, 2026-10-27) | minus on hover while open | minus on hover while open | ✅ | Ported 2026-11-02, box-verified on nuc: `ShortcutRow::close_box`, a `fluent::kRemove` minus and a UIA button; a click closes the tab through `SidebarClose` and the bookmark stays. `kRemove` is new in `phi_fluent.h`. |
+| Space bookmark root: a collapsible row named after the Space above its bookmarks (Mac `705af790`, `b457988a`, `2a0a49c2`, `0372e721`, 2026-11-02/03) | presentation only, no persisted parent changes; collapsed state kept per Space across relaunch, local; hidden with no bookmarks and in Incognito; a focused bookmark floats under a collapsed root; drops insert at the top level, and a collapsed root highlights as a target | bookmarks start directly under the pinned band | 🔧 | Recommended 2026-11-03 with one decision, see §9. Windows folder expansion is per shell and not persisted (`expanded_bookmarks_`), where the Mac autosaves it, so the root would remember more than the folders under it. |
 | Drag & drop: tabs, pins, bookmarks, groups, cross-window, tear-off | full | ghost / gap / ring / badge / snap tiles / New window | ◐ | Deferred mechanics D31–D34: edge auto-scroll, Ctrl/Shift modifiers, whole-group drag, bookmarks bar as source/target, cross-window slot, OLE file drops, pip lift, hidden-sidebar reveal during drag. |
 | Drop a file onto the sidebar | yes | none | ◐ | Part of D31 (OLE drops). |
 | Spaces: create (name, icon, profile), rename, icon/emoji picker, theme, change profile, delete, reorder | yes | yes | ✅ | Picker lacks "Recently used" and skin tones (D24); create form keeps old control styling (D25). |
@@ -147,9 +151,9 @@ Two standing decisions cover many rows and are not repeated in full:
 | Phi Link (Telegram relay) | yes | none | ⛔ | AI suite (Sentinel relay). |
 | Sync: status, set up, devices approve/deny, remove device, reset sync from the last device | yes | yes | ✅ | `user-data-parity.md`. Reset (`055df916`: `PUT /keys/v1/reset-operations/<uuid>`, journaled in `marker.json`, resumed by "Set up sync again") ported 2026-10-27 as the Settings Removal row; the setup window's remove / reset offer is not built (Windows has no remove control there). |
 | Shortcuts: grouped table, search, record, reset (all + per row), unassign, conflicts, Go to Space rows, effective chords in menus | yes (shortcut engine `896b36d0`, Oct 2026) | yes | ✅ | 2026-10-27: localized titles, Reset All behind a confirmation, Delete-to-unassign + per-row Reset, Chromium page commands rebindable, ⋯ menu shows effective chords, displaced default chords swallowed. Deliberately not ported: informational conflicts / filters / system-hotkey warnings (Windows keeps confirm-and-steal), `excludedKeys`, Kiosk global hotkey (⛔). Kiosk & Peek group rows absent; the numpad zoom twins stay fixed and unlisted. |
-| Advanced: restore session, full URL, previews, indicators, shorten links, Mini Player, auto PiP, developer mode, Chromium settings | yes | all but Shorten links (⛔) and Mini Player (🔧) | ◐ | Rows regrouped into Appearance / General on Windows. The full URL row (under Appearance) drives the address field since 2026-11-04; see §3. |
+| Advanced: restore session, full URL, previews, indicators, shorten links, Mini Player, auto PiP, developer mode, Chromium settings | yes | all but Shorten links (⛔) and Mini Player (🔧) | ◐ | Rows regrouped into Appearance / General on Windows. The full URL row (under Appearance) drives the address field since 2026-11-04; see §3. The Mac's new tab-actions card (double-click to close, positional closing) belongs to the §2 rows of those names. |
 | Developer: Allow agents (CDP), per-agent Allowed / Blocked lists, "Allow all agents" | yes | one switch | ⛔ | No code-signature peer identity on the Windows pipe (`phi_settings_window.cc`, `phi_control_server.cc`). Revisit if the pipe gains a caller identity. |
-| Developer: Allow agents to operate Spaces, operated-page rendering, profiles agents can use, install skill | yes | yes (no "exact rendering" toggle) | ◐ | The operated-page mask toggle has no Windows row. |
+| Developer: Allow agents to operate Spaces, operated-page rendering, profiles agents can use, install skill | yes | yes (no "exact rendering" toggle) | ◐ | The operated-page mask toggle has no Windows row. Ported 2026-11-04 (Mac `c3149697`, §9): the switch now also gates shadow windows, and turning it off closes them. Still different from the Mac on purpose: it is off by default, credential verbs come with admission, and the description says so. |
 | Developer: Agent Password Manager (Bitwarden sign in / unlock / timeout), Agent Credential Approvals (standing grants, revoke) | yes, `docs/bitwarden-password-manager.md` | helper process + `credentials.*` verbs + Allow once / 10 min prompt; no Settings rows | ◐ | `PhiBitwardenHelper.exe` and the broker are in; the sign-in sheet, session settings, approvals list and "Always" grants are not. `analytics.md` records `approval_type: always` and `kind: run` as not ported. |
 | About page | About window | About page + notice | ✅ | |
 
@@ -163,9 +167,10 @@ Two standing decisions cover many rows and are not repeated in full:
 | Onboarding: password manager choice (iCloud Passwords) | yes | skipped | — | iCloud Passwords is Mac-only (`phi_onboarding_window.cc`). A Windows equivalent (Windows Hello / Credential Manager) would be a new decision. |
 | Guest mode + guest → account migration | yes | built, not live-tested | ◐ | `user-data-parity.md` S6. |
 | Hosted login (Auth0), reauthentication, sign out | yes | yes, off-the-record sign-in window | ✅ | |
-| Sync keys: recovery code, device approval, profile / Space matching, sync method (Merge or Use your account's data, Mac `40312627`) | yes | profiles page only | ◐ | Corrected 2026-10-27: the Windows pairing wizard has no Spaces step and no method / replace step (`user-data-parity.md` S5 "Not yet"). No wire change — a Windows peer sees a Mac join as before. The recovery-code confirmation page, its durable pending flag (Mac `32799547`) and its Back (`a8a8f23e`) ported 2026-11-02, see §9. |
+| Sync keys: recovery code, device approval, profile / Space matching, sync method (Merge or Use your account's data, Mac `40312627`) | yes | profiles page only | ◐ | Corrected 2026-10-27: the Windows pairing wizard has no Spaces step and no method / replace step (`user-data-parity.md` S5 "Not yet"). No wire change — a Windows peer sees a Mac join as before. The recovery-code confirmation page, its durable pending flag (Mac `32799547`) and its Back (`a8a8f23e`) ported 2026-11-02, see §9. The warning about losing the code and the "Forgot your recovery code?" Help link (`a7ac1c07`) ported 2026-11-04, see §9; the Help article itself names only the Mac. |
 | Crash feedback ("Phi quit unexpectedly") on next launch | `docs/crash-feedback.md` | Crashpad → Sentry, no prompt | 🔧 | Needs the last-run status from Crashpad and the existing Send feedback form with the crash id. |
 | Send feedback: files, pasted images, diagnostics, outbox | 10 × 20 MiB, Sentinel logs | 5 × 10 MB, week-long outbox | ✅ | Sentinel logs are ⛔ AI suite. |
+| Sync problem telemetry (Mac `9921ac9a`, 2026-11-03): `sync_attention_entered` / `_snapshot` / `_cleared`, held counts by reason, sync counts in the launch snapshot, sync keys in feedback | PostHog, Sentry and feedback, enum values and counts only (Mac `docs/sync.md`, "Sync status contract") | none: Needs attention reaches the Sync pane only, `user_defaults_snapshot` has no sync fields, and the client has no path for a Sentry event (Crashpad only) | 🔧 | Recommended 2026-11-03 in two parts, see §9. `analytics.md` "Not ported" does not list these events yet. |
 | Account deletion local data removal | yes | none | 🔧 | With the Delete account row above. |
 | Membership card: holographic foil card with member ID (SHA-256(sub)[0:8]), "Date Joined", random style + PNG export, on the onboarding Welcome page and Settings ▸ You (Mac `6b300dc0`, `cda12eaf`, 2026-10-20/26) | `HolographicCardView` | `PhiHolographicCard` (`client/phi_holographic_card.cc`): the same layer stack composed in software — palette base + iridescence + radial, one of 6 procedural foil textures, seeded grain, logo + sweep, one of 6 seal ornaments, sheen, edge; pointer light + tilt, entrance spin, flat PNG export at 2× on the accent canvas | ◐ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round K); the Mac has moved since, see the end of this row. Foil / grain / seal masks are rasterised once per style and size with GDI+ on a worker and cached as PNG under `<user data>\PhiCardArtwork\v1`; the light-driven layers recompose per frame. Member id from `auth().user().sub`, join month from the profile's `created_at`, style in the account defaults under the Mac's `profileCardStyle` key (the Settings card keeps its own palette since 2026-11-02, `40ede7a7`). The conch frame sets (12.5 MB) are gone. Not ported: the Mac's `.random()` seeding details (both are uniform), IvyPresto Headline Light now ships for the name. Mac 2026-10-27/29 follow-ups ported 2026-11-02 (`92816ab6`, `40ede7a7`, `ba180400`, `1cf61180`, `8fb61ef5`): no radial highlight, a dark logo at rest, no printed member ID, no shadow in Settings, a style saved as soon as it is randomized. |
 
@@ -190,19 +195,21 @@ Two standing decisions cover many rows and are not repeated in full:
 | Folio: Save to Folio, Open Folio, auto-save on site actions, Add Note | yes | yes | ✅ | `folio-port.md`. |
 | Folio library | Mirage `library.html` — the Mac DELETED its native library 2026-10-19 (`45a10144`; `docs/folio-native-library.md` now says the extension page is the only Folio UI) | Mirage `library.html` (`PhiFolio::OpenLibrary`) | ✅ | The 2026-10-19 "implement the native library" decision is void: both sides open `library.html`. The Library surface's Folio section (§2) hosts the same page. |
 
-## 7. Summary (2026-11-02)
+## 7. Summary (2026-11-03)
 
 | Status | Rows |
 |---|---|
 | ✅ ported | 58 |
 | ◐ partial | 22 |
-| 🔧 to implement | 24 |
+| 🔧 to implement | 29 |
 | ⛔ deliberately left | 19 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
 
 **The 🔧 list, roughly by user impact:** Mini Player / media controls ·
-content blocking switches · multi-selection · Bitwarden Settings rows and standing grants ·
+content blocking switches · multi-selection · Clear All Tabs with Undo ·
+Space bookmark root · positional tab closing · double-click to close ·
+Bitwarden Settings rows and standing grants ·
 Time Machine-style snapshots + restore · crash feedback prompt · image
 preview · Arc/Zen migration wizard · Share · Capture Full Page ·
 Export/Import user data · account export + deletion · invitation code
@@ -211,7 +218,8 @@ external-link hook (Kiosk preference, App rules, return to the sending
 app) · `agentSpace.app.info` · tab audio indicator ·
 bookmark Separate/Back-to-saved ·
 What's new / Documentation / Improve
-translations rows · Export logs / Extension info rows · settings deeplink.
+translations rows · Export logs / Extension info rows · settings deeplink ·
+sync problem telemetry.
 
 **Decided 2026-10-19:** the five rows that were ❓ in the first pass
 (Library, Time Machine snapshots, native Folio library, Arc/Zen wizard,
@@ -289,6 +297,178 @@ it, pointing at the owning doc.
 ## 9. Triage log
 
 One table per pass, newest first. Commits are in Mac history order.
+
+### 2026-11-03 — phibrowser-mac `8c0b8596` → `597d76b5` (33 commits, no merges)
+
+**Port recommendations this pass (16 commits in 10 ports), in order of user
+impact. Ports 1, 2, 8, 9 and 10 done 2026-11-04, see Results below; ports 3 to 7
+not started.** Effort is an estimate: S under half a day, M about a
+day, L several days with box time.
+
+1. `c3149697` **what the agent Spaces switch allows.** S, one decision. The
+   Mac's description now tells users the switch also covers driving their
+   windows over CDP, invisible shadow windows that can use a profile's logins,
+   and credential requests. The Windows gate is narrower. `PhiCapability` puts
+   shadow windows under `kAgentSpace`, admission always grants the credential
+   capabilities, and the switch adds only `kUserSpaceRead` and `kUserSpaceWrite`.
+   It is off by default on purpose (`phi_app_model.h`; `user-data-parity.md`
+   still says true). So with the switch off, an admitted agent can open a hidden
+   window in any profile "Profiles agents can use" allows, while the Windows
+   skill's `references/lifecycle.md` says every shadow call fails
+   `user_space_operations_disabled`. From the code; not run. **Decide:** gate
+   `agentSpace.shadow.*` behind the switch (recommended: it is what the skill
+   promises, and the window is the part a user cannot see), or keep the gate and
+   correct the skill. Credentials need their own answer, because gating them
+   with the default off would stop fills for everyone who has not opted in.
+   Either way rewrite `settings.developer.agentBrowsingDataAccess.descriptionWindows`
+   in every locale. The Mac's text does not fit as it stands ("On by default").
+2. `a7ac1c07` **recovery code warning and Help link.** S. In
+   `PhiSyncSetupWindow`, add the loss warning to `Page::kShowingCode` and the
+   "Forgot your recovery code?" link to `Page::kEnterCode` (not the confirmation
+   page). The Mac's warning says "no Mac", so it needs a `…Windows` key. The
+   Safari fallback has no twin: nothing in that window is modal, so a default
+   browser or a Phi tab can show the article. Whether the Help article reads
+   correctly for Windows was not checked.
+3. `b47255d6` **positional tab closing.** M. New rows after `tab.closeOthers` in
+   `PhiBuildTabRowMenu` and after `group.close` in `PhiBuildGroupHeaderMenu`,
+   with actions beside `tab.closeOthers` in `phi_shell_window.cc` (the same
+   collect-ids-then-`CloseTabById` loop). Left / right in Horizontal, above /
+   below in Vertical. Take the Mac's rules: strip order including collapsed
+   members, a split as one unit, a whole group as the anchor, bound tabs excluded.
+   Toggle in `BuildAdvanced`, on by default; the Mac does not sync it.
+4. `9897f718` **double-click to close.** S. Toggle in `BuildAdvanced`, off by
+   default; the Mac does not sync it. In the shell's `WM_LBUTTONDBLCLK`, after
+   group headers, an unmodified second press on an ordinary row, pane or strip
+   cell closes that tab, refused while an agent owns the Space. The message
+   arrives on the press where the Mac acts on release with a 5 pt drag guard, so
+   the port has to decide against a drag starting from that press. Shares its
+   Advanced card with 3; land them together.
+5. `06bee451` + `af8702c3` + `ea18f661` **Clear All Tabs with Undo.** L, two
+   decisions. A new `kCmdClearAllTabs`, a ⋯ row and a `kRebindableShortcuts` row
+   at Ctrl+Shift+K (free in that table and in Chromium's accelerator table).
+   Port `ea18f661`'s batch restore, not the one-tab-at-a-time version it replaced:
+   export `TabsProxy::RestoreTabs` through `phi_framework_api.h`, and record only
+   removals Chromium confirms, since a page's beforeunload can refuse. **Decide
+   how Undo is reached:** `kCmdUndo` serves only the address field, and Ctrl+Z
+   with the page focused goes to the page; the Mac's route depends on knowing
+   whether a text input has the keyboard, which Windows would need from the
+   framework. Recommended: an Undo button on the toast
+   (`PhiShowToastWithAction`, as Folio does), with Ctrl+Z as a later addition.
+   **Decide on the sidebar button:** Windows has no separator row (the Tabs label
+   parts the outline from the list) and no Lottie. Recommended: menu and shortcut
+   first, no sidebar button.
+6. `705af790` + `b457988a` + `2a0a49c2` + `0372e721` + `05a47d22` **Space bookmark
+   root.** M without the floating row, L with it. A header row in the bookmark
+   outline with paint, hit, keyboard ring and UIA, `bookmark_row_count` in the
+   layout, drops in `phi_sidebar_drop`, a local per-Space collapsed list, primary
+   text at 55 % (`05a47d22`). No reconciling between sidebars: one `sidebar_`
+   paints both. `b457988a` costs nothing, since a second press already reaches
+   `OnChromeClick`. **Decide what a collapsed root shows for a focused bookmark:**
+   the Mac floats it under the root; Windows folders carry `contains_active` up
+   instead. Recommended: reuse `contains_active`. This adds a row to every user's
+   sidebar on update, so it is worth a look at the design first.
+7. `9921ac9a` **sync problem telemetry.** M for the launch snapshot counts and the
+   feedback keys (`PhiUserDefaultsSnapshotProperties`, `extra` in
+   `phi_feedback_outbox.cc`). L for the reporter, which needs park reasons on
+   `ParkedOwnedItem` and the Mac's debounce, grace and dedupe rules. The Sentry half
+   has no client path and is left out unless asked. `analytics.md` "Not ported" was
+   not updated in this pass.
+8. `8ec42e42` **wider sidebar resize band.** S. `InSidebarResizeBand` is 4 dip,
+   all of it on the sidebar side because the page's HWND starts at the edge. Widen
+   it to `kEdgeInset` (8 dip), where the rows stop. The AI Chat half is ⛔.
+9. `da5da806` **hand cursor over the consent links.** S. `PhiOnboardingWindow` has
+   no `WM_SETCURSOR`, so text is already the arrow but `kPrivacyLink` and
+   `kTermsLink` are too. `phi_settings_window.cc` has the pattern.
+10. `52d90d69` **catalog regen.** S, with any of the above. Of the 23 keys it
+    changed, two are used on Windows today and English-only in `strings.json`
+    (`profile.card.accessibilitySummary` and `…WithoutDate`, the card's screen
+    reader name), so the regen helps on its own. The rest arrive with their ports
+    or have no Windows use.
+
+**Results 2026-11-04, on nuc at 300 %, on top of `44bc928`.** Client only, on fork
+`3808182ec8b`.
+
+- **Port 1.** `agentSpace.shadow.create`, `.openTab`, `.ping` and `.list` now need
+  the switch (`kVerbRequiredOnTask`: a task-scoped verb otherwise costs only
+  `kAgentSpace`). `.close` never does, so an agent can always clean up. Both
+  directions ran on the plain client, with the agent Space, Space and profile
+  names, and `credentials.status` as controls. **Differs from the Mac on purpose:**
+  turning the switch off closes every open shadow window at once, where the Mac
+  lets them finish, and turning off "Allow agents to control Phi" does the same.
+  A window that lands after the switch went off is refused on arrival. That race
+  was not hit in 36 tries on nuc, so the branch was run with a temporary forcing
+  line, since removed. Also fixed: `shadow.list {}`, which is what
+  `listShadowWindows()` sends, answered `scope_not_allowed` whatever the switch
+  said, so that helper had never worked on Windows.
+- **Port 2.** The warning reads "no other device"; the link is on `Page::kEnterCode`
+  only. Run against staging with a throwaway account, as two profiles: first device
+  in German, entry page in English and German. The link opens
+  `/help/sync/#forgot-your-recovery-code` and `/help/de/sync/#…`, moves down under a
+  wrong-code error, and leaves the setup window usable. `pt-BR` gets the English
+  article, because the Help Center has no `pt-BR` page. The article's steps exist on
+  Windows but it names only the Mac ("Keep at least one Mac set up for sync").
+- **Port 8.** The band is `kEdgeInset`, starting where the rows stop; Comfortable has
+  none. Widening it made the edge jump to the pointer by up to 8 dip when a drag
+  started, so the drag now keeps the grab offset.
+- **Port 9.** A hand over both links on the guest consent page and Next steps, the
+  arrow elsewhere.
+- **Port 10.** The membership card's two reader keys gained 8 locales; nothing else
+  in the catalog moved.
+- **Regression:** `suite-agent` 10/10 and `suite-contract` 5/5 on the dev-hooks build.
+
+**Not tested in that run.** nuc has no mouse, so cursors were read from Phi's input
+queue, never seen on screen. A credential fill or reveal with the switch off (only
+`credentials.status` was run), an incognito shadow window closing, production, and
+the full suite sweep. The new translations of the description and the warning are
+not from the translation repository. On screen: the description in English, German
+and Simplified Chinese, the warning in German.
+
+**How this was checked.** Every diff was read, and each Windows twin in `client/`
+and the fork at `3808182ec8b`. Nothing was built or run on a box for the triage, so
+every Windows claim in the ranked list above is from the code. `phi/phi-r156` has
+moved to `3d820951226` since; that range was not read.
+
+**Coverage.** The table has all 33 commits, matching `--table`. The script's grouped
+form prints 31: its groups match known subject prefixes, so `a7ac1c07` (no prefix)
+and `52d90d69` (`i18n:`) appear in no group. `release/2.16.0` holds four commits not
+on `dev` by hash: three are copies of `c7972bc1`, `da5da806` and `597d76b5` by patch
+id, and `e24c450a` is the Private AI row `9070b049` reverted on `dev` (⛔ AI suite).
+
+| Mac commit | Subject | Verdict | Windows action / reason |
+|---|---|---|---|
+| `9897f718` | feat: add optional double-click tab closing | port | Port 4. New §2 row. |
+| `b47255d6` | feat: add native positional tab closing | port | Port 3. New §2 row. |
+| `5397c931` | fix: show the peek's URL in the performance sidebar address bar | skip | That address bar belongs to the Performance layout, removed on Windows (§1). The Windows field already follows a presented Peek (§3 Peek row). |
+| `c3149697` | fix: tell users everything the agent Spaces permission allows and correct the skill's Settings paths | done | Port 1, 2026-11-04. The skill-path half has no twin: the Windows `install.md` is its own text and already names Settings ▸ Developer ▸ Agent control. |
+| `8c1bc1fe` | fix: leave shell fullscreen when a page exits during the enter | skip | The Mac holds the exit for AppKit's asynchronous transition. `PhiBrowserHost::SetShellFullscreen` is borderless and synchronous, called straight from `OnHostedWindowFullscreen`, so there is no settle to wait for. |
+| `93a8f43c` | docs: add the popup-over-fullscreen-shell row to the hosted-shell regression matrix (#277) | skip | Docs for macOS fullscreen Spaces and auxiliary windows. The Windows shell is a borderless window with no Space to switch away from. Whether a popup stays above the shell when the shell is clicked was not checked. |
+| `e2941d32` | fix: keep the web view in the window for content fullscreen (PHI-1862) | skip | AppKit's pointer tracking and first responder. `PhiBrowserHost::OnContentFullscreenChanged` sets a flag and relayouts; nothing is reparented. |
+| `344d30c8` | fix: keep sidebar folder toggles in step with fast clicks | skip | NSOutlineView's `doubleAction` and the Lottie icon. A second press already goes to `OnChromeClick`, which toggles the folder, and Windows folder icons do not animate. |
+| `c4d5ce52` | fix: keep bookmark folder expansion in sync between floating and main sidebars | skip | The Mac has two outlines. Windows has one `sidebar_` and one `expanded_bookmarks_`, painted on both surfaces. |
+| `1aff6a83` | fix: keep a collapsed folder closed when its selected bookmark floats | skip | Windows never expands a folder for focus and has no floating proxy: a collapsed folder shows `contains_active` (`phi_sidebar_model.cc`). |
+| `44d93b39` | fix: keep a nested folder collapsed after its parent is re-expanded | skip | NSOutlineView's remembered expansion. `PhiVisibleOutlineRows` derives the rows from one set per guid, so a nested folder keeps its own state. |
+| `06bee451` | feat: add undoable background tab cleanup | port | Port 5. New §2 row. The organize half of the separator button is ⛔ AI suite. |
+| `705af790` | feat: group Space bookmarks under a collapsible root folder in the sidebar | port | Port 6. New §2 row. |
+| `8ec42e42` | fix: widen the drag area of the hidden sidebar and AI chat dividers | done | Port 8, 2026-11-04. |
+| `b457988a` | fix: keep the Space root toggling on fast repeated clicks | port | Part of port 6, at no extra cost. |
+| `2a0a49c2` | fix: remember the Space bookmark root's collapsed state across relaunch | port | Part of port 6. The Mac's list is a local default, not synced. |
+| `af8702c3` | feat: show an undo hint after clearing tabs | port | Part of port 5. `PhiShowToast` is top-centre with no keycap style, so the hint is plain text or the Undo button. |
+| `ea18f661` | fix: keep tab order steady when undoing Clear All Tabs | port | Part of port 5: start from this version. Fork half is `dcaee2a5f2c`, Mac bridge only. |
+| `88a34caa` | fix: leave the keyboard with a page that already has it | skip | NSWindow first responder. Windows has no refocus retry on URL ready and `OnContentFullscreenChanged` does not refocus; `FocusBrowserWindow` only drives aura activation. |
+| `55745b35` | test: cover the focus retry for a page that has no URL yet | skip | Mac tests for the `88a34caa` path. |
+| `9921ac9a` | feat: sync needs-attention telemetry and launch snapshot sync counts (#279) | port | Port 7. New §5 row. |
+| `971066ad` | fix: keep the focused pane in the window when a split collapses | skip | AppKit view removal. Windows panes live in the fork's `MultiContentsView` inside one hosted HWND (`split-view-chrome.md`), and the client moves no view when a split ends. Whether the surviving pane keeps the keyboard was not checked. |
+| `a7ac1c07` | Warn about losing the recovery code and link Help from the recovery code entry page (#278) | done | Port 2, 2026-11-04. §5 Sync keys row updated. |
+| `52d90d69` | i18n: positional tab closing, tab cleanup, VoiceOver descriptions and the agent browsing data setting in 8 locales | done | Port 10, 2026-11-04. |
+| `05a47d22` | fix: keep sidebar labels and icons consistent across space themes | port | Part of port 6: the colour for the root row, and for a clear button if port 5 adds one. No other Windows surface uses it. |
+| `848024c8` | chore: log stale sidebar theme bindings in debug and nightly builds | skip | Debug logging for AppKit `ThemedHostingView` bindings; no twin. |
+| `0372e721` | feat: highlight the Space root on drag and drop items at its top | port | Part of port 6, in `phi_sidebar_drop`. |
+| `830fecf2` | docs: extend the popup-over-fullscreen-shell regression row | skip | Same docs row as `93a8f43c`. |
+| `cdb13bf2` | docs: note that a popup placed on another display stays off the fullscreen shell | skip | Same docs row. |
+| `9c925fc3` | docs: note that a floating popup only enters fullscreen through Chromium | skip | Same docs row; AppKit's `toggleFullScreen:` on an auxiliary window. |
+| `c7972bc1` | fix: crossfade the sidebar's navigation gradient through a Space switch instead of dropping it | skip | `LerpPalette` (`phi_spaces_strip.cc`) already ramps every `ground_stops` entry, a flat side as a flat gradient. One small difference: a two-colour side pads as a, b, b where the Mac uses a, middle, b, so a switch to a three-colour palette may start with a small step. Not seen on a box; not worth a port alone. |
+| `da5da806` | fix: show the arrow cursor over Next steps consent text and a hand over its links | done | Port 9, 2026-11-04, the hand only. |
+| `597d76b5` | fix: let Tab reach OOBE footer buttons and follow the Keyboard navigation setting | skip | `MoveKeyboardFocus` already walks every enabled control including Back and Next and skips `kCard`; Space and Enter activate; Up and Down move the layout choice. Keyboard navigation is a macOS setting, and the password manager page is skipped on Windows. |
 
 ### 2026-11-02 — phibrowser-mac `f7d850a3` → `8c0b8596` (66 commits; release/2.15.0 merged into main and dev)
 
