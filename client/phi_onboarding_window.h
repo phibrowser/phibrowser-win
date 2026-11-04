@@ -212,6 +212,10 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   // The design page in client px: scrolled, or bottom-anchored (`footer`).
   RECT PageRect(bool footer) const;
   int FooterSplit() const;  // Client y where the footer begins.
+  // The controls ContentDip anchors in the footer; the rest scroll.
+  static bool IsFooterControl(Control control);
+  // Where `control` can show on a split page: the footer or the viewport.
+  RECT SplitRegion(Control control) const;
   void ScrollTo(int px);
   // Back to the design size, cut to the work area, laid out again (a DPI,
   // display or taskbar change).

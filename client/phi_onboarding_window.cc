@@ -594,6 +594,21 @@ int PhiOnboardingWindow::FooterSplit() const {
   return PageRect(/*footer=*/true).top + Scaled(FooterTopDip());
 }
 
+// static
+bool PhiOnboardingWindow::IsFooterControl(Control control) {
+  return control == Control::kNext || control == Control::kBack ||
+         control == Control::kSignInInstead || control == Control::kSignIn ||
+         control == Control::kContinueAsGuest;
+}
+
+RECT PhiOnboardingWindow::SplitRegion(Control control) const {
+  const RECT content = ContentRect();
+  const int split = FooterSplit();
+  const bool footer = IsFooterControl(control);
+  return RECT{content.left, footer ? split : content.top, content.right,
+              footer ? content.bottom : split};
+}
+
 void PhiOnboardingWindow::ScrollTo(int px) {
   const int next = std::clamp(px, 0, MaxScroll());
   if (next == scroll_) {
@@ -637,15 +652,7 @@ void PhiOnboardingWindow::AddControl(Control control, int key,
   // anchors (their tops all sit below FooterTopDip()).
   RECT reach = bounds;
   if (MaxScroll() > 0) {
-    const RECT content = ContentRect();
-    const int split = FooterSplit();
-    const bool footer = control == Control::kNext ||
-                        control == Control::kBack ||
-                        control == Control::kSignInInstead ||
-                        control == Control::kSignIn ||
-                        control == Control::kContinueAsGuest;
-    const RECT region = {content.left, footer ? split : content.top,
-                         content.right, footer ? content.bottom : split};
+    const RECT region = SplitRegion(control);
     if (!::IntersectRect(&reach, &bounds, &region)) {
       reach = RECT{};
     }
@@ -1072,9 +1079,18 @@ void PhiOnboardingWindow::Paint(HDC dc, const RECT&) {
     PhiFillCapsuleAA(dc, thumb, RGB(0x8A, 0x8A, 0x8A));
   }
   if (kb_focus_ >= 0 && kb_focus_ < static_cast<int>(hits_.size())) {
-    RECT ring = hits_[static_cast<size_t>(kb_focus_)].bounds;
+    const Hit& focused = hits_[static_cast<size_t>(kb_focus_)];
+    RECT ring = focused.bounds;
     ::InflateRect(&ring, Scaled(3), Scaled(3));
+    // A row the wheel moved under the footer keeps its ring out of the footer.
+    const int saved = ::SaveDC(dc);
+    if (MaxScroll() > 0) {
+      const RECT region = SplitRegion(focused.control);
+      ::IntersectClipRect(dc, region.left, region.top, region.right,
+                          region.bottom);
+    }
     PhiStrokeRoundRectAA(dc, ring, Scaled(6), RGB(255, 255, 255), Scaled(2));
+    ::RestoreDC(dc, saved);
   }
   PaintBand(dc);
 }
@@ -1741,8 +1757,9 @@ void PhiOnboardingWindow::MoveKeyboardFocus(bool backward) {
   }
   ::SetFocus(hwnd());
   // A split page brings a control under the footer or above the top into view.
-  const RECT bounds = hits_[static_cast<size_t>(kb_focus_)].bounds;
-  if (MaxScroll() > 0 && bounds.top < FooterSplit()) {
+  const Hit& focused = hits_[static_cast<size_t>(kb_focus_)];
+  const RECT bounds = focused.bounds;
+  if (MaxScroll() > 0 && !IsFooterControl(focused.control)) {
     const RECT content = ContentRect();
     if (bounds.bottom > FooterSplit()) {
       ScrollTo(scroll_ + bounds.bottom - FooterSplit() + Scaled(8));
