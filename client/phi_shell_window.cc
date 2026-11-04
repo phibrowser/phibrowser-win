@@ -1370,6 +1370,7 @@ PhiShellWindow::~PhiShellWindow() {
   // Owned components and popups go BEFORE the shell: their teardown calls
   // back into a controller that is still whole, rather than running as a
   // side effect of the shell's DestroyWindow on one that is half gone.
+  omnibox_->HideFloating(/*focus_content=*/false);
   tab_preview_.reset();
   sidebar_.reset();
   native_pages_->Shutdown();
