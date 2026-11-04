@@ -36,6 +36,9 @@ struct PhiFeedbackDraft {
   std::string page_title;
   // Phi's own extensions, name -> version (the Mac's phiExtensionVersions).
   std::map<std::string, std::string> extension_versions;
+  // The sync status keys frozen at Send (the Mac's syncStatusMetadata): enum
+  // raw values only.
+  std::map<std::string, std::string> sync_status;
   // Chromium's scrubbed system logs, when the framework produced them.
   std::optional<std::string> chromium_system_logs;
   std::vector<PhiFeedbackDraftAttachment> attachments;

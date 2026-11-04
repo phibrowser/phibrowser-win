@@ -426,6 +426,12 @@ class ProfileKeyManager {
   ~ProfileKeyManager();
 
   std::optional<std::string> MappedGlobalUuid(const std::string& profile_id) const;
+  // Telemetry only (the launch snapshot's counts): the account's Profile uuids
+  // from every listing, and the default flag of every envelope this manager
+  // opens or writes, a missing flag as false. Never consulted by sync logic.
+  void SetTelemetryObservers(
+      std::function<void(const std::set<std::string>&)> on_listing,
+      std::function<void(const std::string&, bool)> on_default_flag);
   // Mint a uuid + key for a local profile; a 409 adopts the winner.
   // kAlreadyMapped when the profile still has a live server record.
   // `is_default`: the local is this device's Default, so its envelope
@@ -484,6 +490,9 @@ class ProfileKeyManager {
                           std::optional<bool>* is_default = nullptr);
 
  private:
+  void NoteDefaultFlag(const std::string& uuid, bool is_default);
+  std::function<void(const std::set<std::string>&)> on_listing_;
+  std::function<void(const std::string&, bool)> on_default_flag_;
   bool SetMapping(const std::string& profile_id, const std::string& uuid);
 
   RAW_PTR_EXCLUSION KeyApi& api_;

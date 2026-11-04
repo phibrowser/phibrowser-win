@@ -232,6 +232,28 @@ bool PhiProfileService::DeleteProfileById(const std::string& profile_id) {
   return true;
 }
 
+PhiProfileService::SyncStatusRows PhiProfileService::SyncStatus(
+    std::optional<sync::ContextStatus> native) const {
+  SyncStatusRows out;
+  const std::vector<PhiProfileSummary> profiles = Profiles();
+  if (!profiles.empty()) {
+    out.required.insert("phi");
+    out.rows.push_back("phi");
+  }
+  if (native) {
+    out.contexts.push_back(*native);
+  }
+  for (const PhiProfileSummary& profile : profiles) {
+    if (std::optional<sync::ContextStatus> status =
+            ProfileSyncStatus(profile.id)) {
+      out.required.insert(profile.id);
+      out.rows.push_back(profile.id);
+      out.contexts.push_back(*status);
+    }
+  }
+  return out;
+}
+
 std::optional<sync::ContextStatus> PhiProfileService::ProfileSyncStatus(
     const std::string& profile_id,
     std::vector<std::string>* categories) const {

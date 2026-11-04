@@ -828,38 +828,13 @@ void PhiSettingsWindow::BuildSyncStatus(int* y) {
     return;
   }
   const PhiSyncKeyService::Snapshot& snap = keys->snapshot();
-  std::vector<sync::ContextStatus> contexts;
-  std::set<std::string> required;
-  // "Phi data" first, then the profiles in the framework's order. A profile
-  // that is not loaded has no running sync to report and is left out (the
-  // Mac lists every profile; Windows loads them lazily, and the status
-  // query must never load one).
-  std::vector<std::string> rows;
+  const PhiProfileService::SyncStatusRows status =
+      profiles_->SyncStatus(snap.NativeContext());
+  const std::vector<std::string>& rows = status.rows;
+  const std::vector<sync::ContextStatus>& contexts = status.contexts;
   const std::vector<PhiProfileSummary> profiles = profiles_->Profiles();
-  if (!profiles.empty()) {
-    required.insert("phi");
-    rows.push_back("phi");
-  }
-  if (snap.native_sync_active) {
-    sync::ContextStatus native;
-    native.id = "phi";
-    native.phase = sync::ContextPhaseFromName(
-                       sync::SyncPhaseName(snap.native_sync_status.phase))
-                       .value_or(sync::SummaryPhase::kChecking);
-    native.last_success_ms = snap.native_sync_status.last_success_ms;
-    native.revision = snap.native_sync_status.revision;
-    contexts.push_back(native);
-  }
-  for (const PhiProfileSummary& profile : profiles) {
-    if (std::optional<sync::ContextStatus> status =
-            profiles_->ProfileSyncStatus(profile.id)) {
-      required.insert(profile.id);
-      rows.push_back(profile.id);
-      contexts.push_back(*status);
-    }
-  }
   const sync::StatusSummary summary =
-      sync::ReduceStatus(snap.paired, required, contexts);
+      sync::ReduceStatus(snap.paired, status.required, contexts);
 
   std::wstring hint;
   if (summary.last_success_ms) {

@@ -293,6 +293,10 @@ bool PhiAccountAndFeedback::FetchFeedbackSystemLogs(int64_t window_id,
          framework_->FetchFeedbackSystemLogs(window_id, request_id);
 }
 
+std::map<std::string, std::string> PhiAccountAndFeedback::FeedbackSyncStatus() {
+  return {{"sync_phase", host_.SyncSummaryPhaseName()}};
+}
+
 std::map<std::string, std::string> PhiAccountAndFeedback::PhiExtensionVersions(
     int64_t window_id) {
   std::map<std::string, std::string> versions;

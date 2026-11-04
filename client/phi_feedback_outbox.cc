@@ -611,6 +611,9 @@ base::DictValue MakeMetadata(const std::string& job_id,
   extra.Set("build_number", chromium);
   extra.Set("model_identifier", ModelIdentifier());
   extra.Set("os_version", OsVersionString());
+  for (const auto& [key, value] : draft.sync_status) {
+    extra.Set(key, value);
+  }
 
   base::DictValue metadata;
   metadata.Set("browser", std::move(browser));

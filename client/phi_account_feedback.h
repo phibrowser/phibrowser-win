@@ -54,6 +54,8 @@ class PhiAccountAndFeedback : public PhiFeedbackHost {
     virtual void FocusWindowForBrowser(int64_t browser_window_id) = 0;
     // The session or profile state moved: the Account pane re-reads it.
     virtual void NoteAccountChanged() = 0;
+    // sync_phase for a feedback report: the summary the Sync pane shows.
+    virtual std::string SyncSummaryPhaseName() const = 0;
     // The client's one analytics capture path (phi_client_analytics.h):
     // the harness ring, then the collector's consent gate and allow-list.
     virtual void CaptureAnalytics(const char* module,
@@ -149,6 +151,7 @@ class PhiAccountAndFeedback : public PhiFeedbackHost {
   void RequestFeedbackSignIn() override;
   void OpenFeedbackLink(int64_t window_id, const std::string& url) override;
   bool FetchFeedbackSystemLogs(int64_t window_id, int request_id) override;
+  std::map<std::string, std::string> FeedbackSyncStatus() override;
   std::map<std::string, std::string> PhiExtensionVersions(
       int64_t window_id) override;
 

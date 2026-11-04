@@ -14,6 +14,8 @@
 #include <vector>
 
 #include "phibrowser-win/client/phi_sync_engine.h"
+#include "phibrowser-win/client/phi_sync_launch_metrics.h"
+#include "phibrowser-win/client/phi_sync_status.h"
 #include "phibrowser-win/client/phi_sync_keys.h"
 #include "phibrowser-win/client/phi_sync_owned_win.h"
 
@@ -69,6 +71,20 @@ class PhiSyncKeyService {
     bool native_sync_spaces_enabled = false;
     sync::SpaceRoundCounters native_sync_spaces;
     std::map<std::string, sync::OwnedRoundCounters> native_sync_owned;
+    // The status card's "Phi data" context; nullopt while the engine is off.
+    std::optional<sync::ContextStatus> NativeContext() const {
+      if (!native_sync_active) {
+        return std::nullopt;
+      }
+      sync::ContextStatus native;
+      native.id = "phi";
+      native.phase = sync::ContextPhaseFromName(
+                         sync::SyncPhaseName(native_sync_status.phase))
+                         .value_or(sync::SummaryPhase::kChecking);
+      native.last_success_ms = native_sync_status.last_success_ms;
+      native.revision = native_sync_status.revision;
+      return native;
+    }
   };
 
   // Where Phi native sync keeps its state, and the settings it syncs.
@@ -104,6 +120,8 @@ class PhiSyncKeyService {
                        std::function<void(const std::string&)> done)>
         create_profile;
     std::function<void(std::set<std::string>)> set_hidden_spaces;
+    // The launch snapshot's mirror; outlives the service.
+    RAW_PTR_EXCLUSION sync::PhiSyncLaunchMetrics* launch_metrics = nullptr;
     // The owned kinds (bookmarks, pins): their cursor tables and the store.
     std::wstring bookmarks_table_path;  // <account dir>\sync\bookmarks-cursors.json
     std::wstring pins_table_path;       // <account dir>\sync\pins-cursors.json

@@ -23,6 +23,7 @@
 #include "phibrowser-win/client/phi_agent_space_manager.h"
 #include "phibrowser-win/client/phi_chromium_sync.h"
 #include "phibrowser-win/client/phi_sync_key_service.h"
+#include "phibrowser-win/client/phi_sync_launch_metrics.h"
 #include "phibrowser-win/client/phi_import_window.h"
 #include "phibrowser-win/client/phi_sync_setup_window.h"
 #include "phibrowser-win/client/phi_control_server.h"
@@ -1063,6 +1064,8 @@ class PhiCoordinator : public SidebarHost,
   // adopted before its first push and after a mutation whose result is
   // needed on the spot.
   PhiWindowModel window_model_;
+  // The launch snapshot's sync fields, mirrored by the key service.
+  sync::PhiSyncLaunchMetrics sync_launch_metrics_;
   // Clear All Tabs: each browser's latest cleanup, for its toast's Undo.
   std::map<int64_t, PhiClearedTabsBatch> cleared_tabs_;
   uint64_t cleared_tabs_serial_ = 0;
@@ -1178,6 +1181,7 @@ class PhiCoordinator : public SidebarHost,
   void OpenUrlInFirstUserSlot(const std::string& url) override;
   void OpenHostedLogin(const std::string& url) override;
   void NoteAccountChanged() override;
+  std::string SyncSummaryPhaseName() const override;
   // The shared store-tab/split bodies behind the menu (append, bookmark
   // unbound) and drag (placed + bound) entry points.
   // One cell from live tab(s), by STABLE id: a single (tab_b 0) or a split

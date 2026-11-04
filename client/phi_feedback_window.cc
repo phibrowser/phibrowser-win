@@ -1887,6 +1887,7 @@ void PhiFeedbackWindow::CompleteSend(const char* logs) {
   draft.page_url = UrlText();
   draft.page_title = PageTitleForReport();
   draft.extension_versions = host_->PhiExtensionVersions(context_.window_id);
+  draft.sync_status = host_->FeedbackSyncStatus();
   if (logs) {
     draft.chromium_system_logs = std::string(logs);
   }

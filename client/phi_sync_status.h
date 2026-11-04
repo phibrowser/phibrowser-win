@@ -43,6 +43,27 @@ inline std::optional<SummaryPhase> ContextPhaseFromName(const std::string& n) {
   return std::nullopt;
 }
 
+// The Mac's SyncSummaryPhase raw values, which feedback reports.
+inline const char* SummaryPhaseName(SummaryPhase phase) {
+  switch (phase) {
+    case SummaryPhase::kNotStarted:
+      return "notStarted";
+    case SummaryPhase::kChecking:
+      return "checking";
+    case SummaryPhase::kInitialSync:
+      return "initialSync";
+    case SummaryPhase::kSyncing:
+      return "syncing";
+    case SummaryPhase::kUpToDate:
+      return "upToDate";
+    case SummaryPhase::kOffline:
+      return "offline";
+    case SummaryPhase::kNeedsAttention:
+      return "needsAttention";
+  }
+  return "notStarted";
+}
+
 // SyncContextSnapshot.
 struct ContextStatus {
   std::string id;  // "phi" or a Chromium profile id

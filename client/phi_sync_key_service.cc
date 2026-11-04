@@ -152,6 +152,18 @@ struct PhiSyncKeyService::Worker {
         stream_subject(subject) {
     core.set_warning_sink(
         [](const std::string& line) { LOG(WARNING) << line; });
+    if (config.launch_metrics) {
+      sync::PhiSyncLaunchMetrics* metrics = config.launch_metrics;
+      metrics_epoch = metrics->epoch();
+      profiles.SetTelemetryObservers(
+          [this, metrics](const std::set<std::string>& uuids) {
+            metrics_listing = uuids;
+            metrics->RecordAccountProfiles(metrics_epoch, uuids);
+          },
+          [this, metrics](const std::string& uuid, bool is_default) {
+            metrics->RecordDefaultFlag(metrics_epoch, uuid, is_default);
+          });
+    }
   }
 
   // Runs `work` on the UI thread and waits (up to 10 s). The closure owns
@@ -541,6 +553,12 @@ struct PhiSyncKeyService::Worker {
     cleanup_pending = false;
     removal_pending = false;
     unlock = Unlock::kNeedsJoin;
+    if (config.launch_metrics) {
+      config.launch_metrics->Reset();
+      metrics_listing.clear();
+      metrics_unreadable.clear();
+      metrics_devices_listed = false;
+    }
     if (config.set_hidden_spaces) {
       RunOnUiAndWait([apply = config.set_hidden_spaces] { apply({}); });
     }
@@ -662,6 +680,46 @@ struct PhiSyncKeyService::Worker {
         host.landed();
       }
     });
+  }
+
+  // Worker thread. Fills the launch snapshot's mirror after a paired pass that
+  // has listed the account's Profiles: a few envelope reads for flags never
+  // read, and one device listing per service. Failures are silent and later
+  // passes retry. Nothing here feeds sync decisions.
+  void RefreshLaunchMetrics() {
+    sync::PhiSyncLaunchMetrics* metrics = config.launch_metrics;
+    if (!metrics || retired || !core.IsPaired() || !manager.current_ark()) {
+      return;
+    }
+    for (const std::string& uuid : metrics->UuidsNeedingDefaultFlag(
+             metrics_listing, metrics_unreadable)) {
+      keys::RemoteProfile remote;
+      if (retired || !profiles.Remote(uuid, &remote).ok()) {
+        return;
+      }
+      if (!remote.name) {
+        metrics_unreadable.insert(uuid);
+      }
+    }
+    if (!metrics_devices_listed) {
+      std::vector<keys::AccountDevice> devices;
+      if (!retired && approvals.ListDevices(&devices).ok()) {
+        metrics_devices_listed = true;
+        RecordActiveDevices(devices);
+      }
+    }
+  }
+
+  // The rule the Devices pane shows: active and not revoked.
+  void RecordActiveDevices(const std::vector<keys::AccountDevice>& devices) {
+    if (config.launch_metrics) {
+      config.launch_metrics->RecordActiveDeviceCount(
+          metrics_epoch,
+          static_cast<int>(std::ranges::count_if(
+              devices, [](const keys::AccountDevice& device) {
+                return device.status == "active" && !device.revoked_at_ms;
+              })));
+    }
   }
 
   // Worker thread.
@@ -824,6 +882,11 @@ struct PhiSyncKeyService::Worker {
   }
 
   std::atomic<bool> retired{false};
+  // The launch snapshot's mirror (RefreshLaunchMetrics), worker thread only.
+  uint64_t metrics_epoch = 0;
+  std::set<std::string> metrics_listing;
+  std::set<std::string> metrics_unreadable;
+  bool metrics_devices_listed = false;
   bool cleanup_pending = false;
   bool removal_pending = false;
   NativeSyncConfig config;
@@ -977,6 +1040,7 @@ void PhiSyncKeyService::SilentUnlockAndResolve() {
               << (status.ok() ? static_cast<int>(result) : -1) << " "
               << keys::KeyStatusName(status) << " resolved="
               << w.core.resolved().size();
+    w.RefreshLaunchMetrics();
     // Unlocked and paired: Phi native sync's first round.
     w.RunRound(&sync::PhiSyncEngine::PullOnce);
     return nullptr;
@@ -987,6 +1051,7 @@ void PhiSyncKeyService::ResolveMappings() {
   Post([locals = local_profiles_()](Worker& w) -> std::function<void()> {
     if (!w.NeedsReconfiguration() && w.manager.current_ark()) {
       w.core.ResolveMappings(locals);
+      w.RefreshLaunchMetrics();
     }
     return nullptr;
   });
@@ -1161,6 +1226,9 @@ void PhiSyncKeyService::Refresh(std::function<void(DeviceList)> done) {
     list.status = w.approvals.ListPendingApprovals(&list.pending);
     if (list.status.ok()) {
       list.status = w.approvals.ListDevices(&list.devices);
+      if (list.status.ok()) {
+        w.RecordActiveDevices(list.devices);
+      }
     }
     return [done, list] { done(list); };
   });

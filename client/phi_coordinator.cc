@@ -3159,9 +3159,12 @@ void PhiCoordinator::LoadStores(const std::wstring& user_data_dir) {
   }
   CaptureAnalytics(kAnalyticsModuleApp, kEventAppOpened,
                    PhiAppOpenedProperties(settings));
-  CaptureAnalytics(
-      kAnalyticsModuleSettings, kEventUserDefaultsSnapshot,
-      PhiUserDefaultsSnapshotProperties(settings, PhiThisExeIsDefaultBrowser()));
+  base::DictValue defaults_snapshot =
+      PhiUserDefaultsSnapshotProperties(settings, PhiThisExeIsDefaultBrowser());
+  sync_launch_metrics_.Load(user_data_dir);
+  sync_launch_metrics_.AddSnapshotProperties(&defaults_snapshot);
+  CaptureAnalytics(kAnalyticsModuleSettings, kEventUserDefaultsSnapshot,
+                   std::move(defaults_snapshot));
   // The first-time-action record, beside the version file it pairs with.
   first_time_actions_.Load(user_data_dir, PhiNowUnixMs());
 }
@@ -4779,6 +4782,17 @@ void PhiCoordinator::OpenUrlInFirstUserSlot(const std::string& url) {
   }
 }
 
+std::string PhiCoordinator::SyncSummaryPhaseName() const {
+  if (!sync_keys_) {
+    return sync::SummaryPhaseName(sync::SummaryPhase::kNotStarted);
+  }
+  const PhiSyncKeyService::Snapshot& snap = sync_keys_->snapshot();
+  const PhiProfileService::SyncStatusRows status =
+      profile_service_->SyncStatus(snap.NativeContext());
+  return sync::SummaryPhaseName(
+      sync::ReduceStatus(snap.paired, status.required, status.contexts).phase);
+}
+
 void PhiCoordinator::NoteAccountChanged() {
   NotifySettingsObservers(PhiSettingsChange::kAccount);
   // The sidebar's profile button reads the account at paint time: every
@@ -4823,6 +4837,8 @@ void PhiCoordinator::UpdateSyncKeyService() {
     // the next account's files. Its setup window goes with it.
     PhiSyncSetupWindow::CloseForAccountChange();
     sync_keys_.reset();
+    sync_launch_metrics_.Load(user_data_dir_);
+    sync_launch_metrics_.ResetForAccountChange();
     chromium_sync_.ClearProfileKeys();
     sync_profile_ids_.clear();
     space_manager_->SetSyncHiddenSpaces({});
@@ -4838,6 +4854,8 @@ void PhiCoordinator::UpdateSyncKeyService() {
   // the account's data, the engine cursor outside it (logical time must not
   // roll back with a restored folder), the settings sidecars device-wide.
   PhiSyncKeyService::NativeSyncConfig native;
+  sync_launch_metrics_.Load(user_data_dir_);
+  native.launch_metrics = &sync_launch_metrics_;
   native.marker_path = account_dir + L"\\sync\\marker.json";
   native.state_path = user_data_dir_ + L"\\Phi\\syncstate\\" +
                       base::UTF8ToWide(PhiAccountDirName(subject)) + L".json";
@@ -4963,6 +4981,7 @@ void PhiCoordinator::OnSyncKeysChanged() {
     exposed[profile_id] = PhiChromiumSync::ProfileKey{key.uuid, key.passphrase};
   }
   chromium_sync_.ReplaceProfileKeys(exposed);
+  sync_launch_metrics_.RecordPaired(sync_keys_->snapshot().paired);
   NotifySettingsObservers(PhiSettingsChange::kAccount);
 }
 

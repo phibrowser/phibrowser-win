@@ -49,6 +49,9 @@ class PhiFeedbackHost {
   // Phi's own extensions in `window_id`'s profile, name -> version.
   virtual std::map<std::string, std::string> PhiExtensionVersions(
       int64_t window_id) = 0;
+  // The sync status keys a report carries (the Mac's
+  // currentSyncStatusMetadata): enum raw values only.
+  virtual std::map<std::string, std::string> FeedbackSyncStatus() = 0;
 };
 
 // The "Send feedback" window (docs/windows-native-ui.md §13, the canvas's

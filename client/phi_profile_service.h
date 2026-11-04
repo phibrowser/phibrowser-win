@@ -145,6 +145,17 @@ class PhiProfileService {
   std::optional<sync::ContextStatus> ProfileSyncStatus(
       const std::string& profile_id,
       std::vector<std::string>* categories = nullptr) const;
+  // The inputs of the sync summary (the Mac's DevicesSettingView statusSection):
+  // "Phi data" first, then the profiles in the framework's order. A profile
+  // that is not loaded has no running sync to report and is left out (the Mac
+  // lists every profile; Windows loads them lazily, and the status query must
+  // never load one).
+  struct SyncStatusRows {
+    std::vector<sync::ContextStatus> contexts;
+    std::set<std::string> required;
+    std::vector<std::string> rows;
+  };
+  SyncStatusRows SyncStatus(std::optional<sync::ContextStatus> native) const;
   std::string DownloadDirectory(const std::string& profile_id) const;
   bool SetDownloadDirectory(const std::string& profile_id,
                             const std::string& dir);

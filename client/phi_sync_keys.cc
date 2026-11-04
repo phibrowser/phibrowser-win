@@ -534,6 +534,7 @@ KeyStatus ProfileKeyManager::BackfillDefaultFlag(const std::string& profile_id,
     // True wins across devices: a Default promotes false to true, an
     // ordinary local never demotes another device's Default.
     if (flag == true || flag == is_default) {
+      NoteDefaultFlag(*uuid, flag == true);
       *confirmed = true;
       return KeyStatus::Ok();
     }
@@ -554,6 +555,7 @@ KeyStatus ProfileKeyManager::BackfillDefaultFlag(const std::string& profile_id,
       return status;
     }
     if (replaced) {
+      NoteDefaultFlag(*uuid, is_default);
       *confirmed = true;
       return KeyStatus::Ok();
     }
@@ -617,6 +619,7 @@ KeyStatus ProfileKeyManager::RegisterLocalProfile(
   if (!created) {
     return AdoptRemoteProfile(uuid, profile_id, is_default, out);
   }
+  NoteDefaultFlag(uuid, is_default);
   if (!SetMapping(profile_id, uuid)) {
     // The envelope is up but unmapped here: the account-profile refresh
     // adopts it by name rather than this profile minting another.
@@ -649,6 +652,7 @@ KeyStatus ProfileKeyManager::AdoptRemoteProfile(const std::string& uuid,
       !OpenPayload(codec_, *envelope, *ark, &key, &name, &remote_default)) {
     return KeyStatus::Error(KeyErrorKind::kBadEnvelope);
   }
+  NoteDefaultFlag(uuid, remote_default == true);
   // A device's Default never takes a known non-default; refused before
   // anything is written. A legacy envelope (no flag) is accepted.
   if (is_default && remote_default == false) {
@@ -694,6 +698,20 @@ KeyStatus ProfileKeyManager::ResolvedRecord(
   return KeyStatus::Ok();
 }
 
+void ProfileKeyManager::SetTelemetryObservers(
+    std::function<void(const std::set<std::string>&)> on_listing,
+    std::function<void(const std::string&, bool)> on_default_flag) {
+  on_listing_ = std::move(on_listing);
+  on_default_flag_ = std::move(on_default_flag);
+}
+
+void ProfileKeyManager::NoteDefaultFlag(const std::string& uuid,
+                                        bool is_default) {
+  if (on_default_flag_) {
+    on_default_flag_(uuid, is_default);
+  }
+}
+
 KeyStatus ProfileKeyManager::AccountProfiles(std::vector<RemoteProfile>* out) {
   const std::optional<Bytes> ark = manager_.current_ark();
   if (!ark) {
@@ -703,6 +721,13 @@ KeyStatus ProfileKeyManager::AccountProfiles(std::vector<RemoteProfile>* out) {
   KeyStatus status = api_.ListProfiles(&summaries);
   if (!status.ok()) {
     return status;
+  }
+  if (on_listing_) {
+    std::set<std::string> uuids;
+    for (const ProfileSummary& summary : summaries) {
+      uuids.insert(summary.profile_uuid);
+    }
+    on_listing_(uuids);
   }
   out->clear();
   for (const ProfileSummary& summary : summaries) {
@@ -733,6 +758,9 @@ KeyStatus ProfileKeyManager::AccountProfileUuids(std::set<std::string>* out) {
   for (const ProfileSummary& summary : summaries) {
     out->insert(summary.profile_uuid);
   }
+  if (on_listing_) {
+    on_listing_(*out);
+  }
   return KeyStatus::Ok();
 }
 
@@ -757,6 +785,7 @@ KeyStatus ProfileKeyManager::Remote(const std::string& uuid,
       OpenPayload(codec_, *envelope, *ark, &key, &name, &is_default)) {
     out->name = name;
     out->is_default = is_default;
+    NoteDefaultFlag(uuid, is_default == true);
   }
   return KeyStatus::Ok();
 }
