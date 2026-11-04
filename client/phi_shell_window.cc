@@ -3196,8 +3196,9 @@ void PhiShellWindow::ToggleDownloadsPopover() {
                               framework_, browser);
 }
 
-void PhiShellWindow::BeginSidebarResize() {
+void PhiShellWindow::BeginSidebarResize(int client_x) {
   CancelContentSlide();
+  sidebar_resize_grab_ = Scaled(sidebar_dip_) - client_x;
   sidebar_resize_source_ = ComputeWindowLayout().content;
   sidebar_resize_snapshot_ = CaptureLeavingComposite();
   sidebar_resizing_ = true;
@@ -3583,8 +3584,11 @@ bool PhiShellWindow::InSidebarResizeBand(POINT client_pt) {
     return false;
   }
   const Layout layout = ComputeLayout();
+  // The gutter past the rows' right edge, all of it on the sidebar's side
+  // because the page's HWND starts at the edge (the Mac widens its hidden
+  // divider the same way, 8ec42e42).
   return client_pt.y >= layout.title_bar.bottom &&
-         client_pt.x >= Scaled(sidebar_dip_) - Scaled(4) &&
+         client_pt.x >= Scaled(sidebar_dip_) - Scaled(kEdgeInset) &&
          client_pt.x <= Scaled(sidebar_dip_);
 }
 
@@ -8791,8 +8795,8 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         if (self->sidebar_resizing_) {
           const int dip = std::max(
               kSidebarWidthMin,
-              std::min(static_cast<int>(pt.x) * 96 /
-                           static_cast<int>(self->dpi_),
+              std::min((static_cast<int>(pt.x) + self->sidebar_resize_grab_) *
+                           96 / static_cast<int>(self->dpi_),
                        kSidebarWidthMax));
           if (dip != self->sidebar_dip_) {
             self->ResizeSidebar(dip);
@@ -8937,7 +8941,7 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
         if (self->InSidebarResizeBand(pt)) {
           self->CloseExtensionPopup();
-          self->BeginSidebarResize();
+          self->BeginSidebarResize(pt.x);
           return 0;
         }
         self->OnChromeClick(pt.x, pt.y);

@@ -1514,13 +1514,16 @@ class PhiShellWindow : public PhiHitSource,
   // sidebar's trailing gutter; live while dragging, persisted on release.
   int sidebar_dip_ = kSidebarWidthDefault;
   bool sidebar_resizing_ = false;
+  // Where the band was grabbed, in px left of the sidebar's edge: the edge
+  // keeps that distance from the pointer instead of jumping to it.
+  int sidebar_resize_grab_ = 0;
   HBITMAP sidebar_resize_snapshot_ = nullptr;
   RECT sidebar_resize_source_{};
   std::vector<HWND> sidebar_resize_hidden_;
   // The browser child on screen when the drag began: LayoutContents shows
   // the CURRENT one on release, so this one is never re-shown blindly.
   HWND sidebar_resize_content_ = nullptr;
-  void BeginSidebarResize();
+  void BeginSidebarResize(int client_x);
   void ResizeSidebar(int width_dip);
   void EndSidebarResize();
   void PaintSidebarResizePreview(HDC dc);
