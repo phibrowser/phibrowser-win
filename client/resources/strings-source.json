@@ -6725,9 +6725,19 @@
    "comment": "settings — used at phi_settings_window.cc:2167",
    "en": "Agent control"
   },
-  "settings.developer.agentProfileAccess.description": {
-   "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc)",
-   "en": "Choose which profiles agents may create their own Spaces in. Turning a profile off stops agents from opening any new Space bound to it; existing Spaces are unaffected."
+  "settings.developer.agentProfileAccess.descriptionWindows": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Developer, hint under \"Profiles agents can use\" (Windows wording: it also limits shadow windows)",
+   "en": "Choose which profiles agents may use for their own Spaces and invisible background windows. Turning a profile off stops agents from opening any new Space or background window in it; ones already open are unaffected.",
+   "translations": {
+    "de": "Wähle, in welchen Profilen Agenten eigene Spaces und unsichtbare Hintergrundfenster öffnen dürfen. Wird ein Profil deaktiviert, können Agenten darin keine neuen Spaces oder Hintergrundfenster mehr öffnen; bereits geöffnete bleiben unberührt.",
+    "es": "Elige en qué perfiles pueden los agentes abrir sus propios Espacios y ventanas invisibles en segundo plano. Desactivar un perfil impide que los agentes abran en él cualquier Espacio o ventana en segundo plano nuevos; los que ya están abiertos no se ven afectados.",
+    "fr": "Choisissez les profils dans lesquels les agents peuvent ouvrir leurs propres Espaces et des fenêtres invisibles en arrière-plan. Désactiver un profil empêche les agents d'y ouvrir tout nouvel Espace ou toute nouvelle fenêtre en arrière-plan ; ceux déjà ouverts ne sont pas affectés.",
+    "ja": "エージェントが自身のスペースと非表示のバックグラウンドウインドウを開けるプロファイルを選択してください。プロファイルをオフにすると、そのプロファイルで新しいスペースやバックグラウンドウインドウをエージェントは開けなくなります。すでに開いているものには影響しません。",
+    "ko": "에이전트가 자신의 스페이스와 보이지 않는 백그라운드 윈도우를 열 수 있는 프로필을 선택해 주세요. 프로필을 끄면 해당 프로필에서 에이전트가 새 스페이스나 백그라운드 윈도우를 열 수 없게 돼요. 이미 열려 있는 항목은 영향을 받지 않아요.",
+    "nl": "Kies in welke profielen agents hun eigen Spaces en onzichtbare achtergrondvensters mogen openen. Als je een profiel uitschakelt, kunnen agents daarin geen nieuwe Space of nieuw achtergrondvenster meer openen; wat al open is, blijft ongewijzigd.",
+    "zh-Hans": "选择智能体可以在哪些个人资料中打开自己的空间和不可见的后台窗口。关闭某个个人资料后，智能体将无法在其中打开任何新的空间或后台窗口；已打开的不受影响。",
+    "zh-Hant": "選擇 AI 代理可以在哪些設定檔中開啟自己的空間和看不見的背景視窗。關閉某個設定檔後，AI 代理將無法在其中開啟任何新的空間或背景視窗；已開啟的不受影響。"
+   }
   },
   "settings.developer.agentProfileAccess.emptyMessage": {
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc)",

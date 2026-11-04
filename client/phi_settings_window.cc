@@ -3598,7 +3598,7 @@ void PhiSettingsWindow::BuildDeveloper(int* y) {
   // profilesRows does with .padding(.leading, 36).
   AddRow(y, PhiStr("settings.developer.agentProfileAccess.title"),
          kRowLabelHeight, 0,
-         PhiStr("settings.developer.agentProfileAccess.description"),
+         PhiStr("settings.developer.agentProfileAccess.descriptionWindows"),
          kChipIndent, 0xE716, 0);
   const std::vector<PhiProfileSummary> profiles = profiles_->Profiles();
   if (profiles.empty()) {

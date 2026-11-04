@@ -380,9 +380,10 @@ files read back on Linux):
   keys Windows had no UI for (`suppressCloseIncognitoSpaceWarning`,
   `autoPictureInPictureMode`, `PhiSelectionTintEnabled`), the pin-scope
   mirror `PhiPinnedTabScope` and the app-level `phiLoginPhase`. Mac
-  defaults adopted: `showBookmarkBarOnNewTabPage` = true,
-  `PhiAgentUserSpaceOperationsEnabled` = true (still behind
-  `PhiCDPAgentAccessEnabled`). Windows-only keys keep Windows names
+  default adopted: `showBookmarkBarOnNewTabPage` = true.
+  `PhiAgentUserSpaceOperationsEnabled` stays false on Windows, where the Mac
+  defaults it to true, and is still behind `PhiCDPAgentAccessEnabled`
+  (`client/phi_app_model.h` says why). Windows-only keys keep Windows names
   (settingsWindowWidth/Height, saturation, restoreLastSession, testRig,
   skipOnboarding, analyticsEnabled). `phibrowser-win-build/seed-fx-prefs.sh`
   seeds the new names; the installer's data-removal check reads the new

@@ -8078,16 +8078,16 @@
    "zh-Hans": "智能体控制",
    "zh-Hant": "AI 代理控制"
   },
-  "settings.developer.agentProfileAccess.description": {
-   "de": "Wähle, in welchen Profilen Agenten eigene Spaces erstellen dürfen. Wird ein Profil deaktiviert, können Agenten keine neuen daran gebundenen Spaces mehr öffnen; bestehende Spaces bleiben unberührt.",
-   "en": "Choose which profiles agents may create their own Spaces in. Turning a profile off stops agents from opening any new Space bound to it; existing Spaces are unaffected.",
-   "es": "Elige en qué perfiles pueden crear los agentes sus propios Espacios. Desactivar un perfil impide que los agentes abran cualquier Espacio nuevo vinculado a él; los Espacios existentes no se ven afectados.",
-   "fr": "Choisissez les profils dans lesquels les agents peuvent créer leurs propres Espaces. Désactiver un profil empêche les agents d'ouvrir tout nouvel Espace qui y est associé ; les Espaces existants ne sont pas affectés.",
-   "ja": "エージェントが自身のスペースを作成できるプロファイルを選択してください。プロファイルをオフにすると、そのプロファイルに紐づく新しいスペースをエージェントは開けなくなります。既存のスペースには影響しません。",
-   "ko": "에이전트가 자신의 스페이스를 만들 수 있는 프로필을 선택해 주세요. 프로필을 끄면 해당 프로필에 연결된 새 스페이스를 에이전트가 열 수 없게 돼요. 기존 스페이스는 영향을 받지 않아요.",
-   "nl": "Kies in welke profielen agents hun eigen Spaces mogen aanmaken. Als je een profiel uitschakelt, kunnen agents geen nieuwe Space meer openen die aan dat profiel is gekoppeld; bestaande Spaces blijven ongewijzigd.",
-   "zh-Hans": "选择智能体可以在哪些个人资料中创建自己的空间。关闭某个个人资料后，智能体将无法打开任何绑定到该个人资料的新空间；现有空间不受影响。",
-   "zh-Hant": "選擇 AI 代理可以在哪些設定檔中建立自己的空間。關閉某個設定檔後，AI 代理將無法再開啟綁定該設定檔的新空間；現有空間不受影響。"
+  "settings.developer.agentProfileAccess.descriptionWindows": {
+   "de": "Wähle, in welchen Profilen Agenten eigene Spaces und unsichtbare Hintergrundfenster öffnen dürfen. Wird ein Profil deaktiviert, können Agenten darin keine neuen Spaces oder Hintergrundfenster mehr öffnen; bereits geöffnete bleiben unberührt.",
+   "en": "Choose which profiles agents may use for their own Spaces and invisible background windows. Turning a profile off stops agents from opening any new Space or background window in it; ones already open are unaffected.",
+   "es": "Elige en qué perfiles pueden los agentes abrir sus propios Espacios y ventanas invisibles en segundo plano. Desactivar un perfil impide que los agentes abran en él cualquier Espacio o ventana en segundo plano nuevos; los que ya están abiertos no se ven afectados.",
+   "fr": "Choisissez les profils dans lesquels les agents peuvent ouvrir leurs propres Espaces et des fenêtres invisibles en arrière-plan. Désactiver un profil empêche les agents d'y ouvrir tout nouvel Espace ou toute nouvelle fenêtre en arrière-plan ; ceux déjà ouverts ne sont pas affectés.",
+   "ja": "エージェントが自身のスペースと非表示のバックグラウンドウインドウを開けるプロファイルを選択してください。プロファイルをオフにすると、そのプロファイルで新しいスペースやバックグラウンドウインドウをエージェントは開けなくなります。すでに開いているものには影響しません。",
+   "ko": "에이전트가 자신의 스페이스와 보이지 않는 백그라운드 윈도우를 열 수 있는 프로필을 선택해 주세요. 프로필을 끄면 해당 프로필에서 에이전트가 새 스페이스나 백그라운드 윈도우를 열 수 없게 돼요. 이미 열려 있는 항목은 영향을 받지 않아요.",
+   "nl": "Kies in welke profielen agents hun eigen Spaces en onzichtbare achtergrondvensters mogen openen. Als je een profiel uitschakelt, kunnen agents daarin geen nieuwe Space of nieuw achtergrondvenster meer openen; wat al open is, blijft ongewijzigd.",
+   "zh-Hans": "选择智能体可以在哪些个人资料中打开自己的空间和不可见的后台窗口。关闭某个个人资料后，智能体将无法在其中打开任何新的空间或后台窗口；已打开的不受影响。",
+   "zh-Hant": "選擇 AI 代理可以在哪些設定檔中開啟自己的空間和看不見的背景視窗。關閉某個設定檔後，AI 代理將無法在其中開啟任何新的空間或背景視窗；已開啟的不受影響。"
   },
   "settings.developer.agentProfileAccess.emptyMessage": {
    "de": "Keine Profile gefunden.",
