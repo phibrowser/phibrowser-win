@@ -237,6 +237,8 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   // A consent row: the check image and the text, whose "{0}" / "{1}"
   // placeholders become the underlined links. The runs are laid out with a
   // DC so Layout() can register the links as hits and Paint draws the same.
+  // A sentence wider than the row wraps; `row` needs only its first line's
+  // height.
   struct Run {
     std::wstring text;
     int link = -1;  // 0 = link_a, 1 = link_b.
@@ -251,6 +253,9 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
                      const std::wstring& link_b);
   void AddConsentLinks(const RECT& row, const char* pattern_key,
                        const char* link_a_key, const char* link_b_key);
+  // The row's height in dips once the sentence is laid out in it.
+  int ConsentRowHeightDip(const RECT& row, const char* pattern_key,
+                          const char* link_a_key, const char* link_b_key);
   void PaintImage(HDC dc, const RECT& dest, Image& image, bool blend);
   Image& ResourceImage(const wchar_t* file, int width, int height);
   HFONT BrandTitleFont(const std::wstring& text, int size_dip);

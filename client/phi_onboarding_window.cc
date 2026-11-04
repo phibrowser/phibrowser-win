@@ -701,28 +701,29 @@ void PhiOnboardingWindow::Layout() {
       const int rows_top = divider + 28;
       const int row_left = card_left + kCardPad;
       const int row_width = kCardWidth - 2 * kCardPad;
-      const RECT legal = ContentDip(row_left, rows_top, row_width, 22);
+      const bool guest_page = page_ == Page::kGuestPrivacy;
+      const char* const legal_key = guest_page
+                                        ? "oobe.guestPrivacy.legalAgreement"
+                                        : "oobe.nextSteps.legalAgreement";
+      const char* const privacy_key = guest_page
+                                          ? "oobe.guestPrivacy.privacyPolicyLink"
+                                          : "oobe.nextSteps.privacyLink";
+      const char* const terms_key = guest_page
+                                        ? "oobe.guestPrivacy.termsOfServiceLink"
+                                        : "oobe.nextSteps.termsLink";
+      // The longer translations take two lines; the metrics row follows.
+      const int legal_h = ConsentRowHeightDip(
+          ContentDip(row_left, rows_top, row_width, 22), legal_key, privacy_key,
+          terms_key);
+      const RECT legal = ContentDip(row_left, rows_top, row_width, legal_h);
       // The sentence as it reads, links filled in: a screen reader must not
       // say "open brace zero".
       AddControl(Control::kLegalCheck, 0, legal,
-                 page_ == Page::kGuestPrivacy
-                     ? PhiStrF("oobe.guestPrivacy.legalAgreement",
-                               {PhiStr("oobe.guestPrivacy.privacyPolicyLink"),
-                                PhiStr("oobe.guestPrivacy.termsOfServiceLink")})
-                     : PhiStrF("oobe.nextSteps.legalAgreement",
-                               {PhiStr("oobe.nextSteps.privacyLink"),
-                                PhiStr("oobe.nextSteps.termsLink")}),
+                 PhiStrF(legal_key, {PhiStr(privacy_key), PhiStr(terms_key)}),
                  PhiHitRole::kToggle, legal_checked_, true);
-      if (page_ == Page::kGuestPrivacy) {
-        AddConsentLinks(legal, "oobe.guestPrivacy.legalAgreement",
-                        "oobe.guestPrivacy.privacyPolicyLink",
-                        "oobe.guestPrivacy.termsOfServiceLink");
-      } else {
-        AddConsentLinks(legal, "oobe.nextSteps.legalAgreement",
-                        "oobe.nextSteps.privacyLink", "oobe.nextSteps.termsLink");
-      }
+      AddConsentLinks(legal, legal_key, privacy_key, terms_key);
       AddControl(Control::kMetricsCheck, 0,
-                 ContentDip(row_left, rows_top + 22 + 12, row_width, 44),
+                 ContentDip(row_left, rows_top + legal_h + 12, row_width, 44),
                  PhiStr(page_ == Page::kGuestPrivacy
                             ? "oobe.guestPrivacy.metricsConsent"
                             : "oobe.nextSteps.metricsConsent"),
@@ -1283,7 +1284,8 @@ void PhiOnboardingWindow::PaintPillButton(HDC dc, const RECT& bounds,
 std::vector<PhiOnboardingWindow::Run> PhiOnboardingWindow::CheckRowRuns(
     HDC dc, const RECT& row, const std::wstring& pattern,
     const std::wstring& link_a, const std::wstring& link_b) {
-  // "I agree to the {0} and {1}": the pattern's pieces along one line.
+  // "I agree to the {0} and {1}": the pattern's pieces, then laid out along
+  // the row.
   std::vector<Run> runs;
   std::wstring rest = pattern;
   for (;;) {
@@ -1301,14 +1303,73 @@ std::vector<PhiOnboardingWindow::Run> PhiOnboardingWindow::CheckRowRuns(
     rest = rest.substr(next + 3);
   }
   HFONT font = fonts().Get(15, FW_NORMAL);
-  int x = row.left + Scaled(kCheckSize) + Scaled(kCheckGap);
+  const int text_left = row.left + Scaled(kCheckSize) + Scaled(kCheckGap);
   const int line_h = Scaled(22);
-  for (Run& run : runs) {
-    const int width = TextWidth(dc, font, run.text);
-    run.rect = {x, row.top, x + width, row.top + line_h};
+  int x = text_left;
+  int y = row.top;
+  // Wrapping breaks plain text between words; a link stays in one piece, so
+  // it remains one control.
+  std::vector<Run> placed;
+  const auto place = [&](const std::wstring& text, int link) {
+    const int width = TextWidth(dc, font, text);
+    placed.push_back({text, link, {x, y, x + width, y + line_h}});
     x += width;
+  };
+  for (const Run& run : runs) {
+    std::wstring remaining = run.text;
+    while (!remaining.empty()) {
+      if (x == text_left) {
+        const size_t first = remaining.find_first_not_of(L' ');
+        remaining.erase(0, first == std::wstring::npos ? remaining.size() : first);
+        if (remaining.empty()) {
+          break;
+        }
+      }
+      if (x + TextWidth(dc, font, remaining) <= row.right) {
+        place(remaining, run.link);
+        break;
+      }
+      size_t cut = std::wstring::npos;
+      if (run.link < 0) {
+        for (size_t space = remaining.find(L' ', 1); space != std::wstring::npos;
+             space = remaining.find(L' ', space + 1)) {
+          if (x + TextWidth(dc, font, remaining.substr(0, space)) > row.right) {
+            break;
+          }
+          cut = space;
+        }
+      }
+      if (cut != std::wstring::npos) {
+        place(remaining.substr(0, cut), run.link);
+        remaining.erase(0, cut + 1);
+      } else if (x == text_left) {
+        // Wider than the row by itself: nothing a new line would help.
+        place(remaining, run.link);
+        break;
+      }
+      x = text_left;
+      y += line_h;
+    }
   }
-  return runs;
+  return placed;
+}
+
+int PhiOnboardingWindow::ConsentRowHeightDip(const RECT& row,
+                                             const char* pattern_key,
+                                             const char* link_a_key,
+                                             const char* link_b_key) {
+  constexpr int kLineDip = 22;
+  HDC dc = ::GetDC(hwnd());
+  if (!dc) {
+    return kLineDip;
+  }
+  const std::vector<Run> runs = CheckRowRuns(dc, row, PhiStr(pattern_key),
+                                             PhiStr(link_a_key),
+                                             PhiStr(link_b_key));
+  ::ReleaseDC(hwnd(), dc);
+  return runs.empty()
+             ? kLineDip
+             : kLineDip * ((runs.back().rect.bottom - row.top) / Scaled(kLineDip));
 }
 
 void PhiOnboardingWindow::AddConsentLinks(const RECT& row,
