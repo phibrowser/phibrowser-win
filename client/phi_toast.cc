@@ -84,7 +84,7 @@ class Toast : public PhiPopover {
     options.foreground = false;
     options.topmost = true;
     options.layered = true;
-    options.dwm_round = false;  // PhiFillRoundRectAA draws the corners.
+    options.dwm_round = false;  // The layer's alpha draws the corners.
     options.dismiss_on_inactive = false;
     options.dismiss_on_escape = false;
     // Clicks belong to whatever is under it — unless there is a button.
@@ -102,7 +102,6 @@ class Toast : public PhiPopover {
     }
     g_toast = this;  // Before Show(), so a teardown cannot leave us stale.
     SetPalette(pending_palette_);
-    ::SetLayeredWindowAttributes(hwnd(), 0, 0, LWA_ALPHA);
 
     const SIZE size = Measure();
     RECT owner_rect = {};
@@ -112,6 +111,7 @@ class Toast : public PhiPopover {
     placement.anchor = {x, y, x, y};
     Reposition(placement, size);
     LayoutAction();
+    Commit();
     Show();
     // Raised on the owner, the window the reader is in: the toast itself
     // is click-through and never focused.
@@ -131,7 +131,11 @@ class Toast : public PhiPopover {
     RECT rc = {};
     ::GetClientRect(hwnd(), &rc);
     const PhiPalette& colors = palette();
-    PhiFillRoundRectAA(dc, rc, Scaled(kCornerRadius), colors.card);
+    // Square: the layer's coverage cuts the corners, and it would darken a
+    // rounded fill's edge a second time.
+    HBRUSH card = ::CreateSolidBrush(colors.card);
+    ::FillRect(dc, &rc, card);
+    ::DeleteObject(card);
     PhiStrokeRoundRectAA(dc, rc, Scaled(kCornerRadius), colors.border, 1);
     ::SetBkMode(dc, TRANSPARENT);
     // The title (and the message under it) as measured, wrapped, the block
@@ -169,7 +173,7 @@ class Toast : public PhiPopover {
     PhiDrawTextAA(dc, message_.c_str(), -1, &bottom, kWrapFlags);
   }
 
-  void OnHover(int, int) override { ::InvalidateRect(hwnd(), nullptr, FALSE); }
+  void OnHover(int, int) override { Commit(); }
 
   void OnClick(int hit, POINT) override {
     if (hit < 0 || !action_ || fading_out_) {
@@ -200,6 +204,7 @@ class Toast : public PhiPopover {
     ::SetWindowPos(hwnd(), nullptr, 0, 0, size.cx, size.cy,
                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     LayoutAction();
+    Commit();
   }
 
   void OnNcDestroy() override {
@@ -247,9 +252,44 @@ class Toast : public PhiPopover {
   HFONT TitleFont() { return fonts().Get(kTitleSize, FW_SEMIBOLD); }
   HFONT MessageFont() { return fonts().Get(kMessageSize, FW_NORMAL); }
 
+  // Per-pixel alpha for the shape, at the fade's current alpha. Should the
+  // layer fail, the same shape goes on as a region and the toast paints
+  // through WM_PAINT, unfaded.
+  void Commit() {
+    if (!alive() || !layered_) {
+      return;
+    }
+    RECT rc = {};
+    ::GetClientRect(hwnd(), &rc);
+    const int width = rc.right;
+    const int height = rc.bottom;
+    const int radius = Scaled(kCornerRadius);
+    if (PhiCommitShapedLayer(
+            hwnd(), width, height, [&](HDC dc) { Paint(dc, rc); },
+            [&](double px, double py) {
+              return PhiRoundRectCoverage(px, py, width, height, radius);
+            },
+            alpha_)) {
+      return;
+    }
+    layered_ = false;
+    ::SetWindowLongPtrW(
+        hwnd(), GWL_EXSTYLE,
+        ::GetWindowLongPtrW(hwnd(), GWL_EXSTYLE) & ~WS_EX_LAYERED);
+    ::SetWindowRgn(hwnd(),
+                   ::CreateRoundRectRgn(0, 0, width + 1, height + 1,
+                                        2 * radius, 2 * radius),
+                   TRUE);
+    ::InvalidateRect(hwnd(), nullptr, FALSE);
+  }
+
   void SetAlpha(BYTE alpha) {
-    if (alive()) {
-      ::SetLayeredWindowAttributes(hwnd(), 0, alpha, LWA_ALPHA);
+    alpha_ = alpha;
+    if (alive() && layered_) {
+      // No source DC: the committed surface stays, only its alpha changes.
+      BLENDFUNCTION blend = {AC_SRC_OVER, 0, alpha, AC_SRC_ALPHA};
+      ::UpdateLayeredWindow(hwnd(), nullptr, nullptr, nullptr, nullptr, nullptr,
+                            0, &blend, ULW_ALPHA);
     }
   }
 
@@ -329,6 +369,8 @@ class Toast : public PhiPopover {
   int action_width_ = 0;  // Measured with the label font (Measure).
   Timer dismiss_;
   bool fading_out_ = false;
+  bool layered_ = true;  // Until a commit fails (Commit).
+  BYTE alpha_ = 0;       // Starts hidden; the fade brings it up.
 };
 
 }  // namespace

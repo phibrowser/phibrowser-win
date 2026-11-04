@@ -167,12 +167,15 @@ bool PhiKnockOutRoundRectAA(HDC dc,
 // must have WS_EX_LAYERED; once committed it no longer paints through
 // WM_PAINT, so call this wherever the old code invalidated. Returns false
 // when the surface or UpdateLayeredWindow fails, in which case the caller
-// keeps its region-and-paint path.
+// keeps its region-and-paint path. `alpha` scales the whole surface, for a
+// window that fades; such a window must not call SetLayeredWindowAttributes,
+// which makes every later UpdateLayeredWindow fail.
 bool PhiCommitShapedLayer(HWND hwnd,
                           int width,
                           int height,
                           base::FunctionRef<void(HDC)> paint,
-                          base::FunctionRef<double(double, double)> coverage);
+                          base::FunctionRef<double(double, double)> coverage,
+                          BYTE alpha = 255);
 
 // Coverage (0..1) at (`px`, `py`) of a rounded rectangle of `radius` filling
 // `width` x `height` — for PhiCommitShapedLayer callers whose shape is the

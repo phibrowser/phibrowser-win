@@ -1612,7 +1612,8 @@ bool PhiCommitShapedLayer(HWND hwnd,
                           int width,
                           int height,
                           base::FunctionRef<void(HDC)> paint,
-                          base::FunctionRef<double(double, double)> coverage) {
+                          base::FunctionRef<double(double, double)> coverage,
+                          BYTE alpha) {
   if (!hwnd || !::IsWindow(hwnd) || width <= 0 || height <= 0) {
     return false;
   }
@@ -1678,7 +1679,7 @@ bool PhiCommitShapedLayer(HWND hwnd,
   }
   SIZE size = {width, height};
   POINT origin = {0, 0};
-  BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+  BLENDFUNCTION blend = {AC_SRC_OVER, 0, alpha, AC_SRC_ALPHA};
   const BOOL ok = ::UpdateLayeredWindow(hwnd, nullptr, nullptr, &size, mem,
                                         &origin, 0, &blend, ULW_ALPHA);
   ::SelectObject(mem, previous);
