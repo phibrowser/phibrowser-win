@@ -50,7 +50,16 @@ constexpr int kLabelH = 20;
 constexpr int kLabelGap = 6;
 constexpr int kDescriptionH = 144;
 constexpr int kFieldH = 32;
+// The least an InfoBar stands: its title and one line of message. PaintInfoBar
+// starts the text kInfoBarTextX across and the message kInfoBarMessageY down.
 constexpr int kInfoBarH = 64;
+constexpr int kInfoBarTextX = 42;
+constexpr int kInfoBarMessageY = 32;
+constexpr int kInfoBarBottom = 12;
+// What each InfoBar keeps clear of text on its right: the Sign in button, the
+// refused-files close button.
+constexpr int kSignInBarTrailing = 12 + 88 + 12;
+constexpr int kErrorBarTrailing = 44;
 constexpr int kTileH = 88;
 constexpr int kTileGap = 8;
 constexpr int kTileNameH = 34;
@@ -746,6 +755,19 @@ void PhiFeedbackWindow::Layout() {
       ::ShowWindow(control, visible ? SW_SHOWNA : SW_HIDE);
     }
   };
+  // An InfoBar's height for its message, in design units. The width is
+  // PaintInfoBar's to the pixel: each Scaled() rounds alone, so scaling the
+  // difference can come out a pixel wider and measure one line too few.
+  const auto info_bar_height = [&](const std::wstring& message, int trailing) {
+    const int text_w = Scaled(kMargin + kInner) - Scaled(trailing) -
+                       (Scaled(kMargin) + Scaled(kInfoBarTextX));
+    HDC dc = ::GetDC(hwnd());
+    const int message_h = WrappedHeight(dc, font_, message, text_w);
+    ::ReleaseDC(hwnd(), dc);
+    const int scale = static_cast<int>(dpi());
+    return kInfoBarMessageY + (message_h * 96 + scale - 1) / scale +
+           kInfoBarBottom;
+  };
   geo_ = Geometry();
   const bool form = !sent_;
   int y = 12;
@@ -754,9 +776,13 @@ void PhiFeedbackWindow::Layout() {
     y = kSentH;
   } else {
     if (!signed_in_) {
-      geo_.sign_in_bar = R(kMargin, y, kInner, kInfoBarH);
-      place(sign_in_, R(kMargin + kInner - 12 - 88, y + 18, 88, 28), true);
-      y += kInfoBarH + 16;
+      const int h = std::max(
+          kInfoBarH, info_bar_height(PhiStr("feedback.form.signIn.message"),
+                                     kSignInBarTrailing));
+      geo_.sign_in_bar = R(kMargin, y, kInner, h);
+      place(sign_in_, R(kMargin + kInner - 12 - 88, y + (h - 28) / 2, 88, 28),
+            true);
+      y += h + 16;
     }
     geo_.title = R(kMargin, y, kInner, 28);
     y += 28;
@@ -783,12 +809,7 @@ void PhiFeedbackWindow::Layout() {
     y += kFieldH + kGap;
 
     if (!error_text_.empty()) {
-      HDC dc = ::GetDC(hwnd());
-      const int text_w = Scaled(kInner - 42 - 44);
-      const int message_h = WrappedHeight(dc, font_, error_text_, text_w);
-      ::ReleaseDC(hwnd(), dc);
-      const int h = 12 + 20 + (message_h * 96 + static_cast<int>(dpi()) - 1) /
-                                  static_cast<int>(dpi()) + 12;
+      const int h = info_bar_height(error_text_, kErrorBarTrailing);
       geo_.error_bar = R(kMargin, y, kInner, h);
       place(error_close_, R(kMargin + kInner - 8 - 28, y + 8, 28, 28), true);
       y += h + 12;
@@ -1073,12 +1094,12 @@ void PhiFeedbackWindow::PaintInfoBar(HDC dc,
          c.dark ? RGB(0x0B, 0x1A, 0x22) : RGB(0xFF, 0xFF, 0xFF), L"i", icon,
          DT_CENTER | DT_VCENTER);
   }
-  const int text_left = bar.left + Scaled(42);
+  const int text_left = bar.left + Scaled(kInfoBarTextX);
   const int text_right = bar.right - trailing_px;
   Text(dc, strong_font_, c.label, title,
        {text_left, bar.top + Scaled(12), text_right, bar.top + Scaled(32)});
   Text(dc, font_, c.label, message,
-       {text_left, bar.top + Scaled(32), text_right, bar.bottom},
+       {text_left, bar.top + Scaled(kInfoBarMessageY), text_right, bar.bottom},
        DT_LEFT | DT_TOP | DT_WORDBREAK);
 }
 
@@ -1087,7 +1108,8 @@ void PhiFeedbackWindow::PaintForm(HDC dc) {
   if (!signed_in_) {
     PaintInfoBar(dc, geo_.sign_in_bar, /*error=*/false,
                  PhiStr("feedback.form.signIn.title"),
-                 PhiStr("feedback.form.signIn.message"), Scaled(12 + 88 + 12));
+                 PhiStr("feedback.form.signIn.message"),
+                 Scaled(kSignInBarTrailing));
   }
   Text(dc, title_font_, c.ink, PhiStr("feedback.form.heading"), geo_.title,
        DT_LEFT | DT_VCENTER);
@@ -1149,7 +1171,7 @@ void PhiFeedbackWindow::PaintForm(HDC dc) {
   if (!error_text_.empty()) {
     PaintInfoBar(dc, geo_.error_bar, /*error=*/true,
                  PhiStr("feedback.form.attachmentFailure.heading"), error_text_,
-                 Scaled(44));
+                 Scaled(kErrorBarTrailing));
   }
 
   label(geo_.attach_label, PhiStr("feedback.form.attachments.label"), true,
