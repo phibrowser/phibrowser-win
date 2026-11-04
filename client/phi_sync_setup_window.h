@@ -108,6 +108,7 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
   void OnClick(int hit, POINT client_pt) override;
   void OnEscape() override;
   void OnEnter() override;
+  bool OnKey(WPARAM virtual_key) override;
   void OnTimerFired(UINT_PTR id) override;
   void OnDpiChanged(UINT old_dpi) override;
   void OnNcDestroy() override;
@@ -181,6 +182,18 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
   void ShowError(const std::wstring& message);
   void FinishLater();
   bool CanClose() const;
+  // The drawn control at `key` (a hit's key), by mouse or keyboard.
+  void Activate(int key);
+
+  // --- Keyboard -------------------------------------------------------------
+  // Tab walks the page's controls and its code field; Space and Enter press
+  // the control with the ring.
+  void MoveKeyboardFocus(bool backward);
+  // The pointer or the field took over: no ring, and the field has the keys
+  // on a page that has one.
+  void ClearKeyboardRing();
+  int KeyboardFocusIndex() const;
+  bool EntersCode() const;
 
   // --- The Profiles model ---------------------------------------------------
   // The default-profile rule (the Mac's ProfilePairingModel, docs/sync.md
@@ -264,6 +277,9 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
   HWND code_field_ = nullptr;
   HBRUSH field_brush_ = nullptr;
   HBRUSH bg_brush_ = nullptr;
+  // The control with the ring, by hit key since Layout() rebuilds the hits
+  // while the page stays. -1 is none, or the code field on a page with one.
+  int kb_focus_ = -1;
 
   // The laid-out page (client pixels).
   RECT title_rect_{};

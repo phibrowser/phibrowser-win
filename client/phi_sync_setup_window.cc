@@ -24,6 +24,7 @@
 #include "phibrowser-win/client/phi_menu_paint.h"
 #include "phibrowser-win/client/phi_popup_chrome.h"
 #include "phibrowser-win/client/phi_sync_key_service.h"
+#include "phibrowser-win/client/phi_uia.h"
 
 namespace phi_client {
 
@@ -255,11 +256,23 @@ LRESULT PhiSyncSetupWindow::OnWindowMessage(UINT message,
         return reinterpret_cast<LRESULT>(field_brush_);
       }
       break;
+    case WM_SETFOCUS:
+      // Activation lands on the window: the field keeps the keys unless the
+      // ring has them.
+      if (kb_focus_ < 0 && EntersCode() && code_field_) {
+        ::SetFocus(code_field_);
+        *handled = true;
+        return 0;
+      }
+      break;
     case WM_COMMAND:
       if (LOWORD(wparam) == kIdCodeField && HIWORD(wparam) == EN_CHANGE) {
         input_error_.clear();
         Layout();
         Invalidate();
+      } else if (LOWORD(wparam) == kIdCodeField &&
+                 HIWORD(wparam) == EN_SETFOCUS) {
+        ClearKeyboardRing();
       }
       break;
     default:
@@ -284,6 +297,72 @@ void PhiSyncSetupWindow::OnEnter() {
     default:
       break;
   }
+}
+
+bool PhiSyncSetupWindow::OnKey(WPARAM virtual_key) {
+  if (virtual_key == VK_TAB) {
+    MoveKeyboardFocus(::GetKeyState(VK_SHIFT) < 0);
+    return true;
+  }
+  if (virtual_key == VK_SPACE || virtual_key == VK_RETURN) {
+    const PhiHit* focused = kb_focus_ >= 0 ? HitByKey(kb_focus_) : nullptr;
+    if (focused && focused->enabled) {
+      Activate(kb_focus_);
+      return true;
+    }
+  }
+  return PhiSecondaryWindow::OnKey(virtual_key);
+}
+
+bool PhiSyncSetupWindow::EntersCode() const {
+  return page_ == Page::kEnterCode || page_ == Page::kConfirmCode;
+}
+
+int PhiSyncSetupWindow::KeyboardFocusIndex() const {
+  for (size_t i = 0; i < hits().size(); ++i) {
+    if (hits()[i].key == kb_focus_) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
+}
+
+void PhiSyncSetupWindow::MoveKeyboardFocus(bool backward) {
+  std::vector<int> stops;
+  if (EntersCode() && code_field_) {
+    stops.push_back(-1);
+  }
+  for (const PhiHit& hit : hits()) {
+    if (hit.enabled &&
+        hit.key / kKeyStride != static_cast<int>(Control::kNone)) {
+      stops.push_back(hit.key);
+    }
+  }
+  if (stops.empty()) {
+    return;
+  }
+  const auto at = std::find(stops.begin(), stops.end(), kb_focus_);
+  if (at == stops.end()) {
+    kb_focus_ = backward ? stops.back() : stops.front();
+  } else {
+    const size_t index = static_cast<size_t>(at - stops.begin());
+    kb_focus_ = stops[(index + (backward ? stops.size() - 1 : 1)) % stops.size()];
+  }
+  ::SetFocus(kb_focus_ < 0 ? code_field_ : hwnd());
+  PhiUiaSetFocusedHit(this, KeyboardFocusIndex(), /*announce=*/kb_focus_ >= 0);
+  Invalidate();
+}
+
+void PhiSyncSetupWindow::ClearKeyboardRing() {
+  if (kb_focus_ < 0) {
+    return;
+  }
+  kb_focus_ = -1;
+  PhiUiaSetFocusedHit(this, -1, /*announce=*/false);
+  if (EntersCode() && code_field_) {
+    ::SetFocus(code_field_);
+  }
+  Invalidate();
 }
 
 void PhiSyncSetupWindow::OnDpiChanged(UINT old_dpi) {
@@ -317,13 +396,13 @@ void PhiSyncSetupWindow::OnTimerFired(UINT_PTR id) {
 void PhiSyncSetupWindow::ShowPage(Page page) {
   page_ = page;
   ++generation_;
+  kb_focus_ = -1;
   if (page != Page::kWaiting) {
     poll_timer_.Stop();
     countdown_.Stop();
     poll_in_flight_ = false;
   }
-  const bool enters_code =
-      page == Page::kEnterCode || page == Page::kConfirmCode;
+  const bool enters_code = EntersCode();
   if (!enters_code) {
     input_error_.clear();
   }
@@ -331,6 +410,7 @@ void PhiSyncSetupWindow::ShowPage(Page page) {
     EnsureCodeField();
     ::SetWindowTextW(code_field_, L"");
   }
+  const bool field_had_keys = code_field_ && ::GetFocus() == code_field_;
   if (code_field_) {
     ::ShowWindow(code_field_, enters_code ? SW_SHOW : SW_HIDE);
   }
@@ -338,6 +418,8 @@ void PhiSyncSetupWindow::ShowPage(Page page) {
   Invalidate();
   if (enters_code) {
     ::SetFocus(code_field_);
+  } else if (field_had_keys) {
+    ::SetFocus(hwnd());  // The window's keys, not a hidden field's.
   }
 }
 
@@ -1395,12 +1477,9 @@ void PhiSyncSetupWindow::Layout() {
     }
   }
 
-  // Hits: buttons, then the pickers.
+  // Hits, in reading order for Tab and screen readers: the pickers, then the
+  // buttons below them.
   ClearHits();
-  for (const Button& button : buttons_) {
-    AddHit(button.rect, static_cast<int>(button.control) * kKeyStride,
-           button.text, PhiHitRole::kButton, false, button.enabled);
-  }
   for (const PickerRow& row : rows_) {
     if (row.value.empty() || row.pill_rect.right <= row.pill_rect.left) {
       continue;
@@ -1408,6 +1487,11 @@ void PhiSyncSetupWindow::Layout() {
     AddHit(row.pill_rect, static_cast<int>(row.control) * kKeyStride + row.key,
            row.label + L": " + row.value, PhiHitRole::kButton);
   }
+  for (const Button& button : buttons_) {
+    AddHit(button.rect, static_cast<int>(button.control) * kKeyStride,
+           button.text, PhiHitRole::kButton, false, button.enabled);
+  }
+  PhiUiaSetFocusedHit(this, KeyboardFocusIndex(), /*announce=*/false);
 }
 
 // --- Paint ------------------------------------------------------------------------------
@@ -1505,6 +1589,12 @@ void PhiSyncSetupWindow::Paint(HDC dc, const RECT&) {
                         static_cast<PhiPopupButtonRole>(b.role), hot, false,
                         b.enabled, c, BodyFont(), dpi());
   }
+  if (const PhiHit* focused = kb_focus_ >= 0 ? HitByKey(kb_focus_) : nullptr) {
+    RECT ring = {focused->bounds.left, focused->bounds.top,
+                 focused->bounds.right, focused->bounds.bottom};
+    ::InflateRect(&ring, Scaled(3), Scaled(3));
+    PhiStrokeRoundRectAA(dc, ring, Scaled(6), c.label_strong, Scaled(2));
+  }
   PaintBand(dc);
 }
 
@@ -1518,6 +1608,11 @@ void PhiSyncSetupWindow::OnClick(int hit, POINT) {
     return;
   }
   const int key = hits()[static_cast<size_t>(hit)].key;
+  ClearKeyboardRing();
+  Activate(key);
+}
+
+void PhiSyncSetupWindow::Activate(int key) {
   const Control control = static_cast<Control>(key / kKeyStride);
   const int row = key % kKeyStride;
   switch (control) {
@@ -1603,7 +1698,12 @@ void PhiSyncSetupWindow::EnsureCodeField() {
           self->FinishLater();
           return 0;
         }
-        if (msg == WM_CHAR && (wparam == VK_RETURN || wparam == VK_ESCAPE)) {
+        if (msg == WM_KEYDOWN && wparam == VK_TAB) {
+          self->MoveKeyboardFocus(::GetKeyState(VK_SHIFT) < 0);
+          return 0;
+        }
+        if (msg == WM_CHAR &&
+            (wparam == VK_RETURN || wparam == VK_ESCAPE || wparam == VK_TAB)) {
           return 0;
         }
         return ::DefSubclassProc(field, msg, wparam, lparam);
