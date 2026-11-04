@@ -6704,10 +6704,26 @@
    "zh-Hant": "設定檔選單"
   },
   "profile.card.accessibilitySummary": {
-   "en": "Phi member card, {0}, joined {1}"
+   "de": "Phi-Mitgliedskarte, {0}, Mitglied seit {1}",
+   "en": "Phi member card, {0}, joined {1}",
+   "es": "Tarjeta de miembro de Phi, {0}, miembro desde {1}",
+   "fr": "Carte de membre Phi, {0}, membre depuis {1}",
+   "ja": "Phiメンバーカード、{0}、{1}に登録",
+   "ko": "Phi 회원 카드, {0}, {1} 가입",
+   "nl": "Phi-lidmaatschapskaart, {0}, lid sinds {1}",
+   "zh-Hans": "Phi 会员卡片，{0}，加入于 {1}",
+   "zh-Hant": "Phi 會員卡，{0}，於 {1} 加入"
   },
   "profile.card.accessibilitySummaryWithoutDate": {
-   "en": "Phi member card, {0}"
+   "de": "Phi-Mitgliedskarte, {0}",
+   "en": "Phi member card, {0}",
+   "es": "Tarjeta de miembro de Phi, {0}",
+   "fr": "Carte de membre Phi, {0}",
+   "ja": "Phiメンバーカード、{0}",
+   "ko": "Phi 회원 카드, {0}",
+   "nl": "Phi-lidmaatschapskaart, {0}",
+   "zh-Hans": "Phi 会员卡片，{0}",
+   "zh-Hant": "Phi 會員卡，{0}"
   },
   "profile.card.dateJoined": {
    "de": "Mitglied seit",
