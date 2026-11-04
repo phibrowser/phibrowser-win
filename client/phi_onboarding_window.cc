@@ -2169,6 +2169,18 @@ LRESULT PhiOnboardingWindow::OnWindowMessage(UINT msg, WPARAM wparam,
       *handled = true;
       return reinterpret_cast<LRESULT>(field_brush_);
     }
+    case WM_SETCURSOR: {
+      // The house rule (phi_popup_chrome.cc): a hand for links.
+      const Hit* hit = HitOf(hovered());
+      if (LOWORD(lparam) == HTCLIENT && hit &&
+          (hit->control == Control::kPrivacyLink ||
+           hit->control == Control::kTermsLink)) {
+        ::SetCursor(::LoadCursorW(nullptr, IDC_HAND));
+        *handled = true;
+        return TRUE;
+      }
+      break;
+    }
     case WM_MOUSEMOVE:
       if (page_ == Page::kWelcome) {
         // The pointer over the card moves its light (the Mac's tracking
