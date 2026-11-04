@@ -124,6 +124,7 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
     kSaved,
     kBackToCode,
     kCopy,
+    kForgotCode,
     kRequestApproval,
     kUseRecovery,
     kCancelJoin,
@@ -268,6 +269,7 @@ class PhiSyncSetupWindow : public PhiSecondaryWindow {
   RECT title_rect_{};
   RECT body_rect_{};
   RECT back_hint_rect_{};
+  RECT warning_rect_{};
   RECT code_rect_{};
   RECT note_rect_{};
   RECT error_rect_{};

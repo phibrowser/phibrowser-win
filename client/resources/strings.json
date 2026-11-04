@@ -12456,6 +12456,28 @@
    "zh-Hans": "确认你的恢复代码",
    "zh-Hant": "確認你的復原代碼"
   },
+  "sync.recovery.entry.forgotHelp": {
+   "de": "Wiederherstellungscode vergessen?",
+   "en": "Forgot your recovery code?",
+   "es": "¿Olvidaste tu código de recuperación?",
+   "fr": "Code de récupération oublié ?",
+   "ja": "復旧コードをお忘れですか?",
+   "ko": "복구 코드를 잊으셨나요?",
+   "nl": "Herstelcode vergeten?",
+   "zh-Hans": "忘记了恢复代码？",
+   "zh-Hant": "忘記復原代碼？"
+  },
+  "sync.recovery.save.lossWarning.windows": {
+   "de": "Wenn du diesen Code verlierst und kein anderes Gerät mehr für die Synchronisierung eingerichtet ist, können die Synchronisierungsdaten in deinem Account nicht wiederhergestellt werden. Du müsstest die Synchronisierung zurücksetzen und von vorn beginnen.",
+   "en": "If you lose this code and no other device is still set up for sync, the sync data in your account cannot be recovered. You would have to reset sync and start over.",
+   "es": "Si pierdes este código y ya no queda ningún otro dispositivo configurado para la sincronización, los datos de sincronización de tu cuenta no se podrán recuperar. Tendrías que restablecer la sincronización y empezar de nuevo.",
+   "fr": "Si vous perdez ce code et qu'aucun autre appareil n'est plus configuré pour la synchronisation, les données de synchronisation de votre compte ne pourront pas être récupérées. Vous devrez réinitialiser la synchronisation et tout recommencer.",
+   "ja": "このコードを紛失し、同期が設定されている他のデバイスが1台も残っていない場合、アカウントの同期データは復元できません。その場合は、同期をリセットして最初からやり直す必要があります。",
+   "ko": "이 코드를 잃어버리고 동기화가 설정된 다른 기기가 하나도 남아 있지 않으면, 계정의 동기화 데이터를 복구할 수 없어요. 동기화를 재설정하고 처음부터 다시 시작해야 해요.",
+   "nl": "Als je deze code kwijtraakt en er geen ander apparaat meer is ingesteld voor synchronisatie, kunnen de synchronisatiegegevens in je account niet worden hersteld. Je zou dan synchronisatie moeten resetten en opnieuw beginnen.",
+   "zh-Hans": "如果你丢失了此代码，并且没有其他设备仍设置了同步，你账户中的同步数据将无法恢复。你需要重置同步并从头重新设置。",
+   "zh-Hant": "如果你遺失了此代碼，而且沒有其他裝置仍設定了同步，你帳號中的同步資料將無法復原。你將需要重設同步並從頭開始。"
+  },
   "sync.recovery.save.oneTimeNotice": {
    "de": "Dieser Wiederherstellungscode wird nur einmal angezeigt. Sichere ihn an einem sicheren Ort. Gib ihn auf dem nächsten Bildschirm ein, um zu bestätigen, dass du ihn gesichert hast, bevor du mit der Einrichtung der Synchronisierung fortfährst.",
    "en": "This recovery code is shown only once. Save it somewhere safe. On the next screen, enter it to confirm you saved it before continuing sync setup.",

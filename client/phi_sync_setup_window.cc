@@ -5,8 +5,10 @@
 #include "phibrowser-win/client/phi_sync_setup_window.h"
 
 #include <commctrl.h>
+#include <shellapi.h>
 
 #include <algorithm>
+#include <string_view>
 #include <utility>
 
 #include "base/json/json_writer.h"
@@ -43,6 +45,21 @@ constexpr int kIdCodeField = 101;
 constexpr int kKeyStride = 1000;
 
 PhiSyncSetupWindow* g_window = nullptr;
+
+// The Help article on a lost recovery code, in the UI's language (the Mac's
+// SyncHelpLinks). The Help Center serves English at /help/ and each translated
+// language at /help/<locale>/. Nothing here is modal, so a default browser and
+// a Phi tab both work.
+std::wstring ForgotRecoveryCodeUrl() {
+  static constexpr std::string_view kTranslated[] = {
+      "de", "es", "fr", "ja", "ko", "nl", "zh-Hans", "zh-Hant"};
+  const std::string& locale = PhiActiveLocale();
+  const bool translated =
+      std::ranges::find(kTranslated, locale) != std::end(kTranslated);
+  return base::UTF8ToWide("https://phibrowser.com/help/" +
+                          (translated ? locale + "/" : std::string()) +
+                          "sync/#forgot-your-recovery-code");
+}
 
 int64_t NowMs() {
   return base::Time::Now().InMillisecondsSinceUnixEpoch();
@@ -216,6 +233,17 @@ LRESULT PhiSyncSetupWindow::OnWindowMessage(UINT message,
     case WM_SIZE:
       if (alive()) {
         Layout();
+      }
+      break;
+    case WM_SETCURSOR:
+      // The house rule (phi_popup_chrome.cc): a hand for links.
+      if (LOWORD(lparam) == HTCLIENT && hovered() >= 0 &&
+          static_cast<size_t>(hovered()) < hits().size() &&
+          hits()[static_cast<size_t>(hovered())].key ==
+              static_cast<int>(Control::kForgotCode) * kKeyStride) {
+        ::SetCursor(::LoadCursorW(nullptr, IDC_HAND));
+        *handled = true;
+        return TRUE;
       }
       break;
     case WM_CTLCOLOREDIT:
@@ -1118,7 +1146,7 @@ void PhiSyncSetupWindow::Layout() {
   rows_.clear();
   remote_header_index_ = -1;
   title_rect_ = body_rect_ = code_rect_ = note_rect_ = error_rect_ =
-      section_rect_ = back_hint_rect_ = RECT{};
+      section_rect_ = back_hint_rect_ = warning_rect_ = RECT{};
   note_text_.clear();
   const RECT content = ContentRect();
   const int pad = Scaled(kPadDip);
@@ -1173,6 +1201,10 @@ void PhiSyncSetupWindow::Layout() {
                    bottom);
       break;
     case Page::kShowingCode: {
+      const int warning_h = MeasureHeight(
+          BodyFont(), PhiStr("sync.recovery.save.lossWarning.windows"), width);
+      warning_rect_ = {left, y, left + width, y + warning_h};
+      y += warning_h + Scaled(20);
       const int h = Scaled(64);
       code_rect_ = {left, y, left + width, y + h};
       AddButtonRow(
@@ -1226,6 +1258,24 @@ void PhiSyncSetupWindow::Layout() {
       if (!input_error_.empty()) {
         error_rect_ = {left, y, left + width,
                        y + MeasureHeight(BodyFont(), input_error_, width)};
+        y = error_rect_.bottom + Scaled(8);
+      }
+      if (page_ == Page::kEnterCode) {
+        // Joining from another device: the code was saved on the first one,
+        // so this points to the Help article where confirming offers Back.
+        Button forgot;
+        forgot.control = Control::kForgotCode;
+        forgot.text = PhiStr("sync.recovery.entry.forgotHelp");
+        forgot.role = static_cast<int>(PhiPopupButtonRole::kLink);
+        HDC dc = ::GetDC(hwnd());
+        HGDIOBJ old = ::SelectObject(dc, BodyFont());
+        SIZE size = {};
+        ::GetTextExtentPoint32W(dc, forgot.text.c_str(),
+                                static_cast<int>(forgot.text.size()), &size);
+        ::SelectObject(dc, old);
+        ::ReleaseDC(hwnd(), dc);
+        forgot.rect = {left, y, left + size.cx + Scaled(4), y + Scaled(24)};
+        buttons_.push_back(std::move(forgot));
       }
       Button submit =
           primary(Control::kSubmit, PhiStr("sync.setup.enter.submit"),
@@ -1384,6 +1434,11 @@ void PhiSyncSetupWindow::Paint(HDC dc, const RECT&) {
   const bool centred = page_ == Page::kWorking || page_ == Page::kSubmitting;
   text(BodyFont(), centred ? c.secondary : c.label, BodyText(), body_rect_,
        DT_WORDBREAK | (centred ? DT_CENTER : 0));
+  if (page_ == Page::kShowingCode) {
+    text(BodyFont(), c.label_strong,
+         PhiStr("sync.recovery.save.lossWarning.windows"), warning_rect_,
+         DT_WORDBREAK);
+  }
 
   if (page_ == Page::kShowingCode || page_ == Page::kWaiting ||
       page_ == Page::kEnterCode || page_ == Page::kConfirmCode) {
@@ -1476,6 +1531,10 @@ void PhiSyncSetupWindow::OnClick(int hit, POINT) {
       if (!busy_) {
         ShowPage(Page::kShowingCode);
       }
+      break;
+    case Control::kForgotCode:
+      ::ShellExecuteW(hwnd(), L"open", ForgotRecoveryCodeUrl().c_str(), nullptr,
+                      nullptr, SW_SHOWNORMAL);
       break;
     case Control::kCopy:
       CopyToClipboard(recovery_code_);
