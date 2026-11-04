@@ -324,8 +324,8 @@ class Alert : public PhiSecondaryWindow {
       HDC dc = ::GetDC(hwnd());
       HGDIOBJ previous = title_font_ ? ::SelectObject(dc, title_font_) : nullptr;
       RECT measure = {0, 0, content_w, 0};
-      ::DrawTextW(dc, spec_.title.c_str(), -1, &measure,
-                  DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+      PhiDrawTextAA(dc, spec_.title.c_str(), -1, &measure,
+                    DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
       title_h = std::max(title_h, static_cast<int>(measure.bottom));
       if (previous) {
         ::SelectObject(dc, previous);
@@ -341,8 +341,8 @@ class Alert : public PhiSecondaryWindow {
       HDC dc = ::GetDC(hwnd());
       HGDIOBJ previous = body_font_ ? ::SelectObject(dc, body_font_) : nullptr;
       RECT measure = {0, 0, content_w, 0};
-      ::DrawTextW(dc, spec_.message.c_str(), -1, &measure,
-                  DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+      PhiDrawTextAA(dc, spec_.message.c_str(), -1, &measure,
+                    DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
       message_h = measure.bottom;
       if (previous) {
         ::SelectObject(dc, previous);
@@ -507,18 +507,18 @@ class Alert : public PhiSecondaryWindow {
     ::SetTextColor(dc, colors().label_strong);
     RECT title = title_;
     const bool one_line = title.bottom - title.top <= Scaled(kTitleHeight);
-    ::DrawTextW(dc, spec_.title.c_str(), -1, &title,
-                DT_LEFT | DT_NOPREFIX |
-                    (one_line ? DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS
-                              : DT_WORDBREAK));
+    PhiDrawTextAA(dc, spec_.title.c_str(), -1, &title,
+                  DT_LEFT | DT_NOPREFIX |
+                      (one_line ? DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS
+                                : DT_WORDBREAK));
     if (!spec_.message.empty()) {
       if (body_font_) {
         ::SelectObject(dc, body_font_);
       }
       ::SetTextColor(dc, colors().label);
       RECT message = message_;
-      ::DrawTextW(dc, spec_.message.c_str(), -1, &message,
-                  DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
+      PhiDrawTextAA(dc, spec_.message.c_str(), -1, &message,
+                    DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
     }
     if (spec_.accessory != Accessory::kNone &&
         spec_.accessory != Accessory::kCheckbox) {

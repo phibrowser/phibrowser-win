@@ -3053,8 +3053,8 @@ void PhiSidebarView::PaintDropZone(HDC dc,
     // The glyph over the wrapped hint, the pair centred in the zone.
     const int pad = Scaled(12);
     RECT measure = {zone.left + pad, 0, zone.right - pad, 0};
-    ::DrawTextW(dc, hint, -1, &measure,
-                DT_CENTER | DT_WORDBREAK | DT_NOPREFIX | DT_CALCRECT);
+    PhiDrawTextAA(dc, hint, -1, &measure,
+                  DT_CENTER | DT_WORDBREAK | DT_NOPREFIX | DT_CALCRECT);
     const int text_h = measure.bottom - measure.top;
     const int gap = Scaled(6);
     const int total = glyph_px + gap + text_h;

@@ -157,7 +157,7 @@ class Toast : public PhiPopover {
     top.bottom = top.top + title_h_;
     ::SelectObject(dc, TitleFont());
     ::SetTextColor(dc, colors.label);
-    ::DrawTextW(dc, title_.c_str(), -1, &top, kWrapFlags);
+    PhiDrawTextAA(dc, title_.c_str(), -1, &top, kWrapFlags);
     if (message_.empty()) {
       return;
     }
@@ -166,7 +166,7 @@ class Toast : public PhiPopover {
     bottom.bottom = bottom.top + message_h_;
     ::SelectObject(dc, MessageFont());
     ::SetTextColor(dc, colors.label_dim);
-    ::DrawTextW(dc, message_.c_str(), -1, &bottom, kWrapFlags);
+    PhiDrawTextAA(dc, message_.c_str(), -1, &bottom, kWrapFlags);
   }
 
   void OnHover(int, int) override { ::InvalidateRect(hwnd(), nullptr, FALSE); }
@@ -274,8 +274,8 @@ class Toast : public PhiPopover {
     TEXTMETRICW metrics = {};
     ::GetTextMetricsW(dc, &metrics);
     RECT bounds = {0, 0, max_width, 0};
-    ::DrawTextW(dc, text.c_str(), -1, &bounds,
-                DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+    PhiDrawTextAA(dc, text.c_str(), -1, &bounds,
+                  DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
     SIZE size = {};
     size.cx = std::min<LONG>(bounds.right - bounds.left, max_width);
     size.cy = std::min<LONG>(bounds.bottom - bounds.top,

@@ -1133,8 +1133,8 @@ int PhiSyncSetupWindow::MeasureHeight(HFONT font,
   HDC dc = ::GetDC(hwnd());
   HGDIOBJ old = ::SelectObject(dc, font);
   RECT r = {0, 0, width, 0};
-  ::DrawTextW(dc, text.c_str(), static_cast<int>(text.size()), &r,
-              DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+  PhiDrawTextAA(dc, text.c_str(), static_cast<int>(text.size()), &r,
+                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
   ::SelectObject(dc, old);
   ::ReleaseDC(hwnd(), dc);
   return r.bottom - r.top;

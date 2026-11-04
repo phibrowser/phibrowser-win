@@ -1189,8 +1189,8 @@ int PhiSettingsWindow::WrappedHeight(HFONT font, const wchar_t* text,
   }
   HGDIOBJ previous = ::SelectObject(measure_dc_, font);
   RECT box = {0, 0, width, 0};
-  ::DrawTextW(measure_dc_, text, -1, &box,
-              DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+  PhiDrawTextAA(measure_dc_, text, -1, &box,
+                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
   ::SelectObject(measure_dc_, previous);
   return box.bottom - box.top;
 }

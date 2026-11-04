@@ -28,6 +28,7 @@
 #include "phibrowser-win/client/phi_menu_paint.h"
 #include "phibrowser-win/client/phi_prompt.h"
 #include "phibrowser-win/client/phi_shell_menus.h"
+#include "phibrowser-win/client/phi_text_wrap.h"
 #include "phibrowser-win/client/phi_version.h"
 
 #pragma comment(lib, "comctl32.lib")
@@ -231,9 +232,9 @@ void Text(HDC dc,
   HGDIOBJ old = ::SelectObject(dc, font);
   ::SetBkMode(dc, TRANSPARENT);
   ::SetTextColor(dc, ink);
-  ::DrawTextW(dc, text.c_str(), static_cast<int>(text.size()), &rect,
-              format | DT_NOPREFIX |
-                  ((format & DT_WORDBREAK) ? 0 : DT_SINGLELINE));
+  PhiDrawTextAA(dc, text.c_str(), static_cast<int>(text.size()), &rect,
+                format | DT_NOPREFIX |
+                    ((format & DT_WORDBREAK) ? 0 : DT_SINGLELINE));
   ::SelectObject(dc, old);
 }
 
@@ -250,8 +251,8 @@ int TextWidth(HDC dc, HFONT font, const std::wstring& text) {
 int WrappedHeight(HDC dc, HFONT font, const std::wstring& text, int width) {
   HGDIOBJ old = ::SelectObject(dc, font);
   RECT r = {0, 0, width, 0};
-  ::DrawTextW(dc, text.c_str(), static_cast<int>(text.size()), &r,
-              DT_WORDBREAK | DT_CALCRECT | DT_NOPREFIX);
+  PhiDrawTextAA(dc, text.c_str(), static_cast<int>(text.size()), &r,
+                DT_WORDBREAK | DT_CALCRECT | DT_NOPREFIX);
   ::SelectObject(dc, old);
   return r.bottom;
 }
@@ -621,6 +622,7 @@ void PhiFeedbackWindow::Build() {
                            ES_AUTOVSCROLL | ES_WANTRETURN,
                        kIdDescription);
   ::SendMessageW(description_, EM_SETLIMITTEXT, kMaxDescriptionLength, 0);
+  PhiUseTextWrapRules(description_);
   url_ = Child(L"EDIT", L"", WS_TABSTOP | ES_AUTOHSCROLL, kIdUrl);
   url_clear_ = Child(L"BUTTON", PhiStr("feedback.form.page.clear"),
                      BS_OWNERDRAW, kIdUrlClear);

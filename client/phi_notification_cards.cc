@@ -163,9 +163,9 @@ class PhiNotificationCardView : public PhiPopover {
     ::SelectObject(dc, fonts().Get(kMessageSize, FW_NORMAL));
     ::SetTextColor(dc, colors.label_dim);
     RECT message = message_rect_;
-    ::DrawTextW(dc, message_.c_str(), -1, &message,
-                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS |
-                    DT_EDITCONTROL | DT_NOPREFIX);
+    PhiDrawTextAA(dc, message_.c_str(), -1, &message,
+                  DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS |
+                      DT_EDITCONTROL | DT_NOPREFIX);
 
     const PhiFontDesc glyph_font = {kGlyphSize, FW_NORMAL,
                                     L"Segoe MDL2 Assets"};
@@ -261,9 +261,9 @@ class PhiNotificationCardView : public PhiPopover {
     TEXTMETRICW metrics = {};
     ::GetTextMetricsW(probe, &metrics);
     RECT measure = {pad_x, y, width - pad_x, y};
-    ::DrawTextW(probe, message_.c_str(), -1, &measure,
-                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_EDITCONTROL |
-                    DT_NOPREFIX | DT_CALCRECT);
+    PhiDrawTextAA(probe, message_.c_str(), -1, &measure,
+                  DT_LEFT | DT_TOP | DT_WORDBREAK | DT_EDITCONTROL |
+                      DT_NOPREFIX | DT_CALCRECT);
     ::SelectObject(probe, previous);
     ::ReleaseDC(hwnd(), probe);
     const int line = std::max<int>(1, metrics.tmHeight);

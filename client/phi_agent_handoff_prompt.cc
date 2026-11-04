@@ -203,8 +203,8 @@ class Prompt : public PhiSecondaryWindow {
     HDC dc = ::GetDC(hwnd());
     HGDIOBJ old = ::SelectObject(dc, fonts().Get(13, FW_NORMAL));
     RECT measure = {0, 0, width - 2 * pad, 0};
-    ::DrawTextW(dc, message_.c_str(), -1, &measure,
-                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+    PhiDrawTextAA(dc, message_.c_str(), -1, &measure,
+                  DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
     ::SelectObject(dc, old);
     ::ReleaseDC(hwnd(), dc);
     const int text_height = std::max<int>(measure.bottom, Scaled(18));

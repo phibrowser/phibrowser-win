@@ -323,8 +323,8 @@ int PhiTabPreview::TextBlockHeight(const std::wstring& title,
   }
   HGDIOBJ prev = ::SelectObject(screen, TitleFont());
   RECT measure = {0, 0, std::max(1, width), 0};
-  ::DrawTextW(screen, title.c_str(), -1, &measure,
-              DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+  PhiDrawTextAA(screen, title.c_str(), -1, &measure,
+                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
   TEXTMETRICW metrics = {};
   ::GetTextMetricsW(screen, &metrics);
   const int line = metrics.tmHeight;
@@ -537,17 +537,17 @@ void PhiTabPreview::DrawPane(HDC dc,
   // the cap unconditionally would push the URL past the bottom of a card
   // that CardSize() measured for a one-line title, and it would never draw.
   RECT measured = {0, 0, text.right - text.left, 0};
-  ::DrawTextW(dc, title.c_str(), -1, &measured,
-              DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+  PhiDrawTextAA(dc, title.c_str(), -1, &measured,
+                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
   const LONG title_height =
       std::max<LONG>(metrics.tmHeight,
                      std::min<LONG>(measured.bottom - measured.top,
                                     2 * metrics.tmHeight));
   RECT title_rc = text;
   title_rc.bottom = std::min<LONG>(text.bottom, text.top + title_height);
-  ::DrawTextW(dc, title.c_str(), -1, &title_rc,
-              DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS |
-                  DT_NOPREFIX);
+  PhiDrawTextAA(dc, title.c_str(), -1, &title_rc,
+                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS |
+                    DT_NOPREFIX);
   if (!url.empty()) {
     ::SelectObject(dc, UrlFont());
     ::SetTextColor(dc, palette.label_dim);

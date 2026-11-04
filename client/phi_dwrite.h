@@ -63,9 +63,11 @@ bool PhiDrawIconGlyph(HDC dc,
 // goes through PhiDrawIconGlyph at the font's own em size, in the DC's
 // current text colour, placed per DT_LEFT / DT_CENTER / DT_RIGHT and
 // DT_TOP / DT_VCENTER / DT_BOTTOM — so a site keeps its GDI font plumbing
-// and loses the ClearType fringe. Anything else (plain text, DT_CALCRECT,
-// a missing face) is handed to DrawTextW unchanged. Returns what DrawTextW
-// returns (the text height), or the em size after a DirectWrite draw.
+// and loses the ClearType fringe. DT_WORDBREAK text, measured or drawn, gets
+// its line breaks from PhiWrapTextLines first, so measure and draw it through
+// here. Anything else (plain text, DT_CALCRECT, a missing face) is handed to
+// DrawTextW unchanged. Returns what DrawTextW returns (the text height), or
+// the em size after a DirectWrite draw.
 int PhiDrawTextAA(HDC dc,
                   const wchar_t* text,
                   int length,

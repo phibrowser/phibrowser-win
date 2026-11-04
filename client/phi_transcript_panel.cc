@@ -12,6 +12,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "phibrowser-win/client/phi_popup_chrome.h"
 #include "phibrowser-win/client/phi_secondary_window.h"
+#include "phibrowser-win/client/phi_text_wrap.h"
 
 namespace phi_client {
 
@@ -322,6 +323,7 @@ class Panel : public PhiSecondaryWindow {
             ES_AUTOVSCROLL,
         0, 0, 10, 10, hwnd(), reinterpret_cast<HMENU>(kFeedId),
         ::GetModuleHandleW(nullptr), nullptr);
+    PhiUseTextWrapRules(feed_);
     input_ = ::CreateWindowExW(
         0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_LEFT |
                              ES_AUTOHSCROLL,

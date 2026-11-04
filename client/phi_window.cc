@@ -286,8 +286,8 @@ SIZE PhiTipWindow::Measure() {
   HGDIOBJ old_font =
       ::SelectObject(screen, fonts().Get(kTipFontSize, FW_NORMAL));
   RECT text = {0, 0, Scaled(kTipMaxWidth), 0};
-  ::DrawTextW(screen, text_.c_str(), -1, &text,
-              DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+  PhiDrawTextAA(screen, text_.c_str(), -1, &text,
+                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
   ::SelectObject(screen, old_font);
   ::ReleaseDC(nullptr, screen);
   size.cx = text.right - text.left + Scaled(kTipPaddingX) * 2;

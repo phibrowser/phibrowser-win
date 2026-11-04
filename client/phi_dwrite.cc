@@ -23,6 +23,7 @@
 #include "base/containers/span.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/no_destructor.h"
+#include "phibrowser-win/client/phi_text_wrap.h"
 
 namespace phi_client {
 
@@ -1535,19 +1536,40 @@ double PhiRoundRectCoverage(double px,
 }
 
 // ---------------------------------------------------------------------------
-// Icon glyphs through DrawText's signature.
+// Icon glyphs and wrapped text through DrawText's signature.
 
 int PhiDrawTextAA(HDC dc,
                   const wchar_t* text,
                   int length,
                   RECT* rect,
                   UINT format) {
+  // SAFETY: DrawTextW's contract — `text` holds `length` characters, or is
+  // NUL-terminated when `length` is -1.
+  const std::wstring_view view =
+      !text ? std::wstring_view()
+            : UNSAFE_BUFFERS(
+                  length < 0
+                      ? std::wstring_view(text)
+                      : std::wstring_view(text, static_cast<size_t>(length)));
+  if (text && rect && (format & DT_WORDBREAK) && (format & DT_NOPREFIX) &&
+      !(format & DT_SINGLELINE)) {
+    // A cut text keeps its overflow past the last line that shows, or there
+    // is nothing for DT_END_ELLIPSIS to cut.
+    int max_lines = 0;
+    TEXTMETRICW metrics = {};
+    if ((format & DT_END_ELLIPSIS) && !(format & DT_CALCRECT) &&
+        ::GetTextMetricsW(dc, &metrics) && metrics.tmHeight > 0) {
+      max_lines = std::max<int>(
+          1, (rect->bottom - rect->top) / metrics.tmHeight);
+    }
+    const std::wstring wrapped =
+        PhiWrapTextLines(dc, view, rect->right - rect->left, max_lines);
+    if (!wrapped.empty()) {
+      return ::DrawTextW(dc, wrapped.c_str(), static_cast<int>(wrapped.size()),
+                         rect, format);
+    }
+  }
   if (text && rect && !(format & DT_CALCRECT)) {
-    // SAFETY: DrawTextW's contract — `text` holds `length` characters, or
-    // is NUL-terminated when `length` is -1.
-    const std::wstring_view view = UNSAFE_BUFFERS(
-        length < 0 ? std::wstring_view(text)
-                   : std::wstring_view(text, static_cast<size_t>(length)));
     // One code point, surrogate pair allowed; the MDL2 icons are BMP
     // private-use characters (U+E000..U+F8FF).
     const bool one = view.size() == 1 ||

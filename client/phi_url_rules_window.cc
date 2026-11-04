@@ -375,8 +375,8 @@ class PhiUrlRulesWindow::RuleList : public PhiPanel {
       hint.top = title.bottom + Scaled(8);
       hint.left += Scaled(24);
       hint.right -= Scaled(24);
-      ::DrawTextW(dc, PhiStr("sidebar.urlRulesEditor.emptyHint"), -1, &hint,
-                  DT_CENTER | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
+      PhiDrawTextAA(dc, PhiStr("sidebar.urlRulesEditor.emptyHint"), -1, &hint,
+                    DT_CENTER | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
       ::SelectObject(dc, previous);
       return;
     }
@@ -749,8 +749,8 @@ void PhiUrlRulesWindow::Layout() {
     HDC dc = ::GetDC(hwnd());
     HGDIOBJ previous = small_font_ ? ::SelectObject(dc, small_font_) : nullptr;
     RECT measure = {0, 0, client.right - 2 * Scaled(kHeaderPadX), 0};
-    ::DrawTextW(dc, PhiStr("sidebar.urlRulesEditor.subtitle"), -1, &measure,
-                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+    PhiDrawTextAA(dc, PhiStr("sidebar.urlRulesEditor.subtitle"), -1, &measure,
+                  DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
     subtitle_h = std::max(subtitle_h, static_cast<int>(measure.bottom));
     if (previous) {
       ::SelectObject(dc, previous);
@@ -807,8 +807,8 @@ void PhiUrlRulesWindow::Paint(HDC dc, const RECT&) {
   ::SetTextColor(dc, colors().secondary);
   RECT subtitle = {title.left, title.bottom + Scaled(kTitleGap), title.right,
                    header_.bottom - Scaled(kHeaderPadY)};
-  ::DrawTextW(dc, PhiStr("sidebar.urlRulesEditor.subtitle"), -1, &subtitle,
-              DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
+  PhiDrawTextAA(dc, PhiStr("sidebar.urlRulesEditor.subtitle"), -1, &subtitle,
+                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
   if (previous) {
     ::SelectObject(dc, previous);
   }
@@ -832,15 +832,15 @@ void PhiUrlRulesWindow::Paint(HDC dc, const RECT&) {
     // Wrapped, then centred on the footer by hand (DT_VCENTER is
     // single-line only).
     RECT measure = note;
-    ::DrawTextW(dc, text, -1, &measure,
-                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+    PhiDrawTextAA(dc, text, -1, &measure,
+                  DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
     const int height = std::min(static_cast<int>(measure.bottom - measure.top),
                                 static_cast<int>(note.bottom - note.top));
     note.top = (footer_.top + footer_.bottom - height) / 2;
     note.bottom = note.top + height;
-    ::DrawTextW(dc, text, -1, &note,
-                DT_LEFT | DT_WORDBREAK | DT_NOPREFIX | DT_END_ELLIPSIS |
-                    DT_EDITCONTROL);
+    PhiDrawTextAA(dc, text, -1, &note,
+                  DT_LEFT | DT_WORDBREAK | DT_NOPREFIX | DT_END_ELLIPSIS |
+                      DT_EDITCONTROL);
     if (small_font_) {
       ::SelectObject(dc, previous);
     }
