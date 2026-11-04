@@ -116,6 +116,15 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
   out->directional_tab_closing =
       dict.FindBool("directionalTabClosingEnabled")
           .value_or(out->directional_tab_closing);
+  if (const base::ListValue* collapsed =
+          dict.FindList("SidebarCollapsedBookmarkRootSpaceIds")) {
+    out->collapsed_bookmark_root_spaces.clear();
+    for (const base::Value& id : *collapsed) {
+      if (id.is_string()) {
+        out->collapsed_bookmark_root_spaces.insert(id.GetString());
+      }
+    }
+  }
   out->sidebar_transparency = std::clamp(
       dict.FindInt("sidebarTransparency").value_or(out->sidebar_transparency),
       0, 100);
@@ -315,6 +324,11 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("dimUnloadedTabIcons", value.dim_unloaded_tab_icons);
   root.Set("doubleClickToCloseTabs", value.double_click_to_close_tabs);
   root.Set("directionalTabClosingEnabled", value.directional_tab_closing);
+  base::ListValue collapsed_roots;
+  for (const std::string& id : value.collapsed_bookmark_root_spaces) {
+    collapsed_roots.Append(id);
+  }
+  root.Set("SidebarCollapsedBookmarkRootSpaceIds", std::move(collapsed_roots));
   root.Set("sidebarTransparency", value.sidebar_transparency);
   root.Set("PhiAgentSpaceAutoView", value.agent_auto_view);
   root.Set("peekViewEnabled", value.peek_view_enabled);

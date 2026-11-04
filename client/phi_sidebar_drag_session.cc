@@ -529,6 +529,7 @@ void PhiSidebarDragSession::RetargetDragSlide() {
       for (const ShortcutRow& row : view_->bookmarks()) {
         row_to[row.guid].dy += dy;
       }
+      row_to[kSpaceRootSlideKey].dy += dy;
       row_to[kBandShiftKey].dy += dy;
     }
   }
@@ -782,10 +783,10 @@ void PhiSidebarDragSession::ReserveDropZones() {
   switch (kind_) {
     case PhiDragKind::kTab:
       pinned = view_->pinned().empty();
-      bookmark = view_->bookmarks().empty();
+      bookmark = view_->OutlineEmpty();
       break;
     case PhiDragKind::kPin:
-      bookmark = view_->bookmarks().empty();
+      bookmark = view_->OutlineEmpty();
       break;
     case PhiDragKind::kBookmark: {
       // A folder cannot become a pin (the Mac's emptyView refuses it).
@@ -1294,7 +1295,7 @@ RECT PhiSidebarDragSession::DragSourceRect() {
         r.top += Scaled(kRowPad);
         r.bottom -= Scaled(kRowPad);
         r.left = std::min(
-            r.left + BookmarkIndentDepth(row.depth) * Scaled(kBookmarkIndent),
+            r.left + view_->OutlineIndentDepth(row.depth) * Scaled(kBookmarkIndent),
             r.right - Scaled(shell_metrics::kFaviconSlot) - Scaled(12));
       }
       break;
@@ -2443,7 +2444,7 @@ int PhiSidebarDragSession::DragInsertSlot(POINT pt) {
           return take(
               ResolvePinnedDrop(view_->PinnedDropRows(), pt.x, pt.y, {}));
         case PhiDropBand::kBookmarks:
-          return take(ResolveBookmarkDrop(view_->BookmarkDropRows(), pt.y, {}));
+          return take(view_->ResolveOutlineDrop(pt.y, {}));
         default:
           if (layout.horizontal_tabs) {
             // The strip: the gap follows the lifted tab's edges, not the
@@ -2478,8 +2479,7 @@ int PhiSidebarDragSession::DragInsertSlot(POINT pt) {
           // The cell becomes a bookmark at the outline slot: the rows part
           // for it (a drop INTO a collapsed folder answers no slot and
           // highlights the folder instead).
-          return take(
-              ResolveBookmarkDrop(view_->BookmarkDropRows(), pt.y, {}));
+          return take(view_->ResolveOutlineDrop(pt.y, {}));
         default:
           return take(
               ResolvePinnedDrop(view_->PinnedDropRows(), pt.x, pt.y, key_));
@@ -2496,8 +2496,7 @@ int PhiSidebarDragSession::DragInsertSlot(POINT pt) {
           return take(ResolveTabDrop(view_->TabDropRows(), pt.x, pt.y,
                                      layout.horizontal_tabs, {}));
         default:
-          return take(
-              ResolveBookmarkDrop(view_->BookmarkDropRows(), pt.y, key_));
+          return take(view_->ResolveOutlineDrop(pt.y, key_));
       }
     case PhiDragKind::kChip:
       return strip()->InsertSlotAt(pt);

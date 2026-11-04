@@ -56,6 +56,7 @@ class PhiPreferences : public ChromePrefsHost {
     kOpenIndicators,  // The sidebar's open-tab dots: every sidebar repaints.
     kDimUnloaded,     // The reclaimed-tab dimming: every sidebar repaints.
     kTabClosing,      // Both tab-closing switches: read at the click or menu.
+    kBookmarkRoot,    // A Space's bookmark root: every sidebar rebuilds.
     kSidebarTransparency,  // The acrylic slider: every slot re-applies it.
     kPeek,           // Both peek switches: the framework mirror is due.
     kKiosk,          // The Ctrl+Alt-click switch: the framework mirror is due.
@@ -119,6 +120,9 @@ class PhiPreferences : public ChromePrefsHost {
   bool DimUnloadedTabIcons() const override;
   bool DoubleClickToCloseTabs() const override;
   bool DirectionalTabClosing() const override;
+  bool BookmarkRootCollapsed(const std::string& space_id) const override;
+  void SetBookmarkRootCollapsed(const std::string& space_id,
+                                bool collapsed) override;
   int SidebarTransparency() const override;
   bool NewTabOpensOmnibox() const override;
   int SidebarWidth() const override;

@@ -326,6 +326,7 @@ enum class PhiChromeHover {
   kTab,
   kPin,
   kBookmark,
+  kSpaceRoot,
   kGroupHeader,
   kChip,
   // The toolbar's back / forward / reload / search buttons — the index is
@@ -547,6 +548,8 @@ class PhiSidebarShell {
   // The slot's active Space id — an agent Space hosted for a watch shows
   // no pinned tabs or bookmarks, like an agent window's own sidebar.
   virtual std::string SidebarActiveSpace() const = 0;
+  // Its name, for the bookmark root row.
+  virtual std::wstring SidebarActiveSpaceName() const = 0;
   // The framework's CURRENT state for `browser`, pulled typed — for the
   // gesture paths that just mutated the strip and act on the result inside
   // the same turn. Never for rows or paint: those read the window model.
@@ -659,6 +662,27 @@ class PhiSidebarView {
   const std::vector<TabRow>& tabs() const { return tabs_; }
   const std::vector<ShortcutRow>& pinned() const { return pinned_; }
   const std::vector<ShortcutRow>& bookmarks() const { return bookmarks_; }
+  // The Space bookmark root (the Mac's SpaceRootSidebarItem): a header row
+  // named after the Space above its bookmarks, collapsible per Space. It is
+  // presentation only, so no stored parent changes, and it is no row of
+  // bookmarks(), whose positions the drag session works in.
+  struct SpaceRootRow {
+    bool shown = false;
+    bool expanded = true;
+    // Collapsed over the active bookmark: the Mac floats that bookmark under
+    // the root; here the root itself says so.
+    bool contains_active = false;
+    std::wstring title;
+    RECT frame{};
+    RECT bounds{};
+  };
+  const SpaceRootRow& space_root() const { return space_root_; }
+  // No bookmark in the tree at all, whatever the root is hiding.
+  bool OutlineEmpty() const { return sidebar_tree_.bookmarks.empty(); }
+  SidebarKey SpaceRootKey() const;
+  // Where a drop at `pointer_y` lands in the outline, the root row included.
+  DropResolution ResolveOutlineDrop(int pointer_y,
+                                    const SidebarKey& dragging) const;
   // No stored bands at all: incognito, an agent Space. A drag reserves no
   // drop zone here.
   bool stored_bands_isolated() const { return stored_bands_isolated_; }
@@ -864,6 +888,9 @@ class PhiSidebarView {
   int pinned_grid_rows() const { return pinned_grid_rows_; }
   // The bookmark cells an expanded chain reveals, in outline order.
   std::vector<const SidebarCell*> VisibleBookmarkCells() const;
+  void ToggleSpaceRoot();
+  // An outline row's indent: the root's children sit one level in.
+  int OutlineIndentDepth(int depth) const;
   // The sections as the pure drop resolvers see them.
   std::vector<DropRow> TabDropRows() const;
   std::vector<DropRow> PinnedDropRows() const;
@@ -986,6 +1013,7 @@ class PhiSidebarView {
   std::vector<GroupHeader> group_headers_;
   std::vector<ShortcutRow> pinned_;
   std::vector<ShortcutRow> bookmarks_;
+  SpaceRootRow space_root_;
   // The active tab's URL (captured by Rebuild) and its session id.
   std::string active_tab_url_;
   TabId active_tab_id_;

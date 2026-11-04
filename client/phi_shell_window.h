@@ -425,6 +425,10 @@ class ChromePrefsHost {
   // The Mac's GeneralSettings.directionalTabClosingEnabled: the positional
   // rows of the tab and group menus. On by default.
   virtual bool DirectionalTabClosing() const = 0;
+  // The Mac's collapsed Space bookmark roots, local to this machine.
+  virtual bool BookmarkRootCollapsed(const std::string& space_id) const = 0;
+  virtual void SetBookmarkRootCollapsed(const std::string& space_id,
+                                        bool collapsed) = 0;
   // Appearance ▸ "Sidebar transparency", 0-100 %: how much of the Desktop
   // Acrylic backdrop shows through the theme tint; 0 paints it opaque.
   virtual int SidebarTransparency() const = 0;
@@ -1970,6 +1974,7 @@ class PhiShellWindow : public PhiHitSource,
   PhiPalette SidebarPalette() const override;
   BrowserId SidebarActiveBrowser() const override;
   std::string SidebarActiveSpace() const override;
+  std::wstring SidebarActiveSpaceName() const override;
   bool SidebarPullSnapshot(
       BrowserId browser,
       phi_framework::WindowSnapshot* out) const override;

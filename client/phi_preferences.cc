@@ -507,6 +507,22 @@ void PhiPreferences::SetDirectionalTabClosing(bool enabled) {
   Notify(PreferenceChange::kTabClosing);
 }
 
+bool PhiPreferences::BookmarkRootCollapsed(const std::string& space_id) const {
+  return settings_.collapsed_bookmark_root_spaces.count(space_id) > 0;
+}
+
+void PhiPreferences::SetBookmarkRootCollapsed(const std::string& space_id,
+                                              bool collapsed) {
+  std::set<std::string>& ids = settings_.collapsed_bookmark_root_spaces;
+  const bool changed =
+      collapsed ? ids.insert(space_id).second : ids.erase(space_id) > 0;
+  if (!changed) {
+    return;
+  }
+  MarkDirty();
+  Notify(PreferenceChange::kBookmarkRoot);
+}
+
 void PhiPreferences::SetDimUnloadedTabIcons(bool enabled) {
   if (enabled == settings_.dim_unloaded_tab_icons) {
     return;

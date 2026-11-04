@@ -163,6 +163,7 @@ class PhiSidebarDragSession {
   // outline ("+ New Tab", the group headers, the tab rows) is pushed while
   // a drag opens a row-sized gap in the outline. Rides the same clock.
   static constexpr char kBandShiftKey[] = "\x01" "band";
+  static constexpr char kSpaceRootSlideKey[] = "\x01" "root";
 
   // The pointer moved with the button down.
   void Update(POINT pt);
@@ -187,6 +188,9 @@ class PhiSidebarDragSession {
   // The visible bookmark row a drop INTO a collapsed folder highlights
   // (-1 = an ordinary gap insertion).
   int folder_row() const { return bookmark_drop_folder_row_; }
+  // What a drop that opens no gap lands INTO: a collapsed folder, or the
+  // collapsed Space root.
+  const SidebarKey& folder_key() const { return folder_key_; }
   // The bookmark folder the drop lands INSIDE right now — at a gap among
   // its children or on its collapsed row — so the painter can mark the
   // folder as the container taking the item (empty: the root, or no

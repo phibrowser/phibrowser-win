@@ -3462,6 +3462,15 @@ bool PhiCoordinator::DirectionalTabClosing() const {
   return preferences_.DirectionalTabClosing();
 }
 
+bool PhiCoordinator::BookmarkRootCollapsed(const std::string& space_id) const {
+  return preferences_.BookmarkRootCollapsed(space_id);
+}
+
+void PhiCoordinator::SetBookmarkRootCollapsed(const std::string& space_id,
+                                              bool collapsed) {
+  preferences_.SetBookmarkRootCollapsed(space_id, collapsed);
+}
+
 void PhiCoordinator::SetDirectionalTabClosing(bool enabled) {
   preferences_.SetDirectionalTabClosing(enabled);
 }
@@ -4000,6 +4009,12 @@ void PhiCoordinator::OnPreferencesChanged(
       break;
     case PreferenceChange::kTabClosing:
       break;  // Read at the double-click and when a menu opens.
+    case PreferenceChange::kBookmarkRoot:
+      // Another window may be showing the same Space.
+      for (PhiShellWindow* controller : registry_.Controllers()) {
+        controller->ScheduleRefresh();
+      }
+      break;
     case PreferenceChange::kSidebarTransparency:
       // The DWM backdrop is set (or dropped) per window and the tint's alpha
       // re-read; the corners, split ground and regrade follow it, as on a

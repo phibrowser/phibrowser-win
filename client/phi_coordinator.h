@@ -431,6 +431,9 @@ class PhiCoordinator : public SidebarHost,
   bool DimUnloadedTabIcons() const override;
   bool DoubleClickToCloseTabs() const override;
   bool DirectionalTabClosing() const override;
+  bool BookmarkRootCollapsed(const std::string& space_id) const override;
+  void SetBookmarkRootCollapsed(const std::string& space_id,
+                                bool collapsed) override;
   int SidebarTransparency() const override;
   void NoteSlotActiveSpace(const std::string& space_id) override;
   void NoteSpaceWindow(const std::string& space_id,

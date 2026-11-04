@@ -462,8 +462,54 @@ bool PhiSidebarView::ToggleExpanded(const std::string& guid) {
   return true;
 }
 
+SidebarKey PhiSidebarView::SpaceRootKey() const {
+  return SidebarKey::Space(shell_->SidebarActiveSpace());
+}
+
+void PhiSidebarView::ToggleSpaceRoot() {
+  if (prefs_host_) {
+    prefs_host_->SetBookmarkRootCollapsed(shell_->SidebarActiveSpace(),
+                                          space_root_.expanded);
+  }
+  shell_->SidebarScheduleRefresh();
+}
+
+int PhiSidebarView::OutlineIndentDepth(int depth) const {
+  return BookmarkIndentDepth(depth + (space_root_.shown ? 1 : 0));
+}
+
+DropResolution PhiSidebarView::ResolveOutlineDrop(
+    int pointer_y,
+    const SidebarKey& dragging) const {
+  if (!space_root_.shown || pointer_y >= space_root_.frame.bottom) {
+    return ResolveBookmarkDrop(BookmarkDropRows(), pointer_y, dragging);
+  }
+  // On the root: the item lands first among the Space's top-level bookmarks.
+  // An expanded root opens the gap above its first child; a collapsed one has
+  // no rows to part, so it highlights instead.
+  DropResolution out;
+  out.place.section = SidebarPlace::Section::kBookmarks;
+  for (const SidebarCell& cell : sidebar_tree_.bookmarks) {
+    if (cell.depth == 0 && cell.key != dragging) {
+      out.place.parent_guid = cell.parent_guid;
+      out.place.before = cell.key;
+      break;
+    }
+  }
+  if (space_root_.expanded) {
+    out.gap_slot = 0;
+  } else {
+    out.folder_key = SpaceRootKey();
+  }
+  return out;
+}
+
 bool PhiSidebarView::OnStoredRowClick(POINT pt) {
   EndKeyboardFocus();  // The ring is the keyboard's; a click retires it.
+  if (::PtInRect(&space_root_.bounds, pt)) {
+    ToggleSpaceRoot();
+    return true;
+  }
   for (const ShortcutRow& pin : pinned_) {
     if (::PtInRect(&pin.bounds, pt)) {
       if (pin.attached_surface != SidebarSurface::kContent &&
@@ -822,6 +868,8 @@ RECT PhiSidebarView::RowHoverRect(HoverKind kind, int index) const {
       return with_gutter(at(pinned_), true);
     case HoverKind::kBookmark:
       return with_gutter(at(bookmarks_), true);
+    case HoverKind::kSpaceRoot:
+      return with_gutter(space_root_.bounds, true);
     case HoverKind::kGroupHeader: {
       RECT r = with_gutter(at(group_headers_), false);
       if (index >= 0 && index < static_cast<int>(group_headers_.size()) &&
@@ -877,6 +925,14 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
     add(pin.bounds, kPinKey + static_cast<int>(i), pin.title,
         PhiHitRole::kListItem, pin.active);
     note_focus(pin.key, before);
+  }
+  if (space_root_.shown) {
+    // Announced as the group it opens, its expanded state on the selection
+    // flag, like a folder.
+    const size_t before = hits_.size();
+    add(space_root_.bounds, kBookmarkKey - 1, space_root_.title,
+        PhiHitRole::kGroup, space_root_.expanded);
+    note_focus(SpaceRootKey(), before);
   }
   for (size_t i = 0; i < bookmarks_.size(); ++i) {
     const ShortcutRow& row = bookmarks_[i];
@@ -1062,9 +1118,25 @@ void PhiSidebarView::Rebuild() {
         comfortable || isolated
             ? 0
             : LayoutPinnedGrid(units, GridMetrics(PhiSidebarRects{})).rows;
+    // Only the vertical list has the outline; Comfortable's bar reads the
+    // tree whatever the root says.
+    space_root_.shown =
+        !isolated && !comfortable && !sidebar_tree_.bookmarks.empty();
+    space_root_.expanded =
+        !space_root_.shown || !prefs_host_ ||
+        !prefs_host_->BookmarkRootCollapsed(shell_->SidebarActiveSpace());
+    space_root_.title =
+        space_root_.shown ? shell_->SidebarActiveSpaceName() : std::wstring();
+    space_root_.contains_active =
+        space_root_.shown && !space_root_.expanded &&
+        std::ranges::any_of(sidebar_tree_.bookmarks, [](const SidebarCell& cell) {
+          return cell.binding.active;
+        });
     shell_->SidebarSetRowCounts(
         pinned_grid_rows_,
-        isolated ? 0 : static_cast<int>(VisibleBookmarkCells().size()));
+        isolated ? 0
+                 : static_cast<int>(VisibleBookmarkCells().size()) +
+                       (space_root_.shown ? 1 : 0));
   }
   const PhiSidebarRects layout = shell_->SidebarRects();
   // The stored bands' scroll range: how far their natural extent runs past
@@ -1091,6 +1163,10 @@ void PhiSidebarView::Rebuild() {
           target = row.frame;
         }
       }
+    }
+    if (space_root_.shown && !reveal_key_.empty() &&
+        reveal_key_ == SpaceRootKey()) {
+      target = space_root_.frame;
     }
     const RECT& band = layout.stored_band;
     int next = stored_scroll_;
@@ -1702,6 +1778,8 @@ void PhiSidebarView::Rebuild() {
       row.frame = none;
       row.surface_box = none;
     }
+    space_root_.bounds = none;
+    space_root_.frame = none;
     for (GroupHeader& header : group_headers_) {
       header.bounds = none;
       header.container = none;
@@ -1741,6 +1819,8 @@ bool PhiSidebarView::incognito() const {
 
 void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
                                       const WindowSnapshot& snapshot) {
+  space_root_.frame = RECT{};
+  space_root_.bounds = RECT{};
   pinned_.clear();
   bookmarks_.clear();
   if (!sidebar_host_ || incognito() || agent_ ||
@@ -1940,11 +2020,18 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     m.row_height = Scaled(kTabRowHeight);
     m.row_gap = Scaled(kTabRowGap);
     m.scroll = stored_scroll_;
-    const std::vector<ListItem> items(bookmarks_.size(), ListItem{});
+    // The root takes the outline's first row.
+    const size_t first_row = space_root_.shown ? 1 : 0;
+    const std::vector<ListItem> items(bookmarks_.size() + first_row,
+                                      ListItem{});
     const ListPlacement placed = LayoutList(items, m);
+    if (space_root_.shown) {
+      space_root_.frame = PhiToRect(placed.rects[0]);
+      space_root_.bounds = clip_to_band(space_root_.frame);
+    }
     for (size_t i = 0; i < bookmarks_.size(); ++i) {
       ShortcutRow& row = bookmarks_[i];
-      row.frame = PhiToRect(placed.rects[i]);
+      row.frame = PhiToRect(placed.rects[i + first_row]);
       row.bounds = clip_to_band(row.frame);
       if (row.attached_surface != SidebarSurface::kContent &&
           row.bounds.right > row.bounds.left) {
@@ -2005,6 +2092,9 @@ std::vector<RECT> PhiSidebarView::PinnedGridWalk(
 std::vector<const SidebarCell*> PhiSidebarView::VisibleBookmarkCells()
     const {
   std::vector<const SidebarCell*> visible;
+  if (space_root_.shown && !space_root_.expanded) {
+    return visible;
+  }
   for (const size_t row :
        PhiVisibleOutlineRows(sidebar_tree_.bookmarks, expanded_bookmarks_)) {
     visible.push_back(&sidebar_tree_.bookmarks[row]);
@@ -2191,6 +2281,13 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     extra.Set("surface", surface_name(bookmark.attached_surface));
     extra.Set("surfaceBox", box(bookmark.surface_box));
     emit("bookmarks", bookmark.key, bookmark.bounds, std::move(extra));
+  }
+  if (space_root_.shown) {
+    base::DictValue extra;
+    extra.Set("title", base::WideToUTF8(space_root_.title));
+    extra.Set("expanded", space_root_.expanded);
+    extra.Set("containsActive", space_root_.contains_active);
+    emit("spaceRoot", SpaceRootKey(), space_root_.bounds, std::move(extra));
   }
   for (const GroupHeader& header : group_headers_) {
     base::DictValue extra;
@@ -2505,6 +2602,9 @@ std::vector<SidebarKey> PhiSidebarView::KeyboardOrder() const {
   for (const ShortcutRow& pin : pinned_) {
     order.push_back(pin.key);
   }
+  if (space_root_.frame.right > space_root_.frame.left) {
+    order.push_back(SpaceRootKey());
+  }
   for (const ShortcutRow& row : bookmarks_) {
     if (row.frame.right > row.frame.left) {
       order.push_back(row.key);  // Not comfortable's parked rows.
@@ -2551,6 +2651,9 @@ RECT PhiSidebarView::KeyRect(const SidebarKey& key) const {
         return row.bounds;
       }
     }
+  }
+  if (key.kind == SidebarKey::Kind::kSpace) {
+    return space_root_.bounds;
   }
   if (key.kind == SidebarKey::Kind::kGroup) {
     for (const GroupHeader& header : group_headers_) {
@@ -2625,6 +2728,9 @@ void PhiSidebarView::ActivateKey(const SidebarKey& key, bool toggle) {
     return;
   }
   switch (key.kind) {
+    case SidebarKey::Kind::kSpace:
+      ToggleSpaceRoot();
+      return;
     case SidebarKey::Kind::kFolder:
       ToggleExpanded(key.id);
       shell_->SidebarScheduleRefresh();
@@ -2654,7 +2760,6 @@ void PhiSidebarView::ActivateKey(const SidebarKey& key, bool toggle) {
       Apply(SidebarActivate{key, 0});
       return;
     case SidebarKey::Kind::kNone:
-    case SidebarKey::Kind::kSpace:
       break;
   }
   (void)toggle;  // Space on a row that has nothing to toggle activates it.
@@ -3365,7 +3470,7 @@ void PhiSidebarView::PaintBand(HDC dc,
       drag_active && drag_kind == PhiDragKind::kBookmark &&
       !layout.horizontal_tabs && drag_index >= 0 &&
       drag_index < static_cast<int>(bookmarks_.size());
-  if (drag_active && !layout.horizontal_tabs && bookmarks_.empty() &&
+  if (drag_active && !layout.horizontal_tabs && OutlineEmpty() &&
       layout.bookmarks.bottom > layout.bookmarks.top) {
     RECT zone = layout.bookmarks;  // The one reserved row, pill-inset.
     ::OffsetRect(&zone, 0, band_shift - stored_scroll_);
@@ -3419,12 +3524,53 @@ void PhiSidebarView::PaintBand(HDC dc,
       area.top += Scaled(kRowPad);
       area.bottom -= Scaled(kRowPad);
       area.left = std::min(
-          area.left + BookmarkIndentDepth(folder_depth) * Scaled(kBookmarkIndent),
+          area.left + OutlineIndentDepth(folder_depth) * Scaled(kBookmarkIndent),
           area.right - Scaled(kFaviconSlot));
       PhiFillRounded(dc, area, palette.hover_strong, Scaled(kCornerRadius));
       PhiStrokeRounded(dc, area, palette.hover_strong, palette.accent,
                        Scaled(kCornerRadius));
     }
+  }
+  // The Space bookmark root: the chevron and the name, in primary text at 55 %
+  // so it stays clear of any Space's ground (the Mac's textMuted).
+  if (space_root_.bounds.right > space_root_.bounds.left) {
+    RECT pill = space_root_.frame;
+    if (drag_active) {
+      const SlideVec offset = RowSlide(PhiSidebarDragSession::kSpaceRootSlideKey);
+      ::OffsetRect(&pill, static_cast<int>(offset.dx),
+                   static_cast<int>(offset.dy));
+    }
+    pill.top += Scaled(kRowPad);
+    pill.bottom -= Scaled(kRowPad);
+    if (drag_active && drag_->folder_key() == SpaceRootKey()) {
+      PhiFillRounded(dc, pill, palette.hover_strong, Scaled(kCornerRadius));
+      PhiStrokeRounded(dc, pill, palette.hover_strong, palette.accent,
+                       Scaled(kCornerRadius));
+    } else if (space_root_.contains_active) {
+      PhiFillRounded(dc, pill, palette.hover_strong, Scaled(kCornerRadius));
+    } else if (hover_kind == HoverKind::kSpaceRoot) {
+      PhiFillRounded(dc, pill, palette.hover, Scaled(kCornerRadius));
+    }
+    const COLORREF ink = space_root_.contains_active
+                             ? kLabel
+                             : FadeInk(kLabel, kTintTop, 0.55f);
+    const int mid = (pill.top + pill.bottom) / 2;
+    const int chevron_px = Scaled(10);
+    const int chevron_left =
+        pill.left + Scaled(6) + (Scaled(kFaviconSlot) - chevron_px) / 2;
+    const RECT chevron = {chevron_left, mid - chevron_px / 2,
+                          chevron_left + chevron_px, mid + chevron_px / 2};
+    PhiDrawIconGlyph(dc, chevron,
+                     space_root_.expanded ? fluent::kChevronDown
+                                          : fluent::kChevronRight,
+                     chevron_px, ink);
+    RECT text = pill;
+    text.left += Scaled(6) + Scaled(kFaviconSlot) + Scaled(8);
+    text.right -= Scaled(8);
+    ::SetTextColor(dc, ink);
+    PhiDrawTextAA(dc, space_root_.title.c_str(), -1, &text,
+                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                      DT_NOPREFIX);
   }
   std::vector<size_t> bookmark_order;
   bookmark_order.reserve(bookmarks_.size());
@@ -3460,7 +3606,7 @@ void PhiSidebarView::PaintBand(HDC dc,
     // Outline depth indents the pill itself, as the Mac outline rows do.
     // Capped (BookmarkIndentDepth), and never past room for the icon slot.
     pill.left = std::min(
-        pill.left + BookmarkIndentDepth(bookmark.depth) * Scaled(kBookmarkIndent),
+        pill.left + OutlineIndentDepth(bookmark.depth) * Scaled(kBookmarkIndent),
         pill.right - Scaled(kFaviconSlot) - Scaled(12));
     const bool bookmark_hovered =
         hover_kind == HoverKind::kBookmark &&

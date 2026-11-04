@@ -2702,6 +2702,18 @@ std::string PhiShellWindow::SidebarActiveSpace() const {
   return active_space();
 }
 
+std::wstring PhiShellWindow::SidebarActiveSpaceName() const {
+  if (services_.spaces) {
+    const std::string active = active_space();
+    for (const PhiSpaceView& space : services_.spaces->Spaces()) {
+      if (space.id == active) {
+        return base::UTF8ToWide(space.name);
+      }
+    }
+  }
+  return PhiStr("appMenu.bookmarks");
+}
+
 BrowserId PhiShellWindow::SidebarActiveBrowser() const {
   return active_browser_id();
 }
@@ -3714,6 +3726,7 @@ RECT PhiShellWindow::HoverRect(HoverKind kind, int index) {
     case HoverKind::kTab:
     case HoverKind::kPin:
     case HoverKind::kBookmark:
+    case HoverKind::kSpaceRoot:
     case HoverKind::kGroupHeader:
       break;
     case HoverKind::kChip:
@@ -3820,6 +3833,11 @@ void PhiShellWindow::OnChromeMouseMove(POINT client_pt) {
       kind = HoverKind::kPin;
       index = static_cast<int>(i);
     }
+  }
+  if (band && kind == HoverKind::kNone &&
+      ::PtInRect(&sidebar_->space_root().bounds, client_pt)) {
+    kind = HoverKind::kSpaceRoot;
+    index = 0;
   }
   const std::vector<ShortcutRow>& marks = sidebar_->bookmarks();
   for (size_t i = 0; band && i < marks.size() && kind == HoverKind::kNone;
@@ -4588,6 +4606,12 @@ PhiShellWindow::BandSignature PhiShellWindow::CurrentBandSignature()
   };
   for (const ShortcutRow& pin : sidebar_->pinned()) {
     stored("p:", pin);
+  }
+  if (const auto& root = sidebar_->space_root(); root.shown) {
+    out.rows.emplace_back(
+        "r:" + base::WideToUTF8(root.title) + "|" +
+            (root.expanded ? "e" : "") + (root.contains_active ? "a" : ""),
+        root.bounds);
   }
   for (const ShortcutRow& bookmark : sidebar_->bookmarks()) {
     stored("b:", bookmark);
