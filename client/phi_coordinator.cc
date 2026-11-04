@@ -3820,6 +3820,9 @@ void PhiCoordinator::OnPreferencesChanged(
       }
       break;
     case PreferenceChange::kFullUrl:
+      for (PhiShellWindow* controller : registry_.Controllers()) {
+        controller->RefreshAddressField();
+      }
       registry_.InvalidateAll();  // The address fields repaint.
       break;
     case PreferenceChange::kOpenIndicators:

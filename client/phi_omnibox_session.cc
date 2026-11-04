@@ -56,6 +56,26 @@ std::wstring TextOf(HWND edit) {
   return std::wstring(buffer.data());
 }
 
+// Selects all of an EDIT with the caret at the START, so a URL longer than the
+// field keeps its host in view, not its tail. EM_SETSEL cannot: the EDIT
+// scrolls to the end of a selection whichever way round it is set. Shift+Home
+// from the end does it, with the thread's key state put back straight after.
+void SelectWholeField(HWND edit) {
+  const int length = ::GetWindowTextLengthW(edit);
+  ::SendMessageW(edit, EM_SETSEL, length, length);
+  BYTE keys[256] = {};
+  if (!::GetKeyboardState(keys)) {
+    ::SendMessageW(edit, EM_SETSEL, 0, -1);
+    return;
+  }
+  const BYTE shift = keys[VK_SHIFT];
+  keys[VK_SHIFT] |= 0x80;
+  ::SetKeyboardState(keys);
+  ::CallWindowProcW(g_edit_base_proc, edit, WM_KEYDOWN, VK_HOME, 0);
+  keys[VK_SHIFT] = shift;
+  ::SetKeyboardState(keys);
+}
+
 // The clipboard's Unicode text, or empty.
 std::wstring ClipboardText(HWND owner) {
   std::wstring text;
@@ -275,18 +295,41 @@ void PhiOmniboxSession::Sync(bool force) {
   }
   // Never overwrite a half-typed URL: nav state refreshes on every paint and
   // on every framework notification.
-  if (!force && ::GetFocus() == field_) {
+  const bool focused = ::GetFocus() == field_;
+  if (!force && focused) {
     return;
   }
   // Chromium's own pages read phi:// (the Mac's prefill goes through
-  // phiBrandEnsuredUrlString); the fork navigates phi:// back.
-  const std::wstring shown = PhiOmniboxBrandUrl(nav_url_);
-  if (shown == TextOf(field_)) {
+  // phiBrandEnsuredUrlString); the fork navigates phi:// back. Only the
+  // resting text is shortened: an edit starts from, and commits, the whole URL.
+  field_at_rest_ = !focused;
+  SetFieldText(focused ? PhiOmniboxBrandUrl(nav_url_)
+                       : PhiOmniboxRestingUrl(nav_url_,
+                                              shell_->OmniboxShowsUrlPath()));
+}
+
+void PhiOmniboxSession::SetFieldText(const std::wstring& text) {
+  if (text == TextOf(field_)) {
     return;  // Unchanged; setting it again would fight the caret.
   }
   programmatic_ = true;  // Not the user typing — no autocomplete.
-  ::SetWindowTextW(field_, shown.c_str());
+  ::SetWindowTextW(field_, text.c_str());
   programmatic_ = false;
+}
+
+void PhiOmniboxSession::OnFieldFocused() {
+  if (field_at_rest_) {
+    field_at_rest_ = false;
+    SetFieldText(PhiOmniboxBrandUrl(nav_url_));
+  }
+}
+
+void PhiOmniboxSession::OnFieldBlurred() {
+  // Text the user changed stays until the next Sync, as it always has: an
+  // Alt+Tab away and back keeps it.
+  if (TextOf(field_) == PhiOmniboxBrandUrl(nav_url_)) {
+    Sync(/*force=*/false);
+  }
 }
 
 void PhiOmniboxSession::CommitField() {
@@ -401,7 +444,7 @@ bool PhiOmniboxSession::FocusFieldIfVisible() {
     return false;
   }
   ::SetFocus(field_);
-  ::SendMessageW(field_, EM_SETSEL, 0, -1);
+  SelectWholeField(field_);
   return true;
 }
 
@@ -711,7 +754,8 @@ BrowserId PhiOmniboxSession::CurrentTabTarget() {
 
 std::wstring PhiOmniboxSession::DisplayedUrl() const {
   // What the user actually sees, mid-edit.
-  return field_ ? TextOf(field_) : PhiOmniboxBrandUrl(nav_url_);
+  return field_ ? TextOf(field_)
+                : PhiOmniboxRestingUrl(nav_url_, shell_->OmniboxShowsUrlPath());
 }
 
 void PhiOmniboxSession::SetFieldHover(bool hovered) {
@@ -1894,6 +1938,9 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
           self->ExitKeyword(std::wstring(), /*requery=*/false);
           self->Sync(/*force=*/true);
         }
+        if (hwnd == self->field_) {
+          self->OnFieldBlurred();
+        }
       }
       break;
     case WM_MOUSEMOVE:
@@ -1912,15 +1959,23 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
       }
       break;
     case WM_SETFOCUS: {
+      if (self && hwnd == self->field_) {
+        self->OnFieldFocused();
+      }
       const LRESULT result =
           ::CallWindowProcW(g_edit_base_proc, hwnd, msg, wparam, lparam);
-      ::SendMessageW(hwnd, EM_SETSEL, 0, -1);  // Typing replaces the whole URL.
+      SelectWholeField(hwnd);  // Typing replaces the whole URL.
       ::InvalidateRect(hwnd, nullptr, FALSE);
       return result;
     }
     case WM_CONTEXTMENU:
       if (self) {
         self->shell_->OmniboxFieldPressed();
+        if (hwnd == self->field_ && self->field_at_rest_) {
+          // The stock menu would have focused the EDIT, and Copy must find
+          // the whole URL rather than the resting text.
+          ::SetFocus(hwnd);
+        }
         // The EDIT's stock menu is replaced by the Fluent flyout (§3.5).
         // Shift+F10 / the menu key arrive with (-1, -1): anchor those on
         // the caret's field.
@@ -1942,6 +1997,14 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
       // the extension popup closes on it as on any other chrome press.
       if (self) {
         self->shell_->OmniboxFieldPressed();
+        if (msg == WM_LBUTTONDOWN && hwnd == self->field_ &&
+            self->field_at_rest_) {
+          // The press that starts an edit selects the whole URL, as the Mac's
+          // omnibox opens: the EDIT would drop the caret wherever the pointer
+          // falls in a text the user has not seen yet.
+          ::SetFocus(hwnd);
+          return 0;
+        }
       }
       break;
   }

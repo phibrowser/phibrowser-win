@@ -1107,6 +1107,8 @@ class PhiShellWindow : public PhiHitSource,
   void ApplyLayoutMode(PhiLayoutMode mode);
   // Repaints for a palette the host just changed.
   void ApplyPalette();
+  // The Always Show URL Path setting changed: the field's text follows.
+  void RefreshAddressField();
   // Child surfaces in the sidebar must use the same alpha contract.
   bool sidebar_backdrop_enabled() const { return sidebar_backdrop_; }
   // The content region (client coords, physical pixels) the browser child
@@ -1882,6 +1884,7 @@ class PhiShellWindow : public PhiHitSource,
   PhiPalette OmniboxPalette() const override;
   PhiPalette OmniboxFieldPalette() const override;
   PhiLayoutMode OmniboxLayoutMode() const override;
+  bool OmniboxShowsUrlPath() const override;
   PhiOmniboxCapsule OmniboxCapsule() override;
   phi_framework::PhiFramework* OmniboxFramework() const override;
   BrowserId OmniboxBrowser() const override;

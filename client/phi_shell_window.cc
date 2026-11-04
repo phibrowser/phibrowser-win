@@ -1473,6 +1473,14 @@ PhiLayoutMode PhiShellWindow::OmniboxLayoutMode() const {
   return layout_mode_;
 }
 
+bool PhiShellWindow::OmniboxShowsUrlPath() const {
+  return services_.prefs && services_.prefs->AlwaysShowFullUrl();
+}
+
+void PhiShellWindow::RefreshAddressField() {
+  omnibox_->Sync(/*force=*/false);
+}
+
 phi_framework::PhiFramework* PhiShellWindow::OmniboxFramework() const {
   return framework_;
 }

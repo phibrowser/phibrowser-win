@@ -5,6 +5,7 @@
 #ifndef PHIBROWSER_WIN_CLIENT_PHI_OMNIBOX_SESSION_H_
 #define PHIBROWSER_WIN_CLIENT_PHI_OMNIBOX_SESSION_H_
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <memory>
@@ -256,6 +257,60 @@ inline std::wstring PhiOmniboxBrandUrl(const std::wstring& text) {
     return text;
   }
   return L"phi://" + text.substr(kChrome.size());
+}
+
+// The Mac's WebContentAddressBarViewModel.formattedDisplayText: what the
+// field shows at rest, for a page's `url` as Chromium reports it. Off, the
+// Always Show URL Path setting leaves the host alone (URLProcessor.displayName);
+// on, it adds the port, path, query and fragment. Neither shows the scheme,
+// "www." or trailing slashes. A url that is not scheme://host (about:, data:,
+// blob:, view-source:, file:///) shows whole: a "://" further along it is the
+// page's content, not its host.
+inline std::wstring PhiOmniboxRestingUrl(const std::wstring& url,
+                                         bool show_path) {
+  const auto trimmed = [](std::wstring text) {
+    while (text.size() > 1 && text.back() == L'/') {
+      text.pop_back();
+    }
+    return text;
+  };
+  const size_t scheme_end = url.find(L"://");
+  const bool has_scheme =
+      scheme_end != std::wstring::npos && scheme_end > 0 &&
+      url.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz"
+                            L"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-.") ==
+          scheme_end;
+  if (!has_scheme) {
+    return trimmed(PhiOmniboxBrandUrl(url));
+  }
+  const size_t authority = scheme_end + 3;
+  const size_t authority_end = std::min(url.find_first_of(L"/?#", authority),
+                                        url.size());
+  std::wstring host = url.substr(authority, authority_end - authority);
+  const size_t credentials = host.rfind(L'@');
+  if (credentials != std::wstring::npos) {
+    host.erase(0, credentials + 1);
+  }
+  // An IPv6 host keeps the colons inside its brackets.
+  std::wstring port;
+  const size_t colon = host.rfind(L':');
+  if (colon != std::wstring::npos &&
+      (host.rfind(L']') == std::wstring::npos || colon > host.rfind(L']'))) {
+    port = host.substr(colon);
+    host.erase(colon);
+  }
+  if (host.empty()) {
+    return trimmed(PhiOmniboxBrandUrl(url));
+  }
+  if (host.compare(0, 4, L"www.") == 0) {
+    host.erase(0, 4);
+  }
+  if (show_path) {
+    return trimmed(host + port + url.substr(authority_end));
+  }
+  // An extension's page has no host a person would read.
+  return url.compare(0, 17, L"chrome-extension:") == 0 ? std::wstring()
+                                                       : trimmed(host);
 }
 
 // The Mac's normalizedForURLComparison: no scheme, lower case, no "www.",
@@ -520,6 +575,9 @@ class PhiOmniboxShell {
   // popup and menus stay on OmniboxPalette.
   virtual PhiPalette OmniboxFieldPalette() const = 0;
   virtual PhiLayoutMode OmniboxLayoutMode() const = 0;
+  // The Always Show URL Path setting: how much of the url the field shows at
+  // rest (PhiOmniboxRestingUrl).
+  virtual bool OmniboxShowsUrlPath() const = 0;
   // This turn's capsule geometry (the shell's cached layout).
   virtual PhiOmniboxCapsule OmniboxCapsule() = 0;
 
@@ -609,8 +667,9 @@ class PhiOmniboxSession {
   // paints.
   void Position();
   void SetFieldVisible(bool visible);
-  // Pushes the current page's URL into the field. Skipped while the user is
-  // typing unless `force` (the Escape-reverts path).
+  // Pushes the current page's URL into the field: the whole URL while the
+  // field has the keyboard, the Always Show URL Path form otherwise. Skipped
+  // while the user is typing unless `force` (the Escape-reverts path).
   void Sync(bool force);
   // Navigates to whatever is typed in `edit` — the address field or the
   // native page's omnibox — then hands focus back to the page.
@@ -731,6 +790,13 @@ class PhiOmniboxSession {
   void PopupClick(int x, int y);
 
  private:
+  // Writes the address field without running autocomplete.
+  void SetFieldText(const std::wstring& text);
+  // The address field took or lost the keyboard: the resting text and the
+  // whole URL trade places.
+  void OnFieldFocused();
+  void OnFieldBlurred();
+
   // Rows mirror the framework's OnOmniboxResults json; the popup is a
   // non-activating WS_POPUP under the address field, so the EDIT keeps focus
   // and its caret while the list is up.
@@ -870,6 +936,10 @@ class PhiOmniboxSession {
   bool favicon_missing_ = false;
   HWND popup_ = nullptr;
   bool programmatic_ = false;  // Suppresses EN_CHANGE feedback.
+  // The field holds the resting form of the URL (Sync), which focus swaps for
+  // the whole URL. False from then on until a Sync: what is there is the
+  // whole URL or the user's own text, which focus must not touch.
+  bool field_at_rest_ = false;
   // Set by StartNewTab in omnibox mode: the next commit opens a NEW tab.
   bool new_tab_pending_ = false;
   TabId split_anchor_;  // StartSplitWithNewTab: cleared on commit or Escape.
