@@ -34,6 +34,7 @@
 #include "phibrowser-win/client/phi_sidebar_actions.h"
 #include "phibrowser-win/client/phi_sidebar_view.h"
 #include "phibrowser-win/client/phi_shell_menus.h"
+#include "phibrowser-win/client/phi_tab_close.h"
 #include "phibrowser-win/client/phi_shell_layout.h"
 #include "phibrowser-win/client/phi_spaces_strip.h"
 #include "phibrowser-win/client/phi_sidebar_model.h"
@@ -418,6 +419,12 @@ class ChromePrefsHost {
   // The Mac's GeneralSettings.dimUnloadedTabIcons: a reclaimed tab's favicon
   // and open dot at 30%. On by default; the dimmed title stays either way.
   virtual bool DimUnloadedTabIcons() const = 0;
+  // The Mac's GeneralSettings.doubleClickToCloseTabs: an unmodified
+  // double-click closes an ordinary tab. Off by default.
+  virtual bool DoubleClickToCloseTabs() const = 0;
+  // The Mac's GeneralSettings.directionalTabClosingEnabled: the positional
+  // rows of the tab and group menus. On by default.
+  virtual bool DirectionalTabClosing() const = 0;
   // Appearance ▸ "Sidebar transparency", 0-100 %: how much of the Desktop
   // Acrylic backdrop shows through the theme tint; 0 paints it opaque.
   virtual int SidebarTransparency() const = 0;
@@ -1407,6 +1414,16 @@ class PhiShellWindow : public PhiHitSource,
                            std::string group_id,
                            std::wstring title,
                            COLORREF color);
+  // The positional close rows for `anchors` (a row's panes, or a group's
+  // members) in `browser`, and the close itself, recomputed at invocation.
+  PhiDirectionalCloseRows DirectionalCloseRows(BrowserId browser,
+                                               const std::set<int>& anchors);
+  void CloseTabsInDirection(BrowserId browser,
+                            const std::set<int>& anchors,
+                            PhiTabCloseDirection direction);
+  // The tab ids of a group, in `browser`.
+  std::set<int> GroupMemberTabIds(BrowserId browser,
+                                  const std::string& group_id) const;
   void ShowTabRowMenu(POINT pt, const MenuRow& row);
   void ShowPinnedCellMenu(POINT pt, const MenuRow& row);
   void ShowBookmarkRowMenu(POINT pt, const MenuRow& row);
@@ -1514,6 +1531,21 @@ class PhiShellWindow : public PhiHitSource,
   // sidebar's trailing gutter; live while dragging, persisted on release.
   int sidebar_dip_ = kSidebarWidthDefault;
   bool sidebar_resizing_ = false;
+  // Double-click to close (Advanced ▸ the tab-closing card). The Mac acts on
+  // the release with a 5 pt drag guard; the message here arrives on the second
+  // press, which may be starting a drag, so it only arms and the release
+  // decides. The first press's row guards a second press on a row that slid
+  // under the pointer.
+  struct DoubleClickClose {
+    SidebarKey key;
+    int pane = -1;
+    POINT at{};
+  };
+  void NoteRowPress(POINT pt);
+  void ArmDoubleClickClose(POINT pt, bool modifiers);
+  void FinishDoubleClickClose(POINT pt, bool dragged);
+  SidebarKey first_press_row_;
+  std::optional<DoubleClickClose> double_click_close_;
   // Where the band was grabbed, in px left of the sidebar's edge: the edge
   // keeps that distance from the pointer instead of jumping to it.
   int sidebar_resize_grab_ = 0;

@@ -300,6 +300,14 @@ bool PhiPreferences::ShowOpenTabIndicators() const {
   return settings_.show_open_tab_indicators;
 }
 
+bool PhiPreferences::DoubleClickToCloseTabs() const {
+  return settings_.double_click_to_close_tabs;
+}
+
+bool PhiPreferences::DirectionalTabClosing() const {
+  return settings_.directional_tab_closing;
+}
+
 bool PhiPreferences::DimUnloadedTabIcons() const {
   return settings_.dim_unloaded_tab_icons;
 }
@@ -477,6 +485,24 @@ void PhiPreferences::SetShowOpenTabIndicators(bool enabled) {
   settings_.show_open_tab_indicators = enabled;
   MarkDirty();
   Notify(PreferenceChange::kOpenIndicators);
+}
+
+void PhiPreferences::SetDoubleClickToCloseTabs(bool enabled) {
+  if (enabled == settings_.double_click_to_close_tabs) {
+    return;
+  }
+  settings_.double_click_to_close_tabs = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kTabClosing);
+}
+
+void PhiPreferences::SetDirectionalTabClosing(bool enabled) {
+  if (enabled == settings_.directional_tab_closing) {
+    return;
+  }
+  settings_.directional_tab_closing = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kTabClosing);
 }
 
 void PhiPreferences::SetDimUnloadedTabIcons(bool enabled) {

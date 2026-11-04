@@ -211,6 +211,13 @@ struct PhiSettings {
   // The Mac's GeneralSettings.dimUnloadedTabIcons: a reclaimed (unloaded or
   // discarded) tab's favicon and open dot draw at 30%. On by default.
   bool dim_unloaded_tab_icons = true;
+  // The Mac's GeneralSettings.doubleClickToCloseTabs: an unmodified
+  // double-click on an ordinary tab closes it. Off by default, as on Mac.
+  bool double_click_to_close_tabs = false;
+  // The Mac's GeneralSettings.directionalTabClosingEnabled: the tab and group
+  // menus' Close Tabs to the Left / Right (Above / Below in a vertical list).
+  // On by default, as on Mac.
+  bool directional_tab_closing = true;
   // Appearance ▸ "Sidebar transparency", 0-100 %: how much of the Desktop
   // Acrylic backdrop shows through the sidebar's theme tint. 0 paints the
   // palette opaque; 20 is the Mac's 80 % overlay. Windows only.

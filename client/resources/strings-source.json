@@ -6367,6 +6367,22 @@
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc) (Appearance ▸ Tabs)",
    "en": "Show a preview card when hovering over a tab"
   },
+  "settings.advanced.tabs.directionalClosingDescription": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ the tab-closing card, phi_settings_window.cc",
+   "en": "Add options to tab and tab group menus to close tabs to the left or right, or above or below in a vertical tab bar."
+  },
+  "settings.advanced.tabs.directionalClosingToggle": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ the tab-closing card, phi_settings_window.cc",
+   "en": "Close tabs by position"
+  },
+  "settings.advanced.tabs.doubleClickToCloseDescription": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ the tab-closing card, phi_settings_window.cc",
+   "en": "Double-click a tab to close it. In split view, only the clicked pane closes. Pinned tabs and bookmarks keep their existing double-click actions."
+  },
+  "settings.advanced.tabs.doubleClickToCloseToggle": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ the tab-closing card, phi_settings_window.cc",
+   "en": "Double-click to close tabs"
+  },
   "settings.agentAccessPermissionsAndThe": {
    "comment": "settings — used at phi_settings_window.cc:833",
    "en": "Agent access, permissions, and the password manager ",
@@ -9067,6 +9083,22 @@
    "comment": "sidebar — used at phi_shell_window.cc:5617",
    "en": "Add to Group"
   },
+  "sidebar.tabContextMenu.closeTabsAbove": {
+   "comment": "Mac key (translations by key); contextMenu — tab row, phi_shell_menus.cc",
+   "en": "Close tabs above"
+  },
+  "sidebar.tabContextMenu.closeTabsBelow": {
+   "comment": "Mac key (translations by key); contextMenu — tab row, phi_shell_menus.cc",
+   "en": "Close tabs below"
+  },
+  "sidebar.tabContextMenu.closeTabsToLeft": {
+   "comment": "Mac key (translations by key); contextMenu — tab row, phi_shell_menus.cc",
+   "en": "Close tabs to the left"
+  },
+  "sidebar.tabContextMenu.closeTabsToRight": {
+   "comment": "Mac key (translations by key); contextMenu — tab row, phi_shell_menus.cc",
+   "en": "Close tabs to the right"
+  },
   "sidebar.tabContextMenu.convertToHorizontalSplit": {
    "comment": "sidebar — used at phi_shell_window.cc:5692",
    "en": "Convert to Horizontal Split"
@@ -9134,6 +9166,22 @@
   "sidebar.tabGroupContextMenu.closeGroupAction": {
    "comment": "sidebar — used at phi_shell_window.cc:5450",
    "en": "Close Group"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsAbove": {
+   "comment": "Mac key (translations by key); contextMenu — group header, phi_shell_menus.cc",
+   "en": "Close tabs above group"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsBelow": {
+   "comment": "Mac key (translations by key); contextMenu — group header, phi_shell_menus.cc",
+   "en": "Close tabs below group"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsToLeft": {
+   "comment": "Mac key (translations by key); contextMenu — group header, phi_shell_menus.cc",
+   "en": "Close tabs to the left of group"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsToRight": {
+   "comment": "Mac key (translations by key); contextMenu — group header, phi_shell_menus.cc",
+   "en": "Close tabs to the right of group"
   },
   "sidebar.tabGroupContextMenu.collapseAction": {
    "comment": "sidebar — the strip group chip's chevron, announced to a screen reader; collapses an expanded group",

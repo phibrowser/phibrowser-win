@@ -5521,6 +5521,35 @@ void PhiShellWindow::CloseExtensionPopup() {
 
 
 
+void PhiShellWindow::NoteRowPress(POINT pt) {
+  int pane = -1;
+  first_press_row_ = sidebar_->TabBodyAt(pt, &pane);
+  double_click_close_.reset();
+}
+
+void PhiShellWindow::ArmDoubleClickClose(POINT pt, bool modifiers) {
+  double_click_close_.reset();
+  int pane = -1;
+  const SidebarKey key = sidebar_->TabBodyAt(pt, &pane);
+  if (key.empty() || key != first_press_row_ || modifiers ||
+      !services_.prefs || !services_.prefs->DoubleClickToCloseTabs() ||
+      AgentHoldsInput()) {
+    return;
+  }
+  double_click_close_ = DoubleClickClose{key, pane, pt};
+}
+
+void PhiShellWindow::FinishDoubleClickClose(POINT pt, bool dragged) {
+  std::optional<DoubleClickClose> pending;
+  pending.swap(double_click_close_);
+  if (!pending || dragged || AgentHoldsInput() ||
+      std::abs(pt.x - pending->at.x) > Scaled(5) ||
+      std::abs(pt.y - pending->at.y) > Scaled(5)) {
+    return;
+  }
+  sidebar_->Apply(SidebarClose{pending->key, pending->pane});
+}
+
 void PhiShellWindow::OnChromeClick(int x, int y) {
   // Any press on the chrome is an interaction: the hover card goes down and
   // stays down until the pointer leaves the row it was pressed on.
@@ -6042,6 +6071,55 @@ BrowserId PhiShellWindow::StillHeld(BrowserId opening_browser) const {
              : BrowserId();
 }
 
+PhiDirectionalCloseRows PhiShellWindow::DirectionalCloseRows(
+    BrowserId browser,
+    const std::set<int>& anchors) {
+  PhiDirectionalCloseRows rows;
+  rows.show = services_.prefs && services_.prefs->DirectionalTabClosing();
+  rows.horizontal = ComputeLayout().horizontal_tabs;
+  const WindowSnapshot* snapshot = model_ ? model_->Get(browser) : nullptr;
+  if (rows.show && snapshot && !AgentHoldsInput()) {
+    rows.before_enabled =
+        !PhiDirectionalCloseTargets(snapshot->tabs, anchors,
+                                    PhiTabCloseDirection::kBefore)
+             .empty();
+    rows.after_enabled =
+        !PhiDirectionalCloseTargets(snapshot->tabs, anchors,
+                                    PhiTabCloseDirection::kAfter)
+             .empty();
+  }
+  return rows;
+}
+
+void PhiShellWindow::CloseTabsInDirection(BrowserId browser,
+                                          const std::set<int>& anchors,
+                                          PhiTabCloseDirection direction) {
+  const WindowSnapshot* snapshot = model_ ? model_->Get(browser) : nullptr;
+  if (!framework_ || !snapshot || AgentHoldsInput()) {
+    return;
+  }
+  // Closed by stable id: the ids are collected first, so the shifting strip
+  // is nobody's problem.
+  for (const TabId id :
+       PhiDirectionalCloseTargets(snapshot->tabs, anchors, direction)) {
+    framework_->CloseTabById(browser.value, id.value);
+  }
+}
+
+std::set<int> PhiShellWindow::GroupMemberTabIds(
+    BrowserId browser,
+    const std::string& group_id) const {
+  std::set<int> members;
+  if (const WindowSnapshot* snapshot = model_ ? model_->Get(browser) : nullptr) {
+    for (const TabSnapshot& tab : snapshot->tabs) {
+      if (tab.group_id == group_id) {
+        members.insert(tab.id.value);
+      }
+    }
+  }
+  return members;
+}
+
 void PhiShellWindow::ShowGroupHeaderMenu(POINT pt,
                                               std::string group_id,
                                               std::wstring title,
@@ -6053,9 +6131,12 @@ void PhiShellWindow::ShowGroupHeaderMenu(POINT pt,
     colors.push_back({option.name, option.color == color});
   }
   const PhiMenuAction action =
-      PhiRunPopupMenu(PhiBuildGroupHeaderMenu(colors),
-                      PopupAt(pt, TPM_LEFTALIGN | TPM_TOPALIGN |
-                                      TPM_RIGHTBUTTON));
+      PhiRunPopupMenu(
+          PhiBuildGroupHeaderMenu(
+              colors,
+              DirectionalCloseRows(opening_browser,
+                                   GroupMemberTabIds(opening_browser, group_id))),
+          PopupAt(pt, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON));
   // The group's browser, checked AFTER the loop: the slot may have lost it
   // (or switched Space) under the menu.
   const int64_t browser = StillHeld(opening_browser).value;
@@ -6082,6 +6163,13 @@ void PhiShellWindow::ShowGroupHeaderMenu(POINT pt,
     framework_->UngroupTabGroup(browser, group_id.c_str());
   } else if (action.is("group.close")) {
     framework_->CloseTabGroup(browser, group_id.c_str());
+  } else if (action.is("group.closeBefore") || action.is("group.closeAfter")) {
+    // A group anchor is every member: the group's whole range survives.
+    CloseTabsInDirection(BrowserId{browser},
+                         GroupMemberTabIds(BrowserId{browser}, group_id),
+                         action.is("group.closeBefore")
+                             ? PhiTabCloseDirection::kBefore
+                             : PhiTabCloseDirection::kAfter);
   } else if (action.is("group.color")) {
     framework_->SetTabGroupColor(browser, group_id.c_str(),
                                  action.target.id.c_str());
@@ -6122,6 +6210,11 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
   }
   // Groups take a split row whole (both panes), so every row gets the list.
   in.groups = GroupMenuChoices(row.group_id);
+  std::set<int> row_tabs = {row.id.value};
+  if (row.b_id.valid()) {
+    row_tabs.insert(row.b_id.value);
+  }
+  in.close_rows = DirectionalCloseRows(opening_browser, row_tabs);
   if (!row.merged) {
     in.bookmark_folders = !ShowsIncognito() && services_.sidebar != nullptr;
     if (in.bookmark_folders) {
@@ -6249,22 +6342,19 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
     framework_->MoveTabsToNewWindowByIds(browser, ids,
                                          row.b_id.valid() ? 2 : 1);
   } else if (action.is("tab.closeOthers") && framework_ && model_) {
-    // Every UNBOUND tab except this row (both panes of a merged one);
-    // pin/bookmark-bound tabs live in their cells and stay. Closed by stable
-    // id, so the ids are collected first and the shifting strip is nobody's
-    // problem.
-    std::vector<TabId> doomed;
+    // Every ordinary tab outside this row and its split; pin/bookmark-bound
+    // tabs live in their cells and stay. Closed by stable id, so the ids are
+    // collected first and the shifting strip is nobody's problem.
     if (const WindowSnapshot* snapshot = model_->Get(browser)) {
-      for (const TabSnapshot& tab : snapshot->tabs) {
-        if (tab.id == row.id || tab.id == row.b_id || !tab.tag.empty()) {
-          continue;
-        }
-        doomed.push_back(tab.id);
+      for (const TabId id : PhiOtherCloseTargets(snapshot->tabs, row_tabs)) {
+        framework_->CloseTabById(browser.value, id.value);
       }
     }
-    for (TabId id : doomed) {
-      framework_->CloseTabById(browser.value, id.value);
-    }
+  } else if (action.is("tab.closeBefore") || action.is("tab.closeAfter")) {
+    CloseTabsInDirection(browser, row_tabs,
+                         action.is("tab.closeBefore")
+                             ? PhiTabCloseDirection::kBefore
+                             : PhiTabCloseDirection::kAfter);
   }
 }
 
@@ -6945,6 +7035,8 @@ void PhiShellWindow::EnsureFloatingPanel() {
     WNDCLASSW cls = {};
     // OS popup shadows are not clipped by SetWindowRgn and can leave an
     // edge outside the browser as the panel slides through its left side.
+    // CS_DBLCLKS: double-click to close, as on the docked band.
+    cls.style = CS_DBLCLKS;
     cls.lpfnWndProc = &PhiShellWindow::FloatingSidebarProc;
     cls.hInstance = ::GetModuleHandleW(nullptr);
     cls.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
@@ -7642,6 +7734,7 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       }
       break;
     case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK:
       if (self) {
         const POINT pt = {GET_X_LPARAM(lparam),
                           GET_Y_LPARAM(lparam) + self->floating_offset_y_};
@@ -7649,6 +7742,13 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
           return 0;  // Ignore clicks on the closing animation.
         }
         forward([&] {
+          if (msg == WM_LBUTTONDBLCLK) {
+            self->ArmDoubleClickClose(
+                pt, (wparam & (MK_CONTROL | MK_SHIFT)) != 0 ||
+                        ::GetKeyState(VK_MENU) < 0);
+          } else {
+            self->NoteRowPress(pt);
+          }
           self->OnChromeClick(pt.x, pt.y);
           // A press on a row arms a drag, and a tab activates on its
           // release: the panel runs it to the end, as the docked band does.
@@ -7659,7 +7759,14 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       break;
     case WM_LBUTTONUP:
       if (self && self->floating_drag_) {
-        forward([&] { self->sidebar_->CommitDrag(); });
+        forward([&] {
+          const bool dragged = self->sidebar_->drag_active();
+          self->sidebar_->CommitDrag();
+          self->FinishDoubleClickClose(
+              {GET_X_LPARAM(lparam),
+               GET_Y_LPARAM(lparam) + self->floating_offset_y_},
+              dragged);
+        });
         return 0;
       }
       break;
@@ -8944,6 +9051,7 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           self->BeginSidebarResize(pt.x);
           return 0;
         }
+        self->NoteRowPress(pt);
         self->OnChromeClick(pt.x, pt.y);
         return 0;
       }
@@ -8966,6 +9074,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
             return 0;
           }
         }
+        self->ArmDoubleClickClose(
+            pt, (wparam & (MK_CONTROL | MK_SHIFT)) != 0 ||
+                    ::GetKeyState(VK_MENU) < 0);
         self->OnChromeClick(pt.x, pt.y);
         return 0;
       }
@@ -8988,7 +9099,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           }
           return 0;
         }
+        const bool dragged = self->sidebar_->drag_active();
         self->sidebar_->CommitDrag();
+        self->FinishDoubleClickClose(
+            {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)}, dragged);
       }
       return ::DefWindowProcW(hwnd, msg, wparam, lparam);
     case WM_CAPTURECHANGED:

@@ -3297,6 +3297,22 @@ void PhiCoordinator::SetShowOpenTabIndicators(bool enabled) {
   preferences_.SetShowOpenTabIndicators(enabled);
 }
 
+bool PhiCoordinator::DoubleClickToCloseTabs() const {
+  return preferences_.DoubleClickToCloseTabs();
+}
+
+void PhiCoordinator::SetDoubleClickToCloseTabs(bool enabled) {
+  preferences_.SetDoubleClickToCloseTabs(enabled);
+}
+
+bool PhiCoordinator::DirectionalTabClosing() const {
+  return preferences_.DirectionalTabClosing();
+}
+
+void PhiCoordinator::SetDirectionalTabClosing(bool enabled) {
+  preferences_.SetDirectionalTabClosing(enabled);
+}
+
 bool PhiCoordinator::DimUnloadedTabIcons() const {
   return preferences_.DimUnloadedTabIcons();
 }
@@ -3829,6 +3845,8 @@ void PhiCoordinator::OnPreferencesChanged(
     case PreferenceChange::kDimUnloaded:
       registry_.InvalidateAll();  // The sidebars repaint their icons and dots.
       break;
+    case PreferenceChange::kTabClosing:
+      break;  // Read at the double-click and when a menu opens.
     case PreferenceChange::kSidebarTransparency:
       // The DWM backdrop is set (or dropped) per window and the tint's alpha
       // re-read; the corners, split ground and regrade follow it, as on a

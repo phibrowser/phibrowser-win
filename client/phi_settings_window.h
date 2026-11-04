@@ -155,6 +155,10 @@ class PhiSettingsHost {
   // GeneralSettings.dimUnloadedTabIcons — a reclaimed tab's favicon and
   // open dot at 30%. On by default, as on Mac.
   virtual void SetDimUnloadedTabIcons(bool enabled) = 0;
+  // GeneralSettings.doubleClickToCloseTabs and directionalTabClosingEnabled
+  // (Advanced ▸ the tab-closing card). Off and on by default, as on Mac.
+  virtual void SetDoubleClickToCloseTabs(bool enabled) = 0;
+  virtual void SetDirectionalTabClosing(bool enabled) = 0;
   // Appearance ▸ "Sidebar transparency", 0-100 % (Windows only; 50 by
   // default).
   virtual void SetSidebarTransparency(int percent) = 0;

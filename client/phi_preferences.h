@@ -55,6 +55,7 @@ class PhiPreferences : public ChromePrefsHost {
     kPreviews,
     kOpenIndicators,  // The sidebar's open-tab dots: every sidebar repaints.
     kDimUnloaded,     // The reclaimed-tab dimming: every sidebar repaints.
+    kTabClosing,      // Both tab-closing switches: read at the click or menu.
     kSidebarTransparency,  // The acrylic slider: every slot re-applies it.
     kPeek,           // Both peek switches: the framework mirror is due.
     kKiosk,          // The Ctrl+Alt-click switch: the framework mirror is due.
@@ -116,6 +117,8 @@ class PhiPreferences : public ChromePrefsHost {
   bool ShowTabPreviews() const override;
   bool ShowOpenTabIndicators() const override;
   bool DimUnloadedTabIcons() const override;
+  bool DoubleClickToCloseTabs() const override;
+  bool DirectionalTabClosing() const override;
   int SidebarTransparency() const override;
   bool NewTabOpensOmnibox() const override;
   int SidebarWidth() const override;
@@ -170,6 +173,8 @@ class PhiPreferences : public ChromePrefsHost {
   void SetShowTabPreviews(bool enabled);
   void SetShowOpenTabIndicators(bool enabled);
   void SetDimUnloadedTabIcons(bool enabled);
+  void SetDoubleClickToCloseTabs(bool enabled);
+  void SetDirectionalTabClosing(bool enabled);
   void SetSidebarTransparency(int percent);
   bool PeekViewEnabled() const { return settings_.peek_view_enabled; }
   void SetPeekViewEnabled(bool enabled);

@@ -105,8 +105,31 @@ std::vector<std::string> PhiMenuSpec::Keys() const {
 
 // --- Group header ----------------------------------------------------------
 
+namespace {
+
+// Rows `before_key` and `after_key`, titled for the tab bar's axis.
+void AppendDirectionalCloseRows(const PhiDirectionalCloseRows& rows,
+                                const char* before_key,
+                                const char* after_key,
+                                const char* before_label,
+                                const char* after_label,
+                                std::vector<PhiMenuItem>& items) {
+  if (!rows.show) {
+    return;
+  }
+  PhiMenuItem before = PhiMenuItem::Command(before_key, PhiStr(before_label));
+  before.enabled = rows.before_enabled;
+  items.push_back(std::move(before));
+  PhiMenuItem after = PhiMenuItem::Command(after_key, PhiStr(after_label));
+  after.enabled = rows.after_enabled;
+  items.push_back(std::move(after));
+}
+
+}  // namespace
+
 PhiMenuSpec PhiBuildGroupHeaderMenu(
-    const std::vector<PhiMenuColorOption>& colors) {
+    const std::vector<PhiMenuColorOption>& colors,
+    const PhiDirectionalCloseRows& close_rows) {
   std::vector<PhiMenuItem> swatches;
   swatches.reserve(colors.size());
   for (const PhiMenuColorOption& color : colors) {
@@ -128,6 +151,13 @@ PhiMenuSpec PhiBuildGroupHeaderMenu(
   spec.items.push_back(PhiMenuItem::Separator());
   spec.items.push_back(PhiMenuItem::Command("group.ungroup", PhiStr("contextMenu.ungroup")));
   spec.items.push_back(PhiMenuItem::Command("group.close", PhiStr("contextMenu.closeGroup")));
+  AppendDirectionalCloseRows(
+      close_rows, "group.closeBefore", "group.closeAfter",
+      close_rows.horizontal ? "sidebar.tabGroupContextMenu.closeTabsToLeft"
+                            : "sidebar.tabGroupContextMenu.closeTabsAbove",
+      close_rows.horizontal ? "sidebar.tabGroupContextMenu.closeTabsToRight"
+                            : "sidebar.tabGroupContextMenu.closeTabsBelow",
+      spec.items);
   return spec;
 }
 
@@ -247,6 +277,13 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
   items.push_back(PhiMenuItem::Separator());
   items.push_back(PhiMenuItem::Command("tab.close", PhiStr("contextMenu.close")));
   items.push_back(PhiMenuItem::Command("tab.closeOthers", PhiStr("contextMenu.closeOtherTabs")));
+  AppendDirectionalCloseRows(
+      in.close_rows, "tab.closeBefore", "tab.closeAfter",
+      in.close_rows.horizontal ? "sidebar.tabContextMenu.closeTabsToLeft"
+                               : "sidebar.tabContextMenu.closeTabsAbove",
+      in.close_rows.horizontal ? "sidebar.tabContextMenu.closeTabsToRight"
+                               : "sidebar.tabContextMenu.closeTabsBelow",
+      items);
   return spec;
 }
 
@@ -712,6 +749,8 @@ constexpr RowDecor kRowDecor[] = {
     {"tab.bookmark", L"Ctrl+D", false, fluent::kFavoriteStar},
     {"tab.close", L"Ctrl+W", false, fluent::kCancel},
     {"tab.closeOthers", nullptr, false, nullptr},
+    {"tab.closeBefore", nullptr, false, nullptr},
+    {"tab.closeAfter", nullptr, false, nullptr},
     {"tab.removeSplit", nullptr, false, nullptr},
     {"pin.open", nullptr, false, fluent::kOpenInNewWindow},
     {"pin.copyUrl", nullptr, false, fluent::kLink},
@@ -729,6 +768,8 @@ constexpr RowDecor kRowDecor[] = {
     {"group.rename", nullptr, false, fluent::kRename},
     {"group.ungroup", nullptr, false, nullptr},
     {"group.close", nullptr, true, fluent::kCancel},
+    {"group.closeBefore", nullptr, false, nullptr},
+    {"group.closeAfter", nullptr, false, nullptr},
     {"agent.finish", nullptr, true, nullptr},
     {"feedback.open", L"Enter", false, fluent::kOpenFile},
     {"feedback.reveal", nullptr, false, fluent::kOpenFolder},

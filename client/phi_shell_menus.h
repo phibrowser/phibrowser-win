@@ -147,9 +147,21 @@ struct PhiMenuColorOption {
 
 // --- The sidebar's row menus ----------------------------------------------
 
+// The positional close rows of the tab and group menus, after their Close
+// rows: left and right on a horizontal strip, above and below in a vertical
+// list. Advanced ▸ "Close tabs by position" hides them; a direction with
+// nothing to close greys.
+struct PhiDirectionalCloseRows {
+  bool show = false;
+  bool horizontal = false;
+  bool before_enabled = false;
+  bool after_enabled = false;
+};
+
 // The group header's menu: rename, the colour list, ungroup, close.
 PhiMenuSpec PhiBuildGroupHeaderMenu(
-    const std::vector<PhiMenuColorOption>& colors);
+    const std::vector<PhiMenuColorOption>& colors,
+    const PhiDirectionalCloseRows& close_rows);
 
 // The tab row's menu, in the Mac TabModel+Sidebar order: pin, duplicate,
 // copy, the split block, bookmarks, groups, Spaces, then close.
@@ -170,6 +182,7 @@ struct PhiTabMenuInputs {
   std::vector<PhiMenuChoice> folders;  // Labels already indented.
   std::vector<PhiMenuChoice> groups;   // Labels already carry the count.
   std::vector<PhiMenuChoice> spaces;   // The tab's own Space excluded.
+  PhiDirectionalCloseRows close_rows;
 };
 PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in);
 

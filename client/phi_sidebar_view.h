@@ -723,6 +723,10 @@ class PhiSidebarView {
   // Middle-click closes a tab row (the Mac tab list's otherMouseDown);
   // pins and bookmarks are persistent and ignore it.
   bool OnMiddleClick(POINT client_pt);
+  // The tab row whose body is under the point (not its close box or surface
+  // indicator), and for a merged row the pane (0 or 1; -1 otherwise). Empty
+  // key when there is none. Double-click closing reads this.
+  SidebarKey TabBodyAt(POINT client_pt, int* pane) const;
 
   // --- Keyboard (F6) ------------------------------------------------------
   // The sidebar in the F6 cycle (address field -> sidebar -> page): a

@@ -1723,6 +1723,21 @@ void PhiSettingsWindow::BuildAbout(int* y) {
 }
 
 void PhiSettingsWindow::BuildAdvanced(int* y) {
+  // The Mac's untitled tab actions card. Both switches apply at once.
+  BeginSection(y, nullptr);
+  AddToggleRow(y, PhiStr("settings.advanced.tabs.doubleClickToCloseToggle"),
+               prefs_->DoubleClickToCloseTabs(),
+               /*enabled=*/true, "doubleclickclose",
+               PhiStr("settings.advanced.tabs.doubleClickToCloseDescription"),
+               kChipIndent, 0xE962);
+  AddDividerRow(y);
+  AddToggleRow(y, PhiStr("settings.advanced.tabs.directionalClosingToggle"),
+               prefs_->DirectionalTabClosing(),
+               /*enabled=*/true, "directionalclose",
+               PhiStr("settings.advanced.tabs.directionalClosingDescription"),
+               kChipIndent, 0xE711);
+  EndSection(y);
+
   // The Mac's "Shorten links to selected text" row is not drawn: "Copy
   // Link to Highlight" has no Windows counterpart yet, and a switch that
   // does nothing only misleads.
@@ -6299,6 +6314,10 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetShowOpenTabIndicators(!item.on);
   } else if (item.action == "dimunloaded") {
     host_->SetDimUnloadedTabIcons(!item.on);
+  } else if (item.action == "doubleclickclose") {
+    host_->SetDoubleClickToCloseTabs(!item.on);
+  } else if (item.action == "directionalclose") {
+    host_->SetDirectionalTabClosing(!item.on);
   } else if (item.action == "fullurl") {
     host_->SetAlwaysShowFullUrl(!item.on);
   } else if (item.action == "restoresession") {

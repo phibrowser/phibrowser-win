@@ -593,6 +593,25 @@ bool PhiSidebarView::OnMiddleClick(POINT pt) {
   return false;
 }
 
+SidebarKey PhiSidebarView::TabBodyAt(POINT pt, int* pane) const {
+  *pane = -1;
+  for (const TabRow& row : tabs_) {
+    if (!::PtInRect(&row.bounds, pt)) {
+      continue;
+    }
+    if (::PtInRect(&row.close_box, pt) ||
+        (row.attached_surface != SidebarSurface::kContent &&
+         ::PtInRect(&row.surface_box, pt))) {
+      return {};
+    }
+    if (row.b_index >= 0) {
+      *pane = ::PtInRect(&row.pane_b, pt) ? 1 : 0;
+    }
+    return row.key;
+  }
+  return {};
+}
+
 // --- The drag session -------------------------------------------------------
 //
 // It exists between here and the commit or the cancel, and nowhere else

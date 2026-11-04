@@ -7671,6 +7671,50 @@
    "zh-Hans": "鼠标悬停在标签页上时显示预览卡片",
    "zh-Hant": "游標停留在分頁上時顯示預覽卡片"
   },
+  "settings.advanced.tabs.directionalClosingDescription": {
+   "de": "Fügt den Menüs für Tabs und Tab-Gruppen Optionen zum Schließen der Tabs links oder rechts hinzu. Bei einer vertikalen Tab-Leiste gelten die Optionen für Tabs oberhalb oder unterhalb.",
+   "en": "Add options to tab and tab group menus to close tabs to the left or right, or above or below in a vertical tab bar.",
+   "es": "Agrega a los menús de pestañas y de grupos de pestañas opciones para cerrar las pestañas a la izquierda o a la derecha, o las de arriba o de abajo en una barra de pestañas vertical.",
+   "fr": "Ajoute aux menus des onglets et des groupes des options pour fermer les onglets à gauche ou à droite, ou au-dessus ou en dessous dans une barre verticale.",
+   "ja": "タブとタブグループのメニューに、左側・右側のタブを閉じる項目を追加します。縦型タブバーでは上側・下側になります。",
+   "ko": "탭과 탭 그룹 메뉴에 왼쪽 또는 오른쪽 탭을 닫는 항목을 추가해요. 세로 탭 막대에서는 위쪽 또는 아래쪽 탭을 닫아요.",
+   "nl": "Voegt aan tabblad- en tabbladgroepmenu’s opties toe om tabbladen links of rechts te sluiten, of erboven of eronder bij een verticale tabbladbalk.",
+   "zh-Hans": "在标签页和标签组的右键菜单中，提供关闭左侧或右侧标签页的选项；使用纵向标签栏时，显示为关闭上方或下方标签页。",
+   "zh-Hant": "在分頁與分頁群組的右鍵選單中，提供關閉左側或右側分頁的選項；使用垂直分頁列時，顯示為關閉上方或下方分頁。"
+  },
+  "settings.advanced.tabs.directionalClosingToggle": {
+   "de": "Tabs nach Position schließen",
+   "en": "Close tabs by position",
+   "es": "Cerrar pestañas por posición",
+   "fr": "Fermer les onglets selon leur position",
+   "ja": "位置を指定してタブをまとめて閉じる",
+   "ko": "위치에 따라 탭 닫기",
+   "nl": "Sluit tabbladen op basis van positie",
+   "zh-Hans": "按位置批量关闭标签页",
+   "zh-Hant": "依位置批次關閉分頁"
+  },
+  "settings.advanced.tabs.doubleClickToCloseDescription": {
+   "de": "Schließe einen Tab per Doppelklick. In Split View wird nur der angeklickte Bereich geschlossen. Angeheftete Tabs und Lesezeichen behalten ihre bisherigen Doppelklick-Aktionen.",
+   "en": "Double-click a tab to close it. In split view, only the clicked pane closes. Pinned tabs and bookmarks keep their existing double-click actions.",
+   "es": "Haz doble clic en una pestaña para cerrarla. En la vista dividida, solo se cierra el panel en el que hiciste clic. Las pestañas fijadas y los marcadores conservan sus acciones habituales de doble clic.",
+   "fr": "Double-cliquez sur un onglet pour le fermer. En Split View, seul le volet cliqué se ferme. Les onglets épinglés et les favoris conservent leurs actions de double-clic habituelles.",
+   "ja": "タブをダブルクリックすると閉じます。分割表示では、クリックした側だけを閉じます。固定タブとブックマークのダブルクリック操作は変わりません。",
+   "ko": "탭을 두 번 클릭하면 닫혀요. 분할 보기에서는 클릭한 쪽만 닫혀요. 고정된 탭과 북마크의 두 번 클릭 동작은 그대로 유지돼요.",
+   "nl": "Dubbelklik op een tabblad om het te sluiten. In Split View sluit alleen het aangeklikte paneel. Vastgezette tabbladen en bladwijzers behouden hun bestaande dubbelklikacties.",
+   "zh-Hans": "双击标签页即可将其关闭。在分屏视图中，只会关闭所点击的窗格。固定标签页和书签保留原有的双击操作。",
+   "zh-Hant": "連按兩下分頁即可關閉。在分割畫面中，只會關閉點選的窗格。釘選分頁與書籤保留原有的連按兩下操作。"
+  },
+  "settings.advanced.tabs.doubleClickToCloseToggle": {
+   "de": "Tabs per Doppelklick schließen",
+   "en": "Double-click to close tabs",
+   "es": "Cerrar pestañas con doble clic",
+   "fr": "Fermer les onglets par double-clic",
+   "ja": "ダブルクリックでタブを閉じる",
+   "ko": "두 번 클릭하여 탭 닫기",
+   "nl": "Dubbelklik om tabbladen te sluiten",
+   "zh-Hans": "双击关闭标签页",
+   "zh-Hant": "連按兩下關閉分頁"
+  },
   "settings.agentAccessPermissionsAndThe": {
    "de": "Agentenzugriff, Berechtigungen und den Passwortmanager ",
    "en": "Agent access, permissions, and the password manager ",
@@ -11631,6 +11675,50 @@
    "zh-Hans": "添加到标签页组",
    "zh-Hant": "加入群組"
   },
+  "sidebar.tabContextMenu.closeTabsAbove": {
+   "de": "Tabs oberhalb schließen",
+   "en": "Close tabs above",
+   "es": "Cerrar pestañas de arriba",
+   "fr": "Fermer les onglets au-dessus",
+   "ja": "上側のタブを閉じる",
+   "ko": "위쪽 탭 닫기",
+   "nl": "Sluit tabbladen erboven",
+   "zh-Hans": "关闭上方标签页",
+   "zh-Hant": "關閉上方分頁"
+  },
+  "sidebar.tabContextMenu.closeTabsBelow": {
+   "de": "Tabs unterhalb schließen",
+   "en": "Close tabs below",
+   "es": "Cerrar pestañas de abajo",
+   "fr": "Fermer les onglets en dessous",
+   "ja": "下側のタブを閉じる",
+   "ko": "아래쪽 탭 닫기",
+   "nl": "Sluit tabbladen eronder",
+   "zh-Hans": "关闭下方标签页",
+   "zh-Hant": "關閉下方分頁"
+  },
+  "sidebar.tabContextMenu.closeTabsToLeft": {
+   "de": "Tabs links schließen",
+   "en": "Close tabs to the left",
+   "es": "Cerrar pestañas a la izquierda",
+   "fr": "Fermer les onglets à gauche",
+   "ja": "左側のタブを閉じる",
+   "ko": "왼쪽 탭 닫기",
+   "nl": "Sluit tabbladen links",
+   "zh-Hans": "关闭左侧标签页",
+   "zh-Hant": "關閉左側分頁"
+  },
+  "sidebar.tabContextMenu.closeTabsToRight": {
+   "de": "Tabs rechts schließen",
+   "en": "Close tabs to the right",
+   "es": "Cerrar pestañas a la derecha",
+   "fr": "Fermer les onglets à droite",
+   "ja": "右側のタブを閉じる",
+   "ko": "오른쪽 탭 닫기",
+   "nl": "Sluit tabbladen rechts",
+   "zh-Hans": "关闭右侧标签页",
+   "zh-Hant": "關閉右側分頁"
+  },
   "sidebar.tabContextMenu.convertToHorizontalSplit": {
    "de": "In horizontalen Split umwandeln",
    "en": "Convert to Horizontal Split",
@@ -11817,6 +11905,50 @@
    "nl": "Sluit groep",
    "zh-Hans": "关闭标签页组",
    "zh-Hant": "關閉群組"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsAbove": {
+   "de": "Tabs oberhalb der Gruppe schließen",
+   "en": "Close tabs above group",
+   "es": "Cerrar pestañas encima del grupo",
+   "fr": "Fermer les onglets au-dessus du groupe",
+   "ja": "グループの上側のタブを閉じる",
+   "ko": "그룹 위쪽 탭 닫기",
+   "nl": "Sluit tabbladen boven de groep",
+   "zh-Hans": "关闭标签组上方的标签页",
+   "zh-Hant": "關閉群組上方的分頁"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsBelow": {
+   "de": "Tabs unterhalb der Gruppe schließen",
+   "en": "Close tabs below group",
+   "es": "Cerrar pestañas debajo del grupo",
+   "fr": "Fermer les onglets en dessous du groupe",
+   "ja": "グループの下側のタブを閉じる",
+   "ko": "그룹 아래쪽 탭 닫기",
+   "nl": "Sluit tabbladen onder de groep",
+   "zh-Hans": "关闭标签组下方的标签页",
+   "zh-Hant": "關閉群組下方的分頁"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsToLeft": {
+   "de": "Tabs links von der Gruppe schließen",
+   "en": "Close tabs to the left of group",
+   "es": "Cerrar pestañas a la izquierda del grupo",
+   "fr": "Fermer les onglets à gauche du groupe",
+   "ja": "グループの左側のタブを閉じる",
+   "ko": "그룹 왼쪽 탭 닫기",
+   "nl": "Sluit tabbladen links van de groep",
+   "zh-Hans": "关闭标签组左侧的标签页",
+   "zh-Hant": "關閉群組左側的分頁"
+  },
+  "sidebar.tabGroupContextMenu.closeTabsToRight": {
+   "de": "Tabs rechts von der Gruppe schließen",
+   "en": "Close tabs to the right of group",
+   "es": "Cerrar pestañas a la derecha del grupo",
+   "fr": "Fermer les onglets à droite du groupe",
+   "ja": "グループの右側のタブを閉じる",
+   "ko": "그룹 오른쪽 탭 닫기",
+   "nl": "Sluit tabbladen rechts van de groep",
+   "zh-Hans": "关闭标签组右侧的标签页",
+   "zh-Hant": "關閉群組右側的分頁"
   },
   "sidebar.tabGroupContextMenu.collapseAction": {
    "de": "Gruppe einklappen",

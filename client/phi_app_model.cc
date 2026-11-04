@@ -110,6 +110,12 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
                                       .value_or(out->show_open_tab_indicators);
   out->dim_unloaded_tab_icons = dict.FindBool("dimUnloadedTabIcons")
                                     .value_or(out->dim_unloaded_tab_icons);
+  out->double_click_to_close_tabs =
+      dict.FindBool("doubleClickToCloseTabs")
+          .value_or(out->double_click_to_close_tabs);
+  out->directional_tab_closing =
+      dict.FindBool("directionalTabClosingEnabled")
+          .value_or(out->directional_tab_closing);
   out->sidebar_transparency = std::clamp(
       dict.FindInt("sidebarTransparency").value_or(out->sidebar_transparency),
       0, 100);
@@ -307,6 +313,8 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("showTabPreviews", value.show_tab_previews);
   root.Set("showOpenTabIndicators", value.show_open_tab_indicators);
   root.Set("dimUnloadedTabIcons", value.dim_unloaded_tab_icons);
+  root.Set("doubleClickToCloseTabs", value.double_click_to_close_tabs);
+  root.Set("directionalTabClosingEnabled", value.directional_tab_closing);
   root.Set("sidebarTransparency", value.sidebar_transparency);
   root.Set("PhiAgentSpaceAutoView", value.agent_auto_view);
   root.Set("peekViewEnabled", value.peek_view_enabled);
