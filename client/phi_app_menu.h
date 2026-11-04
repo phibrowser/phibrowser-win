@@ -50,6 +50,7 @@ enum : UINT {
   kCmdOpenLocation,
   kCmdCloseWindow,
   kCmdCloseTab,
+  kCmdClearAllTabs,
   kCmdSavePageAs,
   kCmdPrint,
   // Edit
@@ -262,6 +263,8 @@ class PhiAppMenuShell {
   virtual void MenuNewTab() = 0;
   // The Mac's Split with New Tab: the active tab joined by a new pane.
   virtual bool MenuCanSplitWithNewTab() const = 0;
+  // The Mac's File ▸ Clear All Tabs: more than one ordinary tab, no agent.
+  virtual bool MenuCanClearAllTabs() const = 0;
   virtual void MenuSplitWithNewTab() = 0;
   virtual void MenuToggleSidebar() = 0;
   // `from_accelerator`: the chord rather than the View menu row (the

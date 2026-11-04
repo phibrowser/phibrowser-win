@@ -228,6 +228,8 @@ void PhiAppMenu::BuildStatic() {
   // The Mac's File ▸ New Incognito Space (docs/incognito-space-port.md):
   // joins this window's Spaces, unlike the incognito window above it.
   row(root_, kCmdNewIncognitoSpace, "appMenu.newIncognitoSpace", nullptr);
+  // The Mac's File ▸ Clear All Tabs; a toast offers the Undo.
+  row(root_, kCmdClearAllTabs, "appMenu.clearAllTabs", nullptr);
   rows_.AppendSeparator(root_);
   sub(root_, spaces_, "appMenu.spaces", fluent::kTabs);
   sub(root_, history_, "appMenu.history", fluent::kHistory);
@@ -371,6 +373,7 @@ void PhiAppMenu::RefreshChromiumCommands() {
 void PhiAppMenu::RefreshRoot() {
   services_->MenuRefreshNavState();
   SetEnabled(root_, kCmdSplitWithNewTab, services_->MenuCanSplitWithNewTab());
+  SetEnabled(root_, kCmdClearAllTabs, services_->MenuCanClearAllTabs());
   SetEnabled(root_, kCmdPreferences, services_->MenuWindowHost() != nullptr);
   // Reader View is offered where it has something to show, and ticked
   // while its surface is up.
@@ -869,6 +872,7 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       case kCmdNewTabToRight:
       case kCmdSplitWithNewTab:
       case kCmdCloseTab:
+      case kCmdClearAllTabs:
       case kCmdReopenClosedTab:
       case kCmdDuplicateTab:
       case kCmdOpenFile:
@@ -1025,6 +1029,11 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
         if (snapshot && snapshot->tabs.empty()) {
           ::PostMessageW(c->MenuShellWindow(), WM_CLOSE, 0, 0);
         }
+      }
+      return true;
+    case kCmdClearAllTabs:
+      if (c->MenuCanClearAllTabs()) {
+        c->MenuWindowHost()->ClearAllTabs(target);
       }
       return true;
     case kCmdUndo:

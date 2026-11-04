@@ -1519,6 +1519,17 @@
    "zh-Hans": "检查更新…",
    "zh-Hant": "檢查更新…"
   },
+  "appMenu.clearAllTabs": {
+   "de": "Alle Tabs aufräumen",
+   "en": "Clear all tabs",
+   "es": "Limpiar todas las pestañas",
+   "fr": "Effacer tous les onglets",
+   "ja": "すべてのタブをクリア",
+   "ko": "모든 탭 지우기",
+   "nl": "Wis alle tabbladen",
+   "zh-Hans": "清理所有标签页",
+   "zh-Hant": "清除所有分頁"
+  },
   "appMenu.deleteBrowsingData": {
    "de": "Browserdaten löschen…\tCtrl+Shift+Del",
    "en": "Delete browsing data…\tCtrl+Shift+Del",
@@ -13412,6 +13423,28 @@
    "nl": "Up-to-date",
    "zh-Hans": "已是最新",
    "zh-Hant": "已是最新狀態"
+  },
+  "tabs.clearAll.confirmation.windows": {
+   "de": "Tabs aufgeräumt",
+   "en": "Cleared tabs",
+   "es": "Pestañas cerradas",
+   "fr": "Onglets effacés",
+   "ja": "タブをクリアしました",
+   "ko": "탭을 지웠어요",
+   "nl": "Tabbladen gewist",
+   "zh-Hans": "已清理标签页",
+   "zh-Hant": "已清除分頁"
+  },
+  "tabs.clearAll.title": {
+   "de": "Alle Tabs aufräumen",
+   "en": "Clear All Tabs",
+   "es": "Limpiar todas las pestañas",
+   "fr": "Effacer tous les onglets",
+   "ja": "すべてのタブをクリア",
+   "ko": "모든 탭 지우기",
+   "nl": "Wis alle tabbladen",
+   "zh-Hans": "清理所有标签页",
+   "zh-Hant": "清除所有分頁"
   },
   "tabs.strip.overflowButton": {
    "de": "Weitere Tabs",

@@ -1060,6 +1060,9 @@ class PhiCoordinator : public SidebarHost,
   // adopted before its first push and after a mutation whose result is
   // needed on the spot.
   PhiWindowModel window_model_;
+  // Clear All Tabs: each browser's latest cleanup, for its toast's Undo.
+  std::map<int64_t, PhiClearedTabsBatch> cleared_tabs_;
+  uint64_t cleared_tabs_serial_ = 0;
   // The shell slots, the browser -> slot map, the kiosks and the creations
   // in flight (docs/architecture-review.md §3.4). Every "which window"
   // question goes through here.
@@ -1082,6 +1085,10 @@ class PhiCoordinator : public SidebarHost,
   std::string FolioProfileOfWindow(int64_t window_id) const override;
   std::vector<int64_t> FolioWindowPerProfile() const override;
   HWND FolioShellForWindow(int64_t window_id) const override;
+  bool CanClearAllTabs(BrowserId browser) const override;
+  void ClearAllTabs(BrowserId browser) override;
+  void NoteClearedTabs(const phi_framework::WindowSnapshot& snapshot);
+  void UndoClearedTabs(BrowserId browser, uint64_t serial);
   void FolioShowToast(int64_t window_id,
                       const std::wstring& title,
                       const std::wstring& message,

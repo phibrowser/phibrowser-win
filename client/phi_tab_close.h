@@ -6,6 +6,7 @@
 #define PHIBROWSER_WIN_CLIENT_PHI_TAB_CLOSE_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <set>
 #include <string>
 #include <vector>
@@ -14,9 +15,12 @@
 
 namespace phi_client {
 
+using phi_framework::GroupSnapshot;
+using phi_framework::SplitSnapshot;
 using phi_framework::TabId;
 using phi_framework::TabSnapshot;
 using phi_framework::TabSurface;
+using phi_framework::WindowSnapshot;
 
 // Which tabs a batch close may take (the Mac's BrowserState rules, its
 // States/TabOrder/README.md "Native range closing"). Each answer is computed
@@ -127,6 +131,72 @@ inline std::vector<TabId> PhiDirectionalCloseTargets(
     }
   }
   return targets;
+}
+
+// Clear All Tabs: the ordinary tabs that are not on screen. The foreground tab
+// and its split stay. No active tab answers nothing: a transient focus gap must
+// not close the whole Space. A Peek is its own browser, never in this strip.
+inline std::vector<TabId> PhiClearAllCandidates(
+    const std::vector<TabSnapshot>& tabs) {
+  std::vector<TabId> candidates;
+  std::set<int> foreground;
+  for (const TabSnapshot& tab : tabs) {
+    if (tab.active) {
+      foreground.insert(tab.id.value);
+    }
+  }
+  if (foreground.empty()) {
+    return candidates;
+  }
+  return PhiOtherCloseTargets(tabs, foreground);
+}
+
+// One cleanup's record (the Mac's ClearedTabsBatch). Only removals Chromium
+// confirms come back: a page's beforeunload can refuse, and that tab is still
+// open. Navigation history is not saved.
+struct PhiClearedTabsBatch {
+  struct Page {
+    int id = 0;
+    std::string url;
+    std::string title;
+    std::string group_id;
+  };
+  uint64_t serial = 0;
+  std::vector<Page> pages;
+  std::vector<int> order;  // The whole strip when it was cleared.
+  std::vector<GroupSnapshot> groups;  // Those a cleared page belonged to.
+  std::vector<SplitSnapshot> splits;  // Those with both panes cleared.
+  std::set<int> pending;              // Asked to close, not gone yet.
+  std::set<int> closed;               // Confirmed gone.
+};
+
+inline PhiClearedTabsBatch PhiCaptureClearedTabs(
+    const WindowSnapshot& snapshot,
+    const std::vector<TabId>& candidates) {
+  PhiClearedTabsBatch batch;
+  for (const TabId id : candidates) {
+    batch.pending.insert(id.value);
+  }
+  std::set<std::string> group_ids;
+  for (const TabSnapshot& tab : snapshot.tabs) {
+    batch.order.push_back(tab.id.value);
+    if (batch.pending.count(tab.id.value)) {
+      batch.pages.push_back({tab.id.value, tab.url, tab.title, tab.group_id});
+      group_ids.insert(tab.group_id);
+    }
+  }
+  for (const GroupSnapshot& group : snapshot.groups) {
+    if (group_ids.count(group.id)) {
+      batch.groups.push_back(group);
+    }
+  }
+  for (const SplitSnapshot& split : snapshot.splits) {
+    if (batch.pending.count(split.primary.value) &&
+        batch.pending.count(split.secondary.value)) {
+      batch.splits.push_back(split);
+    }
+  }
+  return batch;
 }
 
 }  // namespace phi_client

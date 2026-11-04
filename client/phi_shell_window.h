@@ -548,6 +548,10 @@ class WindowHost {
   // "Import from another browser…": opens (or fronts) the import window
   // targeting the focused window's Space (phi_import_window.h).
   virtual void RequestBrowserImport() = 0;
+  // Clear All Tabs (the Mac's BrowserState+ClearTabs): closes `browser`'s
+  // ordinary background tabs and offers their Undo on a toast.
+  virtual bool CanClearAllTabs(BrowserId browser) const = 0;
+  virtual void ClearAllTabs(BrowserId browser) = 0;
   // The client's one analytics capture path (phi_client_analytics.h):
   // the harness ring, then the collector's consent gate and allow-list.
   virtual void CaptureAnalytics(const char* module,
@@ -1865,6 +1869,7 @@ class PhiShellWindow : public PhiHitSource,
   TabId pending_split_anchor_;
   uint64_t pending_split_deadline_ = 0;
   bool MenuCanSplitWithNewTab() const override;
+  bool MenuCanClearAllTabs() const override;
   void MenuSplitWithNewTab() override;
   void MenuToggleSidebar() override;
   void MenuToggleReader(bool from_accelerator) override;

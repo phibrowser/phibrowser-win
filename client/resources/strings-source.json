@@ -1098,6 +1098,20 @@
     "zh-Hant": "檢查更新…"
    }
   },
+  "appMenu.clearAllTabs": {
+   "comment": "the ⋯ menu, phi_app_menu.cc. Sentence case like its neighbours; translations are the Mac's tabs.clearAll.title.",
+   "en": "Clear all tabs",
+   "translations": {
+    "de": "Alle Tabs aufräumen",
+    "es": "Limpiar todas las pestañas",
+    "fr": "Effacer tous les onglets",
+    "ja": "すべてのタブをクリア",
+    "ko": "모든 탭 지우기",
+    "nl": "Wis alle tabbladen",
+    "zh-Hans": "清理所有标签页",
+    "zh-Hant": "清除所有分頁"
+   }
+  },
   "appMenu.deleteBrowsingData": {
    "comment": "appMenu — the ⋯ Settings-and-more flyout (docs/windows-native-ui.md §3.1); \"\\t<chord>\" is the right-aligned shortcut. Translations authored for Windows (impl log D14).",
    "en": "Delete browsing data…\tCtrl+Shift+Del",
@@ -10014,6 +10028,24 @@
   "sync.status.upToDate": {
    "comment": "settings — Sync status card (Mac DevicesSettingView)",
    "en": "Up to date"
+  },
+  "tabs.clearAll.confirmation.windows": {
+   "comment": "the toast after Clear All Tabs, whose Undo is a button; phi_coordinator.cc. Translations are the first sentence of the Mac's tabs.clearAll.confirmation.",
+   "en": "Cleared tabs",
+   "translations": {
+    "de": "Tabs aufgeräumt",
+    "es": "Pestañas cerradas",
+    "fr": "Onglets effacés",
+    "ja": "タブをクリアしました",
+    "ko": "탭을 지웠어요",
+    "nl": "Tabbladen gewist",
+    "zh-Hans": "已清理标签页",
+    "zh-Hant": "已清除分頁"
+   }
+  },
+  "tabs.clearAll.title": {
+   "comment": "Mac key (translations by key); Settings ▸ Shortcuts, phi_preferences.cc",
+   "en": "Clear All Tabs"
   },
   "tabs.strip.overflowButton": {
    "comment": "sidebar — the comfortable strip's overflow chevron (accessibility name), used at phi_sidebar_view.cc",

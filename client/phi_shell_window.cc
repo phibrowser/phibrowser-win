@@ -1821,6 +1821,11 @@ bool PhiShellWindow::MenuCanSplitWithNewTab() const {
   return !AgentHoldsInput() && MenuActiveTab().valid() && !ActiveTabIsSplit();
 }
 
+bool PhiShellWindow::MenuCanClearAllTabs() const {
+  return !AgentHoldsInput() && services_.window &&
+         services_.window->CanClearAllTabs(MenuActiveBrowser());
+}
+
 void PhiShellWindow::MenuSplitWithNewTab() {
   if (!MenuCanSplitWithNewTab() || !framework_) {
     return;

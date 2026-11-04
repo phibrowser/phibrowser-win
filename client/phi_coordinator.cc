@@ -2226,6 +2226,159 @@ HWND PhiCoordinator::FolioShellForWindow(int64_t window_id) const {
   return ShellForFocus();
 }
 
+namespace {
+// Longer than Folio's 6 s: the toast is the only way back from a whole cleanup.
+constexpr int kClearedTabsToastMs = 10000;
+}  // namespace
+
+bool PhiCoordinator::CanClearAllTabs(BrowserId browser) const {
+  const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
+  return snapshot && PhiOrdinaryTabIds(snapshot->tabs).size() > 1;
+}
+
+void PhiCoordinator::ClearAllTabs(BrowserId browser) {
+  const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
+  if (!framework_ || !snapshot || !CanClearAllTabs(browser)) {
+    return;
+  }
+  const std::vector<TabId> candidates = PhiClearAllCandidates(snapshot->tabs);
+  if (candidates.empty()) {
+    return;  // A foreground split with nothing behind it.
+  }
+  PhiClearedTabsBatch batch = PhiCaptureClearedTabs(*snapshot, candidates);
+  batch.serial = ++cleared_tabs_serial_;
+  cleared_tabs_[browser.value] = std::move(batch);
+  for (const TabId id : candidates) {
+    framework_->CloseTabById(browser.value, id.value);
+  }
+}
+
+void PhiCoordinator::NoteClearedTabs(
+    const phi_framework::WindowSnapshot& snapshot) {
+  const auto it = cleared_tabs_.find(snapshot.window.value);
+  if (it == cleared_tabs_.end() || it->second.pending.empty()) {
+    return;
+  }
+  PhiClearedTabsBatch& batch = it->second;
+  std::set<int> live;
+  for (const TabSnapshot& tab : snapshot.tabs) {
+    live.insert(tab.id.value);
+  }
+  const bool first_removal = batch.closed.empty();
+  for (auto id = batch.pending.begin(); id != batch.pending.end();) {
+    if (live.count(*id)) {
+      ++id;
+    } else {
+      batch.closed.insert(*id);
+      id = batch.pending.erase(id);
+    }
+  }
+  if (!first_removal || batch.closed.empty()) {
+    return;
+  }
+  // The Mac's Undo lives on Edit ▸ Undo, which here serves only the address
+  // field, so the toast carries it. A newer cleanup replaces this toast.
+  const BrowserId browser = snapshot.window;
+  PhiShellWindow* window = registry_.ControllerForBrowser(browser);
+  if (window && window->shell_hwnd()) {
+    PhiShowToastWithAction(
+        window->shell_hwnd(), window->CurrentPalette(),
+        PhiStr("tabs.clearAll.confirmation.windows"), std::wstring(),
+        kClearedTabsToastMs, PhiStr("browser.folio.undoAction"),
+        [this, browser, serial = batch.serial] {
+          UndoClearedTabs(browser, serial);
+        });
+  }
+}
+
+void PhiCoordinator::UndoClearedTabs(BrowserId browser, uint64_t serial) {
+  const auto it = cleared_tabs_.find(browser.value);
+  if (it == cleared_tabs_.end() || it->second.serial != serial) {
+    return;
+  }
+  const PhiClearedTabsBatch batch = std::move(it->second);
+  cleared_tabs_.erase(it);
+  const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
+  PhiShellWindow* window = registry_.ControllerForBrowser(browser);
+  if (!framework_ || !snapshot || batch.closed.empty() ||
+      (window && window->AgentHoldsInput())) {
+    return;
+  }
+  // The record in one call, so the strip goes straight from the cleared order
+  // to the restored one and no focus moves.
+  std::set<int> live;
+  for (const TabSnapshot& tab : snapshot->tabs) {
+    live.insert(tab.id.value);
+  }
+  std::map<int, const PhiClearedTabsBatch::Page*> pages;
+  for (const PhiClearedTabsBatch::Page& page : batch.pages) {
+    if (batch.closed.count(page.id)) {
+      pages[page.id] = &page;
+    }
+  }
+  base::ListValue order;
+  for (const int id : batch.order) {
+    base::DictValue entry;
+    if (const auto page = pages.find(id); page != pages.end()) {
+      entry.Set("key", base::NumberToString(id));
+      entry.Set("url", page->second->url.empty() ? "about:blank"
+                                                 : page->second->url);
+      entry.Set("title", page->second->title);
+    } else if (live.count(id)) {
+      entry.Set("tabId", id);
+    } else {
+      continue;
+    }
+    order.Append(std::move(entry));
+  }
+  base::ListValue groups;
+  for (const phi_framework::GroupSnapshot& group : batch.groups) {
+    base::ListValue keys;
+    for (const auto& [id, page] : pages) {
+      if (page->group_id == group.id) {
+        keys.Append(base::NumberToString(id));
+      }
+    }
+    if (keys.empty()) {
+      continue;
+    }
+    base::DictValue entry;
+    entry.Set("keys", std::move(keys));
+    if (std::ranges::any_of(snapshot->groups, [&](const auto& live_group) {
+          return live_group.id == group.id;
+        })) {
+      entry.Set("id", group.id);
+    } else {
+      entry.Set("title", group.title);
+      entry.Set("color", PhiGroupColorFor(group.color).name);
+      entry.Set("collapsed", group.collapsed);
+    }
+    groups.Append(std::move(entry));
+  }
+  base::ListValue splits;
+  for (const phi_framework::SplitSnapshot& split : batch.splits) {
+    if (!pages.count(split.primary.value) ||
+        !pages.count(split.secondary.value)) {
+      continue;
+    }
+    base::DictValue entry;
+    entry.Set("primaryKey", base::NumberToString(split.primary.value));
+    entry.Set("secondaryKey", base::NumberToString(split.secondary.value));
+    entry.Set("layout", split.layout == phi_framework::SplitLayout::kHorizontal
+                            ? "horizontal"
+                            : "vertical");
+    entry.Set("ratio", split.ratio);
+    splits.Append(std::move(entry));
+  }
+  const auto json = [](const base::ListValue& list) {
+    std::string out;
+    base::JSONWriter::Write(list, &out);
+    return out;
+  };
+  framework_->RestoreTabs(browser.value, json(order).c_str(),
+                          json(groups).c_str(), json(splits).c_str());
+}
+
 void PhiCoordinator::FolioShowToast(int64_t window_id,
                                     const std::wstring& title,
                                     const std::wstring& message,
@@ -6189,6 +6342,7 @@ void PhiCoordinator::NoteWindowSnapshot(
   // Stored first: everything below, and every controller rebuild this
   // posts, reads the model rather than the framework.
   window_model_.Update(snapshot);
+  NoteClearedTabs(snapshot);
   if (PhiKioskWindow* kiosk = registry_.Kiosk(browser)) {
     kiosk->RefreshState();
     return;
@@ -6247,6 +6401,7 @@ void PhiCoordinator::RetireBrowserWindow(BrowserId browser) {
     }
   }
   window_model_.Remove(browser);
+  cleared_tabs_.erase(browser.value);
   RetireClosingBrowser(browser);
   MaybeEnterClosing();
 }

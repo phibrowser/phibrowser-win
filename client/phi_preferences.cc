@@ -65,6 +65,8 @@ constexpr RebindableShortcut kRebindableShortcuts[] = {
      kCmdSplitWithNewTab, {VK_OEM_5, true, true, false}},
     {"closeTab", "File", "settings.shortcuts.command.closeTab", kCmdCloseTab,
      {'W', true, false, false}},
+    {"clearAllTabs", "File", "tabs.clearAll.title", kCmdClearAllTabs,
+     {'K', true, true, false}},
     {"closeWindow", "File", "settings.shortcuts.command.closeWindow",
      kCmdCloseWindow, {'W', true, true, false}},
     {"print", "File", "settings.shortcuts.command.printPage", kCmdPrint,
