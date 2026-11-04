@@ -31,12 +31,11 @@
 #                one; docs/static-build-plan.md) - when that env exists.
 #                Without it the build is unsigned and says so.
 #   --vmp        Widevine VMP-sign Phi.exe and framework\chrome.dll with the
-#                castLabs EVS client (python3 -m pip install castlabs-evs; an
-#                EVS account with Widevine 3PL access, EVS_ACCOUNT_NAME +
-#                EVS_PASSWD or a cached `python3 -m castlabs_evs.account
-#                reauth`). Fails the build if signing fails. Without it the
-#                CDM still plays, unverified, and services that demand VMP
-#                refuse a license.
+#                castLabs EVS client, through PHI_VMP_TOOL (default the sibling
+#                ../../phibrowser-win-build/vmp-sign.sh; it needs PHI_EVS_ENV).
+#                Fails the build if signing fails. Without it the CDM still
+#                plays, unverified, and services that demand VMP refuse a
+#                license.
 #
 # The staged tree (docs/static-build-plan.md §6): Phi.exe, WinSparkle.dll and
 # the client's own resources\ entries at the top (the list build-client.py
@@ -208,10 +207,9 @@ fi
 # On Windows it must come after Authenticode - the VMP signature covers the
 # code-signed file.
 if [[ "$VMP" == yes ]]; then
-  for pe in "$STAGE/Phi.exe" "$FW/chrome.dll"; do
-    EVS_NO_ASK=1 python3 -m castlabs_evs.vmp sign "$pe" "$pe.sig"
-    [[ -s "$pe.sig" ]] || { echo "EVS wrote no $pe.sig" >&2; exit 1; }
-  done
+  VMP_TOOL="${PHI_VMP_TOOL:-$HERE/../../phibrowser-win-build/vmp-sign.sh}"
+  [[ -x "$VMP_TOOL" ]] || { echo "--vmp: no $VMP_TOOL" >&2; exit 1; }
+  "$VMP_TOOL" "$STAGE/Phi.exe" "$FW/chrome.dll"
   echo "vmp: Phi.exe.sig, framework/chrome.dll.sig"
 else
   echo "vmp: none (no --vmp; Widevine runs unverified)"
