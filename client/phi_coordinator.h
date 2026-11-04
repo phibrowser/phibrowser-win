@@ -648,6 +648,9 @@ class PhiCoordinator : public SidebarHost,
   void CloseShadowWindow(const std::string& task_id, const char* reason) {
     agent_manager_.CloseShadowWindow(task_id, reason);
   }
+  void CloseAllShadowWindows(const char* reason) {
+    agent_manager_.CloseAllShadowWindows(reason);
+  }
   void CloseAgentSpace(const std::string& task_id) {
     agent_manager_.CloseAgentSpace(task_id);
   }

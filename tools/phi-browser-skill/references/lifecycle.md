@@ -152,9 +152,14 @@ console, so **the user-facing result belongs in your chat reply.**
 Other differences worth knowing:
 
 - **Permission.** The whole feature sits behind Settings ▸ Developer ▸ "Allow
-  agents to operate your Spaces". With it off, every shadow call fails
-  `user_space_operations_disabled` — the answer is an agent Space, not a
-  workaround. Per-profile agent permissions apply as usual
+  agents to operate your Spaces" (off by default on Windows). With it off,
+  `enterContext({kind: 'shadow'})` and `listShadowWindows()` fail
+  `user_space_operations_disabled`, like every other shadow call except
+  closing one — the answer is an agent Space, not a workaround. Closing never
+  needs the switch. Turning the switch off also closes every shadow window at
+  once, as does turning off "Allow agents to control Phi": the round loses its
+  window, and `complete()` or `closeShadowWindow()` on it answers
+  `unknown_task`. Per-profile agent permissions apply as usual
   (`profile_not_agent_allowed`).
 - **Incognito.** `enterContext({kind: 'shadow', name, incognito: true})`
   opens the window in a unique off-the-record session instead of the profile

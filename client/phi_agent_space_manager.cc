@@ -725,6 +725,16 @@ void PhiAgentSpaceManager::CloseShadowWindow(const std::string& task_id,
   host_.UpdateSweepTimer();
 }
 
+void PhiAgentSpaceManager::CloseAllShadowWindows(const char* reason) {
+  std::vector<std::string> task_ids;
+  for (const auto& [task_id, shadow] : shadows_) {
+    task_ids.push_back(task_id);
+  }
+  for (const std::string& task_id : task_ids) {
+    CloseShadowWindow(task_id, reason);
+  }
+}
+
 void PhiAgentSpaceManager::TouchShadow(ShadowWindow* shadow,
                                        int ttl_seconds,
                                        uint64_t now_ms) {

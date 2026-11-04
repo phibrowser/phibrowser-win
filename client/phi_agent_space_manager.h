@@ -232,6 +232,7 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
   // deadline to max(existing, now + ttl); ttl <= 0 is the default round TTL.
   void TouchShadow(ShadowWindow* shadow, int ttl_seconds, uint64_t now_ms);
   void CloseShadowWindow(const std::string& task_id, const char* reason);
+  void CloseAllShadowWindows(const char* reason);
 
   // --- The keep-alive sweep ------------------------------------------------
   // Completes and closes expired Spaces and shadows. The coordinator's sweep

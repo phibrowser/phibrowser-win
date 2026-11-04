@@ -125,10 +125,10 @@ On Windows every connection to Phi acts as a *principal* with a set of
 capabilities, and each verb is checked against them BEFORE it runs:
 
 - Admission (the "Allow agents to control Phi" switch) grants the
-  agent-Space capability: its own agent Spaces and
-  shadow windows, `listSpaces`, `userFocus`, `listProfiles`, and
-  credentials (with their own prompts). The toggle above adds reading and
-  operating the user's Spaces; developer mode adds app settings
+  agent-Space capability: its own agent Spaces, `listSpaces`, `userFocus`,
+  `listProfiles`, and credentials (with their own prompts). The toggle above
+  adds reading and operating the user's Spaces, and shadow windows; developer
+  mode adds app settings
   (`settings.set`, theme, layout, menus, feedback); nothing an agent can
   do adds the host or destructive capabilities — those are Phi's test rig.
 - A verb the principal lacks the capability for fails
@@ -140,7 +140,9 @@ capabilities, and each verb is checked against them BEFORE it runs:
 - Scope decides which capability applies: the same verb aimed at a task
   window (`{taskId}`, or the windowId of an agent/shadow window) needs
   only the agent-Space capability, aimed at a user window (a `spaceId`, a
-  user windowId, or no scope at all) needs the user-Space one.
+  user windowId, or no scope at all) needs the user-Space one. The
+  `agentSpace.shadow.*` verbs are the exception: they need the toggle wherever
+  they are aimed, except `agentSpace.shadow.close`, which never does.
 - **The capability header.** Every admitted connection that presents no
   capability is issued the session's one agent capability, echoed on the
   upgrade response as `X-Phi-Agent-Capability`; `cdp.mjs` remembers it for

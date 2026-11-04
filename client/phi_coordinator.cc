@@ -3904,8 +3904,14 @@ void PhiCoordinator::OnPreferencesChanged(
       // live (each save resolves its folder when it starts).
       folio_.BroadcastArmedState();
       break;
-    case PreferenceChange::kDeveloper:
     case PreferenceChange::kAgentUserSpaces:
+      // Nothing on screen shows a shadow window, so none outlives the switch
+      // that allowed it. Agent Spaces stay: the user can see and end those.
+      if (!preferences_.AllowAgentUserSpaces()) {
+        agent_manager_.CloseAllShadowWindows("agent user-Space access off");
+      }
+      break;
+    case PreferenceChange::kDeveloper:
     case PreferenceChange::kPinScope:
     case PreferenceChange::kSyncedMisc:
       break;  // Settings shows them; nothing else consumes a change.
@@ -5628,6 +5634,20 @@ void PhiCoordinator::HostAgentWindow(BrowserId browser,
                                      HWND hwnd,
                                      bool incognito,
                                      const PendingCreation& pending) {
+  // The switch went off while this window was on its way: never hosted.
+  if (pending.needs_user_space_switch &&
+      (!preferences_.AllowAgentControl() ||
+       !preferences_.AllowAgentUserSpaces())) {
+    LOG(INFO) << "[PhiClient] shadow window refused on arrival: "
+              << pending.task_id;
+    ::PostMessageW(hwnd, WM_CLOSE, 0, 0);
+    if (pending.pending_reply_id) {
+      dispatcher().CompletePendingReply(
+          pending.pending_reply_id,
+          "{\"ok\":false,\"error\":\"user_space_operations_disabled\"}");
+    }
+    return;
+  }
   // An agent Space (or a shadow window, which is the same hidden surface
   // without a presence): host the browser OFF-SCREEN in a slot of its own.
   const SlotId slot = SlotId::OpenedBy(browser);

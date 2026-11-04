@@ -36,12 +36,12 @@ struct PhiVerbContext;
 // coordinator's settings, so flipping a toggle takes effect on the agent's
 // next verb.
 enum PhiCapability : uint32_t {
-  // Its own agent Spaces and shadow windows (the consent default).
+  // Its own agent Spaces (the consent default).
   kAgentSpace = 1,
   // Read the user's own Spaces, rows, rules and app state.
   kUserSpaceRead = 2,
-  // Change them, and drive tabs in the user's windows — Settings ▸
-  // Developer ▸ "Allow agents to operate your Spaces".
+  // Change them, drive tabs in the user's windows, and open shadow windows —
+  // Settings ▸ Developer ▸ "Allow agents to operate your Spaces".
   kUserSpaceWrite = 4,
   // Deletions that cannot be undone: Spaces, profiles, folders, groups,
   // user windows/tabs, URL rules. Test rig only for now.
@@ -273,6 +273,11 @@ enum PhiVerbFlag : uint16_t {
   kVerbHostForOutPath = 8,
   // Adds kDestructive when `guid` names a bookmark folder.
   kVerbDestructiveOnFolder = 16,
+  // `required` holds on the caller's own task too, not only on a user window.
+  // The shadow-window verbs: an agent Space announces itself with a pip the
+  // user can watch and take over, a shadow window announces nothing, so it
+  // sits behind the user-Space switch (the Mac's registerUserSpaceManaged).
+  kVerbRequiredOnTask = 32,
 };
 
 // A handler is reached through a trampoline (PhiVerbCall, phi_verb_registry.cc)
@@ -295,7 +300,8 @@ struct PhiVerbSpec {
   uint8_t scopes;
   // PhiCapability bits needed app-wide, or on a USER-window scope. A
   // scoped verb aimed at an agent or shadow window needs kAgentSpace plus
-  // ownership of the task, whatever this says.
+  // ownership of the task, whatever this says (kVerbRequiredOnTask: this,
+  // plus ownership).
   uint32_t required;
   // PhiVerbFlag bits.
   uint16_t flags;

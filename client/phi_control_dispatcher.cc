@@ -413,7 +413,8 @@ bool PhiControlDispatcher::AuthorizeAgentPeerOnUi(uint64_t connection_id,
       L"read Phi\u2019s profile folder may then open its own agent Spaces "
       L"and drive them";
   if (settings.allow_agent_user_spaces) {
-    message += L", and read and change your own Spaces";
+    message += L", read and change your own Spaces, and open invisible "
+               L"background windows";
   }
   message += L". Phi cannot tell such programs apart, so this stays on "
              L"for every one of them until you turn it off.";
@@ -963,7 +964,9 @@ uint32_t PhiControlDispatcher::CapsToCall(const PhiVerbSpec& spec) {
   // kAgentSpace; `required` is what it costs on a user window. The
   // capabilities report names the cheapest way in, which is what an agent
   // wants to know before it calls.
-  return (spec.scopes & kScopeTask) ? kAgentSpace : spec.required;
+  return (spec.scopes & kScopeTask) && !(spec.flags & kVerbRequiredOnTask)
+             ? kAgentSpace
+             : spec.required;
 }
 
 bool PhiControlDispatcher::AuthorizeVerb(const PhiPrincipal& principal,
@@ -1012,7 +1015,8 @@ bool PhiControlDispatcher::AuthorizeVerb(const PhiPrincipal& principal,
         entered_space = scope.space_id;
       }
     } else {
-      required = kAgentSpace;
+      required =
+          (spec.flags & kVerbRequiredOnTask) ? spec.required : kAgentSpace;
       if (!scope.task_id.empty() && !OwnsTask(principal, scope.task_id)) {
         *code = PhiErrorCode::kNotOwner;
         return false;
@@ -1355,6 +1359,9 @@ void PhiControlDispatcher::RevokeAgentAccess() {
   capabilities_.clear();
   session_capability_id_.clear();
   LOG(INFO) << "[PhiAgent] agent control off: capabilities revoked";
+  // Nothing on screen shows a shadow window, so none outlives the access
+  // that opened it.
+  coordinator_->CloseAllShadowWindows("agent control off");
   // The connections unwind on their own threads and report themselves
   // closed (OnConnectionClosed), which drops their principals and re-syncs
   // the scopes.

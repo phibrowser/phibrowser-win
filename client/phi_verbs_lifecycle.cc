@@ -831,6 +831,7 @@ PhiVerbResult PhiControlDispatcher::VerbShadowCreate(
   // arrives and answers the deferred reply ({ok, windowId, incognito}).
   PendingCreation pending;
   pending.task_id = task_id;
+  pending.needs_user_space_switch = !(ctx.principal.caps & kHost);
   pending.pending_reply_id =
       RegisterPendingReply(/*document=*/false, /*include_html=*/false);
   const int reply_id = pending.pending_reply_id;

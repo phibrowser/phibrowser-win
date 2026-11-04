@@ -63,6 +63,9 @@ FLAG_NAMES = {
     'kVerbDefaultsToUser': 'no scope in the payload means the first user window',
     'kVerbHostForOutPath': 'needs `host` when the payload carries `outPath`',
     'kVerbDestructiveOnFolder': 'needs `destructive` when `guid` names a folder',
+    'kVerbRequiredOnTask': ('its capabilities hold on the caller\'s own task '
+                            'too: Settings ▸ Developer ▸ "Allow agents to '
+                            'operate your Spaces"'),
     'kReadDefault': 'no scope in the payload means the first user window',
     'kWriteDefault': ("mutates the user's state (arms the agent drive "
                       "context); no scope in the payload means the first "
@@ -397,9 +400,11 @@ def render(rows, schemas, error_codes, reason_codes):
             if scopes:
                 bullets.append(
                     '**Scope**: %s — aimed with `taskId`, `windowId` or '
-                    '`spaceId`. A verb aimed at an agent or shadow window of '
-                    'the caller\'s OWN task needs only `agentSpace`.' %
-                    ', '.join(scopes))
+                    '`spaceId`.%s' %
+                    (', '.join(scopes),
+                     '' if 'kVerbRequiredOnTask' in row['flags'] else
+                     ' A verb aimed at an agent or shadow window of the '
+                     'caller\'s OWN task needs only `agentSpace`.'))
             else:
                 bullets.append('**Scope**: app-wide.')
             for note in flags_of(row['flags']):

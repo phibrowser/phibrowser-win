@@ -1192,31 +1192,42 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        "The same distillation as a saveable document."},
 
       // --- Shadow windows -------------------------------------------------
-      {"agentSpace.shadow.list", "", kTask, kAgentSpace, kVerbPlain, {}, false,
-       false, &Call<&PhiControlDispatcher::VerbShadowList>, "unknown_task",
+      {"agentSpace.shadow.list", "taskId", kTask, kAgentSpace | kUserSpaceRead,
+       kVerbRequiredOnTask, {}, false, false,
+       &Call<&PhiControlDispatcher::VerbShadowList>,
+       "unknown_task user_space_operations_disabled",
+       "The caller's live shadow windows (every one, with the host "
+       "capability), refusing a task that does not exist."},
+      {"agentSpace.shadow.list", "", kScopeNone, kAgentSpace | kUserSpaceRead,
+       kVerbPlain, {}, false, false,
+       &Call<&PhiControlDispatcher::VerbShadowList>,
+       "user_space_operations_disabled",
        "The caller's live shadow windows (every one, with the host "
        "capability)."},
-      {"agentSpace.shadow.create", "", kTask, kAgentSpace, kVerbPlain,
-       kShadowCreate, false, true,
+      {"agentSpace.shadow.create", "", kTask, kAgentSpace | kUserSpaceWrite,
+       kVerbRequiredOnTask, kShadowCreate, false, true,
        &Call<&PhiControlDispatcher::VerbShadowCreate>,
        "invalid_payload not_owner busy create_failed create_timeout "
-       "shadow_incognito_mismatch profile_not_agent_allowed",
+       "shadow_incognito_mismatch profile_not_agent_allowed "
+       "user_space_operations_disabled",
        "Binds a task to a hidden background window, creating it when there "
        "is none."},
-      {"agentSpace.shadow.openTab", "", kTask, kAgentSpace, kVerbPlain,
-       kShadowOpenTab, false, false,
+      {"agentSpace.shadow.openTab", "", kTask, kAgentSpace | kUserSpaceWrite,
+       kVerbRequiredOnTask, kShadowOpenTab, false, false,
        &Call<&PhiControlDispatcher::VerbShadowOpenTab>,
-       "invalid_payload unknown_task not_owner",
+       "invalid_payload unknown_task not_owner user_space_operations_disabled",
        "Opens a tab in the shadow window."},
-      {"agentSpace.shadow.ping", "", kTask, kAgentSpace, kVerbPlain, kTaskPing,
-       false, false, &Call<&PhiControlDispatcher::VerbShadowPing>,
-       "invalid_payload unknown_task not_owner",
+      {"agentSpace.shadow.ping", "", kTask, kAgentSpace | kUserSpaceWrite,
+       kVerbRequiredOnTask, kTaskPing, false, false,
+       &Call<&PhiControlDispatcher::VerbShadowPing>,
+       "invalid_payload unknown_task not_owner user_space_operations_disabled",
        "Refreshes the shadow window's keep-alive."},
       {"agentSpace.shadow.close", "", kTask, kAgentSpace, kVerbPlain,
        kTaskOnly, false, false,
        &Call<&PhiControlDispatcher::VerbShadowClose>,
        "invalid_payload unknown_task not_owner",
-       "Closes the shadow window."},
+       "Closes the shadow window. Never behind the user-Space switch, so an "
+       "agent can always clean up."},
 
       // --- Task-less probes ------------------------------------------------
       {"agentSpace.resolveTabIds", "", kScopeNone, kAgentSpace, kVerbPlain,

@@ -52,6 +52,9 @@ struct PendingCreation {
   // window (the hosted login rides in it), never by a shell or the agent
   // manager.
   bool onboarding = false;
+  // kShadow: asked for by an agent, so the window is refused on arrival if
+  // the switch that allowed the request has gone off since.
+  bool needs_user_space_switch = false;
   // A deferred control reply (PhiCoordinator::RegisterPendingReply) that
   // the announcement completes; 0 when nobody is waiting.
   int pending_reply_id = 0;

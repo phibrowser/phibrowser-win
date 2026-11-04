@@ -651,8 +651,8 @@ async function enterAgentContext(name,
  *
  * Re-binds by `name` like an agent Space. The feature is gated by Settings ▸
  * Developer ▸ "Allow agents to operate your Spaces"; with it off every call
- * fails `user_space_operations_disabled` and the answer is an agent Space,
- * not a workaround.
+ * but closing fails `user_space_operations_disabled` and the answer is an
+ * agent Space, not a workaround. Turning it off closes every shadow window.
  *
  * `incognito: true` puts the window in a unique off-the-record profile
  * derived from `profile` (which still names the PARENT profile — extensions

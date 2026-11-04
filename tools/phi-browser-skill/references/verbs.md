@@ -97,7 +97,7 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 
 ## Verbs
 
-158 rows, 155 distinct names.
+159 rows, 155 distinct names.
 
 ### The agent-Space lifecycle
 
@@ -395,13 +395,24 @@ The same distillation as a saveable document.
 
 ### Shadow windows
 
+#### `agentSpace.shadow.list` — the row claimed when the payload carries `taskId`
+
+The caller's live shadow windows (every one, with the host capability), refusing a task that does not exist.
+
+- **Capabilities**: `agentSpace`, `userSpaceRead`
+- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`.
+- Its capabilities hold on the caller's own task too: Settings ▸ Developer ▸ "Allow agents to operate your Spaces".
+- **Errors**: `unknown_task`, `user_space_operations_disabled`
+
+*No payload fields.*
+
 #### `agentSpace.shadow.list`
 
 The caller's live shadow windows (every one, with the host capability).
 
-- **Capabilities**: `agentSpace`
-- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
-- **Errors**: `unknown_task`
+- **Capabilities**: `agentSpace`, `userSpaceRead`
+- **Scope**: app-wide.
+- **Errors**: `user_space_operations_disabled`
 
 *No payload fields.*
 
@@ -409,10 +420,11 @@ The caller's live shadow windows (every one, with the host capability).
 
 Binds a task to a hidden background window, creating it when there is none.
 
-- **Capabilities**: `agentSpace`
-- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
+- **Capabilities**: `agentSpace`, `userSpaceWrite`
+- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`.
+- Its capabilities hold on the caller's own task too: Settings ▸ Developer ▸ "Allow agents to operate your Spaces".
 - Answers asynchronously — the reply arrives when the work lands.
-- **Errors**: `invalid_payload`, `not_owner`, `busy`, `create_failed`, `create_timeout`, `shadow_incognito_mismatch`, `profile_not_agent_allowed`
+- **Errors**: `invalid_payload`, `not_owner`, `busy`, `create_failed`, `create_timeout`, `shadow_incognito_mismatch`, `profile_not_agent_allowed`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -424,9 +436,10 @@ Binds a task to a hidden background window, creating it when there is none.
 
 Opens a tab in the shadow window.
 
-- **Capabilities**: `agentSpace`
-- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
-- **Errors**: `invalid_payload`, `unknown_task`, `not_owner`
+- **Capabilities**: `agentSpace`, `userSpaceWrite`
+- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`.
+- Its capabilities hold on the caller's own task too: Settings ▸ Developer ▸ "Allow agents to operate your Spaces".
+- **Errors**: `invalid_payload`, `unknown_task`, `not_owner`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -437,9 +450,10 @@ Opens a tab in the shadow window.
 
 Refreshes the shadow window's keep-alive.
 
-- **Capabilities**: `agentSpace`
-- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
-- **Errors**: `invalid_payload`, `unknown_task`, `not_owner`
+- **Capabilities**: `agentSpace`, `userSpaceWrite`
+- **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`.
+- Its capabilities hold on the caller's own task too: Settings ▸ Developer ▸ "Allow agents to operate your Spaces".
+- **Errors**: `invalid_payload`, `unknown_task`, `not_owner`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -448,7 +462,7 @@ Refreshes the shadow window's keep-alive.
 
 #### `agentSpace.shadow.close`
 
-Closes the shadow window.
+Closes the shadow window. Never behind the user-Space switch, so an agent can always clean up.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
