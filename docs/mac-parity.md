@@ -7,8 +7,8 @@ either the decision to leave it out or that it still needs to be built.
 It is a list of surfaces, not of code: how a feature is implemented is in
 the owning doc each row points to.
 
-**Checked against phibrowser-mac `597d76b5` (2026-11-03) and
-phibrowser-win `f49b60e`, on 2026-11-03.**
+**Checked against phibrowser-mac `df894346` (2026-11-04) and
+phibrowser-win `7bb1bf6`, on 2026-11-04.**
 
 ## Legend
 
@@ -296,6 +296,25 @@ it, pointing at the owning doc.
 ## 9. Triage log
 
 One table per pass, newest first. Commits are in Mac history order.
+
+### 2026-11-04 — phibrowser-mac `597d76b5` → `df894346` (3 commits)
+
+No new feature in this range, so no new end-to-end test is due until one of these is
+ported. Each port gets its test first (the rule from 2026-11-04). Read through the
+diffs only; nothing was built or run. Ports not started.
+
+**End-to-end suites added 2026-11-04 for that day's work:** `tabclose`, `cleartabs`,
+`spaceroot`, `synctelemetry`, `toast`, `floatingomnibox`, `urlpath`. Each failed on a client
+with the feature broken or missing. Full sweep on nuc at 300 %, `main` `7bb1bf6`, fork
+`2d0815acd18`: 243 passed, 8 failed, 39 suites, all 8 the known nuc pixel and bounds
+failures (`layout`, `settings`, `tabui` x3, `theme`, `toolbar`, `window`). `suite-feedback` and
+two-box sync not run, and the new suites have not run on gmk.
+
+| Mac commit | Subject | Verdict | Windows action / reason |
+|---|---|---|---|
+| `0776b43f` | fix: admit the browser runner a companion app spawns as an agent it vouches for instead of refusing it as Phi's own orphaned runtime | skip | `AgentPeerIdentity` and companion passes. Windows has neither: the pipe gate is the switch alone, and companion apps are ⛔ (§6, decided 2026-11-02). |
+| `345e60b0` | Fix horizontal scrolling in the omnibox | port | S. The Mac scrolls the field with a sideways wheel and keeps wheel events from reaching what is behind the card. Whether the Windows EDIT and floating card do either was not checked. |
+| `df894346` | fix: refine shared membership card appearance | port | M. `phi_holographic_card.cc` is the twin: back face drawn like the front, black edge, taller name, "Member Since" with the date in Share Tech Mono (a new font and licence to ship), and no random style without an ornament. |
 
 ### 2026-11-03 — phibrowser-mac `8c0b8596` → `597d76b5` (33 commits, no merges)
 
