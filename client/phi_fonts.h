@@ -17,11 +17,15 @@ namespace phi_client {
 // without an install. Idempotent; UI thread, before the first window.
 void PhiLoadPrivateFonts();
 
-// Family names, for PhiFontDesc::face / LOGFONT. Latin-only faces: a
-// caller rendering text that may hold CJK falls back to Segoe UI, as the
-// Mac's NSFont.brandDisplay does.
-inline constexpr const wchar_t* kPhiBrandDisplayFace = L"IvyPresto Display";
-inline constexpr const wchar_t* kPhiBrandHeadlineFace = L"IvyPresto Headline";
+// GDI family names (each file's name ID 1), for PhiFontDesc::face / LOGFONT.
+// The weight is part of the name: GDI does not know the typographic family
+// "IvyPresto Display" (ID 16) and silently gives the system's default font
+// for it. Latin-only faces: a caller rendering text that may hold CJK falls
+// back to Segoe UI, as the Mac's NSFont.brandDisplay does.
+inline constexpr const wchar_t* kPhiBrandDisplayFace =
+    L"IvyPresto Display SemiBold";
+inline constexpr const wchar_t* kPhiBrandHeadlineFace =
+    L"IvyPresto Headline SemiBold";
 
 // True when every non-space character of `text` is within the brand face's
 // Latin coverage (the Mac's `renders:` check, approximated by code point).
