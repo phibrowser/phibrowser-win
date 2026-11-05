@@ -33,9 +33,9 @@
 #   --vmp        Widevine VMP-sign Phi.exe and framework\chrome.dll with the
 #                castLabs EVS client, through PHI_VMP_TOOL (default the sibling
 #                ../../phibrowser-win-build/vmp-sign.sh; it needs PHI_EVS_ENV).
-#                Fails the build if signing fails. Without it the CDM still
-#                plays, unverified, and services that demand VMP refuse a
-#                license.
+#                Fails the build if signing fails. Without it, or with the wrong
+#                flags, the CDM still plays, but the license server reports the
+#                host as tampered and services that demand VMP refuse a license.
 #
 # The staged tree (docs/static-build-plan.md §6): Phi.exe, WinSparkle.dll and
 # the client's own resources\ entries at the top (the list build-client.py
@@ -205,11 +205,14 @@ fi
 # Widevine VMP: a .sig beside Phi.exe and framework\chrome.dll, the host
 # files the CDM verifies (the fork's chrome/common/media/cdm_host_file_path.cc).
 # On Windows it must come after Authenticode - the VMP signature covers the
-# code-signed file.
+# code-signed file. Only the main exe carries flag 1, as with Chrome's own
+# files; chrome.dll takes flag 0 (EVS calls it intermediate). With flag 1 on both
+# every check here passes, yet the license server says the host is tampered.
 if [[ "$VMP" == yes ]]; then
   VMP_TOOL="${PHI_VMP_TOOL:-$HERE/../../phibrowser-win-build/vmp-sign.sh}"
   [[ -x "$VMP_TOOL" ]] || { echo "--vmp: no $VMP_TOOL" >&2; exit 1; }
-  "$VMP_TOOL" "$STAGE/Phi.exe" "$FW/chrome.dll"
+  "$VMP_TOOL" "$STAGE/Phi.exe"
+  "$VMP_TOOL" --intermediate "$FW/chrome.dll"
   echo "vmp: Phi.exe.sig, framework/chrome.dll.sig"
 else
   echo "vmp: none (no --vmp; Widevine runs unverified)"
