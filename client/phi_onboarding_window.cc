@@ -97,6 +97,7 @@ constexpr int kHeight = 800;
 // Shared metrics (OnboardingBaseViewController / the pages).
 constexpr int kTitleTop = 96;
 constexpr int kTitleSize = 46;
+constexpr int kTitleMinSize = 28;
 constexpr int kTitleHeight = 64;
 constexpr int kButtonBottom = 96;   // The Next / Begin pill's bottom inset.
 constexpr int kPillWidth = 120;
@@ -1223,11 +1224,22 @@ void PhiOnboardingWindow::PaintDarkGround(HDC dc, const RECT& content) {
 void PhiOnboardingWindow::PaintTitle(HDC dc, const RECT& content,
                                      const std::wstring& text, COLORREF color,
                                      int top_dip) {
-  HFONT font = BrandTitleFont(text, kTitleSize);
-  HGDIOBJ old_font = ::SelectObject(dc, font);
-  ::SetTextColor(dc, color);
   RECT rc = {content.left + Scaled(30), content.top + Scaled(top_dip),
              content.right - Scaled(30), content.top + Scaled(top_dip + kTitleHeight)};
+  // A translation too wide for the line steps down in size rather than losing
+  // its end to the ellipsis, which stays as the last resort.
+  int size = kTitleSize;
+  HGDIOBJ old_font = ::SelectObject(dc, BrandTitleFont(text, size));
+  while (size > kTitleMinSize) {
+    RECT measured = {};
+    PhiDrawTextAA(dc, text.c_str(), -1, &measured,
+                  DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+    if (measured.right <= rc.right - rc.left) {
+      break;
+    }
+    ::SelectObject(dc, BrandTitleFont(text, --size));
+  }
+  ::SetTextColor(dc, color);
   PhiDrawTextAA(dc, text.c_str(), -1, &rc,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
                     DT_NOPREFIX);
