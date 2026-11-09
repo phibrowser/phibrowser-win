@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sidebar_view.h"
+#include "client/phi_sidebar_view.h"
 
-#include "phibrowser-win/client/phi_agent_spaces.h"
-#include "phibrowser-win/client/phi_app_model.h"
+#include "client/phi_agent_spaces.h"
+#include "client/phi_app_model.h"
 
 #include <algorithm>
 #include <cmath>
@@ -18,23 +18,23 @@
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_bookmark_manager.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_folder_icons.h"
-#include "phibrowser-win/client/phi_group_overview.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_mac_icons.h"
-#include "phibrowser-win/client/phi_new_tab_page.h"
-#include "phibrowser-win/client/phi_search_tabs_panel.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_sidebar_drag_session.h"
-#include "phibrowser-win/client/phi_spaces_strip.h"
-#include "phibrowser-win/client/phi_uia.h"
-#include "phibrowser-win/client/phi_shell_window.h"
-#include "phibrowser-win/client/phi_window_model.h"
+#include "client/phi_animator.h"
+#include "client/phi_bookmark_manager.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fluent.h"
+#include "client/phi_folder_icons.h"
+#include "client/phi_group_overview.h"
+#include "client/phi_i18n.h"
+#include "client/phi_icons.h"
+#include "client/phi_mac_icons.h"
+#include "client/phi_new_tab_page.h"
+#include "client/phi_search_tabs_panel.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_sidebar_drag_session.h"
+#include "client/phi_spaces_strip.h"
+#include "client/phi_uia.h"
+#include "client/phi_shell_window.h"
+#include "client/phi_window_model.h"
 
 namespace phi_client {
 

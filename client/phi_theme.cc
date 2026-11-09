@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_theme.h"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +11,7 @@
 #include <cstdio>
 
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_util.h"
 
 #if defined(_WIN32)
 #include "base/win/registry.h"

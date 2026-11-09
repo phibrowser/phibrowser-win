@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_spaces.h"
+#include "client/phi_sync_spaces.h"
 
 #include <algorithm>
 #include <cmath>
 #include <utility>
 
-#include "phibrowser-win/client/phi_sync_clock.h"
-#include "phibrowser-win/client/phi_sync_merge.h"
-#include "phibrowser-win/client/phi_sync_rank.h"
+#include "client/phi_sync_clock.h"
+#include "client/phi_sync_merge.h"
+#include "client/phi_sync_rank.h"
 
 namespace phi_client::sync {
 

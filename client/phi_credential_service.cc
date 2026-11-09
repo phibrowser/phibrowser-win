@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_credential_service.h"
+#include "client/phi_credential_service.h"
 
 #include <algorithm>
 #include <utility>
 
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_features.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_prompt.h"
+#include "client/phi_features.h"
+#include "client/phi_i18n.h"
+#include "client/phi_prompt.h"
 
 namespace phi_client {
 

@@ -1,5 +1,6 @@
 # Build and tool output that must never be committed.
 __pycache__/
+/out/
 *.pyc
 compile_commands.json
 # Scratch the box runners leave behind.

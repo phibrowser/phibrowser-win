@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_url_rule_normalize.h"
+#include "client/phi_url_rule_normalize.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -21,7 +21,7 @@ struct LowerMapping {
 };
 
 constexpr LowerMapping kLowerTable[] = {
-#include "phibrowser-win/client/phi_unicode_lower.inc"
+#include "client/phi_unicode_lower.inc"
 };
 
 // Unicode White_Space (= Foundation's whitespacesAndNewlines).

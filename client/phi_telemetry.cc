@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_telemetry.h"
+#include "client/phi_telemetry.h"
 
 #include <winhttp.h>
 
@@ -20,8 +20,8 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "base/win/windows_version.h"
-#include "phibrowser-win/client/phi_feedback_outbox.h"
-#include "phibrowser-win/client/phi_version.h"
+#include "client/phi_feedback_outbox.h"
+#include "client/phi_version.h"
 
 #pragma comment(lib, "winhttp.lib")
 

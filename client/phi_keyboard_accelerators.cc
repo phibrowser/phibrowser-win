@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_keyboard_accelerators.h"
+#include "client/phi_keyboard_accelerators.h"
 
 #include <array>
 
@@ -13,11 +13,11 @@ PhiKeyboardCommandQueue::~PhiKeyboardCommandQueue() = default;
 
 #if defined(_WIN32)
 
-#include "phibrowser-win/client/phi_app_menu.h"
-#include "phibrowser-win/client/phi_library.h"
-#include "phibrowser-win/client/phi_preferences.h"
-#include "phibrowser-win/client/phi_tab_switcher.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_app_menu.h"
+#include "client/phi_library.h"
+#include "client/phi_preferences.h"
+#include "client/phi_tab_switcher.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

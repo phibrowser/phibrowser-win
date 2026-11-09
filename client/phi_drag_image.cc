@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_drag_image.h"
+#include "client/phi_drag_image.h"
 
 // GDI+ composes the image: rounded paths, aspect-filled snapshots and text
 // with per-pixel alpha, which the layered window needs and plain GDI cannot
@@ -18,12 +18,12 @@
 
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_gdiplus.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_window.h"
+#include "client/phi_animator.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_gdiplus.h"
+#include "client/phi_panel.h"
+#include "client/phi_theme.h"
+#include "client/phi_window.h"
 
 namespace phi_client {
 

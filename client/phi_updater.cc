@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_updater.h"
+#include "client/phi_updater.h"
 
 #include <windows.h>
 
@@ -10,8 +10,8 @@
 #include <string>
 
 #include "base/logging.h"
-#include "phibrowser-win/client/phi_features.h"
-#include "phibrowser-win/client/phi_version.h"
+#include "client/phi_features.h"
+#include "client/phi_version.h"
 
 namespace phi_client {
 

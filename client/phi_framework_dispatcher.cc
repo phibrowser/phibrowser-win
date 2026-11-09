@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_framework_dispatcher.h"
+#include "client/phi_framework_dispatcher.h"
 
 #include <utility>
 
-#include "phibrowser-win/client/phi_agent_space_manager.h"
-#include "phibrowser-win/client/phi_client_logging.h"
-#include "phibrowser-win/client/phi_coordinator.h"
-#include "phibrowser-win/client/phi_profile_service.h"
-#include "phibrowser-win/client/phi_session_restore.h"
-#include "phibrowser-win/client/phi_surface_coordinator.h"
-#include "phibrowser-win/client/phi_url_router.h"
+#include "client/phi_agent_space_manager.h"
+#include "client/phi_client_logging.h"
+#include "client/phi_coordinator.h"
+#include "client/phi_profile_service.h"
+#include "client/phi_session_restore.h"
+#include "client/phi_surface_coordinator.h"
+#include "client/phi_url_router.h"
 
 namespace phi_client {
 
@@ -83,9 +83,10 @@ void PhiFrameworkDispatcher::OnHostedWindowFullscreen(int64_t window_id,
 }
 
 void PhiFrameworkDispatcher::OnWindowChanged(
-    const phi_framework::WindowSnapshot& snapshot,
+    const phi_framework::WindowSnapshotView& snapshot,
     phi_framework::WindowChangeReason reason) {
-  coordinator_.NoteWindowSnapshot(snapshot, reason);
+  coordinator_.NoteWindowSnapshot(phi_framework::ToOwnedSnapshot(snapshot),
+                                  reason);
 }
 
 void PhiFrameworkDispatcher::OnTargetURLChanged(int64_t window_id,

@@ -9,8 +9,8 @@
 
 #include <cstdint>
 
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_ids.h"
+#include "client/phi_theme.h"
 
 namespace phi_framework {
 class PhiFramework;

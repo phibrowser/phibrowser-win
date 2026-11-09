@@ -15,7 +15,7 @@
 #if defined(_WIN32)
 #include <windows.h>
 
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_theme.h"
 #endif
 
 // THE window substrate (docs/architecture-review.md §3.6, appendix

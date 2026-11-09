@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_agent_overlay.h"
+#include "client/phi_agent_overlay.h"
 
 #include <windowsx.h>
 
@@ -19,13 +19,13 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_gdiplus.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_animator.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_icons.h"
+#include "client/phi_fluent.h"
+#include "client/phi_gdiplus.h"
+#include "client/phi_panel.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

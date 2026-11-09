@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_ids.h"
+#include "client/phi_ids.h"
 
 namespace phi_client {
 

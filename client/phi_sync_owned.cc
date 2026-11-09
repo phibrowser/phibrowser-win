@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_owned.h"
+#include "client/phi_sync_owned.h"
 
 #include <functional>
 #include <memory>
 #include <tuple>
 
-#include "phibrowser-win/client/phi_sync_spaces.h"
+#include "client/phi_sync_spaces.h"
 
 namespace phi_client::sync {
 

@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <string>
 
-#include "phibrowser-win/client/phi_sync_proto.h"
+#include "client/phi_sync_proto.h"
 
 // Phi native sync's merge layer (docs/user-data-parity.md S4): the pure,
 // symmetric merge of one entity's local and remote versions, per kind —

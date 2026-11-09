@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_create_space_panel.h"
+#include "client/phi_create_space_panel.h"
 
 #include <commctrl.h>  // EM_SETCUEBANNER
 #include <windowsx.h>
@@ -16,17 +16,17 @@
 #include "base/no_destructor.h"
 #include "base/rand_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_opaque_edit.h"
-#include "phibrowser-win/client/phi_backdrop.h"
-#include "phibrowser-win/client/phi_emoji.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_popover.h"
-#include "phibrowser-win/client/phi_prompt.h"
-#include "phibrowser-win/client/phi_shell_window.h"
-#include "phibrowser-win/client/phi_space_theme_panel.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_opaque_edit.h"
+#include "client/phi_backdrop.h"
+#include "client/phi_emoji.h"
+#include "client/phi_i18n.h"
+#include "client/phi_icons.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_popover.h"
+#include "client/phi_prompt.h"
+#include "client/phi_shell_window.h"
+#include "client/phi_space_theme_panel.h"
 
 namespace phi_client {
 

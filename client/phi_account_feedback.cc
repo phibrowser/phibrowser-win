@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_account_feedback.h"
+#include "client/phi_account_feedback.h"
 
 #include <optional>
 #include <utility>
@@ -11,12 +11,12 @@
 #include "base/json/json_reader.h"
 #include "base/logging.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_client_analytics.h"
-#include "phibrowser-win/client/phi_feedback_outbox.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_toast.h"
+#include "client/phi_client_analytics.h"
+#include "client/phi_feedback_outbox.h"
+#include "client/phi_i18n.h"
+#include "client/phi_ids.h"
+#include "client/phi_theme.h"
+#include "client/phi_toast.h"
 
 namespace phi_client {
 

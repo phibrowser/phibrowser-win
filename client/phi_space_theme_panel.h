@@ -11,7 +11,7 @@
 #include <optional>
 #include <string>
 
-#include "phibrowser-win/client/phi_theme_palette.h"
+#include "client/phi_theme_palette.h"
 
 namespace phi_client {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_downloads_popover.h"
+#include "client/phi_downloads_popover.h"
 
 #include <commctrl.h>
 #include <commoncontrols.h>  // IImageList, for SHGetImageList.
@@ -29,13 +29,13 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_downloads_model.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_library.h"
-#include "phibrowser-win/client/phi_popover.h"
-#include "phibrowser-win/client/phi_shell_window.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_downloads_model.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_library.h"
+#include "client/phi_popover.h"
+#include "client/phi_shell_window.h"
+#include "client/phi_util.h"
 
 namespace phi_client {
 

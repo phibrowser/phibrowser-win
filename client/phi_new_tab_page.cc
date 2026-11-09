@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_new_tab_page.h"
+#include "client/phi_new_tab_page.h"
 
 #include <commctrl.h>  // EM_SETCUEBANNER
 #include <windowsx.h>
@@ -10,11 +10,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_mac_icons.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_mac_icons.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

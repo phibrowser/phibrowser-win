@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sync_engine.h"
+#include "client/phi_sync_engine.h"
 
 namespace phi_client {
 

@@ -10,8 +10,8 @@
 #include <string>
 
 #include "base/values.h"
-#include "phibrowser-win/client/phi_sync_engine.h"
-#include "phibrowser-win/client/phi_sync_spaces.h"
+#include "client/phi_sync_engine.h"
+#include "client/phi_sync_spaces.h"
 
 // Phi native sync's persisted state on Windows (docs/user-data-parity.md
 // S5), where the Mac keeps it:

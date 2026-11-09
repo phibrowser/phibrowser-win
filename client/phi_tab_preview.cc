@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_tab_preview.h"
+#include "client/phi_tab_preview.h"
 
 #include <dwmapi.h>
 
@@ -13,10 +13,10 @@
 #include "base/containers/span.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_animator.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_glyph_bitmap.h"
+#include "client/phi_glyph_bitmap.h"
 
 #include <algorithm>
 #include <cstring>
@@ -10,8 +10,8 @@
 
 #include "base/compiler_specific.h"
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_icons.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_icons.h"
 
 namespace phi_client {
 

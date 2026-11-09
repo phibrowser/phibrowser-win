@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_local_store.h"
+#include "client/phi_local_store.h"
 
 // Guest → account data migration (docs/user-data-parity.md S6): the Mac's
 // GuestDataMigration.swift. Signing in from Guest Mode moves the Guest

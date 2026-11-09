@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_auth.h"
+#include "client/phi_auth.h"
 
 #include <bcrypt.h>
 #include <wincrypt.h>
@@ -19,12 +19,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_auth_codec.h"
-#include "phibrowser-win/client/phi_features.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_http.h"
-#include "phibrowser-win/client/phi_log.h"
-#include "phibrowser-win/client/phi_version.h"
+#include "client/phi_auth_codec.h"
+#include "client/phi_features.h"
+#include "client/phi_file_io.h"
+#include "client/phi_http.h"
+#include "client/phi_log.h"
+#include "client/phi_version.h"
 
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "crypt32.lib")

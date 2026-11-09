@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_invalidation_win.h"
+#include "client/phi_sync_invalidation_win.h"
 
 #include <algorithm>
 #include <chrono>
@@ -12,7 +12,7 @@
 
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_http.h"
+#include "client/phi_http.h"
 
 #pragma comment(lib, "winhttp.lib")
 

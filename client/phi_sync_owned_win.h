@@ -13,10 +13,10 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sync_bookmarks.h"
-#include "phibrowser-win/client/phi_sync_pins.h"
-#include "phibrowser-win/client/phi_sync_rules.h"
-#include "phibrowser-win/client/phi_sync_settings_win.h"
+#include "client/phi_sync_bookmarks.h"
+#include "client/phi_sync_pins.h"
+#include "client/phi_sync_rules.h"
+#include "client/phi_sync_settings_win.h"
 
 namespace phi_client {
 

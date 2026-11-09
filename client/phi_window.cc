@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_window.h"
+#include "client/phi_window.h"
 
 #include <algorithm>
 
@@ -188,10 +188,10 @@ int PhiLerpInt(int from, int to, double t) {
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_theme_bus.h"
-#include "phibrowser-win/client/phi_uia.h"
+#include "client/phi_animator.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_theme_bus.h"
+#include "client/phi_uia.h"
 
 namespace phi_client {
 

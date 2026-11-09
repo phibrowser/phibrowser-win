@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_split_drop.h"
+#include "client/phi_split_drop.h"
 
 // GDI+ draws the cards: rounded paths with per-pixel alpha over live page
 // content, which plain GDI cannot produce (the agent overlay's sprite layer
@@ -17,9 +17,9 @@
 #include <memory>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_gdiplus.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_gdiplus.h"
+#include "client/phi_panel.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

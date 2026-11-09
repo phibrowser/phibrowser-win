@@ -16,10 +16,10 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_credentials.h"
-#include "phibrowser-win/client/phi_settings_types.h"
-#include "phibrowser-win/client/phi_vault_helper.h"
+#include "client/phi_app_model.h"
+#include "client/phi_credentials.h"
+#include "client/phi_settings_types.h"
+#include "client/phi_vault_helper.h"
 
 namespace phi_client {
 

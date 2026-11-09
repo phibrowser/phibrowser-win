@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_agent_space_manager.h"
+#include "client/phi_agent_space_manager.h"
 
 #include <algorithm>
 #include <utility>
@@ -13,9 +13,9 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_agent_icons.h"
-#include "phibrowser-win/client/phi_agent_overlay.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_agent_icons.h"
+#include "client/phi_agent_overlay.h"
+#include "client/phi_util.h"
 
 namespace phi_client {
 

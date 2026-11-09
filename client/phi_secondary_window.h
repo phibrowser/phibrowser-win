@@ -9,12 +9,12 @@
 #include <cstdint>
 #include <vector>
 
-#include "phibrowser-win/client/phi_window.h"
+#include "client/phi_window.h"
 
 #if defined(_WIN32)
 #include <windows.h>
 
-#include "phibrowser-win/client/phi_popup_chrome.h"
+#include "client/phi_popup_chrome.h"
 #endif
 
 // The SECONDARY-WINDOW family (docs/architecture-review.md §3.6, appendix

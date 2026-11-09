@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_credentials.h"
+#include "client/phi_credentials.h"
 
 #include <windows.h>
 
@@ -15,7 +15,7 @@
 #include "base/logging.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_features.h"
+#include "client/phi_features.h"
 
 #pragma comment(lib, "crypt32.lib")
 

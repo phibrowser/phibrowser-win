@@ -17,9 +17,9 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_sync_keys.h"
-#include "phibrowser-win/client/phi_sync_spaces.h"
-#include "phibrowser-win/client/phi_sync_settings_win.h"
+#include "client/phi_sync_keys.h"
+#include "client/phi_sync_spaces.h"
+#include "client/phi_sync_settings_win.h"
 
 namespace phi_client {
 

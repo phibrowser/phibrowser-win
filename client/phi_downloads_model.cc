@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_downloads_model.h"
+#include "client/phi_downloads_model.h"
 
 #include <commctrl.h>
 #include <commoncontrols.h>  // IImageList, for SHGetImageList.
@@ -19,8 +19,8 @@
 #include "base/json/json_reader.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_i18n.h"
+#include "client/phi_util.h"
 
 namespace phi_client {
 

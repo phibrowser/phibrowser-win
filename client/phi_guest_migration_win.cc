@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_guest_migration_win.h"
+#include "client/phi_guest_migration_win.h"
 
 #include <windows.h>
 
@@ -16,10 +16,10 @@
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_account_storage.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_local_store.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_account_storage.h"
+#include "client/phi_file_io.h"
+#include "client/phi_local_store.h"
+#include "client/phi_util.h"
 
 namespace phi_client {
 

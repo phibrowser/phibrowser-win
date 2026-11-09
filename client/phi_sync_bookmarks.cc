@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_bookmarks.h"
+#include "client/phi_sync_bookmarks.h"
 
 #include <algorithm>
 #include <tuple>
 #include <utility>
 
-#include "phibrowser-win/client/phi_sync_merge.h"
+#include "client/phi_sync_merge.h"
 
 namespace phi_client::sync {
 

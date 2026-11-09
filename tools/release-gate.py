@@ -62,23 +62,26 @@ def strings_in(path, needles):
 
 def check_binary(out_dir):
     rc = 0
-    exe = os.path.join(out_dir, "Phi.exe")
-    if not os.path.isfile(exe):
-        return fail(f"{exe} missing — build first (or pass --source-only)")
-    hits = strings_in(exe, DEV_HOOK_STRINGS)
+    client = os.path.join(out_dir, "phi_client.dll")
+    if not os.path.isfile(client):
+        return fail(f"{client} missing — build first (or pass --source-only)")
+    hits = strings_in(client, DEV_HOOK_STRINGS)
     if hits:
         rc |= fail("dev hooks compiled in (built with --dev-hooks?): "
                    + ", ".join(hits))
     # The switch NAME is not checked in the binary: Chromium's own switch
     # tables linked into the exe spell it too. The source check above is
     # the gate for the injection (review §4 item 1).
-    res = os.path.join(out_dir, "phi_clientkit", "obj", "phi_client.res")
+    res = os.path.join(out_dir, "client_obj", "phi_client.res")
     if os.path.isfile(res):
         with open(res, "rb") as f:
             blob = f.read()
         if "VS_VERSION_INFO".encode("utf-16-le") not in blob:
             rc |= fail("phi_client.res carries no VS_VERSION_INFO "
                        "(review §4 item 42)")
+    host = os.path.join(out_dir, "Phi.exe")
+    if os.path.isfile(host) and strings_in(host, DEV_HOOK_STRINGS):
+        rc |= fail("the host exe carries developer hooks")
     if rc == 0:
         print("ok: binary")
     return rc
@@ -236,6 +239,11 @@ def check_api_boundary(header):
         src = f.read()
     src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
     src = re.sub(r"//[^\n]*", "", src)
+    # The client may be built with a different standard library, so no std::
+    # type can cross, however it is passed.
+    if re.search(r"\bstd::", src):
+        return fail("phi_framework_api.h names a std:: type; the boundary is "
+                    "POD, const char* and const T& only (contract rule 6)")
     # Structs that carry std:: members: passing them mutably is the same
     # ownership move as passing the member.
     owning = set()
@@ -295,7 +303,7 @@ def main():
     # The out dir sits two levels under the source root (out/<name>), in a
     # checkout and in an unzipped SDK alike.
     rc |= check_api_boundary(
-        os.path.normpath(os.path.join(out_dir, "..", "..", API_HEADER)))
+        os.path.join(REPO, "client", "compat", API_HEADER))
     if not args.source_only:
         rc |= check_binary(out_dir)
     print("RELEASE GATE " + ("PASSED" if rc == 0 else "FAILED"))

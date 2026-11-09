@@ -11,12 +11,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_client_analytics.h"
-#include "phibrowser-win/client/phi_control_dispatcher.h"
-#include "phibrowser-win/client/phi_coordinator.h"
-#include "phibrowser-win/client/phi_credentials.h"
-#include "phibrowser-win/client/phi_features.h"
-#include "phibrowser-win/client/phi_i18n.h"
+#include "client/phi_client_analytics.h"
+#include "client/phi_control_dispatcher.h"
+#include "client/phi_coordinator.h"
+#include "client/phi_credentials.h"
+#include "client/phi_features.h"
+#include "client/phi_i18n.h"
 
 // The vault verbs. Both prompting ones are marked `prompts` in the registry,
 // so the dispatcher serialises them behind its prompt mutex before either

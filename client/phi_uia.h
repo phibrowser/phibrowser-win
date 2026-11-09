@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_window.h"
+#include "client/phi_window.h"
 
 // THE accessibility provider (docs/architecture-review.md §3.6 and §4 item
 // 31; appendix lane3-ui-substrate.md §2 "Cross-cutting absences", §6.1 last

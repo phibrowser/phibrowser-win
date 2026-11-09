@@ -11,7 +11,7 @@
 #include <memory>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sidebar_layout.h"
+#include "client/phi_sidebar_layout.h"
 
 // The address field and everything that hangs off it, as ONE component of
 // the shell window (docs/architecture-review.md §3.5, lane 1 cluster F): the
@@ -536,9 +536,10 @@ inline bool PhiOmniboxHidesUrl(const std::string& url) {
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_ids.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_theme.h"
 
 namespace phi_client {
 

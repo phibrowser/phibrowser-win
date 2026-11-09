@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_floating_omnibox.h"
+#include "client/phi_floating_omnibox.h"
 
 #include <commctrl.h>  // EM_SETCUEBANNER
 
 #include <algorithm>
 
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_omnibox_session.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_omnibox_session.h"
 
 namespace phi_client {
 

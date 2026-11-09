@@ -7,7 +7,7 @@
 // variants — the dark SVGs are the same shapes in white). 48x48 alpha masks,
 // run-length packed as (count, value) byte pairs. Do not edit by hand.
 
-#include "phibrowser-win/client/phi_folder_icons.h"
+#include "client/phi_folder_icons.h"
 
 #include <map>
 #include <string>

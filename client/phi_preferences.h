@@ -14,13 +14,13 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_account_storage.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_prompt.h"
-#include "phibrowser-win/client/phi_settings_types.h"
-#include "phibrowser-win/client/phi_store.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_account_storage.h"
+#include "client/phi_app_model.h"
+#include "client/phi_prompt.h"
+#include "client/phi_settings_types.h"
+#include "client/phi_store.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

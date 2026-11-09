@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_extensions_popover.h"
+#include "client/phi_extensions_popover.h"
 
 #include <dwmapi.h>
 #include <windowsx.h>
@@ -22,10 +22,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_extension_action.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_popover.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_extension_action.h"
+#include "client/phi_i18n.h"
+#include "client/phi_popover.h"
 
 #pragma comment(lib, "dwmapi.lib")
 

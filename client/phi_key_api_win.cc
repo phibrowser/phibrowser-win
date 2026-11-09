@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_key_api_win.h"
+#include "client/phi_key_api_win.h"
 
 #include <windows.h>
 
@@ -16,8 +16,8 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_http.h"
+#include "client/phi_file_io.h"
+#include "client/phi_http.h"
 
 namespace phi_client {
 

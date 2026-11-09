@@ -13,17 +13,17 @@
 
 #include "base/json/json_reader.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_account_feedback.h"
-#include "phibrowser-win/client/phi_account_profile.h"
-#include "phibrowser-win/client/phi_auth.h"
-#include "phibrowser-win/client/phi_chromium_sync.h"
-#include "phibrowser-win/client/phi_sync_key_service.h"
-#include "phibrowser-win/client/phi_import_window.h"
-#include "phibrowser-win/client/phi_sync_setup_window.h"
-#include "phibrowser-win/client/phi_control_dispatcher.h"
-#include "phibrowser-win/client/phi_coordinator.h"
-#include "phibrowser-win/client/phi_onboarding_window.h"
-#include "phibrowser-win/client/phi_window_registry.h"
+#include "client/phi_account_feedback.h"
+#include "client/phi_account_profile.h"
+#include "client/phi_auth.h"
+#include "client/phi_chromium_sync.h"
+#include "client/phi_sync_key_service.h"
+#include "client/phi_import_window.h"
+#include "client/phi_sync_setup_window.h"
+#include "client/phi_control_dispatcher.h"
+#include "client/phi_coordinator.h"
+#include "client/phi_onboarding_window.h"
+#include "client/phi_window_registry.h"
 
 namespace phi_client {
 

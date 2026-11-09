@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_launch_metrics.h"
+#include "client/phi_sync_launch_metrics.h"
 
 #include <algorithm>
 
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
-#include "phibrowser-win/client/phi_file_io.h"
+#include "client/phi_file_io.h"
 
 namespace phi_client::sync {
 

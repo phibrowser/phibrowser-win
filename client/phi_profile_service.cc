@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_profile_service.h"
+#include "client/phi_profile_service.h"
 
 #include <optional>
 #include <utility>
@@ -12,8 +12,8 @@
 #include "base/logging.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_client_analytics.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_client_analytics.h"
+#include "client/phi_util.h"
 
 namespace phi_client {
 

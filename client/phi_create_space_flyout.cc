@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_create_space_flyout.h"
+#include "client/phi_create_space_flyout.h"
 
 #include <memory>
 #include <utility>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_create_space_panel.h"
-#include "phibrowser-win/client/phi_popover.h"
-#include "phibrowser-win/client/phi_shell_window.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_create_space_panel.h"
+#include "client/phi_popover.h"
+#include "client/phi_shell_window.h"
+#include "client/phi_theme.h"
 
 namespace phi_client {
 

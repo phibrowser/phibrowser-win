@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_native_pages_host.h"
+#include "client/phi_native_pages_host.h"
 
 #include <algorithm>
 #include <array>
 
-#include "phibrowser-win/client/phi_bookmark_manager.h"
-#include "phibrowser-win/client/phi_new_tab_page.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_bookmark_manager.h"
+#include "client/phi_new_tab_page.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

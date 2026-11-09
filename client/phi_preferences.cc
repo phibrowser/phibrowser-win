@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_preferences.h"
+#include "client/phi_preferences.h"
 
 #include <algorithm>
 #include <map>
@@ -13,10 +13,10 @@
 #include "base/json/json_writer.h"
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_folio.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_app_menu.h"
+#include "client/phi_file_io.h"
+#include "client/phi_folio.h"
+#include "client/phi_i18n.h"
+#include "client/phi_app_menu.h"
 
 namespace phi_client {
 

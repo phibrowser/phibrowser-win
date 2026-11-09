@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_feedback_window.h"
+#include "client/phi_feedback_window.h"
 
 #include <commctrl.h>
 #include <ole2.h>
@@ -20,16 +20,16 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/uuid.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_feedback_image.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_prompt.h"
-#include "phibrowser-win/client/phi_shell_menus.h"
-#include "phibrowser-win/client/phi_text_wrap.h"
-#include "phibrowser-win/client/phi_version.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_feedback_image.h"
+#include "client/phi_fluent.h"
+#include "client/phi_i18n.h"
+#include "client/phi_icons.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_prompt.h"
+#include "client/phi_shell_menus.h"
+#include "client/phi_text_wrap.h"
+#include "client/phi_version.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "ole32.lib")

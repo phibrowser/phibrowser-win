@@ -12,8 +12,8 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_mac_icons.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_mac_icons.h"
+#include "client/phi_theme.h"
 
 // The Fluent flyout look for Win32 popup menus (docs/windows-native-ui.md
 // §3.1, §3.5; impl log D6): every row of the app menu and of every context

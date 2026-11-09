@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_account_profile.h"
+#include "client/phi_account_profile.h"
 
 #include <wincodec.h>
 #include <wrl/client.h>
@@ -17,10 +17,10 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_account_storage.h"
-#include "phibrowser-win/client/phi_auth.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_http.h"
+#include "client/phi_account_storage.h"
+#include "client/phi_auth.h"
+#include "client/phi_file_io.h"
+#include "client/phi_http.h"
 
 #pragma comment(lib, "windowscodecs.lib")
 

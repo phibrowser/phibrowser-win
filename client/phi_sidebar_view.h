@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_sidebar_model.h"
+#include "client/phi_ids.h"
+#include "client/phi_sidebar_model.h"
 
 namespace phi_client {
 
@@ -121,13 +121,14 @@ int PhiIndexOfKey(const Rows& rows, const SidebarKey& key) {
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_drag_image.h"
-#include "phibrowser-win/client/phi_sidebar_actions.h"
-#include "phibrowser-win/client/phi_sidebar_drag_session.h"
-#include "phibrowser-win/client/phi_sidebar_drop.h"
-#include "phibrowser-win/client/phi_sidebar_layout.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_window.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_drag_image.h"
+#include "client/phi_sidebar_actions.h"
+#include "client/phi_sidebar_drag_session.h"
+#include "client/phi_sidebar_drop.h"
+#include "client/phi_sidebar_layout.h"
+#include "client/phi_theme.h"
+#include "client/phi_window.h"
 
 namespace phi_client {
 

@@ -19,12 +19,12 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/synchronization/lock.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_control_server.h"
-#include "phibrowser-win/client/phi_credential_service.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_sync_keys.h"
-#include "phibrowser-win/client/phi_verb_registry.h"
+#include "client/phi_app_model.h"
+#include "client/phi_control_server.h"
+#include "client/phi_credential_service.h"
+#include "client/phi_ids.h"
+#include "client/phi_sync_keys.h"
+#include "client/phi_verb_registry.h"
 
 namespace phi_framework {
 class PhiFramework;

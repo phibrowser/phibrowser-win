@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_panel.h"
+#include "client/phi_panel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -116,8 +116,8 @@ bool PhiLayerShapesContain(const std::vector<PhiLayerShape>& shapes,
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_browser_host.h"
-#include "phibrowser-win/client/phi_dwrite.h"
+#include "client/phi_browser_host.h"
+#include "client/phi_dwrite.h"
 
 namespace phi_client {
 

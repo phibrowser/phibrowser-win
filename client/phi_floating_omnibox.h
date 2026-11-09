@@ -8,7 +8,7 @@
 #include <windows.h>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_popover.h"
+#include "client/phi_popover.h"
 
 namespace phi_client {
 

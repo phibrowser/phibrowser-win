@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_sync_engine.h"
-#include "phibrowser-win/client/phi_sync_owned_kinds.h"
+#include "client/phi_sync_engine.h"
+#include "client/phi_sync_owned_kinds.h"
 
 // The bookmark kind as the engine drives it (docs/user-data-parity.md S5) —
 // phibrowser-mac's bookmark OwnedKindRegistration (BookmarkSyncRoundState,

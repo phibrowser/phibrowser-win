@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_window_model.h"
+#include "client/phi_window_model.h"
 
 #include <utility>
 
@@ -27,11 +27,11 @@ bool PhiWindowModel::Pull(phi_framework::PhiFramework* framework,
   if (!framework || !out) {
     return false;
   }
-  const Snapshot* scratch = framework->Snapshot(browser);
-  if (!scratch) {
+  const phi_framework::WindowSnapshotView* view = framework->Snapshot(browser);
+  if (!view) {
     return false;
   }
-  *out = *scratch;
+  *out = phi_framework::ToOwnedSnapshot(*view);
   return true;
 }
 

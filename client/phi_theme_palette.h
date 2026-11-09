@@ -8,7 +8,7 @@
 #include <array>
 #include <string>
 
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_util.h"
 
 // The Mac's ThemePalette (Utilities/Theme/Theme.swift, 3d045cf6 /
 // 4c9d919e / 23c728d9): ONE per-Space record — an anchor hue, a shared

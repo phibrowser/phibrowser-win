@@ -13,11 +13,11 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sync_engine.h"
-#include "phibrowser-win/client/phi_sync_launch_metrics.h"
-#include "phibrowser-win/client/phi_sync_status.h"
-#include "phibrowser-win/client/phi_sync_keys.h"
-#include "phibrowser-win/client/phi_sync_owned_win.h"
+#include "client/phi_sync_engine.h"
+#include "client/phi_sync_launch_metrics.h"
+#include "client/phi_sync_status.h"
+#include "client/phi_sync_keys.h"
+#include "client/phi_sync_owned_win.h"
 
 namespace phi_client {
 

@@ -15,9 +15,9 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_settings_types.h"
-#include "phibrowser-win/client/phi_sync_status.h"
+#include "client/phi_ids.h"
+#include "client/phi_settings_types.h"
+#include "client/phi_sync_status.h"
 
 namespace phi_framework {
 class PhiFramework;

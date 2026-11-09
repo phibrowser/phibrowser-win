@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_key_service.h"
+#include "client/phi_sync_key_service.h"
 
 #include <windows.h>
 
@@ -18,18 +18,18 @@
 #include "base/logging.h"
 #include "base/uuid.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_auth.h"
-#include "phibrowser-win/client/phi_favicon_fetch.h"
-#include "phibrowser-win/client/phi_key_api_win.h"
-#include "phibrowser-win/client/phi_local_store.h"
-#include "phibrowser-win/client/phi_sync_cleanup.h"
-#include "phibrowser-win/client/phi_sync_invalidation_win.h"
-#include "phibrowser-win/client/phi_sync_merge.h"
-#include "phibrowser-win/client/phi_sync_proto.h"
-#include "phibrowser-win/client/phi_sync_protocol.h"
-#include "phibrowser-win/client/phi_sync_settings_win.h"
-#include "phibrowser-win/client/phi_sync_spaces_win.h"
-#include "phibrowser-win/client/phi_sync_store_win.h"
+#include "client/phi_auth.h"
+#include "client/phi_favicon_fetch.h"
+#include "client/phi_key_api_win.h"
+#include "client/phi_local_store.h"
+#include "client/phi_sync_cleanup.h"
+#include "client/phi_sync_invalidation_win.h"
+#include "client/phi_sync_merge.h"
+#include "client/phi_sync_proto.h"
+#include "client/phi_sync_protocol.h"
+#include "client/phi_sync_settings_win.h"
+#include "client/phi_sync_spaces_win.h"
+#include "client/phi_sync_store_win.h"
 
 namespace phi_client {
 

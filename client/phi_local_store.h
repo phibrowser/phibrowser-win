@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_url_rule_normalize.h"
+#include "client/phi_url_rule_normalize.h"
 
 // The account's local browser data — the Windows twin of phibrowser-mac's
 // SwiftData LocalStore (Sources/LocalStorage, schema V13), which the Mac's

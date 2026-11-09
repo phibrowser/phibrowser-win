@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_surface_coordinator.h"
+#include "client/phi_surface_coordinator.h"
 
 #include <algorithm>
 #include <map>
@@ -17,9 +17,10 @@
 #include "base/strings/escape.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_shell_window.h"
-#include "phibrowser-win/client/phi_surface_visibility.h"
-#include "phibrowser-win/client/phi_window_model.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_shell_window.h"
+#include "client/phi_surface_visibility.h"
+#include "client/phi_window_model.h"
 
 namespace phi_client {
 

@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_holographic_card.h"
+#include "client/phi_holographic_card.h"
+
+#include "base/compiler_specific.h"
 
 #include <windowsx.h>
 
@@ -28,11 +30,11 @@
 #include "base/no_destructor.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fonts.h"
-#include "phibrowser-win/client/phi_gdiplus.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fonts.h"
+#include "client/phi_gdiplus.h"
+#include "client/phi_i18n.h"
+#include "client/phi_popup_chrome.h"
 #include "third_party/boringssl/src/include/openssl/sha.h"
 
 #pragma comment(lib, "windowscodecs.lib")

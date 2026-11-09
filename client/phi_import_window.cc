@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_import_window.h"
+#include "client/phi_import_window.h"
 
 #include <shlobj.h>
 #include <shobjidl.h>
@@ -17,11 +17,11 @@
 #include "base/strings/string_split.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fluent.h"
+#include "client/phi_i18n.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_popup_chrome.h"
 
 namespace phi_client {
 

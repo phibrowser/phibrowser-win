@@ -16,14 +16,14 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_holographic_card.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
-#include "phibrowser-win/client/phi_settings_types.h"
-#include "phibrowser-win/client/phi_sync_keys.h"
-#include "phibrowser-win/client/phi_tab_store.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_popup_chrome.h"
+#include "client/phi_holographic_card.h"
+#include "client/phi_secondary_window.h"
+#include "client/phi_settings_types.h"
+#include "client/phi_sync_keys.h"
+#include "client/phi_tab_store.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

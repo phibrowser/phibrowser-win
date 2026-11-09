@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_toast.h"
+#include "client/phi_toast.h"
 
 #include <oleauto.h>
 #include <uiautomation.h>
@@ -12,9 +12,9 @@
 #include <string>
 #include <utility>
 
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_popover.h"
+#include "client/phi_animator.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_popover.h"
 
 namespace phi_client {
 

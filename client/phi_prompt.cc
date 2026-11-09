@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_prompt.h"
+#include "client/phi_prompt.h"
 
 #include <windowsx.h>
 
@@ -11,12 +11,12 @@
 #include <functional>
 #include <utility>
 
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_modal_scope.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_icons.h"
+#include "client/phi_modal_scope.h"
+#include "client/phi_popup_chrome.h"
+#include "client/phi_secondary_window.h"
 
 namespace phi_client {
 

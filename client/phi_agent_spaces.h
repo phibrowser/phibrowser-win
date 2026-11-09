@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "base/values.h"
-#include "phibrowser-win/client/phi_ids.h"
+#include "client/phi_ids.h"
 
 namespace phi_client {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_skill_installer.h"
+#include "client/phi_skill_installer.h"
 
 #include <windows.h>
 
@@ -16,8 +16,8 @@
 
 #include "base/compiler_specific.h"
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_i18n.h"
+#include "client/phi_util.h"
 
 namespace phi_client {
 

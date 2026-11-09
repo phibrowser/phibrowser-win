@@ -11,8 +11,8 @@
 #include <string>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_create_space_panel.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
+#include "client/phi_create_space_panel.h"
+#include "client/phi_secondary_window.h"
 
 namespace phi_client {
 

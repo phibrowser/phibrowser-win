@@ -16,12 +16,12 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_key_crypto.h"
-#include "phibrowser-win/client/phi_sync_clock.h"
-#include "phibrowser-win/client/phi_sync_owned.h"
-#include "phibrowser-win/client/phi_sync_proto.h"
-#include "phibrowser-win/client/phi_sync_protocol.h"
-#include "phibrowser-win/client/phi_sync_spaces.h"
+#include "client/phi_key_crypto.h"
+#include "client/phi_sync_clock.h"
+#include "client/phi_sync_owned.h"
+#include "client/phi_sync_proto.h"
+#include "client/phi_sync_protocol.h"
+#include "client/phi_sync_spaces.h"
 
 // Phi native sync's engine (docs/user-data-parity.md S5) — phibrowser-mac
 // PhiSyncEngine, ported section by section. Host-clean and SYNCHRONOUS: the

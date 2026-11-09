@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sidebar_drag_session.h"
+#include "client/phi_sidebar_drag_session.h"
 
-#include "phibrowser-win/client/phi_drop_badge.h"
+#include "client/phi_drop_badge.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,12 +14,12 @@
 
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_new_tab_page.h"
-#include "phibrowser-win/client/phi_sidebar_view.h"
-#include "phibrowser-win/client/phi_spaces_strip.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_app_model.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_new_tab_page.h"
+#include "client/phi_sidebar_view.h"
+#include "client/phi_spaces_strip.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_reader.h"
+#include "client/phi_reader.h"
 
 #include <algorithm>
 #include <array>
@@ -13,12 +13,12 @@
 #include "base/logging.h"
 #include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
-#include "phibrowser-win/client/phi_client_analytics.h"
-#include "phibrowser-win/client/phi_surface_coordinator.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_log.h"
-#include "phibrowser-win/client/phi_toast.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_client_analytics.h"
+#include "client/phi_surface_coordinator.h"
+#include "client/phi_i18n.h"
+#include "client/phi_log.h"
+#include "client/phi_toast.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

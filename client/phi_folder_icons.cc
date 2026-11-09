@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_folder_icons.h"
+#include "client/phi_folder_icons.h"
 
 #include <algorithm>
 #include <cmath>

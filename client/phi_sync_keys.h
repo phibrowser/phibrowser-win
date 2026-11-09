@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_key_crypto.h"
+#include "client/phi_key_crypto.h"
 
 // The sync key layer (docs/user-data-parity.md S3): the Mac's
 // Sources/Sync/Keys minus its UI — AccountKeyManager (bootstrap, recovery

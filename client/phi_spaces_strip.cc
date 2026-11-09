@@ -2,25 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_spaces_strip.h"
+#include "client/phi_spaces_strip.h"
 
 #include <algorithm>
 #include <cmath>
 #include <utility>
 
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_animator.h"
-#include "phibrowser-win/client/phi_create_space_panel.h"
-#include "phibrowser-win/client/phi_create_space_flyout.h"
-#include "phibrowser-win/client/phi_create_space_window.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_emoji.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_animator.h"
+#include "client/phi_create_space_panel.h"
+#include "client/phi_create_space_flyout.h"
+#include "client/phi_create_space_window.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fluent.h"
+#include "client/phi_app_model.h"
+#include "client/phi_i18n.h"
+#include "client/phi_emoji.h"
+#include "client/phi_icons.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

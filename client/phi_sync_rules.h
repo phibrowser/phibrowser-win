@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_sync_engine.h"
-#include "phibrowser-win/client/phi_sync_owned.h"
+#include "client/phi_sync_engine.h"
+#include "client/phi_sync_owned.h"
 
 // The URL rule kind (docs/user-data-parity.md S5) — phibrowser-mac
 // URLRuleKind (codec, stamps, merge, signatures, the merge tail: pointer

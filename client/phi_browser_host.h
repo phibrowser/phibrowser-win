@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_ids.h"
+#include "client/phi_ids.h"
 
 // The content area of a shell window, as ONE component
 // (docs/architecture-review.md §3.5, lane 1 clusters E and G): Chromium's
@@ -209,7 +209,7 @@ inline BrowserId PhiSpaceBrowsers::active() const {
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_theme.h"
 
 namespace phi_client {
 

@@ -11,7 +11,7 @@
 #include <functional>
 #include <vector>
 
-#include "phibrowser-win/client/phi_window.h"
+#include "client/phi_window.h"
 
 namespace phi_client {
 

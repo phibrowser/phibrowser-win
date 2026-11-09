@@ -15,9 +15,9 @@
 #include <utility>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sync_clock.h"
-#include "phibrowser-win/client/phi_sync_proto.h"
-#include "phibrowser-win/client/phi_sync_rank.h"
+#include "client/phi_sync_clock.h"
+#include "client/phi_sync_proto.h"
+#include "client/phi_sync_rank.h"
 
 // Phi native sync's owned items (bookmarks, pinned tabs; docs/user-data-
 // parity.md S5) — phibrowser-mac PhiOwnedItemState (the cursor table) and

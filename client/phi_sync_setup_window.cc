@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_setup_window.h"
+#include "client/phi_sync_setup_window.h"
 
 #include <commctrl.h>
 #include <shellapi.h>
@@ -19,12 +19,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_sync_key_service.h"
-#include "phibrowser-win/client/phi_uia.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_popup_chrome.h"
+#include "client/phi_sync_key_service.h"
+#include "client/phi_uia.h"
 
 namespace phi_client {
 

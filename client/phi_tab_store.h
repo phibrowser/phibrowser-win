@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_local_store.h"
+#include "client/phi_local_store.h"
 
 namespace phi_client {
 

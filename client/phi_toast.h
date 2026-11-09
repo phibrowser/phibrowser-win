@@ -10,7 +10,7 @@
 #include <functional>
 #include <string>
 
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_theme.h"
 
 namespace phi_client {
 

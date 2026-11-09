@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_icons.h"
+#include "client/phi_icons.h"
 
 #include <algorithm>
 #include <cmath>
@@ -11,8 +11,8 @@
 
 #include "base/compiler_specific.h"
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_agent_icons.h"
-#include "phibrowser-win/client/phi_dwrite.h"
+#include "client/phi_agent_icons.h"
+#include "client/phi_dwrite.h"
 #include "base/strings/utf_string_conversions.h"
 
 namespace phi_client {

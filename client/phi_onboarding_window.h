@@ -16,11 +16,11 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_oobe_analytics.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_holographic_card.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
+#include "client/phi_oobe_analytics.h"
+#include "client/phi_ids.h"
+#include "client/phi_holographic_card.h"
+#include "client/phi_secondary_window.h"
+#include "client/phi_shell_layout.h"
 
 namespace phi_client {
 

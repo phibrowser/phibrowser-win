@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_verb_registry.h"
+#include "client/phi_verb_registry.h"
 
 #include <array>
 
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
-#include "phibrowser-win/client/phi_control_dispatcher.h"
+#include "client/phi_control_dispatcher.h"
 
 // The leaf types of the control plane's verb registry, and THE table. Every
 // verb the /phi-agent channel serves has exactly one row here; the pipeline

@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
-#include "phibrowser-win/client/phi_sync_keys.h"
+#include "client/phi_secondary_window.h"
+#include "client/phi_sync_keys.h"
 
 namespace phi_client {
 

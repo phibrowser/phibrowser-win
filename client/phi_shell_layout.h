@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "phibrowser-win/client/phi_sidebar_layout.h"
+#include "client/phi_sidebar_layout.h"
 
 // The shell window's chrome geometry as a VALUE (docs/architecture-review.md
 // §3.1 principle 6, lane 1 D4, lane 3 §3.2): a pure function of the client

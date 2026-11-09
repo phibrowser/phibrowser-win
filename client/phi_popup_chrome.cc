@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_popup_chrome.h"
+#include "client/phi_popup_chrome.h"
 
 #include <commctrl.h>
 #include <dwmapi.h>
@@ -14,10 +14,10 @@
 #include <iterator>
 #include <vector>
 
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fluent.h"
+#include "client/phi_icons.h"
+#include "client/phi_secondary_window.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")

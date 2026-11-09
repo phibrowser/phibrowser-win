@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_local_store.h"
+#include "client/phi_local_store.h"
 
 #include <algorithm>
 #include <chrono>
@@ -14,8 +14,8 @@
 #include <random>
 #include <utility>
 
-#include "phibrowser-win/client/phi_url_rule_normalize.h"
-#include "phibrowser-win/third_party/sqlite/sqlite3.h"
+#include "client/phi_url_rule_normalize.h"
+#include "third_party/sqlite/sqlite3.h"
 
 #if defined(_WIN32)
 #include <windows.h>

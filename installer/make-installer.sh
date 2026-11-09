@@ -89,7 +89,7 @@ case "$ARCH" in
   arm64) SUFFIX="-arm64"; : "${OUT:=$SRC_ROOT/out/PhiFxWinShipArm64}" ;;
   *) echo "--arch must be x64 or arm64" >&2; exit 2 ;;
 esac
-[[ -f "$OUT/Phi.exe" && -f "$OUT/chrome.dll" ]] || {
+[[ -f "$OUT/Phi.exe" && -f "$OUT/phi_client.dll" && -f "$OUT/chrome.dll" ]] || {
   echo "$OUT has no Phi.exe + chrome.dll (build-fx.sh chrome phi_client, then build-fx-client.sh)" >&2; exit 1; }
 command -v makensis >/dev/null || { echo "makensis not found (apt install nsis)" >&2; exit 1; }
 FULL_VERSION="$VERSION.$BUILD_NUMBER"
@@ -143,7 +143,7 @@ mkdir -p "$STAGE/resources" "$FW"
 RUNTIME_EXES=(Phi.exe chrome_proxy.exe chrome_pwa_launcher.exe
               elevation_service.exe elevated_tracing_service.exe
               notification_helper.exe)
-TOP=(Phi.exe WinSparkle.dll)
+TOP=(Phi.exe phi_client.dll WinSparkle.dll)
 CLIENT_LIST="$OUT/resources/phi-client-resources.txt"
 [[ -f "$CLIENT_LIST" ]] || { echo "$CLIENT_LIST missing - rebuild the client (build-client.py writes it)" >&2; exit 1; }
 mapfile -t CLIENT < <(grep -v '^\s*$' "$CLIENT_LIST")
@@ -159,7 +159,7 @@ for exe in "${RUNTIME_EXES[@]}"; do
 done
 find . -maxdepth 1 -type f \( -name '*.dll' -o -name '*.pak' -o -name '*.bin' \
     -o -name '*.dat' -o -name '*.manifest' \) -printf '%P\n' | while read -r f; do
-  [[ "$f" == WinSparkle.dll ]] && continue
+  [[ "$f" == WinSparkle.dll || "$f" == phi_client.dll ]] && continue
   case "$f" in
     *.manifest) [[ "$f" == framework.manifest ]] || continue ;;
   esac

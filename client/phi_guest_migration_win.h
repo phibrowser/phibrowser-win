@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "phibrowser-win/client/phi_guest_migration.h"
+#include "client/phi_guest_migration.h"
 
 // The Guest → account migration's files and directories on Windows (the
 // Mac's GuestDataMigrationCoordinator, journal store and receipt store):

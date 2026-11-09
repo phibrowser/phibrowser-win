@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_client_analytics.h"
+#include "client/phi_client_analytics.h"
 
 #include <algorithm>
 #include <string_view>
@@ -10,11 +10,11 @@
 
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
-#include "phibrowser-win/client/phi_agent_icons.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_version.h"
+#include "client/phi_agent_icons.h"
+#include "client/phi_file_io.h"
+#include "client/phi_i18n.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_version.h"
 
 namespace phi_client {
 

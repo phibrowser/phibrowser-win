@@ -15,11 +15,11 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_reader.h"
-#include "phibrowser-win/client/phi_sidebar_model.h"
-#include "phibrowser-win/client/phi_surface_registry.h"
+#include "client/phi_app_model.h"
+#include "client/phi_ids.h"
+#include "client/phi_reader.h"
+#include "client/phi_sidebar_model.h"
+#include "client/phi_surface_registry.h"
 
 namespace phi_framework {
 class PhiFramework;

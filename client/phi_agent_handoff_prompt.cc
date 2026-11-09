@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_agent_handoff_prompt.h"
+#include "client/phi_agent_handoff_prompt.h"
 
 #include <windows.h>
 
@@ -11,12 +11,12 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_agent_transcript.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_secondary_window.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_agent_transcript.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_popup_chrome.h"
+#include "client/phi_secondary_window.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

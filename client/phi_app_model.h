@@ -14,9 +14,9 @@
 #include <string_view>
 #include <vector>
 
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_tab_store.h"
-#include "phibrowser-win/client/phi_theme_palette.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_tab_store.h"
+#include "client/phi_theme_palette.h"
 
 // The application model (docs/architecture-review.md §3.4, lane 4 §5): the
 // four persisted domains the coordinator's ad-hoc load/save pairs are

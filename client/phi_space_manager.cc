@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_space_manager.h"
+#include "client/phi_space_manager.h"
 
-#include "phibrowser-win/client/phi_account_storage.h"
-#include "phibrowser-win/client/phi_agent_spaces.h"
+#include "client/phi_account_storage.h"
+#include "client/phi_agent_spaces.h"
 
 #include <cmath>
 #include <set>
@@ -18,11 +18,12 @@
 #include "base/uuid.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_emoji.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_preferences.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_emoji.h"
+#include "client/phi_i18n.h"
+#include "client/phi_preferences.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

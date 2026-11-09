@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_vault_helper.h"
+#include "client/phi_vault_helper.h"
 
 #include <algorithm>
 #include <vector>

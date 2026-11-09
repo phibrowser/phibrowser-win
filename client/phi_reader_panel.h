@@ -12,10 +12,10 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_surface_registry.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_ids.h"
+#include "client/phi_panel.h"
+#include "client/phi_surface_registry.h"
+#include "client/phi_theme.h"
 
 namespace phi_framework {
 class PhiFramework;

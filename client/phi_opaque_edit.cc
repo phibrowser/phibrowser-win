@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_opaque_edit.h"
+#include "client/phi_opaque_edit.h"
 
 #include <cstdint>
 
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
-#include "phibrowser-win/client/phi_panel.h"
+#include "client/phi_panel.h"
 
 namespace phi_client {
 

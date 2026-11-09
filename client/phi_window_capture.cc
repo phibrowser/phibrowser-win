@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_window_capture.h"
+#include "client/phi_window_capture.h"
 
 #include <objbase.h>
 // gdiplus.h needs min/max and the ole headers above it.
@@ -13,7 +13,7 @@
 #include <memory>
 
 #include "base/compiler_specific.h"
-#include "phibrowser-win/client/phi_gdiplus.h"
+#include "client/phi_gdiplus.h"
 
 #pragma comment(lib, "gdiplus.lib")
 

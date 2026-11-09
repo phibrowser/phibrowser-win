@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_folder_icon_picker.h"
+#include "client/phi_folder_icon_picker.h"
 
 #include <algorithm>
 #include <memory>
@@ -11,13 +11,13 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_folder_icons.h"
-#include "phibrowser-win/client/phi_mac_icons.h"
-#include "phibrowser-win/client/phi_modal_scope.h"
-#include "phibrowser-win/client/phi_popover.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_folder_icons.h"
+#include "client/phi_mac_icons.h"
+#include "client/phi_modal_scope.h"
+#include "client/phi_popover.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_omnibox_session.h"
+#include "client/phi_omnibox_session.h"
 
 #include <commctrl.h>
 #include <dwmapi.h>
@@ -20,11 +20,11 @@
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_floating_omnibox.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_shell_menus.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_floating_omnibox.h"
+#include "client/phi_i18n.h"
+#include "client/phi_panel.h"
+#include "client/phi_shell_menus.h"
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "imm32.lib")

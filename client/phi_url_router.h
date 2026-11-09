@@ -15,11 +15,11 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_url_rule_normalize.h"
-#include "phibrowser-win/client/phi_settings_types.h"
-#include "phibrowser-win/client/phi_window_registry.h"
+#include "client/phi_app_model.h"
+#include "client/phi_ids.h"
+#include "client/phi_url_rule_normalize.h"
+#include "client/phi_settings_types.h"
+#include "client/phi_window_registry.h"
 
 // The Space URL routing service (docs/architecture-review.md §3.4, the
 // PhiUrlRouter row): the rules half of PhiSpaces.json, the routing

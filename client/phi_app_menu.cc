@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_features.h"
-#include "phibrowser-win/client/phi_app_menu.h"
+#include "client/phi_features.h"
+#include "client/phi_app_menu.h"
 
-#include "phibrowser-win/client/phi_app_model.h"
+#include "client/phi_app_model.h"
 
-#include "phibrowser-win/client/phi_bookmark_manager.h"
+#include "client/phi_bookmark_manager.h"
 
 #include <commctrl.h>
 #include <commdlg.h>
@@ -23,21 +23,21 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_folio.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_mac_icons.h"
-#include "phibrowser-win/client/phi_modal_scope.h"
-#include "phibrowser-win/client/phi_prompt.h"
-#include "phibrowser-win/client/phi_updater.h"
-#include "phibrowser-win/client/phi_version.h"
-#include "phibrowser-win/client/phi_toast.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_fluent.h"
+#include "client/phi_folio.h"
+#include "client/phi_i18n.h"
+#include "client/phi_icons.h"
+#include "client/phi_mac_icons.h"
+#include "client/phi_modal_scope.h"
+#include "client/phi_prompt.h"
+#include "client/phi_updater.h"
+#include "client/phi_version.h"
+#include "client/phi_toast.h"
+#include "client/phi_theme.h"
 // The four narrow host interfaces and PhiWindowModel still live in the
 // shell's header. The menu reaches nothing else in it — no `friend`, no
 // private member: everything else comes through PhiAppMenuShell.
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

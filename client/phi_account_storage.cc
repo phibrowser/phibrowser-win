@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_account_storage.h"
+#include "client/phi_account_storage.h"
 
 #if defined(_WIN32)
 #include <windows.h>
 
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_file_io.h"
+#include "client/phi_file_io.h"
 #endif
 
 namespace phi_client {

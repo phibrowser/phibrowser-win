@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include "phibrowser-win/client/phi_app_model.h"
+#include "client/phi_app_model.h"
 
 // The rows the settings panes read (docs/architecture-review.md §3.5, lane 1
 // §1.3 and §5 D7). Every one of these used to cross PhiSettingsHost as a

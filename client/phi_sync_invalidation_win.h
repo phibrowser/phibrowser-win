@@ -17,7 +17,7 @@
 #include <thread>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_sync_invalidation.h"
+#include "client/phi_sync_invalidation.h"
 
 namespace phi_client {
 

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "phibrowser-win/client/phi_mac_icons.h"
+#include "client/phi_mac_icons.h"
 
 namespace phi_client {
 

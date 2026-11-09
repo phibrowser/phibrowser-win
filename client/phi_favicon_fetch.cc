@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_favicon_fetch.h"
+#include "client/phi_favicon_fetch.h"
 
 #include <windows.h>
 
@@ -16,7 +16,7 @@
 #include <cstdint>
 
 #include "base/containers/span.h"
-#include "phibrowser-win/client/phi_http.h"
+#include "client/phi_http.h"
 
 #pragma comment(lib, "windowscodecs.lib")
 #pragma comment(lib, "ws2_32.lib")

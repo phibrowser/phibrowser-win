@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_dwrite.h"
+#include "client/phi_dwrite.h"
 
 #include <d2d1.h>
 #include <d2d1_1.h>
@@ -23,7 +23,7 @@
 #include "base/containers/span.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_text_wrap.h"
+#include "client/phi_text_wrap.h"
 
 namespace phi_client {
 

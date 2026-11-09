@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_log.h"
+#include "client/phi_log.h"
 
 #include <algorithm>
 
-#include "phibrowser-win/client/phi_util.h"
+#include "client/phi_util.h"
 
 #if defined(_WIN32)
 #include "base/logging.h"

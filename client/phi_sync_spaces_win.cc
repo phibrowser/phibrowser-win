@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_spaces_win.h"
+#include "client/phi_sync_spaces_win.h"
 
 #include <algorithm>
 #include <chrono>
@@ -11,10 +11,10 @@
 #include <mutex>
 #include <utility>
 
-#include "phibrowser-win/client/phi_agent_spaces.h"
-#include "phibrowser-win/client/phi_key_api_win.h"
-#include "phibrowser-win/client/phi_local_store.h"
-#include "phibrowser-win/client/phi_space_manager.h"
+#include "client/phi_agent_spaces.h"
+#include "client/phi_key_api_win.h"
+#include "client/phi_local_store.h"
+#include "client/phi_space_manager.h"
 
 namespace phi_client {
 

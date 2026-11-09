@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_shell_menus.h"
+#include "client/phi_shell_menus.h"
 
-#include "phibrowser-win/client/phi_features.h"
+#include "client/phi_features.h"
 
 #include <utility>
 
-#include "phibrowser-win/client/phi_i18n.h"
+#include "client/phi_i18n.h"
 
 #if defined(_WIN32)
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_modal_scope.h"
+#include "client/phi_fluent.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_modal_scope.h"
 #endif
 
 namespace phi_client {

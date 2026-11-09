@@ -8,9 +8,9 @@
 
 #include "base/strings/string_util.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_control_dispatcher.h"
-#include "phibrowser-win/client/phi_coordinator.h"
-#include "phibrowser-win/client/phi_notification_cards.h"
+#include "client/phi_control_dispatcher.h"
+#include "client/phi_coordinator.h"
+#include "client/phi_notification_cards.h"
 
 // Agent notification cards (phibrowser-mac 36b43944,
 // docs/agent-notification-cards.md there): an app-level ask with no agent

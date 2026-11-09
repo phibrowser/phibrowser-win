@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_kiosk_window.h"
+#include "client/phi_kiosk_window.h"
 
 #include <dwmapi.h>
 #include <windowsx.h>
@@ -14,18 +14,19 @@
 
 #include "base/logging.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_client_analytics.h"
-#include "phibrowser-win/client/phi_coordinator.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fluent.h"
-#include "phibrowser-win/client/phi_extensions_popover.h"
-#include "phibrowser-win/client/phi_glyph_bitmap.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_icons.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_new_tab_page.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_window_model.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_client_analytics.h"
+#include "client/phi_coordinator.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fluent.h"
+#include "client/phi_extensions_popover.h"
+#include "client/phi_glyph_bitmap.h"
+#include "client/phi_i18n.h"
+#include "client/phi_icons.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_new_tab_page.h"
+#include "client/phi_theme.h"
+#include "client/phi_window_model.h"
 
 namespace phi_client {
 

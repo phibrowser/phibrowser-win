@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_theme.h"
 
 // Every context menu the shell window drops, as DATA
 // (docs/architecture-review.md §3.1 principle 4, §3.5, lane 1 §3.2).

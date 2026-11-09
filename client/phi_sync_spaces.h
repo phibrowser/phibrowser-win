@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sync_proto.h"
+#include "client/phi_sync_proto.h"
 
 // Phi native sync's Space kind (docs/user-data-parity.md S5) — phibrowser-mac
 // PhiSpaceSyncState (the cursor table and the shared marker-derived flags),

@@ -16,9 +16,9 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_account_profile.h"
-#include "phibrowser-win/client/phi_auth.h"
-#include "phibrowser-win/client/phi_feedback_window.h"
+#include "client/phi_account_profile.h"
+#include "client/phi_auth.h"
+#include "client/phi_feedback_window.h"
 
 namespace phi_client {
 

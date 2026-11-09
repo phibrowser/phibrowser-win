@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "phibrowser-win/client/phi_sync_owned.h"
-#include "phibrowser-win/client/phi_sync_proto.h"
+#include "client/phi_sync_owned.h"
+#include "client/phi_sync_proto.h"
 
 // The bookmark and pinned-tab kinds (phibrowser-mac BookmarkKind / PinKind):
 // codec, identity, projection, stamping, merge and refusal over the local

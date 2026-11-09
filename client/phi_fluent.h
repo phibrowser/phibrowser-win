@@ -7,7 +7,7 @@
 
 #include <windows.h>
 
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_theme.h"
 
 // The Windows-native design system's shared pieces
 // (docs/windows-native-ui.md §2): the ONE icon glyph map, the ONE icon

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_browser_host.h"
+#include "client/phi_browser_host.h"
 
 #include <dwmapi.h>
 
@@ -10,7 +10,7 @@
 
 #include "base/logging.h"
 #include "base/no_destructor.h"
-#include "phibrowser-win/client/phi_dwrite.h"
+#include "client/phi_dwrite.h"
 #include "ui/base/win/phi_hosted_window.h"
 
 namespace phi_client {

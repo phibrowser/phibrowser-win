@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_group_overview.h"
+#include "client/phi_group_overview.h"
 
 #include <windows.h>
 #include <windowsx.h>
@@ -16,12 +16,13 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
-#include "phibrowser-win/client/phi_window_model.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_ids.h"
+#include "client/phi_panel.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
+#include "client/phi_window_model.h"
 
 namespace phi_client {
 

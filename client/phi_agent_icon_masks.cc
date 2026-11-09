@@ -7,7 +7,7 @@
 // images whose alpha is the shape). 54x54 alpha masks, run-length packed as
 // (count, value) byte pairs. Do not edit by hand.
 
-#include "phibrowser-win/client/phi_agent_icons.h"
+#include "client/phi_agent_icons.h"
 
 #include <map>
 #include <string>

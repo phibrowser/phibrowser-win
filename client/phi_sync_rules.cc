@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_rules.h"
+#include "client/phi_sync_rules.h"
 
 #include <algorithm>
 #include <climits>
 #include <tuple>
 #include <utility>
 
-#include "phibrowser-win/client/phi_sync_clock.h"
-#include "phibrowser-win/client/phi_sync_merge.h"
-#include "phibrowser-win/client/phi_sync_rank.h"
-#include "phibrowser-win/client/phi_sync_spaces.h"
-#include "phibrowser-win/client/phi_url_rule_normalize.h"
+#include "client/phi_sync_clock.h"
+#include "client/phi_sync_merge.h"
+#include "client/phi_sync_rank.h"
+#include "client/phi_sync_spaces.h"
+#include "client/phi_url_rule_normalize.h"
 
 namespace phi_client::sync {
 

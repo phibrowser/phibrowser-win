@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_create_space_window.h"
+#include "client/phi_create_space_window.h"
 
 #include <algorithm>
 
 #include "base/logging.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_i18n.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_client {
 

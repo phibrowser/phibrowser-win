@@ -8,8 +8,8 @@
 #include <windows.h>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_shell_layout.h"
-#include "phibrowser-win/client/phi_theme.h"
+#include "client/phi_shell_layout.h"
+#include "client/phi_theme.h"
 
 // The shell window's CAPTION BAND (docs/architecture-review.md §3.5, lane 1
 // cluster C; docs/windows-native-ui.md §10 P1): the row that replaced the

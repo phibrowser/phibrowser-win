@@ -8,7 +8,7 @@
 #pragma allow_unsafe_buffers
 #endif
 
-#include "phibrowser-win/client/phi_control_server.h"
+#include "client/phi_control_server.h"
 
 #include <bcrypt.h>
 #include <sddl.h>

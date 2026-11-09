@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_onboarding_window.h"
+#include "client/phi_onboarding_window.h"
 
 #include <commctrl.h>
 #include <oleacc.h>
@@ -21,18 +21,18 @@
 #include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_account_feedback.h"
-#include "phibrowser-win/client/phi_client_analytics.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_fonts.h"
-#include "phibrowser-win/client/phi_gdiplus.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_preferences.h"
-#include "phibrowser-win/client/phi_prompt.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_uia.h"
-#include "phibrowser-win/client/phi_toast.h"
+#include "client/phi_account_feedback.h"
+#include "client/phi_client_analytics.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_fonts.h"
+#include "client/phi_gdiplus.h"
+#include "client/phi_i18n.h"
+#include "client/phi_popup_chrome.h"
+#include "client/phi_preferences.h"
+#include "client/phi_prompt.h"
+#include "client/phi_theme.h"
+#include "client/phi_uia.h"
+#include "client/phi_toast.h"
 
 #pragma comment(lib, "windowscodecs.lib")
 #pragma comment(lib, "comctl32.lib")

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_url_rules_window.h"
+#include "client/phi_url_rules_window.h"
 
 #include <commctrl.h>  // EM_SETCUEBANNER
 #include <windowsx.h>
@@ -15,15 +15,15 @@
 
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_menu_paint.h"
-#include "phibrowser-win/client/phi_panel.h"
-#include "phibrowser-win/client/phi_popup_chrome.h"
-#include "phibrowser-win/client/phi_profile_service.h"
-#include "phibrowser-win/client/phi_prompt.h"
-#include "phibrowser-win/client/phi_settings_window.h"
-#include "phibrowser-win/client/phi_space_manager.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_menu_paint.h"
+#include "client/phi_panel.h"
+#include "client/phi_popup_chrome.h"
+#include "client/phi_profile_service.h"
+#include "client/phi_prompt.h"
+#include "client/phi_settings_window.h"
+#include "client/phi_space_manager.h"
 
 namespace phi_client {
 

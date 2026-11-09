@@ -13,13 +13,13 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_agent_drive_registry.h"
-#include "phibrowser-win/client/phi_agent_space_route.h"
-#include "phibrowser-win/client/phi_agent_spaces.h"
-#include "phibrowser-win/client/phi_agent_transcript.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_transcript_panel.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_agent_drive_registry.h"
+#include "client/phi_agent_space_route.h"
+#include "client/phi_agent_spaces.h"
+#include "client/phi_agent_transcript.h"
+#include "client/phi_ids.h"
+#include "client/phi_transcript_panel.h"
+#include "client/phi_shell_window.h"
 
 namespace phi_framework {
 class PhiFramework;

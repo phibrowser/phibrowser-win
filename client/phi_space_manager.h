@@ -18,12 +18,12 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_local_store.h"
-#include "phibrowser-win/client/phi_settings_types.h"
-#include "phibrowser-win/client/phi_window_model.h"
-#include "phibrowser-win/client/phi_window_registry.h"
+#include "client/phi_app_model.h"
+#include "client/phi_ids.h"
+#include "client/phi_local_store.h"
+#include "client/phi_settings_types.h"
+#include "client/phi_window_model.h"
+#include "client/phi_window_registry.h"
 
 // The Space list service (docs/architecture-review.md §3.4, the
 // PhiSpaceManager row): the Spaces, the default role, the per-Space

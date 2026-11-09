@@ -10,6 +10,7 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
 
 namespace phi_client {
 
@@ -55,7 +56,7 @@ class PhiFrameworkDispatcher : public phi_framework::PhiFrameworkDelegate {
                                 int width,
                                 int height,
                                 bool* handled) override;
-  void OnWindowChanged(const phi_framework::WindowSnapshot& snapshot,
+  void OnWindowChanged(const phi_framework::WindowSnapshotView& snapshot,
                        phi_framework::WindowChangeReason reason) override;
   void OnOpenLinkInSpace(int64_t source_window_id,
                          const char* space_id,

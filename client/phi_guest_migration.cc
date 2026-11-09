@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_guest_migration.h"
+#include "client/phi_guest_migration.h"
 
 #include <algorithm>
 #include <cctype>
@@ -10,7 +10,7 @@
 #include <tuple>
 #include <utility>
 
-#include "phibrowser-win/client/phi_url_rule_normalize.h"
+#include "client/phi_url_rule_normalize.h"
 
 namespace phi_client::store {
 

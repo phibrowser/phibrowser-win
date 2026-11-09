@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_content_slide.h"
+#include "client/phi_content_slide.h"
 
 #include <cmath>
 
-#include "phibrowser-win/client/phi_animator.h"
+#include "client/phi_animator.h"
 
 namespace phi_client {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_notification_cards.h"
+#include "client/phi_notification_cards.h"
 
 #include <algorithm>
 #include <string_view>
@@ -12,10 +12,10 @@
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_dwrite.h"
-#include "phibrowser-win/client/phi_i18n.h"
-#include "phibrowser-win/client/phi_local_store.h"
-#include "phibrowser-win/client/phi_popover.h"
+#include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
+#include "client/phi_local_store.h"
+#include "client/phi_popover.h"
 
 namespace phi_client {
 

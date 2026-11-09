@@ -56,11 +56,13 @@ class HybridClock {
   // Date header. 0 inside the threshold; the whole offset beyond it. An
   // overflowing difference saturates toward the server's sign.
   static int64_t WallClockCorrection(int64_t server_ms, int64_t local_ms) {
-    int64_t offset = 0;
-    if (__builtin_sub_overflow(server_ms, local_ms, &offset)) {
-      return server_ms > 0 ? std::numeric_limits<int64_t>::max()
-                           : std::numeric_limits<int64_t>::min();
+    constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
+    constexpr int64_t kMin = std::numeric_limits<int64_t>::min();
+    if (local_ms < 0 ? server_ms > kMax + local_ms
+                     : server_ms < kMin + local_ms) {
+      return server_ms > 0 ? kMax : kMin;
     }
+    const int64_t offset = server_ms - local_ms;
     if (offset > kWallClockCorrectionThresholdMs ||
         offset < -kWallClockCorrectionThresholdMs) {
       return offset;
@@ -70,12 +72,15 @@ class HybridClock {
 
   // A wall-clock instant with the correction applied, saturating.
   static int64_t Corrected(int64_t wall_ms, int64_t offset_ms) {
-    int64_t sum = 0;
-    if (__builtin_add_overflow(wall_ms, offset_ms, &sum)) {
-      return offset_ms > 0 ? std::numeric_limits<int64_t>::max()
-                           : std::numeric_limits<int64_t>::min();
+    constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
+    constexpr int64_t kMin = std::numeric_limits<int64_t>::min();
+    if (offset_ms > 0 && wall_ms > kMax - offset_ms) {
+      return kMax;
     }
-    return sum;
+    if (offset_ms < 0 && wall_ms < kMin - offset_ms) {
+      return kMin;
+    }
+    return wall_ms + offset_ms;
   }
 
  private:

@@ -14,8 +14,8 @@
 #include <optional>
 #include <vector>
 
-#include "phibrowser-win/client/phi_ids.h"
-#include "phibrowser-win/client/phi_sidebar_model.h"
+#include "client/phi_ids.h"
+#include "client/phi_sidebar_model.h"
 
 // Attached surfaces — docs/sidebar-architecture.md §4.6. A Peek or a Reader
 // View is a browser of its own, hosted in a panel over the content card of

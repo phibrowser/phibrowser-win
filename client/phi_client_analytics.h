@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "base/values.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_oobe_analytics.h"
+#include "client/phi_app_model.h"
+#include "client/phi_oobe_analytics.h"
 
 namespace phi_client {
 

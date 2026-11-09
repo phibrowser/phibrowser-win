@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_app_model.h"
+#include "client/phi_app_model.h"
 
 #include <windows.h>
 
@@ -15,12 +15,12 @@
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_emoji.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_reader.h"
-#include "phibrowser-win/client/phi_store.h"
-#include "phibrowser-win/client/phi_theme.h"
-#include "phibrowser-win/client/phi_shell_window.h"
+#include "client/phi_emoji.h"
+#include "client/phi_file_io.h"
+#include "client/phi_reader.h"
+#include "client/phi_store.h"
+#include "client/phi_theme.h"
+#include "client/phi_shell_window.h"
 
 // The on-disk codecs for the four model files and the one-shot import of
 // the files they replace. The legacy shapes here are EXACTLY what the

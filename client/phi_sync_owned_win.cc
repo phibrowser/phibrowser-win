@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_sync_owned_win.h"
+#include "client/phi_sync_owned_win.h"
 
 #include <windows.h>
 
@@ -16,9 +16,9 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
-#include "phibrowser-win/client/phi_file_io.h"
-#include "phibrowser-win/client/phi_key_crypto.h"
-#include "phibrowser-win/client/phi_local_store.h"
+#include "client/phi_file_io.h"
+#include "client/phi_key_crypto.h"
+#include "client/phi_local_store.h"
 
 namespace phi_client {
 

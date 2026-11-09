@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "phibrowser-win/client/phi_startup_profile.h"
+#include "client/phi_startup_profile.h"
 
 #include <windows.h>
 
 #include "base/strings/utf_string_conversions.h"
-#include "phibrowser-win/client/phi_file_io.h"
+#include "client/phi_file_io.h"
 
 namespace phi_client {
 

@@ -12,8 +12,8 @@
 #include <string_view>
 
 #include "base/values.h"
-#include "phibrowser-win/client/phi_sync_keys.h"
-#include "phibrowser-win/client/phi_sync_protocol.h"
+#include "client/phi_sync_keys.h"
+#include "client/phi_sync_protocol.h"
 
 // The Windows halves of the key layer's seams (phi_sync_keys.h): the
 // /keys/v1 client over WinHTTP, this device's key under DPAPI, the

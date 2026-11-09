@@ -15,9 +15,9 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
-#include "phibrowser-win/client/phi_app_model.h"
-#include "phibrowser-win/client/phi_ghost_spaces.h"
-#include "phibrowser-win/client/phi_ids.h"
+#include "client/phi_app_model.h"
+#include "client/phi_ghost_spaces.h"
+#include "client/phi_ids.h"
 
 namespace phi_framework {
 class PhiFramework;

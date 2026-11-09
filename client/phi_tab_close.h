@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
 
 namespace phi_client {
 

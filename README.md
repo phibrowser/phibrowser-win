@@ -32,7 +32,7 @@ This is the source of the Phi Browser Windows client, published under Apache 2.0
 
 We publish it for a fairly simple reason. A browser sees everything you do, and we would rather you could read the code that runs it than take our word for how it behaves. Developing in the open tends to produce better software too: bugs get found that we would have missed, and people who care about one detail more than we ever could come and fix it properly.
 
-Not all of Phi is here, and we would rather point at the line than let you discover it. The browser engine is our own Chromium build. We release it as a built binary that the client links against, and you need it to build this repository, but its source is not published. The server side stays with us as well: the models, the prompts, and the pipelines behind the AI features. Phinomenon Inc. is a company rather than a foundation, and that shapes where the boundary sits. Section 1 of our [Terms of Use](https://phibrowser.com/terms/) sets out the same boundary in legal language.
+Not all of Phi is here, and we would rather point at the line than let you discover it. The browser engine is our own Chromium build. We release it as a built binary that runs the client, but its source is not published. The server side stays with us as well: the models, the prompts, and the pipelines behind the AI features. Phinomenon Inc. is a company rather than a foundation, and that shapes where the boundary sits. Section 1 of our [Terms of Use](https://phibrowser.com/terms/) sets out the same boundary in legal language.
 
 ### A build you make yourself
 
@@ -48,7 +48,7 @@ Do not present a build of your own as the application we distribute.
 
 ## Architecture
 
-Phi on Windows is a **framework + client** split. The Phi framework is our Chromium build, shipped as a binary. `phi_client.exe` is the native Windows host that launches the browser process and owns everything the user sees: the window chrome, tabs, sidebar, spaces, settings, and the agent surfaces. The UI is native Win32 drawn with Direct2D/DirectWrite, driven by framework → client callbacks, not an embedded web layer. Child processes (renderer, GPU, utility) are the stock Chromium `chrome.exe` that sits beside `phi_client.exe`.
+Phi on Windows is a **framework + client** split. The Phi framework is our Chromium build, shipped as a binary. `phi_client.dll` is the native Windows client, loaded into the browser process by the framework's `Phi.exe`. It owns everything the user sees: the window chrome, tabs, sidebar, spaces, settings, and the agent surfaces. The UI is native Win32 drawn with Direct2D/DirectWrite, driven by framework → client callbacks, not an embedded web layer. Child processes (renderer, GPU, utility) run the same `Phi.exe` without the client.
 
 The deeper design and build notes live in [`docs/`](docs/) — see `docs/static-build-plan.md` for the build, and `docs/windows-native-ui.md` and `docs/sidebar-architecture.md` for the UI design.
 
@@ -56,21 +56,25 @@ The deeper design and build notes live in [`docs/`](docs/) — see `docs/static-
 
 ## Build from source
 
-Building the Windows client requires the Phi framework (our Chromium build) and the Windows build toolchain; the client sources in this repository are compiled against that framework inside the Chromium tree, where this repo is linked as `//phibrowser-win`.
+The client builds on its own, without a Chromium checkout. It is an ordinary Windows DLL, and everything it compiles is in this repository.
 
 ### Requirements
-- Windows x86_64 (ARM64 is also supported as a second target)
-- The Phi framework build (our Chromium binary, see above)
-- The packaged MSVC/Windows SDK toolchain used by the build
+- Windows x86_64
+- Visual Studio 2022 or later with the "Desktop development with C++" workload
+- Python 3
 
 ### Steps
-The build is driven from the Chromium `src` tree. In short:
+From a Visual Studio developer prompt (x64):
 
 ```
-autoninja -C out/PhiFxWinShip chrome phi_client
+python tools\fetch-framework.py
+python build-client.py
+out\Release\Phi.exe --user-data-dir=%TEMP%\phi-dev
 ```
 
-`chrome` produces the framework (`chrome.dll` plus the stock `chrome.exe`); `phi_client` produces `phi_client.exe`. The helper scripts, the exact toolchain pinning, the installer, and the ARM64 recipe are documented in `docs/static-build-plan.md` and in the build-scripts repository. Everything runs on the non-component ship build (`out/PhiFxWinShip`).
+`fetch-framework.py` downloads the prebuilt framework this commit is pinned to in `framework.lock` and checks its SHA-256. `build-client.py` produces `phi_client.dll` beside it, in a few minutes the first time and seconds after an edit. It uses clang-cl if it finds one and MSVC otherwise. Use a separate `--user-data-dir` so a development build never touches an installed Phi.
+
+The framework is `Phi.exe`, `chrome.dll` and their runtime files. It is prebuilt because building Chromium takes hours and tens of gigabytes, and its source is not published. `client/compat` is the small layer that stands in for the parts of Chromium's `base` the client uses.
 
 <br>
 
@@ -94,4 +98,4 @@ Phi ships in several languages, currently machine-seeded and waiting for native 
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE). The Phi framework (our Chromium build) that the client links against is not covered by that licence; it is our proprietary build, redistributed to you as a binary. Third-party components are listed in the credits reachable from **About Phi**, and the Chromium engine's own components at `chrome://credits`.
+Apache License 2.0. See [LICENSE](LICENSE). The Phi framework (our Chromium build) that runs the client is not covered by that licence; it is our proprietary build, redistributed to you as a binary. Third-party components are listed in the credits reachable from **About Phi**, and the Chromium engine's own components at `chrome://credits`.

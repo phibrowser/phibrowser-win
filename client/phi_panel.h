@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
-#include "phibrowser-win/client/phi_window.h"
+#include "client/phi_window.h"
 
 #if defined(_WIN32)
 #include <windows.h>
