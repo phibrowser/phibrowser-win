@@ -26,9 +26,10 @@ namespace {
 constexpr wchar_t kLinkName[] = L"phi-browser";
 
 // Every agent the skill can be linked into, in the Mac's order. Grok Bot
-// (the desktop app) has no folder of its own — it reads Grok Build's plus
-// Cursor's, Claude Code's, Codex's and the common folder — so its row links
-// the same folder as Grok Build: one link serves both, both tick together.
+// (the desktop app) has no folder of its own and skips third-party folders
+// (Grok Build's, Claude Code's, Codex's) unless those are enabled; it always
+// reads Cursor's and the common folder. Its row therefore links the common
+// folder: one link serves it and "Common agents", both tick together.
 // "Common agents" is the cross-agent folder of the agentskills.io
 // convention (Deep Code, Kimi Code, Cline, DeepSeek Harness, …).
 const std::vector<PhiSkillTarget>& Targets() {
@@ -40,7 +41,7 @@ const std::vector<PhiSkillTarget>& Targets() {
       {"openclaw", L"OpenClaw", "openclaw", L".openclaw\\skills", nullptr},
       {"pi", L"Pi", "pi", L".pi\\agent\\skills", L".pi\\agent\\extensions"},
       {"grok", L"Grok Build", "grok", L".grok\\skills", nullptr},
-      {"grokbot", L"Grok Bot", "grokbot", L".grok\\skills", nullptr},
+      {"grokbot", L"Grok Bot", "grokbot", L".agents\\skills", nullptr},
       // Antigravity's "shared" folder, which Gemini CLI reads too.
       {"antigravity", L"Antigravity", "antigravity", L".gemini\\skills",
        nullptr},
