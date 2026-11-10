@@ -10,6 +10,7 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <cwctype>
 #include <iterator>
 #include <optional>
 #include <utility>
@@ -45,6 +46,9 @@ constexpr int kPopupInset = 6;  // Half of it, above the first row.
 // is a constant of the class rather than state of any one window. It is a
 // plain pointer with no destructor, so it costs nothing at exit.
 WNDPROC g_edit_base_proc = nullptr;
+// The field whose drawing FieldProc is holding back (LockWindowUpdate), or
+// null. One at a time, as the lock itself is.
+HWND g_held_field = nullptr;
 
 // Reads the whole text of an EDIT.
 std::wstring TextOf(HWND edit) {
@@ -651,6 +655,10 @@ bool PhiOmniboxSession::OnShellCommand(WPARAM wparam, LPARAM lparam) {
 void PhiOmniboxSession::OnFieldChanged(HWND edit) {
   // EN_CHANGE while the user types: run/refresh the autocomplete query.
   // Programmatic sets (Sync, arrowing onto a row) are suppressed.
+  // The EDIT has just drawn the change straight to the window, with no
+  // alpha (PaintField). Put the opaque pixels back now: the query below can
+  // take several frames, and the text would show washed out until it ends.
+  RepaintFieldNow(edit);
   phi_framework::PhiFramework* framework = shell_->OmniboxFramework();
   if (programmatic_ || !edit || !framework || ::GetFocus() != edit) {
     return;
@@ -1700,6 +1708,52 @@ void PhiOmniboxSession::PaintKeywordIn(HDC dc,
   ::SetBkMode(dc, previous_mode);
 }
 
+namespace {
+
+// Where Ctrl+Backspace stops: back over the spaces before the caret, then
+// over one run of letters and digits, or of anything else.
+DWORD PreviousWordStart(const std::wstring& text, DWORD caret) {
+  DWORD at = std::min<DWORD>(caret, static_cast<DWORD>(text.size()));
+  while (at > 0 && ::iswspace(text[at - 1])) {
+    --at;
+  }
+  if (at == 0) {
+    return 0;
+  }
+  const bool word = ::IsCharAlphaNumericW(text[at - 1]) != FALSE;
+  while (at > 0 && !::iswspace(text[at - 1]) &&
+         (::IsCharAlphaNumericW(text[at - 1]) != FALSE) == word) {
+    --at;
+  }
+  return at;
+}
+
+}  // namespace
+
+// static
+void PhiOmniboxSession::RepaintFieldNow(HWND field) {
+  if (field && ::IsWindow(field)) {
+    ::RedrawWindow(field, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW);
+  }
+}
+
+// static
+void PhiOmniboxSession::DeleteWordBack(HWND field) {
+  DWORD start = 0;
+  DWORD end = 0;
+  ::SendMessageW(field, EM_GETSEL, reinterpret_cast<WPARAM>(&start),
+                 reinterpret_cast<LPARAM>(&end));
+  if (start == end) {
+    start = PreviousWordStart(TextOf(field), end);
+    if (start == end) {
+      return;
+    }
+    ::SendMessageW(field, EM_SETSEL, start, end);
+  }
+  // As typing would: undoable, and EN_CHANGE reruns the query.
+  ::SendMessageW(field, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(L""));
+}
+
 bool PhiOmniboxSession::PaintField(HWND field) {
   RECT rc = {};
   ::GetClientRect(field, &rc);
@@ -1765,6 +1819,60 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
     case WM_ERASEBKGND:
       if (self) {
         return 1;  // PaintField supplies the complete opaque background.
+      }
+      break;
+    case WM_IME_STARTCOMPOSITION:
+      // The EDIT is still empty while an IME composes into it, so it would
+      // keep drawing the placeholder under the composition.
+      if (self && !self->composing_field_ &&
+          ::GetWindowTextLengthW(hwnd) == 0) {
+        wchar_t cue[256] = {};
+        if (::SendMessageW(hwnd, EM_GETCUEBANNER,
+                           reinterpret_cast<WPARAM>(cue), std::size(cue))) {
+          self->composing_field_ = hwnd;
+          self->composing_cue_ = cue;
+          ::SendMessageW(hwnd, EM_SETCUEBANNER, TRUE,
+                         reinterpret_cast<LPARAM>(L""));
+        }
+      }
+      break;
+    case WM_IME_COMPOSITION:
+      // The result of a composition. Left to the EDIT it comes back as one
+      // WM_CHAR per character, each a change of its own: the field showed
+      // the text growing and a completion offered for its first letter.
+      // Typed in one piece here instead. Not for Korean, where the EDIT
+      // itself keeps the syllable being composed in its text.
+      if (self && (lparam & GCS_RESULTSTR) &&
+          PRIMARYLANGID(LOWORD(reinterpret_cast<uintptr_t>(
+              ::GetKeyboardLayout(0)))) != LANG_KOREAN) {
+        std::wstring committed;
+        if (HIMC context = ::ImmGetContext(hwnd)) {
+          const LONG bytes = ::ImmGetCompositionStringW(
+              context, GCS_RESULTSTR, nullptr, 0);
+          if (bytes > 0) {
+            committed.resize(bytes / sizeof(wchar_t));
+            ::ImmGetCompositionStringW(context, GCS_RESULTSTR,
+                                       committed.data(), bytes);
+          }
+          ::ImmReleaseContext(hwnd, context);
+        }
+        if (!committed.empty()) {
+          self->last_edit_deleted_ = false;
+          ::SendMessageW(hwnd, EM_REPLACESEL, TRUE,
+                         reinterpret_cast<LPARAM>(committed.c_str()));
+          lparam &= ~(GCS_RESULTSTR | GCS_RESULTCLAUSE | GCS_RESULTREADSTR |
+                      GCS_RESULTREADCLAUSE);
+          if (lparam == 0) {
+            return 0;
+          }
+        }
+      }
+      break;
+    case WM_IME_ENDCOMPOSITION:
+      if (self && self->composing_field_ == hwnd) {
+        self->composing_field_ = nullptr;
+        ::SendMessageW(hwnd, EM_SETCUEBANNER, TRUE,
+                       reinterpret_cast<LPARAM>(self->composing_cue_.c_str()));
       }
       break;
     case WM_KEYDOWN:
@@ -1880,7 +1988,8 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
         self->last_edit_deleted_ =
             wparam == VK_BACK || wparam == 0x7F || wparam == 0x18;  // ^X
       }
-      if (wparam == VK_BACK && self && self->keyword_mode() &&
+      if ((wparam == VK_BACK || wparam == 0x7F) && self &&
+          self->keyword_mode() &&
           hwnd == self->keyword_field_ && ::GetWindowTextLengthW(hwnd) == 0) {
         // Backspace on an empty query takes the chip off and puts the
         // keyword back (the Mac's exitKeywordSearchIfEmpty). At the CHAR
@@ -1889,6 +1998,12 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
         // EDIT deletes on it — handled there, it would eat the restored
         // keyword's last letter.
         self->ExitKeyword(self->keyword_keyword_, /*requery=*/true);
+        return 0;
+      }
+      if (wparam == 0x7F) {
+        // Ctrl+Backspace. A stock EDIT types the DEL character it arrives
+        // as; it deletes the word before the caret, as in every browser.
+        DeleteWordBack(hwnd);
         return 0;
       }
       if (wparam == L' ' && self && self->IsChipField(hwnd) &&
@@ -2016,11 +2131,31 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
        (msg == WM_MOUSEMOVE && (wparam & MK_LBUTTON)) ||
        msg == WM_KILLFOCUS || msg == EM_SETSEL || msg == EM_REPLACESEL ||
        msg == EM_UNDO || msg == WM_PASTE || msg == WM_CUT || msg == WM_CLEAR ||
-       msg == WM_UNDO || msg == WM_IME_COMPOSITION);
+       msg == WM_UNDO || msg == WM_IME_COMPOSITION ||
+       msg == WM_IME_ENDCOMPOSITION);
+  // An edit from the keyboard draws once per change, and an IME's result
+  // arrives as several: each showed alpha-less, washed-out text for a frame
+  // or more while its query ran. The window takes no drawing until the
+  // whole operation is over; then one opaque repaint shows the result.
+  const bool hold =
+      repaint && !g_held_field && ::IsWindowVisible(hwnd) &&
+      (msg == WM_CHAR || msg == WM_KEYDOWN || msg == EM_REPLACESEL ||
+       msg == EM_UNDO || msg == WM_PASTE || msg == WM_CUT || msg == WM_CLEAR ||
+       msg == WM_UNDO || msg == WM_IME_COMPOSITION) &&
+      ::LockWindowUpdate(hwnd);
+  if (hold) {
+    g_held_field = hwnd;
+  }
   const LRESULT result =
       ::CallWindowProcW(g_edit_base_proc, hwnd, msg, wparam, lparam);
-  if (repaint && ::IsWindow(hwnd)) {
-    ::InvalidateRect(hwnd, nullptr, FALSE);
+  if (hold) {
+    g_held_field = nullptr;
+    ::LockWindowUpdate(nullptr);
+  }
+  if (repaint) {
+    // At once, not when the queue drains: until then the window shows the
+    // EDIT's own alpha-less drawing.
+    RepaintFieldNow(hwnd);
   }
   return result;
 }

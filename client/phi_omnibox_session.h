@@ -731,6 +731,10 @@ class PhiOmniboxSession {
   bool OnShellCommand(WPARAM wparam, LPARAM lparam);
   // EN_CHANGE while the user types: run/refresh the autocomplete query.
   void OnFieldChanged(HWND edit);
+  // Redraws `field` through PaintField before returning.
+  static void RepaintFieldNow(HWND field);
+  // Ctrl+Backspace: deletes the selection, or the word before the caret.
+  static void DeleteWordBack(HWND field);
 
   // --- Keyword search (the Mac's search-engine badge) ----------------------
   // Typing an engine's keyword offers it (the hint at the field's trailing
@@ -928,6 +932,10 @@ class PhiOmniboxSession {
   // follows asks for no inline completion, or the deleted text would come
   // straight back.
   bool last_edit_deleted_ = false;
+  // The field an IME is composing into while empty, and the placeholder
+  // taken off it for as long as the composition lasts.
+  HWND composing_field_ = nullptr;
+  std::wstring composing_cue_;
   // The row under the pointer — a lighter wash only. Only the arrows set
   // selected_, so hovering never changes what Enter commits.
   int hovered_ = -1;
