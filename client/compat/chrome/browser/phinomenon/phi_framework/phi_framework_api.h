@@ -1670,6 +1670,16 @@ class PhiFramework {
   // live renderer: a key-down goes to the page, and comes back through
   // PhiFrameworkDelegate::OnUnhandledPageKey if the page leaves it alone.
   virtual bool IsPageFocused(int64_t window_id) = 0;
+
+  // Loads `url` in the tab `tab_id` itself: a pinned or bookmark-bound tab
+  // going back to its saved URL, which stays in the tab from another site
+  // too. With `keep_current` the page the tab was on opens first as a normal
+  // background tab at the end of the strip. False when the tab or the URL
+  // names nothing, or an agent's drive refuses it.
+  virtual bool NavigateTabInPlace(int64_t window_id,
+                                  int tab_id,
+                                  const char* url,
+                                  bool keep_current) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----

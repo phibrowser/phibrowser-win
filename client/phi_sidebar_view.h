@@ -774,6 +774,15 @@ class PhiSidebarView {
   // Click on a pin or a sidebar bookmark row: focus the bound live tab if it
   // still exists, otherwise open the row's url as a new bound tab.
   void OpenOrFocusPinned(const std::string& guid, const std::string& url);
+  // The pinned cell under the point whose tab is open: its guid, and for a
+  // pinned pair the pane (0 or 1; -1 otherwise). Empty when there is none.
+  std::string OpenPinAt(POINT client_pt, int* pane) const;
+  // A double-click on an open pinned cell: its tab goes back to the pinned
+  // URL when it has left it (the Mac's navigatePinnedTabToOriginalURL), and
+  // with `keep_current` the page it was on stays behind as a normal tab
+  // (separatePinnedTabFromCurrentURL). True when a tab was sent back.
+  bool ReturnPinToSavedUrl(const std::string& guid, int pane,
+                           bool keep_current);
   // Splits `primary` with `secondary`, after dropping any pin or bookmark
   // binding on EITHER pane (a split never lives in a stored cell).
   bool SplitTabsNormalized(BrowserId browser, TabId primary, TabId secondary);

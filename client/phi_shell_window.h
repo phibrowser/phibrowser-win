@@ -1554,6 +1554,11 @@ class PhiShellWindow : public PhiHitSource,
   void ArmDoubleClickClose(POINT pt, bool modifiers);
   void FinishDoubleClickClose(POINT pt, bool dragged);
   SidebarKey first_press_row_;
+  // The open pinned cell (and pane) the first press of a double-click
+  // landed on; the second press on it sends its tab back to the pinned URL.
+  void ReturnPressedPin(POINT pt, bool keep_current, bool other_modifiers);
+  std::string first_press_pin_;
+  int first_press_pin_pane_ = -1;
   std::optional<DoubleClickClose> double_click_close_;
   // Where the band was grabbed, in px left of the sidebar's edge: the edge
   // keeps that distance from the pointer instead of jumping to it.

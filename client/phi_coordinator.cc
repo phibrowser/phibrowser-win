@@ -1861,6 +1861,7 @@ void PhiCoordinator::NoteActiveSpace(const std::string& space_id) {
     return;
   }
   session_restore_->NoteActiveSpace(space_id);
+  RememberStartupProfile();
 }
 
 // The live user window's Space, for the restore service's LastActiveSpaceId.
@@ -3203,8 +3204,8 @@ void PhiCoordinator::OpenDataAccount(const std::string& account_id,
   // The account-scoped preferences (sidebar width, shortcuts) follow.
   preferences_.BindAccount(&account_defaults_);
   space_manager_->Load();
-  RememberStartupProfile();
   session_restore_->Load(dir.empty() ? user_data_dir_ : dir);
+  RememberStartupProfile();  // After the load: it reads the last Space.
   LOG(INFO) << "[PhiClient] data account "
             << (account_id == kGuestAccountId ? "guest" : "signed-in")
             << ": " << space_manager_->spaces().size() << " spaces, "
@@ -3396,6 +3397,7 @@ bool PhiCoordinator::RestoreLastSession() const {
 
 void PhiCoordinator::SetRestoreLastSession(bool enabled) {
   preferences_.SetRestoreLastSession(enabled);
+  RememberStartupProfile();  // Which Space's profile leads follows it.
 }
 
 void PhiCoordinator::PushRestorePreference() {
@@ -5768,6 +5770,15 @@ std::string PhiCoordinator::SpaceForUserBrowser(
 void PhiCoordinator::RememberStartupProfile() {
   const model::Space* space =
       space_manager_->Find(space_manager_->DefaultSpaceId());
+  if (session_restore_ && preferences_.RestoreLastSession()) {
+    // With restore on the launch lands in the Space the user left, and the
+    // framework replays that Space's profile first (PHI-1928): its window
+    // is the one built at once, the other profiles' windows park.
+    if (const model::Space* last =
+            space_manager_->Find(session_restore_->LastActiveSpaceId())) {
+      space = last;
+    }
+  }
   if (!space || user_data_dir_.empty() ||
       space->profile_id == startup_profile_written_) {
     return;

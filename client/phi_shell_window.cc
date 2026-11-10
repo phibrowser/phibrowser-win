@@ -5554,7 +5554,21 @@ void PhiShellWindow::CloseExtensionPopup() {
 void PhiShellWindow::NoteRowPress(POINT pt) {
   int pane = -1;
   first_press_row_ = sidebar_->TabBodyAt(pt, &pane);
+  first_press_pin_ = sidebar_->OpenPinAt(pt, &first_press_pin_pane_);
   double_click_close_.reset();
+}
+
+void PhiShellWindow::ReturnPressedPin(POINT pt,
+                                           bool keep_current,
+                                           bool other_modifiers) {
+  int pane = -1;
+  const std::string guid = sidebar_->OpenPinAt(pt, &pane);
+  // Open before the first press: a cell that press opened is still loading.
+  if (guid.empty() || guid != first_press_pin_ ||
+      pane != first_press_pin_pane_ || other_modifiers || AgentHoldsInput()) {
+    return;
+  }
+  sidebar_->ReturnPinToSavedUrl(guid, pane, keep_current);
 }
 
 void PhiShellWindow::ArmDoubleClickClose(POINT pt, bool modifiers) {
@@ -7775,6 +7789,9 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
         }
         forward([&] {
           if (msg == WM_LBUTTONDBLCLK) {
+            self->ReturnPressedPin(
+                pt, (wparam & MK_CONTROL) != 0,
+                (wparam & MK_SHIFT) != 0 || ::GetKeyState(VK_MENU) < 0);
             self->ArmDoubleClickClose(
                 pt, (wparam & (MK_CONTROL | MK_SHIFT)) != 0 ||
                         ::GetKeyState(VK_MENU) < 0);
@@ -9106,6 +9123,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
             return 0;
           }
         }
+        self->ReturnPressedPin(
+            pt, (wparam & MK_CONTROL) != 0,
+            (wparam & MK_SHIFT) != 0 || ::GetKeyState(VK_MENU) < 0);
         self->ArmDoubleClickClose(
             pt, (wparam & (MK_CONTROL | MK_SHIFT)) != 0 ||
                     ::GetKeyState(VK_MENU) < 0);

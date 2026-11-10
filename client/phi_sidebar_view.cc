@@ -8,6 +8,7 @@
 #include "client/phi_app_model.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <map>
 #include <string>
@@ -311,6 +312,38 @@ const TabSnapshot* PhiFindTagIn(const WindowSnapshot& snapshot,
     }
   }
   return nullptr;
+}
+
+// The Mac's URLProcessor.areEquivalentForOriginNavigation: http(s) "www."
+// variants and an optional root slash are the same place; scheme, port, any
+// other path, query and fragment are not.
+std::string PhiSavedUrlForm(const std::string& url) {
+  const size_t colon = url.find("://");
+  if (colon == std::string::npos) {
+    return url;
+  }
+  std::string scheme = url.substr(0, colon);
+  for (char& c : scheme) {
+    c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+  }
+  size_t end = url.find_first_of("/?#", colon + 3);
+  if (end == std::string::npos) {
+    end = url.size();
+  }
+  std::string host = url.substr(colon + 3, end - colon - 3);
+  for (char& c : host) {
+    c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+  }
+  if ((scheme == "http" || scheme == "https") && host.size() > 4 &&
+      host.compare(0, 4, "www.") == 0) {
+    host.erase(0, 4);
+  }
+  std::string rest = url.substr(end);
+  if (!rest.empty() && rest[0] == '/' &&
+      (rest.size() == 1 || rest[1] == '?' || rest[1] == '#')) {
+    rest.erase(0, 1);
+  }
+  return scheme + "://" + host + rest;
 }
 
 const SplitSnapshot* PhiFindSplitIn(const WindowSnapshot& snapshot,
@@ -2887,6 +2920,52 @@ void PhiSidebarView::OpenOrFocusPinned(const std::string& guid,
     // as its identity, and session restore carries it across restarts.
     framework_->SetTabTagById(browser.value, created.value, guid.c_str());
   }
+}
+
+std::string PhiSidebarView::OpenPinAt(POINT pt, int* pane) const {
+  *pane = -1;
+  for (const ShortcutRow& pin : pinned_) {
+    if (!::PtInRect(&pin.bounds, pt)) {
+      continue;
+    }
+    if (!pin.open ||
+        (pin.attached_surface != SidebarSurface::kContent &&
+         ::PtInRect(&pin.surface_box, pt))) {
+      return {};
+    }
+    if (!pin.url_b.empty()) {
+      // A pinned pair spans two grid slots, pane A in the leading one.
+      *pane = pt.x >= (pin.frame.left + pin.frame.right) / 2 ? 1 : 0;
+    }
+    return pin.guid;
+  }
+  return {};
+}
+
+bool PhiSidebarView::ReturnPinToSavedUrl(const std::string& guid,
+                                              int pane,
+                                              bool keep_current) {
+  const BrowserId browser = shell_->SidebarActiveBrowser();
+  WindowSnapshot strip;
+  if (!framework_ || guid.empty() || agent_holds_input_ || !browser.valid() ||
+      !shell_->SidebarPullSnapshot(browser, &strip)) {
+    return false;
+  }
+  for (const ShortcutRow& pin : pinned_) {
+    if (pin.guid != guid) {
+      continue;
+    }
+    const bool pane_b = pane == 1;
+    const std::string& url = pane_b ? pin.url_b : pin.url;
+    const TabSnapshot* tab = PhiFindTagIn(strip, TagFor(guid, pane_b));
+    if (!tab || url.empty() || tab->url.empty() ||
+        PhiSavedUrlForm(tab->url) == PhiSavedUrlForm(url)) {
+      return false;
+    }
+    return framework_->NavigateTabInPlace(browser.value, tab->id.value,
+                                          url.c_str(), keep_current);
+  }
+  return false;
 }
 
 void PhiSidebarView::OpenStoredSplit(const ShortcutRow& row) {
