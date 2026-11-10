@@ -636,6 +636,17 @@ class PhiFrameworkDelegate {
   // Manual picture-in-picture is unaffected by these preferences.
   virtual void GetAutoPictureInPicturePreferences(bool* enabled,
                                                 bool* park_at_edge) {}
+
+  // A key-down that `window_id`'s focused page saw and left unhandled. The
+  // client runs its shortcut for the chord and sets `*handled` (preset to
+  // false); Chromium's own accelerators run only when it stays false. Pages
+  // get shortcuts first this way, as in Chrome (see IsPageFocused).
+  virtual void OnUnhandledPageKey(int64_t window_id,
+                                  int vk,
+                                  bool ctrl,
+                                  bool shift,
+                                  bool alt,
+                                  bool* handled) {}
 };
 
 // Client → framework. Implemented by the framework and handed to the client
@@ -1654,6 +1665,11 @@ class PhiFramework {
   // The security row: the native certificate viewer on the active tab's
   // certificate. False without one.
   virtual bool ShowActiveSiteCertificate(int64_t window_id) = 0;
+
+  // True when `window_id`'s active tab holds the keyboard focus and has a
+  // live renderer: a key-down goes to the page, and comes back through
+  // PhiFrameworkDelegate::OnUnhandledPageKey if the page leaves it alone.
+  virtual bool IsPageFocused(int64_t window_id) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----

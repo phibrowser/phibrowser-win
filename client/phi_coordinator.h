@@ -159,6 +159,11 @@ class PhiCoordinator : public SidebarHost,
   void OnPlaceholderModeChanged(int64_t window_id, bool entered);
   void OnRefreshNewTab(int64_t window_id);
   void OnContentFullscreenChanged(int64_t window_id, bool fullscreen);
+  // A key-down the focused page left unhandled; true when a shortcut took it.
+  bool OnUnhandledPageKey(int vk, bool ctrl, bool shift, bool alt) {
+    return accelerators_ && accelerators_->OnUnhandledPageKey(
+                                static_cast<UINT>(vk), ctrl, shift, alt);
+  }
   bool OnHostedWindowShow(BrowserId browser, bool activate);
   bool OnHostedWindowFullscreen(BrowserId browser,
                                 bool fullscreen,
@@ -1056,6 +1061,7 @@ class PhiCoordinator : public SidebarHost,
   // accelerators hand back to the app (Esc over a Peek card).
   HWND FocusedShellHwnd() const override;
   BrowserId FocusedFindBrowser(HWND shell) const override;
+  bool PageTakesKeys(HWND shell) const override;
   bool DismissPeeksForShell(HWND shell) override;
 
   // The client's one copy of framework window state (docs/architecture-

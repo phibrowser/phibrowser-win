@@ -26,9 +26,9 @@ namespace {
 // creates exactly one for the process lifetime.
 PhiKeyboardAccelerators* g_accelerators = nullptr;
 
-// The FIXED shortcuts, reserved the way Chrome reserves its browser
-// shortcuts (they fire even while a page has focus): Quit (the Mac locks ⌘Q
-// the same way), F5, the app menu's keys and the Ctrl+1..9 Space switch.
+// The FIXED shortcuts: Quit (the Mac locks ⌘Q the same way), F5, the app
+// menu's keys and the Ctrl+1..9 Space switch. IsReservedCommand says which
+// of these fire even while a page has focus.
 // Edit keys (Ctrl+C/V/X/Z/A...) stay with the web content; everything a
 // user can rebind — Open File, Print, Find, zoom, View Source, DevTools,
 // Back / Forward / Home, Settings and the rest — lives in the preferences'
@@ -127,6 +127,73 @@ UINT PhiKeyboardAccelerators::MatchFixedAccelerator(UINT vk,
     }
   }
   return 0;
+}
+
+// static
+bool PhiKeyboardAccelerators::IsReservedCommand(UINT command) {
+  switch (command) {
+    case kCmdNewTab:
+    case kCmdNewWindow:
+    case kCmdNewIncognitoWindow:
+    case kCmdNewIncognitoSpace:
+    case kCmdReopenClosedTab:
+    case kCmdCloseTab:
+    case kCmdCloseWindow:
+    case kCmdQuit:
+    case kCmdShowAppMenu:
+    case kCmdNextSpace:
+    case kCmdPreviousSpace:
+      return true;
+    default:
+      return command >= kCmdSpace1 && command <= kCmdSpace9;
+  }
+}
+
+// static
+bool PhiKeyboardAccelerators::IsChromiumReservedChord(UINT vk,
+                                                      bool ctrl,
+                                                      bool shift,
+                                                      bool alt) {
+  if (alt) {
+    return vk == VK_F4 && !ctrl && !shift;
+  }
+  if (!ctrl) {
+    return false;
+  }
+  switch (vk) {
+    case 'N':
+    case 'T':
+    case 'W':
+    case VK_TAB:
+      return true;
+    case VK_F4:
+    case VK_PRIOR:
+    case VK_NEXT:
+      return !shift;
+    default:
+      return false;
+  }
+}
+
+bool PhiKeyboardAccelerators::OnUnhandledPageKey(UINT vk,
+                                                 bool ctrl,
+                                                 bool shift,
+                                                 bool alt) {
+  const HWND shell = host_.FocusedShellHwnd();
+  if (!shell) {
+    return false;
+  }
+  UINT command = preferences_.MatchRebindableChord(vk, ctrl, shift, alt);
+  if (!command) {
+    command = MatchFixedAccelerator(vk, ctrl, shift, alt);
+  }
+  if (command) {
+    PhiAppMenu::PostAccelerator(shell, command,
+                                host_.FocusedFindBrowser(shell));
+    return true;
+  }
+  // A default chord the user moved a shortcut away from stays dead.
+  return preferences_.IsDisplacedDefaultChord(vk, ctrl, shift, alt);
 }
 
 // static
@@ -233,17 +300,23 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   // overrides), so a custom chord shadows any fixed one it collides with.
   // The menu captures the originating presentation before posting, and
   // dispatches valid commands with HIWORD 1 (accelerator provenance).
-  if (const UINT command = preferences_.MatchRebindableChord(
-          static_cast<UINT>(wparam), ctrl, shift, alt)) {
-    if (HWND shell = host_.FocusedShellHwnd()) {
-      PhiAppMenu::PostAccelerator(shell, command,
-                                  host_.FocusedFindBrowser(shell));
-      return 1;
-    }
+  const UINT vk = static_cast<UINT>(wparam);
+  // A focused page gets every chord the hosted browser does not reserve
+  // before we do; OnUnhandledPageKey runs the shortcut if the page leaves
+  // the key alone.
+  const auto page_first = [&](HWND shell) {
+    return !IsChromiumReservedChord(vk, ctrl, shift, alt) &&
+           host_.PageTakesKeys(shell);
+  };
+  UINT command = preferences_.MatchRebindableChord(vk, ctrl, shift, alt);
+  if (!command) {
+    command = MatchFixedAccelerator(vk, ctrl, shift, alt);
   }
-  if (const UINT command =
-          MatchFixedAccelerator(static_cast<UINT>(wparam), ctrl, shift, alt)) {
+  if (command) {
     if (HWND shell = host_.FocusedShellHwnd()) {
+      if (!IsReservedCommand(command) && page_first(shell)) {
+        return 0;
+      }
       PhiAppMenu::PostAccelerator(shell, command,
                                   host_.FocusedFindBrowser(shell));
       return 1;  // Swallow: Chromium must not double-handle it.
@@ -253,10 +326,10 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   // replaces Chromium's key equivalent, so ⌘T opens nothing once New Tab is
   // ⌘⌥T): swallowed here, or the hosted browser's own accelerator for the
   // default would still fire it.
-  if (preferences_.IsDisplacedDefaultChord(static_cast<UINT>(wparam), ctrl,
-                                           shift, alt) &&
-      host_.FocusedShellHwnd()) {
-    return 1;
+  if (preferences_.IsDisplacedDefaultChord(vk, ctrl, shift, alt)) {
+    if (HWND shell = host_.FocusedShellHwnd()) {
+      return page_first(shell) ? 0 : 1;
+    }
   }
   return 0;
 }

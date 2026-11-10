@@ -173,6 +173,15 @@ void PhiFrameworkDispatcher::OnAuthCallbackUrl(const char* url,
   *taken = coordinator_.account().HandleAuthCallbackUrl(url ? url : "");
 }
 
+void PhiFrameworkDispatcher::OnUnhandledPageKey(int64_t window_id,
+                                                int vk,
+                                                bool ctrl,
+                                                bool shift,
+                                                bool alt,
+                                                bool* handled) {
+  *handled = coordinator_.OnUnhandledPageKey(vk, ctrl, shift, alt);
+}
+
 // --- Phi sync (Chromium's side of it; PhiChromiumSync) --------------------
 
 namespace {

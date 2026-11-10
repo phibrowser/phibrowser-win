@@ -6240,6 +6240,27 @@ BrowserId PhiCoordinator::FocusedFindBrowser(HWND shell) const {
   return target;
 }
 
+bool PhiCoordinator::PageTakesKeys(HWND shell) const {
+  // The page's keys arrive on a window of the hosted browser; one of our
+  // own controls holding the Win32 focus (the address field) keeps them.
+  wchar_t focus_class[32] = {};
+  ::GetClassNameW(::GetFocus(), focus_class, 32);
+  if (!framework_ || wcsncmp(focus_class, L"Chrome_", 7) != 0) {
+    return false;
+  }
+  const BrowserId peek = FocusedFindBrowser(shell);
+  if (peek.valid()) {
+    return framework_->IsPageFocused(peek.value);
+  }
+  for (PhiShellWindow* controller : registry_.Controllers()) {
+    if (controller->shell_hwnd() == shell) {
+      const BrowserId browser = controller->active_browser_id();
+      return browser.valid() && framework_->IsPageFocused(browser.value);
+    }
+  }
+  return false;
+}
+
 bool PhiCoordinator::DismissPeeksForShell(HWND shell) {
   // Esc's window-level escapes, nearest first: the floating sidebar slid
   // in over the page (windows-native-ui.md §4.4), then the Peek cards.

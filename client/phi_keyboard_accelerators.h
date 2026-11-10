@@ -95,6 +95,10 @@ class PhiKeyboardAccelerators {
     virtual HWND FocusedShellHwnd() const = 0;
     // A focused Peek's browser, or invalid for the ordinary Space target.
     virtual BrowserId FocusedFindBrowser(HWND shell) const = 0;
+    // True when a web page in `shell` holds the keyboard focus: a key-down
+    // goes to it, and comes back through OnUnhandledPageKey when the page
+    // leaves it alone.
+    virtual bool PageTakesKeys(HWND shell) const = 0;
     // Esc with no modifiers over `shell`: dismiss the Peek card(s) floating
     // over it. True when one was dismissed — then the key is swallowed so
     // the page under the card does not also see it.
@@ -123,6 +127,22 @@ class PhiKeyboardAccelerators {
   };
   // The fixed table's command for a chord, or 0 when it binds none. Pure.
   static UINT MatchFixedAccelerator(UINT vk, bool ctrl, bool shift, bool alt);
+  // True when `command` fires before a focused page sees its chord, the way
+  // Chrome reserves new tab, close tab and the like. Every other shortcut
+  // goes to the page first (Google Sheets takes Ctrl+F for its own find)
+  // and runs only when the page leaves the key alone. Pure.
+  static bool IsReservedCommand(UINT command);
+  // True for a chord the hosted browser itself takes before the page
+  // (Chrome's reserved accelerators): a shortcut the user moved onto one
+  // cannot go to the page first, or Chromium's command would run. Pure.
+  static bool IsChromiumReservedChord(UINT vk,
+                                      bool ctrl,
+                                      bool shift,
+                                      bool alt);
+  // A key-down the focused page left unhandled (PhiFrameworkDelegate::
+  // OnUnhandledPageKey): runs the shortcut the hook let through. True when
+  // the chord was one of ours, so Chromium's own accelerator stays out.
+  bool OnUnhandledPageKey(UINT vk, bool ctrl, bool shift, bool alt);
   // What a key-down does to the Alt-solo state: VK_MENU arms it (a key
   // REPEAT is still a solo hold and leaves it as it was); any other
   // key-down ends it. Pure.
