@@ -5748,6 +5748,12 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
     }
     return;
   }
+  // The app menu button sits in the address row, so it works with the sidebar
+  // hidden too.
+  if (::PtInRect(&layout.app_menu, pt)) {
+    ShowAppMenu();
+    return;
+  }
   // The stored bands are the sidebar's own (phi_sidebar_view.h): the pinned
   // grid and the bookmark outline, hit-tested here so the bookmark BAR's
   // pills above still take their clicks first.
@@ -5762,10 +5768,6 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
     if (!AgentHoldsInput()) {  // The Mac refuses New Tab under the agent.
       StartNewTab();
     }
-    return;
-  }
-  if (::PtInRect(&layout.app_menu, pt)) {
-    ShowAppMenu();
     return;
   }
   // The chips and rows are hit-tested as they are — what the last frame
