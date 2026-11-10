@@ -39,10 +39,15 @@ struct TabSnapshot {
 
 struct SplitSnapshot {
   std::string id;
+  // The first two panes, for callers that read a split as a pair (the
+  // Windows client, which draws two). `tabs` / `fractions` carry every
+  // pane: the Mac client composes up to four.
   TabId primary;
   TabId secondary;
   SplitLayout layout = SplitLayout::kVertical;
   double ratio = 0.5;
+  std::vector<TabId> tabs;        // Pane order.
+  std::vector<double> fractions;  // Per pane, summing to 1.
 };
 
 struct GroupSnapshot {

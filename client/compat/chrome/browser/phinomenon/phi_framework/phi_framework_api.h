@@ -223,7 +223,7 @@ struct SplitSnapshotView {
   TabId primary;
   TabId secondary;
   SplitLayout layout = SplitLayout::kVertical;
-  double ratio = 0.5;
+  double ratio = 0.5;  // The first pane's share.
 };
 
 struct GroupSnapshotView {
@@ -707,9 +707,13 @@ class PhiFramework {
   // The window's splits for the phi-browser skill, keyed by STABLE tab ids
   // (ListTabsJson "id") and the skill's layout names:
   //   [{"id":"…","layout":"vertical|horizontal","ratio":0.5,
-  //     "primaryTabId":12,"secondaryTabId":13}, …]
+  //     "primaryTabId":12,"secondaryTabId":13,
+  //     "tabIds":[12,13,14],"fractions":[0.4,0.3,0.3]}, …]
   // "vertical" is side-by-side, "horizontal" stacked; "ratio" is the primary
-  // (strip-order first) pane's share. Valid until the next call.
+  // (strip-order first) pane's share. "tabIds" and "fractions" list every
+  // pane (two to four; the Mac client composes wider splits) and
+  // "primaryTabId" / "secondaryTabId" are the first two. Valid until the
+  // next call.
   virtual const char* SplitViewsJson(int64_t window_id) = 0;
 
   // Splits the two tabs named by STABLE ids ("" on an unknown id, the same
@@ -1412,8 +1416,8 @@ class PhiFramework {
   //     it or {"key":"k","url":"u","title":"t"} for a page to restore;
   //   groups: {"keys":["k"],"id":"<TabGroupsJson id>"} rejoins a live group,
   //     {"keys":["k"],"title":"t","color":"blue","collapsed":b} makes one;
-  //   splits: {"primaryKey":"k","secondaryKey":"k","layout":"vertical",
-  //     "ratio":0.5}.
+  //   splits: {"keys":["k","k"],"layout":"vertical","fractions":[0.5,0.5]},
+  //     two to four keys in pane order with one fraction each.
   // Returns {"k":newTabId,...}: "{}" for an unknown window, under an agent's
   // drive, or when nothing could be restored.
   virtual const char* RestoreTabs(int64_t window_id,

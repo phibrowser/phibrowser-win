@@ -2361,7 +2361,16 @@ void PhiCoordinator::UndoClearedTabs(BrowserId browser, uint64_t serial) {
         !pages.count(split.secondary.value)) {
       continue;
     }
+    base::ListValue keys;
+    keys.Append(base::NumberToString(split.primary.value));
+    keys.Append(base::NumberToString(split.secondary.value));
+    base::ListValue fractions;
+    fractions.Append(split.ratio);
+    fractions.Append(1.0 - split.ratio);
     base::DictValue entry;
+    entry.Set("keys", std::move(keys));
+    entry.Set("fractions", std::move(fractions));
+    // Frameworks before the four-pane split read these instead.
     entry.Set("primaryKey", base::NumberToString(split.primary.value));
     entry.Set("secondaryKey", base::NumberToString(split.secondary.value));
     entry.Set("layout", split.layout == phi_framework::SplitLayout::kHorizontal
