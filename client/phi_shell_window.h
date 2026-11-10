@@ -2220,6 +2220,10 @@ class PhiShellWindow : public PhiHitSource,
   // the tick timer from `floating_slide_start_`.
   bool floating_expanded_ = false;
   ULONGLONG floating_slide_start_ = 0;
+  double floating_slide_clock_ms_ = 0;  // The same instant, in QPC ms.
+  // The panel's picture while it slides (PaintFloatingSidebar).
+  HBITMAP floating_cache_ = nullptr;
+  SIZE floating_cache_size_ = {};
   int floating_slide_from_ = 0;
   int floating_slide_to_ = 0;
   // The panel's client height while it is up: the expanded layout the
@@ -2274,7 +2278,18 @@ class PhiShellWindow : public PhiHitSource,
   // Slides it back to its tucked position.
   void HideFloatingSidebar(bool animated);
   void FloatingSidebarTick();
+  // One step of the slide, on its own 10 ms timer while it runs.
+  void StepFloatingSlide();
+  // Lands the slide's bookkeeping (clock, timer, cached picture); the
+  // caller places the panel.
+  void EndFloatingSlide();
+  void DropFloatingCache();
+  // Renders the cached picture if there is none for the panel's size.
+  void EnsureFloatingCache(HDC dc);
+  // Paints the panel: a full render at rest, the cached picture while it
+  // slides.
   void PaintFloatingSidebar(HDC dc);
+  void RenderFloatingSidebar(HDC dc, const RECT& panel_rc);
   static LRESULT CALLBACK FloatingSidebarProc(HWND hwnd,
                                               UINT msg,
                                               WPARAM wparam,

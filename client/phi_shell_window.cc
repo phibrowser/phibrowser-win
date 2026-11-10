@@ -178,6 +178,20 @@ constexpr UINT_PTR kSplitChipTimer = 0x526;
 constexpr UINT_PTR kChromeTipTimer = 0x527;
 // Split with New Tab: looks for the card's tab until it is the active one.
 constexpr UINT_PTR kPairSplitTimer = 0x528;
+// The floating sidebar's slide clock: every 10 ms while it slides, so the
+// panel moves on every display frame; kFloatingTickTimer's 30 ms gave it
+// four or five steps in the 150 ms.
+constexpr UINT_PTR kFloatingSlideTimer = 0x529;
+constexpr double kFloatingSlideMs = 150.0;
+
+double PerformanceMs() {
+  LARGE_INTEGER frequency = {};
+  LARGE_INTEGER counter = {};
+  ::QueryPerformanceFrequency(&frequency);
+  ::QueryPerformanceCounter(&counter);
+  return static_cast<double>(counter.QuadPart) * 1000.0 /
+         static_cast<double>(frequency.QuadPart);
+}
 constexpr UINT kDeferredCloseRetryMs = 50;
 
 // The row metrics the sidebar owns and the chrome below shares — the pill
@@ -1335,6 +1349,7 @@ PhiShellWindow::~PhiShellWindow() {
   // delivers WM_ACTIVATE / WM_SIZE / WM_CAPTURECHANGED) find a controller
   // that must do nothing but die.
   destroying_ = true;
+  DropFloatingCache();  // The panel's WM_DESTROY no longer reaches us.
   EndSidebarResize();
   // A hosted agent Space goes back to its own shell first, whole: the
   // browser is the agent's, and it must not die with this window — the
@@ -7148,7 +7163,10 @@ void PhiShellWindow::DestroyFloatingPanel() {
   floating_sidebar_ = nullptr;
   floating_expanded_ = false;
   floating_panel_h_ = 0;
+  floating_slide_start_ = 0;
+  DropFloatingCache();
   ::KillTimer(panel, kFloatingTickTimer);
+  ::KillTimer(panel, kFloatingSlideTimer);
   ::DestroyWindow(panel);
   ScheduleRefresh();  // Back to the docked geometry on the next turn.
 }
@@ -7172,7 +7190,7 @@ void PhiShellWindow::PositionFloatingPanel() {
     rows_dirty_ = true;  // The bands are laid out for the panel's height.
     RebuildTabs();
   }
-  floating_slide_start_ = 0;  // A move lands the slide where it is going.
+  EndFloatingSlide();  // A move lands the slide where it is going.
   ::SetWindowPos(floating_sidebar_, nullptr, rc.left, rc.top, rc.right - rc.left,
                  h, SWP_NOZORDER | SWP_NOACTIVATE |
                         (floating_expanded_ ? SWP_SHOWWINDOW : SWP_HIDEWINDOW));
@@ -7215,6 +7233,7 @@ void PhiShellWindow::SlideFloatingPanel(bool expanded) {
   floating_slide_from_ = now_rc.left;
   floating_slide_to_ = FloatingPanelRect(expanded).left;
   floating_slide_start_ = ::GetTickCount64();
+  DropFloatingCache();  // The rows may have changed since the last slide.
   if (expanded) {
     floating_shown_tick_ = floating_slide_start_;
     floating_outside_tick_ = 0;
@@ -7222,6 +7241,16 @@ void PhiShellWindow::SlideFloatingPanel(bool expanded) {
                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
   }
   floating_hover_tick_ = 0;
+  // The panel's picture is rendered before the clock starts: rendered by
+  // the first step's paint, it held the slide for its first frames, with
+  // the moved panel on screen still empty.
+  if (HDC dc = ::GetDC(floating_sidebar_)) {
+    EnsureFloatingCache(dc);
+    ::ReleaseDC(floating_sidebar_, dc);
+  }
+  floating_slide_clock_ms_ = PerformanceMs();
+  ::SetTimer(floating_sidebar_, kFloatingSlideTimer, USER_TIMER_MINIMUM,
+             nullptr);
 }
 
 // --- The split view's hover chip (§4.6) -------------------------------------
@@ -7546,7 +7575,6 @@ void PhiShellWindow::HideFloatingSidebar(bool animated) {
   }
   SlideFloatingPanel(/*expanded=*/false);
   if (!animated) {
-    floating_slide_start_ = 0;
     PositionFloatingPanel();
   }
   if (browsers_->content_fullscreen()) {
@@ -7558,37 +7586,69 @@ void PhiShellWindow::HideFloatingSidebar(bool animated) {
   }
 }
 
+void PhiShellWindow::EndFloatingSlide() {
+  floating_slide_start_ = 0;
+  DropFloatingCache();
+  if (floating_sidebar_) {
+    ::KillTimer(floating_sidebar_, kFloatingSlideTimer);
+  }
+}
+
+void PhiShellWindow::DropFloatingCache() {
+  if (floating_cache_) {
+    ::DeleteObject(floating_cache_);
+    floating_cache_ = nullptr;
+  }
+}
+
+void PhiShellWindow::StepFloatingSlide() {
+  if (!floating_sidebar_ || !floating_slide_start_) {
+    return;
+  }
+  // 150 ms ease-out between the two rests, on the performance counter:
+  // GetTickCount64 moves in 10–16 ms steps, coarser than a frame.
+  const double t = std::clamp(
+      (PerformanceMs() - floating_slide_clock_ms_) / kFloatingSlideMs, 0.0,
+      1.0);
+  const double eased = 1.0 - (1.0 - t) * (1.0 - t);
+  const int x = floating_slide_from_ +
+                static_cast<int>(
+                    std::lround((floating_slide_to_ - floating_slide_from_) *
+                                eased));
+  RECT rc = {};
+  ::GetWindowRect(floating_sidebar_, &rc);
+  if (x != rc.left) {
+    ::SetWindowPos(floating_sidebar_, nullptr, x, rc.top, 0, 0,
+                   SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
+    ClipFloatingPanel();
+  }
+  if (t >= 1.0) {
+    EndFloatingSlide();
+    if (!floating_expanded_) {
+      ::ShowWindow(floating_sidebar_, SW_HIDE);
+      return;
+    }
+  }
+  // Painted now, not when the queue is next idle: the strip the move
+  // uncovered must not wait behind the next tick. While it slides the
+  // paint is one blit of the cached panel (PaintFloatingSidebar).
+  ::InvalidateRect(floating_sidebar_, nullptr, FALSE);
+  ::UpdateWindow(floating_sidebar_);
+}
+
 void PhiShellWindow::FloatingSidebarTick() {
   if (!floating_sidebar_ || ::IsIconic(shell_hwnd_) ||
       !::IsWindowVisible(shell_hwnd_)) {
     return;
   }
   const ULONGLONG now = ::GetTickCount64();
-  // The slide: 150 ms ease-out between the two rests.
-  if (floating_slide_start_) {
-    const double t = std::min(
-        1.0, static_cast<double>(now - floating_slide_start_) / 150.0);
-    const double eased = 1.0 - (1.0 - t) * (1.0 - t);
-    const int x = floating_slide_from_ +
-                  static_cast<int>((floating_slide_to_ - floating_slide_from_) *
-                                   eased);
-    RECT rc = {};
-    ::GetWindowRect(floating_sidebar_, &rc);
-    ::SetWindowPos(floating_sidebar_, nullptr, x, rc.top, 0, 0,
-                   SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
-    ClipFloatingPanel();
-    if (t >= 1.0) {
-      floating_slide_start_ = 0;
-      if (!floating_expanded_) {
-        ::ShowWindow(floating_sidebar_, SW_HIDE);
-      }
-    }
-  }
+  StepFloatingSlide();
   // Tab changes, hover cards and theme ramps repaint the shell; they land
   // in the panel on the next tick. Nothing changed, nothing is painted.
   if (::IsWindowVisible(floating_sidebar_) &&
-      (floating_slide_start_ || floating_painted_at_ != chrome_paints_)) {
+      floating_painted_at_ != chrome_paints_) {
     floating_painted_at_ = chrome_paints_;
+    DropFloatingCache();
     ::InvalidateRect(floating_sidebar_, nullptr, FALSE);
   }
   POINT cursor = {};
@@ -7652,6 +7712,41 @@ void PhiShellWindow::PaintFloatingSidebar(HDC dc) {
   }
   RECT panel_rc = {};
   ::GetClientRect(floating_sidebar_, &panel_rc);
+  if (!floating_slide_start_) {
+    RenderFloatingSidebar(dc, panel_rc);
+    return;
+  }
+  // Sliding: the panel's picture does not change while it moves, so it is
+  // rendered once and every step blits it. A full render lays out and
+  // paints the whole chrome into a window-sized bitmap, which is too slow
+  // to do on each frame.
+  EnsureFloatingCache(dc);
+  HDC cache_dc = ::CreateCompatibleDC(dc);
+  HGDIOBJ old_cache = ::SelectObject(cache_dc, floating_cache_);
+  ::BitBlt(dc, 0, 0, panel_rc.right, panel_rc.bottom, cache_dc, 0, 0, SRCCOPY);
+  ::SelectObject(cache_dc, old_cache);
+  ::DeleteDC(cache_dc);
+}
+
+void PhiShellWindow::EnsureFloatingCache(HDC dc) {
+  RECT panel_rc = {};
+  ::GetClientRect(floating_sidebar_, &panel_rc);
+  if (floating_cache_ && floating_cache_size_.cx == panel_rc.right &&
+      floating_cache_size_.cy == panel_rc.bottom) {
+    return;
+  }
+  DropFloatingCache();
+  floating_cache_ = ::CreateCompatibleBitmap(
+      dc, std::max<int>(panel_rc.right, 1), std::max<int>(panel_rc.bottom, 1));
+  floating_cache_size_ = {panel_rc.right, panel_rc.bottom};
+  HDC cache_dc = ::CreateCompatibleDC(dc);
+  HGDIOBJ old_cache = ::SelectObject(cache_dc, floating_cache_);
+  RenderFloatingSidebar(cache_dc, panel_rc);
+  ::SelectObject(cache_dc, old_cache);
+  ::DeleteDC(cache_dc);
+}
+
+void PhiShellWindow::RenderFloatingSidebar(HDC dc, const RECT& panel_rc) {
   // The rows were built for this geometry on the rebuild turn (RebuildTabs
   // builds in the expanded layout while the panel is up); only the layout
   // override is flipped here, for PaintChrome's rects — and restored, not
@@ -7663,7 +7758,10 @@ void PhiShellWindow::PaintFloatingSidebar(HDC dc) {
   const PhiPalette palette = CurrentPalette();
   HDC mem = ::CreateCompatibleDC(dc);
   // A top-down 32bpp DIB, so a multi-colour palette can regrade its ground.
-  const int width = std::max<int>(layout.client.right, 1);
+  // Only the panel's columns: the rest of the chrome PaintChrome draws
+  // falls outside the bitmap and costs nothing to fill or regrade.
+  const int width =
+      std::max<int>(std::min(layout.client.right, panel_rc.right), 1);
   const int height = std::max<int>(layout.client.bottom, 1);
   BITMAPINFO info = {};
   info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -7749,6 +7847,9 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
           self->floating_drag_ && self->sidebar_->drag_armed();
       self->floating_layout_ = self->floating_drag_;
     }
+    // While it slides the panel keeps its cached picture: the pointer is
+    // on it as it comes in, and a render per mouse move stalled the slide.
+    // The landing step renders it afresh.
     ::InvalidateRect(hwnd, nullptr, FALSE);
   };
   switch (msg) {
@@ -7875,6 +7976,10 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
         self->FloatingSidebarTick();
         return 0;
       }
+      if (self && wparam == kFloatingSlideTimer) {
+        self->StepFloatingSlide();
+        return 0;
+      }
       // A panel drag's own clocks (SidebarShellWindow is the panel), routed
       // as the shell routes them.
       if (self && wparam == PhiSidebarDragSession::kHoverExpandTimer) {
@@ -7893,7 +7998,10 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       break;
     case WM_DESTROY:
       ::KillTimer(hwnd, kFloatingTickTimer);
+      ::KillTimer(hwnd, kFloatingSlideTimer);
       if (self && self->floating_sidebar_ == hwnd) {
+        self->floating_slide_start_ = 0;
+        self->DropFloatingCache();
         self->floating_sidebar_ = nullptr;
       }
       return 0;
