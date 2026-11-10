@@ -782,6 +782,25 @@ class PhiFramework {
   // split or the split has no such pane.
   virtual bool MoveTabInSplitById(WindowId window, TabId tab, int slot) = 0;
 
+  // --- Sign out's session discard (2026-11-10; the Mac's ADR 0012) --------
+  // Session data is kept per profile, not per account, and every account's
+  // default Space shares the "Default" profile, so without this the account
+  // that signs in next gets the previous account's windows back.
+  //
+  // Marks the discard once a Sign out is committed. Recorded in Local State
+  // and written at once: unless ConsumeSignOutSessionDiscard takes it first,
+  // the next launch empties Session restore and Undo Close for every
+  // profile before it restores anything, even after a quit or a crash. It
+  // also makes every open browser close without leave-page prompts until
+  // the consume.
+  virtual void MarkSignOutSessionDiscard() = 0;
+  // Consumes the mark in the same run, before browser access returns (a
+  // sign-in, or Continue as Guest): empties Session restore and Undo Close
+  // for every profile and clears the mark. Synchronous; does nothing when
+  // nothing is marked. The Windows client keeps its windows hidden through a
+  // Sign out rather than closing them, so it closes their tabs first.
+  virtual void ConsumeSignOutSessionDiscard() = 0;
+
   // --- Tab groups (Chromium native model) ----------------------------------
   // Groups organize contiguous tabs under a colored, collapsible header; the
   // CLIENT draws the headers (there is no native strip in the hollowed
@@ -1784,7 +1803,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 2;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 3;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

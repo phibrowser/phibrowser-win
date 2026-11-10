@@ -235,6 +235,9 @@ class PhiSpaceManager {
   // The Space's linked palette (the Mac's themePalette(forSpaceId:)), or
   // nullopt when it paints with its theme pin.
   std::optional<PhiThemePalette> SpacePalette(const std::string& space_id) const;
+  // The theme editor's saved colours, oldest first; Set replaces the list.
+  std::vector<PhiThemePalette> SavedThemePalettes() const;
+  void SetSavedThemePalettes(const std::vector<PhiThemePalette>& palettes);
 
   // --- Writes (each persists and publishes SpacesChanged) -----------------
   bool RenameSpace(const std::string& space_id, const std::string& name);

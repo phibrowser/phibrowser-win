@@ -2374,7 +2374,7 @@ constexpr int kClearedTabsToastMs = 10000;
 
 bool PhiCoordinator::CanClearAllTabs(BrowserId browser) const {
   const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
-  return snapshot && PhiOrdinaryTabIds(snapshot->tabs).size() > 1;
+  return snapshot && PhiCanClearAllTabs(snapshot->tabs);
 }
 
 void PhiCoordinator::ClearAllTabs(BrowserId browser) {
@@ -3616,6 +3616,14 @@ bool PhiCoordinator::DoubleClickToCloseTabs() const {
   return preferences_.DoubleClickToCloseTabs();
 }
 
+bool PhiCoordinator::TabSwitcherIncludesAllSpaces() const {
+  return preferences_.TabSwitcherIncludesAllSpaces();
+}
+
+void PhiCoordinator::SetTabSwitcherIncludesAllSpaces(bool enabled) {
+  preferences_.SetTabSwitcherIncludesAllSpaces(enabled);
+}
+
 void PhiCoordinator::SetDoubleClickToCloseTabs(bool enabled) {
   preferences_.SetDoubleClickToCloseTabs(enabled);
 }
@@ -3731,6 +3739,15 @@ void PhiCoordinator::SetSpaceSaturation(const std::string& space_id,
 std::optional<PhiThemePalette> PhiCoordinator::SpacePalette(
     const std::string& space_id) const {
   return space_manager_->SpacePalette(space_id);
+}
+
+std::vector<PhiThemePalette> PhiCoordinator::SavedThemePalettes() const {
+  return space_manager_->SavedThemePalettes();
+}
+
+void PhiCoordinator::SetSavedThemePalettes(
+    const std::vector<PhiThemePalette>& palettes) {
+  space_manager_->SetSavedThemePalettes(palettes);
 }
 
 void PhiCoordinator::SetSpacePalette(const std::string& space_id,
@@ -4615,10 +4632,59 @@ void PhiCoordinator::RequestSignIn() {
 }
 
 void PhiCoordinator::RequestSignOut() {
+  const bool was_signed_in = access_ == Access::kSignedIn;
+  if (was_signed_in && framework_) {
+    // The Sign out is committed: whoever gets browser access next must not
+    // get these windows back (the Mac's markSignOutSessionDiscard). Marked
+    // first, so a quit or a crash from here on still discards at the next
+    // launch.
+    framework_->MarkSignOutSessionDiscard();
+    sign_out_discard_pending_ = true;
+  }
   account_.RequestSignOut();
-  if (access_ == Access::kSignedIn) {
+  if (was_signed_in) {
     RequireLogin();  // The Mac's requireLogin: never silently to guest.
   }
+}
+
+void PhiCoordinator::DiscardSignedOutSession() {
+  if (!sign_out_discard_pending_) {
+    return;
+  }
+  sign_out_discard_pending_ = false;
+  if (!framework_) {
+    return;
+  }
+  // The Mac closes its windows at Sign out; this client keeps them hidden
+  // behind the login gate, so their pages go here instead. A browser left
+  // with no tab gets a fresh one or shows the placeholder, by the New tab
+  // setting, as it does when the user closes its last tab. The mark made
+  // every one of them close without a leave-page prompt.
+  int closed = 0;
+  for (PhiShellWindow* controller : registry_.UserControllers()) {
+    for (const std::string& space_id : controller->space_order()) {
+      const BrowserId browser = controller->BrowserIdForSpace(space_id);
+      const phi_framework::WindowSnapshot* snapshot =
+          browser.valid() ? window_model_.Get(browser) : nullptr;
+      if (!snapshot) {
+        continue;
+      }
+      std::vector<TabId> tabs;
+      for (const phi_framework::TabSnapshot& tab : snapshot->tabs) {
+        tabs.push_back(tab.id);
+      }
+      for (const TabId tab : tabs) {
+        surface_coordinator_.CloseSurfacesForOrigin(tab);
+        closed += framework_->CloseTabById(browser.value, tab.value) ? 1 : 0;
+      }
+    }
+  }
+  // After the closes: they put entries into Undo Close, which this empties
+  // along with Session restore.
+  framework_->ConsumeSignOutSessionDiscard();
+  LOG(INFO) << "[PhiClient] signed-out session discarded: " << closed
+            << " tabs closed";
+  registry_.InvalidateAll();
 }
 
 // --- The onboarding gate ------------------------------------------------------
@@ -4669,6 +4735,8 @@ void PhiCoordinator::ResolveInitialAccess() {
 }
 
 void PhiCoordinator::GrantAccess(Access access) {
+  // Before anything of the windows shows again.
+  DiscardSignedOutSession();
   access_ = access;
   // The account now known is the one whose data the windows show.
   SyncDataAccountToAccess();

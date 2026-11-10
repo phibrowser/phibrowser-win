@@ -633,8 +633,10 @@ PhiHolographicCardStyle PhiHolographicCardStyle::Random() {
       std::uniform_int_distribution<int>(0, kPaletteCount - 1)(rng));
   style.texture = static_cast<Texture>(
       std::uniform_int_distribution<int>(0, kTextureCount - 1)(rng));
+  // Never the bare card: "none" is the last ornament, and a random style
+  // always carries a seal (the Mac's `0b1ee030`).
   style.ornament = static_cast<Ornament>(
-      std::uniform_int_distribution<int>(0, kOrnamentCount - 1)(rng));
+      std::uniform_int_distribution<int>(0, kOrnamentCount - 2)(rng));
   return style;
 }
 
@@ -1502,7 +1504,8 @@ void PhiHolographicCard::EnsureStatics(int width, int height, const PhiHolograph
       const float inset = static_cast<float>(0.5 * s);
       AddRoundRect(&edge, inset, inset, static_cast<float>(width - s),
                    static_cast<float>(height - s), static_cast<float>(radius - 0.5 * s));
-      Gdiplus::Pen pen(Argb(0xffffff, face == 0 ? 0.55 : 0.14), static_cast<float>(s));
+      // A faint dark hairline on both faces.
+      Gdiplus::Pen pen(Argb(0x000000, 0.07), static_cast<float>(s));
       canvas.graphics().DrawPath(&pen, &edge);
     }
   }
@@ -1511,9 +1514,9 @@ void PhiHolographicCard::EnsureStatics(int width, int height, const PhiHolograph
   // when it has the glyphs.
   {
     const Rgb ink = Hex(silver ? 0x303640 : 0x233338);
-    const auto draw = [&](const std::wstring& text, std::wstring_view face, int weight,
-                          double size_dip, double x, double y, double w, double h,
-                          double alpha) {
+    const auto draw_ink = [&](const std::wstring& text, std::wstring_view face, int weight,
+                              double size_dip, double x, double y, double w, double h,
+                              double alpha, Rgb color) {
       if (text.empty()) {
         return;
       }
@@ -1526,15 +1529,26 @@ void PhiHolographicCard::EnsureStatics(int width, int height, const PhiHolograph
       const std::vector<uint8_t> coverage = TextCoverage(text, font, pw, ph);
       ::DeleteObject(font);
       InkOver(&st->top_front, width, height, coverage, pw, ph,
-              static_cast<int>(std::lround(x * s)), static_cast<int>(std::lround(y * s)), ink,
+              static_cast<int>(std::lround(x * s)), static_cast<int>(std::lround(y * s)), color,
               alpha);
     };
+    const auto draw = [&](const std::wstring& text, std::wstring_view face, int weight,
+                          double size_dip, double x, double y, double w, double h,
+                          double alpha) {
+      draw_ink(text, face, weight, size_dip, x, y, w, h, alpha, ink);
+    };
     const std::wstring name = base::UTF8ToWide(name_);
-    draw(name, PhiBrandFaceRenders(name) ? L"IvyPresto Headline Light" : L"Segoe UI Light",
-         FW_LIGHT, 31, 23.36, 304, 247, 42, 1.0);
+    const wchar_t* name_face =
+        PhiBrandFaceRenders(name) ? L"IvyPresto Headline Light" : L"Segoe UI Light";
+    // A fine lower highlight first, so the dark lettering reads as pressed
+    // into the foil; the frame is tall enough for descenders in either face.
+    draw_ink(name, name_face, FW_LIGHT, 31, 23.36, 304.7, 247, 48, 0.65, Hex(0xffffff));
+    draw(name, name_face, FW_LIGHT, 31, 23.36, 304, 247, 48, 1.0);
     if (!joined_.empty()) {
       draw(PhiStr(kDateJoinedKey), L"Segoe UI", FW_NORMAL, 7, 23.36, 377, 145, 12, 0.66);
-      draw(base::UTF8ToWide(joined_), L"Segoe UI", FW_NORMAL, 11, 23.36, 390, 155, 16, 1.0);
+      // The date in Share Tech Mono (phi_fonts.cc registers it).
+      draw(base::UTF8ToWide(joined_), L"Share Tech Mono", FW_NORMAL, 12, 23.36, 390, 155, 18,
+           1.0);
     }
   }
 
@@ -1583,35 +1597,9 @@ std::vector<uint8_t> PhiHolographicCard::ComposeFace(const Material& material,
     return static_cast<size_t>(std::clamp(static_cast<int>(t * 255 + 0.5), 0, 255));
   };
 
-  if (back) {
-    // The reverse: the dark gradient at the light angle, the foil at soft
-    // light, the sheen screened, the grain.
-    FillGradient(&out, width, height, s,
-                 MakeGrad(light_angle, 1, false, 0, 0, kDesignW, design_h),
-                 MakeLut(BaseStops(st.style.palette, true)));
-    const Grad sheen = MakeGrad(light_angle, 2.2, true, light.x, light.y, kDesignW, design_h);
-    const Lut& sheen_lut = SheenLut();
-    const int foil_a = static_cast<int>(std::lround(kTextureOpacity * 0.85 * 255));
-    for (int y = 0; y < height; ++y) {
-      const double uy = (y + 0.5) / s;
-      for (int x = 0; x < width; ++x) {
-        const double ux = (x + 0.5) / s;
-        const size_t p = (static_cast<size_t>(y) * width + x) * 4;
-        const uint32_t sc = sheen_lut[index(sheen.At(ux, uy))];
-        const int sa = Mul255(static_cast<int>(sc >> 24), 82);  // .32
-        for (size_t c = 0; c < 3; ++c) {
-          int v = out[p + c];
-          v = Lerp255(v, sl[static_cast<size_t>(v) * 256 + material.foil[p + c]], foil_a);
-          if (sa) {
-            const int src = static_cast<int>((sc >> (8 * c)) & 255);
-            v = Lerp255(v, v + src - Mul255(v, src), sa);
-          }
-          v = Mul255(v, material.grain_factor[p + c]);
-          out[p + c] = static_cast<uint8_t>(std::clamp(v, 0, 255));
-        }
-      }
-    }
-  } else {
+  // Both faces carry the same foil: the reverse is the front without its
+  // copy and logo, a little darker (the shade below).
+  {
     const Grad irid = MakeGrad(kGradientAngle + (silver ? 0 : 38) + light.x * 32 + light.y * 22,
                                silver ? 2 : 1.25, true, light.x, light.y, kDesignW, design_h);
     const Lut irid_lut = MakeLut(IridescenceStops(st.style.palette));
@@ -1720,7 +1708,8 @@ std::vector<uint8_t> PhiHolographicCard::ComposeFace(const Material& material,
     }
   }
   // The shade (the face turning away) and the rounded corners, premultiplied.
-  const int shade = static_cast<int>(std::lround((1 - 0.34 * (1 - std::max(0.0, light.facing))) * 255));
+  const int shade = static_cast<int>(std::lround(
+      (1 - ((back ? 0.10 : 0.0) + 0.34 * (1 - std::max(0.0, light.facing)))) * 255));
   for (size_t i = 0; i < count; ++i) {
     const int cov = st.corner[i];
     const size_t p = i * 4;

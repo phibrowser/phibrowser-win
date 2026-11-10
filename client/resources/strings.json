@@ -6804,14 +6804,14 @@
   },
   "profile.card.dateJoined": {
    "de": "Mitglied seit",
-   "en": "Date Joined",
+   "en": "Member Since",
    "es": "Miembro desde",
-   "fr": "Date d'inscription",
-   "ja": "登録日",
-   "ko": "가입일",
+   "fr": "Membre depuis",
+   "ja": "メンバー登録日",
+   "ko": "가입 시기",
    "nl": "Lid sinds",
-   "zh-Hans": "加入日期",
-   "zh-Hant": "加入日期"
+   "zh-Hans": "会员始于",
+   "zh-Hant": "會員始於"
   },
   "profile.menu.bookmarks": {
    "de": "Lesezeichen verwalten",
@@ -10828,6 +10828,39 @@
    "zh-Hans": "快捷键",
    "zh-Hant": "快速鍵"
   },
+  "settings.spaces.tabSwitcherScope.allSpacesDescription": {
+   "de": "Der Tab-Umschalter geht durch die zuletzt verwendeten Tabs aller Spaces und wechselt bei Bedarf den Space.",
+   "en": "The Tab Switcher cycles through recent tabs in every Space and switches Spaces when needed.",
+   "es": "El selector de pestañas recorre las pestañas recientes de todos los Espacios y cambia de Espacio cuando es necesario.",
+   "fr": "Le sélecteur d'onglets parcourt les onglets récents de tous les Espaces et change d'Espace si nécessaire.",
+   "ja": "タブスイッチャーはすべてのスペースの最近使ったタブを順に移動し、必要に応じてスペースを切り替えます。",
+   "ko": "탭 전환기가 모든 스페이스의 최근 탭을 차례로 전환하고, 필요하면 스페이스도 함께 전환해요.",
+   "nl": "De tabbladwisselaar doorloopt recente tabbladen in elke Space en schakelt zo nodig over naar een andere Space.",
+   "zh-Hans": "标签页切换器会在所有空间中最近使用的标签页之间循环切换，并在需要时切换空间。",
+   "zh-Hant": "分頁切換器會循環切換所有空間中最近使用的分頁，並在需要時切換空間。"
+  },
+  "settings.spaces.tabSwitcherScope.currentSpaceDescription": {
+   "de": "Der Tab-Umschalter geht durch die zuletzt verwendeten Tabs im aktuellen Space.",
+   "en": "The Tab Switcher cycles through recent tabs in the current Space.",
+   "es": "El selector de pestañas recorre las pestañas recientes del Espacio actual.",
+   "fr": "Le sélecteur d'onglets parcourt les onglets récents de l'Espace actuel.",
+   "ja": "タブスイッチャーは現在のスペースの最近使ったタブを順に移動します。",
+   "ko": "탭 전환기가 현재 스페이스의 최근 탭을 차례로 전환해요.",
+   "nl": "De tabbladwisselaar doorloopt recente tabbladen in de huidige Space.",
+   "zh-Hans": "标签页切换器会在当前空间中最近使用的标签页之间循环切换。",
+   "zh-Hant": "分頁切換器會循環切換目前空間中最近使用的分頁。"
+  },
+  "settings.spaces.tabSwitcherScope.title": {
+   "de": "Tab-Umschalter umfasst alle Spaces",
+   "en": "Tab Switcher includes all Spaces",
+   "es": "El selector de pestañas incluye todos los Espacios",
+   "fr": "Le sélecteur d'onglets inclut tous les Espaces",
+   "ja": "タブスイッチャーにすべてのスペースを含める",
+   "ko": "탭 전환기에 모든 스페이스 포함",
+   "nl": "Tabbladwisselaar bevat alle Spaces",
+   "zh-Hans": "标签页切换器包含所有空间",
+   "zh-Hant": "分頁切換器包含所有空間"
+  },
   "settings.spaces.theme.colorLabel": {
    "de": "Farbe",
    "en": "Color",
@@ -11356,6 +11389,17 @@
    "zh-Hans": "编辑…",
    "zh-Hant": "編輯…"
   },
+  "sidebar.bookmarkContextMenu.editSubmenu": {
+   "de": "Lesezeichen bearbeiten",
+   "en": "Edit Bookmark",
+   "es": "Editar marcador",
+   "fr": "Modifier le favori",
+   "ja": "ブックマークを編集",
+   "ko": "북마크 편집",
+   "nl": "Wijzig bladwijzer",
+   "zh-Hans": "编辑书签",
+   "zh-Hant": "編輯書籤"
+  },
   "sidebar.bookmarkContextMenu.newNestedFolderAction": {
    "de": "Neuer Unterordner…",
    "en": "New Nested Folder...",
@@ -11377,6 +11421,17 @@
    "nl": "Open in nieuw tabblad",
    "zh-Hans": "在新标签页中打开",
    "zh-Hant": "在新分頁中開啟"
+  },
+  "sidebar.bookmarkContextMenu.replaceSavedURL": {
+   "de": "Gespeicherte URL durch aktuelle ersetzen",
+   "en": "Replace Saved URL with Current",
+   "es": "Reemplazar la URL guardada por la actual",
+   "fr": "Remplacer l'URL enregistrée par l'URL actuelle",
+   "ja": "保存したURLを現在のURLに置き換え",
+   "ko": "저장된 URL을 현재 URL로 바꾸기",
+   "nl": "Vervang bewaarde URL door de huidige",
+   "zh-Hans": "将已保存的网址替换为当前网址",
+   "zh-Hant": "以目前網址取代已儲存的網址"
   },
   "sidebar.bookmarks.dropHint": {
    "de": "Hier ablegen, um ein Lesezeichen zu erstellen",
@@ -11619,6 +11674,28 @@
    "nl": "Nieuwe Space met nieuw profiel…",
    "zh-Hans": "使用新个人资料新建空间…",
    "zh-Hant": "使用新設定檔新增空間…"
+  },
+  "sidebar.pinnedTabContextMenu.editSubmenu": {
+   "de": "Angehefteten Tab bearbeiten",
+   "en": "Edit Pinned Tab",
+   "es": "Editar pestaña fijada",
+   "fr": "Modifier l'onglet épinglé",
+   "ja": "固定タブを編集",
+   "ko": "고정 탭 편집",
+   "nl": "Wijzig vastgezet tabblad",
+   "zh-Hans": "编辑固定标签页",
+   "zh-Hant": "編輯釘選分頁"
+  },
+  "sidebar.pinnedTabContextMenu.replaceSavedURL": {
+   "de": "Gespeicherte URL durch aktuelle ersetzen",
+   "en": "Replace Saved URL with Current",
+   "es": "Reemplazar la URL guardada por la actual",
+   "fr": "Remplacer l'URL enregistrée par l'URL actuelle",
+   "ja": "保存したURLを現在のURLに置き換え",
+   "ko": "저장된 URL을 현재 URL로 바꾸기",
+   "nl": "Vervang bewaarde URL door de huidige",
+   "zh-Hans": "将已保存的网址替换为当前网址",
+   "zh-Hant": "以目前網址取代已儲存的網址"
   },
   "sidebar.pinnedTabs.emptyHint": {
    "de": "Ziehe Tabs hierher oder hefte sie aus der Tab-Liste an",
@@ -13720,6 +13797,72 @@
    "nl": "Kleur {0}",
    "zh-Hans": "颜色 {0}",
    "zh-Hant": "顏色 {0}"
+  },
+  "theme.editor.deleteColor": {
+   "de": "Gesicherte Farbe löschen",
+   "en": "Delete saved color",
+   "es": "Eliminar color guardado",
+   "fr": "Supprimer la couleur enregistrée",
+   "ja": "保存したカラーを削除",
+   "ko": "저장된 색상 삭제",
+   "nl": "Verwijder bewaarde kleur",
+   "zh-Hans": "删除已保存的颜色",
+   "zh-Hant": "刪除已儲存的顏色"
+  },
+  "theme.editor.nextColors": {
+   "de": "Nächste Farben",
+   "en": "Next colors",
+   "es": "Colores siguientes",
+   "fr": "Couleurs suivantes",
+   "ja": "次のカラー",
+   "ko": "다음 색상",
+   "nl": "Volgende kleuren",
+   "zh-Hans": "下一组颜色",
+   "zh-Hant": "下一組顏色"
+  },
+  "theme.editor.presetColor": {
+   "de": "Farbpalette {0}",
+   "en": "Color palette {0}",
+   "es": "Paleta de colores {0}",
+   "fr": "Palette de couleurs {0}",
+   "ja": "カラーパレット{0}",
+   "ko": "색상 팔레트 {0}",
+   "nl": "Kleurenpalet {0}",
+   "zh-Hans": "配色 {0}",
+   "zh-Hant": "配色 {0}"
+  },
+  "theme.editor.previousColors": {
+   "de": "Vorherige Farben",
+   "en": "Previous colors",
+   "es": "Colores anteriores",
+   "fr": "Couleurs précédentes",
+   "ja": "前のカラー",
+   "ko": "이전 색상",
+   "nl": "Vorige kleuren",
+   "zh-Hans": "上一组颜色",
+   "zh-Hant": "上一組顏色"
+  },
+  "theme.editor.reset": {
+   "de": "Zurücksetzen",
+   "en": "Reset",
+   "es": "Restablecer",
+   "fr": "Réinitialiser",
+   "ja": "リセット",
+   "ko": "재설정",
+   "nl": "Stel opnieuw in",
+   "zh-Hans": "重置",
+   "zh-Hant": "重設"
+  },
+  "theme.editor.save": {
+   "de": "Farbe sichern",
+   "en": "Save color",
+   "es": "Guardar color",
+   "fr": "Enregistrer la couleur",
+   "ja": "カラーを保存",
+   "ko": "색상 저장",
+   "nl": "Bewaar kleur",
+   "zh-Hans": "保存颜色",
+   "zh-Hant": "儲存顏色"
   },
   "theme.editor.singleColor": {
    "de": "Eine Farbe",

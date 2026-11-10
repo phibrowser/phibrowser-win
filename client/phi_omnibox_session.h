@@ -629,6 +629,13 @@ class PhiOmniboxShell {
   ~PhiOmniboxShell() = default;
 };
 
+// The part of an address a double-click at character `at` selects: a run of
+// letters and digits (an underscore joins, a dot stays inside a number and
+// an apostrophe inside a word), a run of spaces, or a run of one punctuation
+// mark. Chromium's own field breaks a URL the same way. False for empty
+// text.
+bool PhiUrlWordAt(std::wstring_view text, int at, int* start, int* end);
+
 class PhiOmniboxSession {
  public:
   // Reverts the copy-link checkmark after its second. The shell owns the

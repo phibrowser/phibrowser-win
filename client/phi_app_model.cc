@@ -113,6 +113,9 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
   out->double_click_to_close_tabs =
       dict.FindBool("doubleClickToCloseTabs")
           .value_or(out->double_click_to_close_tabs);
+  out->tab_switcher_all_spaces =
+      dict.FindBool("tabSwitcherIncludesAllSpaces")
+          .value_or(out->tab_switcher_all_spaces);
   out->directional_tab_closing =
       dict.FindBool("directionalTabClosingEnabled")
           .value_or(out->directional_tab_closing);
@@ -323,6 +326,7 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("showOpenTabIndicators", value.show_open_tab_indicators);
   root.Set("dimUnloadedTabIcons", value.dim_unloaded_tab_icons);
   root.Set("doubleClickToCloseTabs", value.double_click_to_close_tabs);
+  root.Set("tabSwitcherIncludesAllSpaces", value.tab_switcher_all_spaces);
   root.Set("directionalTabClosingEnabled", value.directional_tab_closing);
   base::ListValue collapsed_roots;
   for (const std::string& id : value.collapsed_bookmark_root_spaces) {

@@ -1984,6 +1984,7 @@ Changes app settings. developerMode / allowAgentUserSpaces / testRig / analytics
 | `alwaysShowFullUrl` | boolean | no | — | Omnibox url display. |
 | `showTabPreviews` | boolean | no | — | Hover previews. |
 | `showOpenTabIndicators` | boolean | no | — | Open-tab dots. |
+| `tabSwitcherIncludesAllSpaces` | boolean | no | — | Ctrl+Tab lists every Space's recent tabs. |
 | `dimUnloadedTabIcons` | boolean | no | — | Reclaimed tabs' icons at 30%. |
 | `sidebarTransparency` | integer | no | — | Acrylic through the sidebar, 0-100 %. |
 | `restoreLastSession` | boolean | no | — | Session restore. |

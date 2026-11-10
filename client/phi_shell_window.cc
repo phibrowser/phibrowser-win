@@ -182,6 +182,9 @@ constexpr UINT_PTR kPairSplitTimer = 0x528;
 // panel moves on every display frame; kFloatingTickTimer's 30 ms gave it
 // four or five steps in the 150 ms.
 constexpr UINT_PTR kFloatingSlideTimer = 0x529;
+// The page colour crossfade's clock (PageColorFadeTick).
+constexpr UINT_PTR kPageColorFadeTimer = 0x52A;
+constexpr double kPageColorFadeMs = 250.0;
 constexpr double kFloatingSlideMs = 150.0;
 
 double PerformanceMs() {
@@ -2342,6 +2345,9 @@ void PhiShellWindow::SwitchToSpace(const std::string& space_id) {
   if (space_id.empty() || space_id == active_space()) {
     return;
   }
+  // Leaving a Space is when its focused tab was last seen: a Space switch
+  // changes no Space's focused tab, so nothing else stamps it.
+  NoteTabSeen(active_tab_id());
   if (PhiIsAgentSpaceId(space_id)) {
     // An agent pip's click: the watch starts (or, hosted here already,
     // the hosted one hands over to it — one swap). The pip carries the
@@ -4777,7 +4783,47 @@ PhiPalette PhiShellWindow::CurrentPalette() const {
 }
 
 std::optional<PhiColor> PhiShellWindow::ActivePageColor() const {
-  return page_color_;
+  if (page_fade_start_ == 0) {
+    return page_color_;
+  }
+  const double t = static_cast<double>(::GetTickCount64() - page_fade_start_) /
+                   kPageColorFadeMs;
+  if (t >= 1.0) {
+    return page_color_;
+  }
+  // Toward the settled colour, or toward the plain surface when the page
+  // has none: the bar's own ground stands in for "no colour".
+  const PhiColor to = page_color_ ? *page_color_ : CurrentPalette().window_bg;
+  const auto mix = [&](int from, int target) {
+    return static_cast<int>(std::lround(from + (target - from) * t));
+  };
+  return PhiRgb(mix(GetRValue(page_fade_from_), GetRValue(to)),
+                mix(GetGValue(page_fade_from_), GetGValue(to)),
+                mix(GetBValue(page_fade_from_), GetBValue(to)));
+}
+
+void PhiShellWindow::StartPageColorFade(PhiColor from) {
+  page_fade_from_ = from;
+  page_fade_start_ = ::GetTickCount64();
+  ::SetTimer(shell_hwnd_, kPageColorFadeTimer, USER_TIMER_MINIMUM, nullptr);
+}
+
+void PhiShellWindow::PageColorFadeTick() {
+  const bool done =
+      page_fade_start_ == 0 ||
+      ::GetTickCount64() - page_fade_start_ >=
+          static_cast<ULONGLONG>(kPageColorFadeMs);
+  if (done) {
+    page_fade_start_ = 0;
+    ::KillTimer(shell_hwnd_, kPageColorFadeTimer);
+  }
+  // What a page colour change repaints: the address row, the strip's active
+  // tab and the bookmark bar; the field repaints itself.
+  const Layout layout = ComputeLayout();
+  ::InvalidateRect(shell_hwnd_, &layout.title_bar, FALSE);
+  ::InvalidateRect(shell_hwnd_, &layout.top_bar, FALSE);
+  ::InvalidateRect(shell_hwnd_, &layout.bookmark_bar, FALSE);
+  omnibox_->Repaint();
 }
 
 std::optional<PhiColor> PhiShellWindow::ComputeActivePageColor() const {
@@ -5461,7 +5507,34 @@ void PhiShellWindow::RebuildTabs() {
   // After the rows: the active tab (a reader redirects to its origin) is
   // theirs. Cached here like the nav state, so the rebuild turn's signature
   // sees the change and paint reads one settled value.
-  page_color_ = ComputeActivePageColor();
+  if (const TabId focused = active_tab_id();
+      focused.valid() && focused != tab_seen_last_) {
+    NoteTabSeen(focused);
+  }
+  {
+    const std::optional<PhiColor> settled = ComputeActivePageColor();
+    const TabId tab = active_tab_id();
+    if (settled != page_color_) {
+      // Same tab, and a colour on at least one side: crossfade from what is
+      // showing now. Anything else (a tab switch, a Space switch) snaps.
+      const std::optional<PhiColor> showing = ActivePageColor();
+      const bool fade = tab.valid() && tab == page_color_tab_ &&
+                        shell_hwnd_ && ::IsWindowVisible(shell_hwnd_) &&
+                        (showing || settled);
+      const PhiColor from = showing ? *showing : CurrentPalette().window_bg;
+      page_color_ = settled;
+      if (fade) {
+        StartPageColorFade(from);
+      } else if (page_fade_start_ != 0) {
+        page_fade_start_ = 0;
+        ::KillTimer(shell_hwnd_, kPageColorFadeTimer);
+      }
+    } else if (tab != page_color_tab_ && page_fade_start_ != 0) {
+      page_fade_start_ = 0;  // The tab changed under a running fade.
+      ::KillTimer(shell_hwnd_, kPageColorFadeTimer);
+    }
+    page_color_tab_ = tab;
+  }
   page_color_reader_ = ActiveTabShowsReader();
   const bool split = ActiveTabIsSplit() && !browsers_->content_fullscreen();
   if (split != backdrop_split_) {
@@ -5555,6 +5628,29 @@ TabId PhiShellWindow::PageCommandTab() const {
 
 bool PhiShellWindow::ShowsTab(TabId tab_id) const {
   return sidebar_->ShowsTab(tab_id);
+}
+
+bool PhiShellWindow::TabSwitcherIncludesAllSpaces() const {
+  return services_.prefs && services_.prefs->TabSwitcherIncludesAllSpaces();
+}
+
+uint64_t PhiShellWindow::TabSeenStamp(TabId tab) const {
+  const auto it = tab_seen_.find(tab.value);
+  return it == tab_seen_.end() ? 0 : it->second;
+}
+
+void PhiShellWindow::NoteTabSeen(TabId tab) {
+  if (!tab.valid()) {
+    return;
+  }
+  tab_seen_[tab.value] = ++tab_seen_clock_;
+  tab_seen_last_ = tab;
+  // Closed tabs never come back under the same id; keep the map small.
+  if (tab_seen_.size() > 4096) {
+    std::erase_if(tab_seen_, [&](const auto& entry) {
+      return entry.second + 2048 < tab_seen_clock_;
+    });
+  }
 }
 
 const std::vector<TabId>& PhiShellWindow::TabMruOrder() const {
@@ -5977,6 +6073,36 @@ unsigned PhiShellWindow::SplitPaneCardCorners(const RECT& pane) {
     corners |= 8;  // The window's corner, which Windows rounds when restored.
   }
   return corners;
+}
+
+std::string PhiShellWindow::ReplacementUrlForStoredRow(
+    const MenuRow& row) const {
+  // The Mac's replacementURLForPinnedTab / replacementURLForBookmark: a
+  // single cell, open, its tab in no split, on a page other than the saved
+  // one, and nothing from an incognito window.
+  if (ShowsIncognito() || row.folder || row.guid.empty() ||
+      !row.url_b.empty() || !model_) {
+    return std::string();
+  }
+  const WindowSnapshot* snapshot = model_->Get(active_browser_id());
+  if (!snapshot) {
+    return std::string();
+  }
+  for (const TabSnapshot& tab : snapshot->tabs) {
+    if (tab.tag != row.guid) {
+      continue;
+    }
+    if (!tab.split_id.empty() || tab.url.empty() || tab.url == row.url ||
+        tab.surface != phi_framework::TabSurface::kContent) {
+      return std::string();
+    }
+    return tab.url;
+  }
+  return std::string();
+}
+
+HWND PhiShellWindow::address_field() const {
+  return omnibox_ ? omnibox_->field() : nullptr;
 }
 
 int PhiShellWindow::ActiveSplitPaneCount() const {
@@ -6498,6 +6624,8 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
   const BrowserId opening_browser = active_browser_id();
   PhiPinnedMenuInputs in;
   in.split_cell = !row.url_b.empty();
+  const std::string current_url = ReplacementUrlForStoredRow(row);
+  in.can_replace_url = !current_url.empty();
   in.horizontal = row.layout == "horizontal";
   in.open = row.open;
   const PhiMenuAction action =
@@ -6550,6 +6678,10 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
         !edited.empty()) {
       services_.sidebar->SetStoredRowUrl(row.guid, base::WideToUTF8(edited));
     }
+  } else if (action.is("pin.replaceUrl") && services_.sidebar &&
+             !current_url.empty()) {
+    // Saves only: the page stays where it is.
+    services_.sidebar->SetStoredRowUrl(row.guid, current_url);
   } else if (action.is("pin.unpin") && !row.guid.empty()) {
     // The cell goes; a live bound tab returns to the tab list as a normal
     // tab (the tags are cleared).
@@ -6568,6 +6700,8 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
   in.folder = row.folder;
   in.split_row = !row.url_b.empty();
   in.horizontal = row.layout == "horizontal";
+  const std::string current_url = ReplacementUrlForStoredRow(row);
+  in.can_replace_url = !current_url.empty();
   if (!row.folder && !incognito_) {
     // A bookmark belongs to a Space's stored rows; an Incognito Space keeps
     // none.
@@ -6597,6 +6731,9 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
         !edited.empty()) {
       services_.sidebar->SetStoredRowUrl(row.guid, base::WideToUTF8(edited));
     }
+  } else if (action.is("bm.replaceUrl") && services_.sidebar &&
+             !current_url.empty()) {
+    services_.sidebar->SetStoredRowUrl(row.guid, current_url);
   } else if (action.is("bm.open") && !row.url.empty()) {
     OpenOrFocusPinned(row.guid, row.url);
   } else if (action.is("bm.openSplit") && framework_ && !row.url.empty()) {
@@ -9514,6 +9651,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
     case WM_TIMER:
       if (self && wparam == kPairSplitTimer) {
         self->PairPendingSplit();
+        return 0;
+      }
+      if (self && wparam == kPageColorFadeTimer) {
+        self->PageColorFadeTick();
         return 0;
       }
       if (self && self->tab_preview_ && self->tab_preview_->OnTimer(wparam)) {

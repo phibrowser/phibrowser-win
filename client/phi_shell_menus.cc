@@ -347,8 +347,18 @@ PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in) {
   }
   items.push_back(PhiMenuItem::Command("pin.rename", PhiStr("contextMenu.rename")));
   // The Mac's Edit…: the pin's address (a split pin keeps its panes).
+  // With it, "Replace Saved URL with Current" (the Mac's `0d8342c4`): the
+  // two share a submenu, and the second only saves.
   if (!in.split_cell) {
-    items.push_back(PhiMenuItem::Command("pin.editUrl", PhiStr("contextMenu.editURL")));
+    PhiMenuItem replace = PhiMenuItem::Command(
+        "pin.replaceUrl",
+        PhiStr("sidebar.pinnedTabContextMenu.replaceSavedURL"));
+    replace.enabled = in.can_replace_url;
+    std::vector<PhiMenuItem> edit;
+    edit.push_back(PhiMenuItem::Command("pin.editUrl", PhiStr("contextMenu.editURL")));
+    edit.push_back(std::move(replace));
+    items.push_back(PhiMenuItem::Submenu(
+        PhiStr("sidebar.pinnedTabContextMenu.editSubmenu"), std::move(edit)));
   }
   if (in.split_cell) {
     items.push_back(PhiMenuItem::Separator());
@@ -391,8 +401,15 @@ PhiMenuSpec PhiBuildBookmarkRowMenu(const PhiBookmarkMenuInputs& in) {
   }
   items.push_back(PhiMenuItem::Command("bm.rename", PhiStr("contextMenu.rename")));
   if (!in.folder && !in.split_row) {
-    // The Mac's Edit…
-    items.push_back(PhiMenuItem::Command("bm.editUrl", PhiStr("contextMenu.editURL")));
+    // The Mac's Edit…, with "Replace Saved URL with Current" beside it.
+    PhiMenuItem replace = PhiMenuItem::Command(
+        "bm.replaceUrl", PhiStr("sidebar.bookmarkContextMenu.replaceSavedURL"));
+    replace.enabled = in.can_replace_url;
+    std::vector<PhiMenuItem> edit;
+    edit.push_back(PhiMenuItem::Command("bm.editUrl", PhiStr("contextMenu.editURL")));
+    edit.push_back(std::move(replace));
+    items.push_back(PhiMenuItem::Submenu(
+        PhiStr("sidebar.bookmarkContextMenu.editSubmenu"), std::move(edit)));
   }
   if (in.split_row) {
     items.push_back(PhiMenuItem::Command("bm.convertSplit",

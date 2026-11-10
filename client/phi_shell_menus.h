@@ -196,6 +196,9 @@ struct PhiPinnedMenuInputs {
   bool split_cell = false;
   bool horizontal = false;  // The cell remembers a stacked arrangement.
   bool open = false;        // A live tab is bound: "Close" is live.
+  // The bound tab's page has left the saved address: "Replace Saved URL with
+  // Current" is live (single cells only).
+  bool can_replace_url = false;
 };
 PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in);
 
@@ -204,6 +207,7 @@ struct PhiBookmarkMenuInputs {
   bool folder = false;
   bool split_row = false;
   bool horizontal = false;
+  bool can_replace_url = false;  // As PhiPinnedMenuInputs'.
   std::vector<PhiMenuChoice> spaces;  // Leaf rows only.
 };
 PhiMenuSpec PhiBuildBookmarkRowMenu(const PhiBookmarkMenuInputs& in);

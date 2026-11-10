@@ -17,6 +17,7 @@
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/no_destructor.h"
 #include "client/phi_dwrite.h"
+#include "client/phi_fluent.h"
 #include "client/phi_i18n.h"
 #include "client/phi_modal_scope.h"
 #include "client/phi_popover.h"
@@ -30,7 +31,7 @@ namespace {
 // SpaceThemeEditorView's metrics, in DIP: contentSize 260x296, the field
 // 244 square under 8 of padding, a 10 gap, the 24 toolbar, 10 below.
 constexpr int kPanelWidth = 260;
-constexpr int kPanelHeight = 296;
+constexpr int kPanelHeight = 328;  // 296 + the preset strip and its gap.
 constexpr int kPadding = 8;
 constexpr int kField = 244;
 constexpr int kFieldRadius = 12;  // LiquidGlassCompatible.cornerRadius.
@@ -58,6 +59,58 @@ constexpr int kFieldKey = 1;
 constexpr int kLightKey = 2;
 constexpr int kDarkKey = 3;
 constexpr int kHarmonyKey = 10;  // + the harmony's index below.
+constexpr int kPreviousKey = 20;
+constexpr int kNextKey = 21;
+constexpr int kResetKey = 22;
+constexpr int kSaveKey = 23;
+constexpr int kPresetKey = 30;  // + the slot on the page, 0 to 6.
+constexpr int kDeleteKey = 40;  // + the slot.
+
+// The preset strip under the field (the Mac's `26eeac82`): seven swatches a
+// page between two paging buttons.
+constexpr int kStripGap = 8;
+constexpr int kStripHeight = 24;
+constexpr int kStripButton = 24;
+constexpr int kSwatchesPerPage = 7;
+constexpr int kSwatch = 18;       // The colour disc, in its 24 slot.
+constexpr int kDeleteBadge = 10;
+// A saved swatch's delete badge takes a click only after this long under
+// the pointer, so a quick click on the swatch never deletes it.
+constexpr ULONGLONG kDeleteArmMs = 400;
+
+// Dusty solids, tonal pairs and balanced accents: the Mac's
+// recommendedPalettes, three pages of seven.
+struct Recommended {
+  double hue;
+  double saturation;
+  double brightness;
+  PhiThemePalette::Harmony harmony;
+};
+constexpr Recommended kRecommended[] = {
+    {0.595, 0.25, 0.86, PhiThemePalette::Harmony::kSingle},  // Mist blue
+    {0.375, 0.23, 0.80, PhiThemePalette::Harmony::kSingle},  // Sage
+    {0.105, 0.22, 0.90, PhiThemePalette::Harmony::kSingle},  // Champagne
+    {0.735, 0.24, 0.86, PhiThemePalette::Harmony::kSingle},  // Heather
+    {0.960, 0.23, 0.82, PhiThemePalette::Harmony::kSingle},  // Dusty rose
+    {0.055, 0.25, 0.88, PhiThemePalette::Harmony::kSingle},  // Apricot
+    {0.490, 0.20, 0.92, PhiThemePalette::Harmony::kSingle},  // Sea glass
+    {0.540, 0.27, 0.86, PhiThemePalette::Harmony::kAnalogous},  // Coast
+    {0.085, 0.24, 0.86, PhiThemePalette::Harmony::kAnalogous},  // Meadow
+    {0.815, 0.26, 0.82, PhiThemePalette::Harmony::kAnalogous},  // Orchid
+    {0.360, 0.25, 0.80, PhiThemePalette::Harmony::kAnalogous},  // Eucalyptus
+    {0.660, 0.28, 0.82, PhiThemePalette::Harmony::kAnalogous},  // Twilight
+    {0.965, 0.25, 0.88, PhiThemePalette::Harmony::kAnalogous},  // Peach blossom
+    {0.215, 0.22, 0.84, PhiThemePalette::Harmony::kAnalogous},  // Olive grove
+    {0.600, 0.28, 0.80, PhiThemePalette::Harmony::kComplementary},  // Blue and clay
+    {0.920, 0.25, 0.84, PhiThemePalette::Harmony::kComplementary},  // Rose and mint
+    {0.290, 0.23, 0.82, PhiThemePalette::Harmony::kComplementary},  // Fern and mauve
+    {0.075, 0.27, 0.86, PhiThemePalette::Harmony::kSplitComplementary},  // Dawn
+    {0.720, 0.26, 0.80, PhiThemePalette::Harmony::kSplitComplementary},  // Iris garden
+    {0.460, 0.24, 0.84, PhiThemePalette::Harmony::kSplitComplementary},  // Tidal pool
+    {0.000, 0.22, 0.88, PhiThemePalette::Harmony::kSplitComplementary},  // Porcelain
+};
+constexpr int kRecommendedCount =
+    static_cast<int>(sizeof(kRecommended) / sizeof(kRecommended[0]));
 
 constexpr std::array<PhiThemePalette::Harmony, 4> kHarmonies = {
     PhiThemePalette::Harmony::kSingle, PhiThemePalette::Harmony::kAnalogous,
@@ -256,6 +309,7 @@ class Panel : public PhiPopover {
     if (!CreatePopover(spec, owner, probe, placement, options)) {
       return false;
     }
+    FocusSelectedPreset();
     BuildLayout();
     SIZE size = {Scaled(kPanelWidth), Scaled(kPanelHeight)};
     Reposition(placement, size);
@@ -277,7 +331,24 @@ class Panel : public PhiPopover {
                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
   }
 
-  void OnHover(int, int) override { Invalidate(); }
+  void OnHover(int now, int) override {
+    // Which swatch slot the pointer is over (the swatch or its badge), and
+    // since when: the badge shows at once and arms after a moment.
+    int slot = -1;
+    if (now >= 0 && now < static_cast<int>(hits().size())) {
+      const int key = hits()[static_cast<size_t>(now)].key;
+      if (key >= kPresetKey && key < kPresetKey + kSwatchesPerPage) {
+        slot = key - kPresetKey;
+      } else if (key >= kDeleteKey && key < kDeleteKey + kSwatchesPerPage) {
+        slot = key - kDeleteKey;
+      }
+    }
+    if (slot != hovered_slot_) {
+      hovered_slot_ = slot;
+      hovered_since_ = ::GetTickCount64();
+    }
+    Invalidate();
+  }
 
   LRESULT OnMessage(UINT message,
                     WPARAM wparam,
@@ -318,16 +389,54 @@ class Panel : public PhiPopover {
       return;
     }
     if (key >= kHarmonyKey && key < kHarmonyKey + 4) {
-      Commit(Current().SettingHarmony(
-          kHarmonies[static_cast<size_t>(key - kHarmonyKey)]));
+      const PhiThemePalette before = Current();
+      Edit(before, before.SettingHarmony(
+                       kHarmonies[static_cast<size_t>(key - kHarmonyKey)]));
+      return;
+    }
+    if (key == kPreviousKey || key == kNextKey) {
+      // No wrap: the strip stops at its first and last page.
+      preset_page_ = std::clamp(preset_page_ + (key == kNextKey ? 1 : -1), 0,
+                                PageCount() - 1);
+      RebuildHits();
+      Invalidate();
+      return;
+    }
+    if (key == kResetKey && unedited_) {
+      const PhiThemePalette original = *unedited_;
+      unedited_.reset();
+      Select(original);
+      return;
+    }
+    if (key == kSaveKey && unedited_) {
+      SavePalette();
+      return;
+    }
+    if (key >= kPresetKey && key < kPresetKey + kSwatchesPerPage) {
+      const std::vector<PhiThemePalette> presets = Presets();
+      const size_t index = static_cast<size_t>(
+          preset_page_ * kSwatchesPerPage + (key - kPresetKey));
+      if (index < presets.size()) {
+        unedited_.reset();
+        Select(presets[index]);
+      }
+      return;
+    }
+    if (key >= kDeleteKey && key < kDeleteKey + kSwatchesPerPage) {
+      const int slot = key - kDeleteKey;
+      if (slot == hovered_slot_ &&
+          ::GetTickCount64() - hovered_since_ >= kDeleteArmMs) {
+        RemoveSavedPalette(preset_page_ * kSwatchesPerPage + slot);
+      }
     }
   }
 
   bool OnKey(WPARAM virtual_key) override {
     // The focused handle's arrow keys: one degree of hue either way.
     if (virtual_key == VK_LEFT || virtual_key == VK_RIGHT) {
-      Commit(Current().RotatingHue(virtual_key == VK_LEFT ? -1.0 / 360
-                                                           : 1.0 / 360));
+      const PhiThemePalette before = Current();
+      Edit(before, before.RotatingHue(virtual_key == VK_LEFT ? -1.0 / 360
+                                                             : 1.0 / 360));
       return true;
     }
     return PhiPopover::OnKey(virtual_key);
@@ -345,7 +454,7 @@ class Panel : public PhiPopover {
     dragging_ = false;
     capture_.Release();  // A no-op once the system took it; re-entry is guarded.
     if (moved) {
-      Commit(palette);
+      Edit(press_palette_, palette);
     }
     if (dismiss_pending_) {
       dismiss_pending_ = false;
@@ -399,6 +508,7 @@ class Panel : public PhiPopover {
 
     const PhiThemePalette shown = Displayed();
     PaintField(dc, shown, dark, ground);
+    PaintStrip(dc, chrome);
     PaintToolbar(dc, shown, chrome);
   }
 
@@ -494,6 +604,104 @@ class Panel : public PhiPopover {
     Invalidate();
   }
 
+  // A manual edit (a handle, a harmony, an arrow key): the first one
+  // remembers the palette it started from, for Reset and Save; coming back
+  // to that palette forgets it again.
+  void Edit(const PhiThemePalette& before, const PhiThemePalette& after) {
+    if (after != before && !unedited_) {
+      unedited_ = before;
+    }
+    if (unedited_ && after == *unedited_) {
+      unedited_.reset();
+    }
+    Commit(after);
+  }
+
+  // A swatch or Reset: the handles ease over to the palette.
+  void Select(const PhiThemePalette& palette) {
+    const PhiThemePalette from = Current();
+    Commit(palette);
+    if (palette != from) {
+      animation_from_ = from;
+      animation_start_ = ::GetTickCount64();
+      animating_ = true;
+      if (!animation_.valid()) {
+        animation_ = NewTimer();
+      }
+      animation_.Start(kAnimationTickMs, /*coalescable=*/true);
+    }
+  }
+
+  std::vector<PhiThemePalette> SavedPalettes() const {
+    SpacesHost* spaces = controller_ ? controller_->spaces_host() : nullptr;
+    return spaces ? spaces->SavedThemePalettes()
+                  : std::vector<PhiThemePalette>();
+  }
+
+  // The recommendations, then the saved colours after their three pages.
+  std::vector<PhiThemePalette> Presets() const {
+    std::vector<PhiThemePalette> presets;
+    for (const Recommended& r : kRecommended) {
+      presets.push_back(
+          PhiThemePalette::Make(r.hue, r.saturation, r.brightness, r.harmony));
+    }
+    const std::vector<PhiThemePalette> saved = SavedPalettes();
+    presets.insert(presets.end(), saved.begin(), saved.end());
+    return presets;
+  }
+
+  int PageCount() const {
+    const int count =
+        kRecommendedCount + static_cast<int>(SavedPalettes().size());
+    return (count + kSwatchesPerPage - 1) / kSwatchesPerPage;
+  }
+
+  // The page showing the current palette, when a swatch holds it.
+  void FocusSelectedPreset() {
+    const std::vector<PhiThemePalette> presets = Presets();
+    const PhiThemePalette current = Current();
+    for (size_t i = 0; i < presets.size(); ++i) {
+      if (presets[i] == current) {
+        preset_page_ = static_cast<int>(i) / kSwatchesPerPage;
+        return;
+      }
+    }
+  }
+
+  void SavePalette() {
+    SpacesHost* spaces = controller_ ? controller_->spaces_host() : nullptr;
+    if (!spaces) {
+      return;
+    }
+    std::vector<PhiThemePalette> saved = spaces->SavedThemePalettes();
+    saved.push_back(Current());
+    spaces->SetSavedThemePalettes(saved);
+    unedited_.reset();
+    preset_page_ = (kRecommendedCount + static_cast<int>(saved.size()) - 1) /
+                   kSwatchesPerPage;
+    hovered_slot_ = -1;
+    RebuildHits();
+    Invalidate();
+  }
+
+  void RemoveSavedPalette(int index) {
+    SpacesHost* spaces = controller_ ? controller_->spaces_host() : nullptr;
+    const int saved_index = index - kRecommendedCount;
+    if (!spaces || saved_index < 0) {
+      return;
+    }
+    std::vector<PhiThemePalette> saved = spaces->SavedThemePalettes();
+    if (saved_index >= static_cast<int>(saved.size())) {
+      return;
+    }
+    saved.erase(saved.begin() + saved_index);
+    spaces->SetSavedThemePalettes(saved);
+    preset_page_ = std::min(preset_page_, PageCount() - 1);
+    hovered_slot_ = -1;
+    RebuildHits();
+    Invalidate();
+  }
+
   // --- Geometry -----------------------------------------------------------------
 
   RECT FieldRect() const {
@@ -517,8 +725,40 @@ class Panel : public PhiPopover {
 
   // The toolbar's two capsule groups: appearance at the left, harmony at
   // the right; each button a 22 circle inside the group's 1 padding.
+  // The preset strip: a paging button at each end, seven 24 slots spread
+  // evenly between them.
+  RECT StripRect() const {
+    const int top = Scaled(kPadding) + Scaled(kField) + Scaled(kStripGap);
+    return {Scaled(kPadding), top, Scaled(kPanelWidth) - Scaled(kPadding),
+            top + Scaled(kStripHeight)};
+  }
+
+  RECT StripButton(bool next) const {
+    const RECT strip = StripRect();
+    const int side = Scaled(kStripButton);
+    return next ? RECT{strip.right - side, strip.top, strip.right, strip.bottom}
+                : RECT{strip.left, strip.top, strip.left + side, strip.bottom};
+  }
+
+  RECT SwatchSlot(int slot) const {
+    const RECT strip = StripRect();
+    const int side = Scaled(kStripButton);
+    const int left = strip.left + side;
+    const int room = strip.right - side - left;
+    const int centre = left + room * (2 * slot + 1) / (2 * kSwatchesPerPage);
+    return {centre - side / 2, strip.top, centre - side / 2 + side,
+            strip.bottom};
+  }
+
+  // The delete badge at a saved swatch's lower trailing corner.
+  RECT DeleteBadge(int slot) const {
+    const RECT cell = SwatchSlot(slot);
+    const int badge = Scaled(kDeleteBadge);
+    return {cell.right - badge, cell.bottom - badge, cell.right, cell.bottom};
+  }
+
   RECT ToolbarRect() const {
-    const int top = Scaled(kPadding) + Scaled(kField) + Scaled(kToolbarGap);
+    const int top = StripRect().bottom + Scaled(kToolbarGap);
     return {Scaled(kPadding), top, Scaled(kPanelWidth) - Scaled(kPadding),
             top + Scaled(kToolbarHeight)};
   }
@@ -530,10 +770,21 @@ class Panel : public PhiPopover {
             bar.bottom};
   }
 
+  // After the appearance group and a fixed gap, which leaves the trailing
+  // end free for Reset and Save.
   RECT HarmonyGroup() const {
     const RECT bar = ToolbarRect();
-    return {bar.right - 4 * Scaled(kToolButton) - 2 * Scaled(kToolPad),
-            bar.top, bar.right, bar.bottom};
+    const int left = AppearanceGroup().right + Scaled(29);
+    return {left, bar.top,
+            left + 4 * Scaled(kToolButton) + 2 * Scaled(kToolPad), bar.bottom};
+  }
+
+  // Reset then Save at the toolbar's trailing end, 2 apart.
+  RECT EditButton(bool save) const {
+    const RECT bar = ToolbarRect();
+    const int side = Scaled(kStripButton);
+    const int right = save ? bar.right : bar.right - side - Scaled(2);
+    return {right - side, bar.top, right, bar.bottom};
   }
 
   RECT ToolButton(const RECT& group, int index) const {
@@ -568,6 +819,42 @@ class Panel : public PhiPopover {
              kHarmonyKey + static_cast<int>(i),
              std::wstring(PhiStr(HarmonyLabelKey(kHarmonies[i]))),
              PhiHitRole::kToggle, palette.harmony == kHarmonies[i]);
+    }
+    if (unedited_) {
+      AddHit(EditButton(false), kResetKey,
+             std::wstring(PhiStr("theme.editor.reset")), PhiHitRole::kButton);
+      AddHit(EditButton(true), kSaveKey,
+             std::wstring(PhiStr("theme.editor.save")), PhiHitRole::kButton);
+    }
+    const int pages = PageCount();
+    preset_page_ = std::clamp(preset_page_, 0, pages - 1);
+    if (preset_page_ > 0) {
+      AddHit(StripButton(false), kPreviousKey,
+             std::wstring(PhiStr("theme.editor.previousColors")),
+             PhiHitRole::kButton);
+    }
+    if (preset_page_ + 1 < pages) {
+      AddHit(StripButton(true), kNextKey,
+             std::wstring(PhiStr("theme.editor.nextColors")),
+             PhiHitRole::kButton);
+    }
+    const std::vector<PhiThemePalette> presets = Presets();
+    for (int slot = 0; slot < kSwatchesPerPage; ++slot) {
+      const int index = preset_page_ * kSwatchesPerPage + slot;
+      if (index >= static_cast<int>(presets.size())) {
+        break;
+      }
+      AddHit(SwatchSlot(slot), kPresetKey + slot,
+             PhiStrF("theme.editor.presetColor", {std::to_wstring(index + 1)}),
+             PhiHitRole::kToggle,
+             presets[static_cast<size_t>(index)] == palette);
+      // The badge after its swatch: the later hit is the one on top, and
+      // the badge sits over the swatch's corner.
+      if (index >= kRecommendedCount) {
+        AddHit(DeleteBadge(slot), kDeleteKey + slot,
+               std::wstring(PhiStr("theme.editor.deleteColor")),
+               PhiHitRole::kButton);
+      }
     }
   }
 
@@ -626,7 +913,7 @@ class Panel : public PhiPopover {
     }
     dragging_ = false;
     capture_.Release();
-    Commit(result);
+    Edit(from, result);
     if (click && result != from) {
       animation_from_ = from;
       animation_start_ = ::GetTickCount64();
@@ -699,9 +986,95 @@ class Panel : public PhiPopover {
            hits()[static_cast<size_t>(index)].key == key;
   }
 
+  void PaintStrip(HDC dc, const PhiPalette& chrome) {
+    const bool dark = chrome.dark;
+    const int pages = PageCount();
+    // The paging chevrons, dimmed at the end they cannot pass.
+    const auto chevron = [&](bool next) {
+      const bool live = next ? preset_page_ + 1 < pages : preset_page_ > 0;
+      const RECT button = StripButton(next);
+      const int key = next ? kNextKey : kPreviousKey;
+      if (live && Hovered(key)) {
+        PhiFillEllipseAA(dc, button, ButtonWash(chrome, false, true));
+      }
+      PhiDrawIconGlyph(dc, button,
+                       next ? fluent::kChevronRight : fluent::kChevronLeft,
+                       Scaled(10),
+                       PhiBlend(chrome.ink, chrome.flyout, live ? 255 : 64));
+    };
+    chevron(false);
+    chevron(true);
+    const std::vector<PhiThemePalette> presets = Presets();
+    const PhiThemePalette current = Current();
+    for (int slot = 0; slot < kSwatchesPerPage; ++slot) {
+      const int index = preset_page_ * kSwatchesPerPage + slot;
+      if (index >= static_cast<int>(presets.size())) {
+        break;
+      }
+      const PhiThemePalette& preset = presets[static_cast<size_t>(index)];
+      const RECT cell = SwatchSlot(slot);
+      const int disc = Scaled(kSwatch);
+      const int cx = (cell.left + cell.right) / 2;
+      const int cy = (cell.top + cell.bottom) / 2;
+      const RECT swatch = {cx - disc / 2, cy - disc / 2, cx - disc / 2 + disc,
+                           cy - disc / 2 + disc};
+      // The palette as the sidebar would paint it, top to bottom, cut to a
+      // disc.
+      std::array<PhiColor, 3> colors = {};
+      const int count = std::clamp(preset.color_count(), 1, 3);
+      for (int i = 0; i < 3; ++i) {
+        colors[static_cast<size_t>(i)] =
+            preset.ResolvedColor(std::min(i, count - 1), dark);
+      }
+      for (int y = swatch.top; y < swatch.bottom; ++y) {
+        const double position =
+            disc > 1 ? static_cast<double>(y - swatch.top) / (disc - 1) : 0;
+        const RECT row = {swatch.left, y, swatch.right, y + 1};
+        HBRUSH brush =
+            ::CreateSolidBrush(PhiOklabGradient(colors, count, position));
+        ::FillRect(dc, &row, brush);
+        ::DeleteObject(brush);
+      }
+      PhiKnockOutRoundRectAA(dc, swatch, disc / 2, chrome.flyout);
+      PhiStrokeEllipseAA(dc, swatch,
+                         PhiBlend(chrome.ink, chrome.flyout, dark ? 77 : 26),
+                         1);
+      if (preset == current) {
+        PhiStrokeEllipseAA(dc, cell,
+                           PhiBlend(chrome.ink, chrome.flyout, dark ? 77 : 46),
+                           1);
+      }
+      if (index >= kRecommendedCount && slot == hovered_slot_) {
+        // The Mac's theme-editor-remove: a small disc with a bar.
+        const RECT badge = DeleteBadge(slot);
+        PhiFillEllipseAA(dc, badge, dark ? RGB(0, 0, 0) : RGB(255, 255, 255));
+        PhiStrokeEllipseAA(dc, badge, PhiBlend(chrome.ink, chrome.flyout, 26),
+                           1);
+        const int mid = (badge.top + badge.bottom) / 2;
+        const int inset = (badge.right - badge.left) / 4;
+        const RECT bar = {badge.left + inset, mid, badge.right - inset,
+                          mid + std::max(1, Scaled(1))};
+        HBRUSH brush = ::CreateSolidBrush(dark ? RGB(255, 255, 255)
+                                               : RGB(0, 0, 0));
+        ::FillRect(dc, &bar, brush);
+        ::DeleteObject(brush);
+      }
+    }
+  }
+
   void PaintToolbar(HDC dc, const PhiThemePalette& palette,
                     const PhiPalette& chrome) {
     const bool dark = chrome.dark;
+    if (unedited_) {
+      for (const bool is_save : {false, true}) {
+        const RECT button = EditButton(is_save);
+        if (Hovered(is_save ? kSaveKey : kResetKey)) {
+          PhiFillEllipseAA(dc, button, ButtonWash(chrome, false, true));
+        }
+        PhiDrawIconGlyph(dc, button, is_save ? fluent::kSave : fluent::kUndo,
+                         Scaled(13), chrome.ink);
+      }
+    }
     const COLORREF capsule =
         PhiBlend(chrome.ink, chrome.flyout, dark ? 51 : 15);
     const RECT appearance = AppearanceGroup();
@@ -843,6 +1216,13 @@ class Panel : public PhiPopover {
   PhiThemePalette press_palette_;
   PhiThemePalette drag_palette_;
   bool dismiss_pending_ = false;
+  // The preset strip: the page showing, the palette a manual edit started
+  // from (Reset and Save show while it is set), and the swatch slot under
+  // the pointer with when it got there.
+  int preset_page_ = 0;
+  std::optional<PhiThemePalette> unedited_;
+  int hovered_slot_ = -1;
+  ULONGLONG hovered_since_ = 0;
   // A click's handle transition.
   Timer animation_;
   bool animating_ = false;

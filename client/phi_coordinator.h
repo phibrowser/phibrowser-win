@@ -437,6 +437,7 @@ class PhiCoordinator : public SidebarHost,
   bool ShowOpenTabIndicators() const override;
   bool DimUnloadedTabIcons() const override;
   bool DoubleClickToCloseTabs() const override;
+  bool TabSwitcherIncludesAllSpaces() const override;
   bool DirectionalTabClosing() const override;
   bool BookmarkRootCollapsed(const std::string& space_id) const override;
   void SetBookmarkRootCollapsed(const std::string& space_id,
@@ -471,6 +472,7 @@ class PhiCoordinator : public SidebarHost,
   void SetShowOpenTabIndicators(bool enabled) override;
   void SetDimUnloadedTabIcons(bool enabled) override;
   void SetDoubleClickToCloseTabs(bool enabled) override;
+  void SetTabSwitcherIncludesAllSpaces(bool enabled) override;
   void SetDirectionalTabClosing(bool enabled) override;
   void SetSidebarTransparency(int percent) override;
   std::string LanguagePreference() const;
@@ -522,6 +524,9 @@ class PhiCoordinator : public SidebarHost,
       const std::string& space_id) const override;
   void SetSpacePalette(const std::string& space_id,
                        const PhiThemePalette& palette) override;
+  std::vector<PhiThemePalette> SavedThemePalettes() const override;
+  void SetSavedThemePalettes(
+      const std::vector<PhiThemePalette>& palettes) override;
   void PreviewSpacePalette(const std::string& space_id,
                            const PhiThemePalette& palette) override;
   bool RenameSpace(const std::string& space_id,
@@ -1172,6 +1177,13 @@ class PhiCoordinator : public SidebarHost,
   // The onboarding gate (see Access): resolved once the stores and the
   // session are loaded, before any window is announced.
   Access access_ = Access::kLoginRequired;
+  // A Sign out in this run marked the session discard (the Mac's ADR 0012):
+  // the windows it hid are emptied, and the mark consumed, before browser
+  // access returns.
+  bool sign_out_discard_pending_ = false;
+  // Closes every tab the held user windows carry and whatever surface hangs
+  // off them, then consumes the framework's mark.
+  void DiscardSignedOutSession();
   std::unique_ptr<PhiOnboardingWindow> onboarding_;
   // The shadow browser the onboarding window embeds the hosted login in.
   BrowserId onboarding_browser_;

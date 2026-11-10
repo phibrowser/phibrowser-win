@@ -184,6 +184,27 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   // while the field is hovered).
   out.Set("copyLink", RectDict(shell->copy_link_rect()));
   out.Set("siteMenu", RectDict(shell->site_menu_rect()));
+  // The address field as it stands: its rect in the shell, its text and its
+  // selection, so a suite can tell what a double-click selected.
+  if (const HWND field = shell->address_field()) {
+    RECT rect = {};
+    ::GetWindowRect(field, &rect);
+    ::MapWindowPoints(nullptr, shell->shell_hwnd(),
+                      reinterpret_cast<POINT*>(&rect), 2);
+    base::DictValue address = RectDict(rect);
+    const int length = ::GetWindowTextLengthW(field);
+    std::wstring text(static_cast<size_t>(length) + 1, L'\0');
+    text.resize(static_cast<size_t>(
+        ::GetWindowTextW(field, text.data(), length + 1)));
+    DWORD from = 0;
+    DWORD to = 0;
+    ::SendMessageW(field, EM_GETSEL, reinterpret_cast<WPARAM>(&from),
+                   reinterpret_cast<LPARAM>(&to));
+    address.Set("text", base::WideToUTF8(text));
+    address.Set("selStart", static_cast<int>(from));
+    address.Set("selEnd", static_cast<int>(to));
+    out.Set("addressField", std::move(address));
+  }
   out.Set("sidebarCollapsed", shell->sidebar_collapsed());
   out.Set("sidebarFloating", shell->sidebar_floating());
   out.Set("tabsTop", shell->tabs_top());
@@ -1048,6 +1069,8 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
   out.Set("showTabPreviews", coordinator_->settings().show_tab_previews);
   out.Set("showOpenTabIndicators",
           coordinator_->settings().show_open_tab_indicators);
+  out.Set("tabSwitcherIncludesAllSpaces",
+          coordinator_->settings().tab_switcher_all_spaces);
   out.Set("dimUnloadedTabIcons",
           coordinator_->settings().dim_unloaded_tab_icons);
   out.Set("sidebarTransparency",
@@ -1100,6 +1123,11 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   }
   if (std::optional<bool> previews = ctx.params.FindBool("showTabPreviews")) {
     coordinator_->SetShowTabPreviews(*previews);
+    ok = true;
+  }
+  if (std::optional<bool> all =
+          ctx.params.FindBool("tabSwitcherIncludesAllSpaces")) {
+    coordinator_->SetTabSwitcherIncludesAllSpaces(*all);
     ok = true;
   }
   if (std::optional<bool> dots = ctx.params.FindBool("showOpenTabIndicators")) {
@@ -1176,6 +1204,8 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   out.Set("showTabPreviews", coordinator_->settings().show_tab_previews);
   out.Set("showOpenTabIndicators",
           coordinator_->settings().show_open_tab_indicators);
+  out.Set("tabSwitcherIncludesAllSpaces",
+          coordinator_->settings().tab_switcher_all_spaces);
   out.Set("dimUnloadedTabIcons",
           coordinator_->settings().dim_unloaded_tab_icons);
   out.Set("sidebarTransparency",

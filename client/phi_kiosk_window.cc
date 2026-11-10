@@ -182,9 +182,42 @@ PhiKioskWindow::PhiKioskWindow(int64_t window_id,
       model_(model),
       coordinator_(coordinator),
       incognito_(incognito) {
+  // On the display the user acted on (the Mac's `a910dca8`), not always the
+  // primary one: the pointer's when it is over a Phi window (a link click,
+  // a menu), else the display of the Phi window that has the keyboard (a
+  // shortcut), else the pointer's.
   RECT work = {0, 0, kInitialWidth, kInitialHeight};
-  ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
-  const int dpi = ::GetDpiForSystem();
+  int dpi = static_cast<int>(::GetDpiForSystem());
+  {
+    POINT cursor = {};
+    ::GetCursorPos(&cursor);
+    const auto ours = [](HWND hwnd) {
+      DWORD process = 0;
+      return hwnd && ::GetWindowThreadProcessId(hwnd, &process) &&
+             process == ::GetCurrentProcessId();
+    };
+    const HWND under = ::WindowFromPoint(cursor);
+    const HWND foreground = ::GetForegroundWindow();
+    const HWND acted = ours(under) ? ::GetAncestor(under, GA_ROOT)
+                       : ours(foreground) ? foreground
+                                          : nullptr;
+    MONITORINFO monitor = {sizeof(monitor)};
+    const HMONITOR display =
+        acted && !ours(under)
+            ? ::MonitorFromWindow(acted, MONITOR_DEFAULTTONEAREST)
+            : ::MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
+    if (::GetMonitorInfoW(display, &monitor)) {
+      work = monitor.rcWork;
+    } else {
+      ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+    }
+    if (acted) {
+      // That window's scale stands in for its display's.
+      if (const UINT window_dpi = ::GetDpiForWindow(acted)) {
+        dpi = static_cast<int>(window_dpi);
+      }
+    }
+  }
   const int width = ::MulDiv(kInitialWidth, dpi, 96);
   const int height = ::MulDiv(kInitialHeight, dpi, 96);
   const int x = work.left + ((work.right - work.left) - width) / 2;

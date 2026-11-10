@@ -214,6 +214,9 @@ struct PhiSettings {
   // The Mac's GeneralSettings.doubleClickToCloseTabs: an unmodified
   // double-click on an ordinary tab closes it. Off by default, as on Mac.
   bool double_click_to_close_tabs = false;
+  // The Mac's GeneralSettings.tabSwitcherIncludesAllSpaces: Ctrl+Tab lists
+  // recent tabs from every Space of the window. Off by default, as on Mac.
+  bool tab_switcher_all_spaces = false;
   // The Mac's GeneralSettings.directionalTabClosingEnabled: the tab and group
   // menus' Close Tabs to the Left / Right (Above / Below in a vertical list).
   // On by default, as on Mac.

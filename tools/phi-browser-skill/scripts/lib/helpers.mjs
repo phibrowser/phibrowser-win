@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { tmpdir, homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { connectBrowser } from './cdp.mjs'
+import { connectBrowser, isEndpointTimeout } from './cdp.mjs'
 import {
   readDaemonControl, writeDaemonControl, clearDaemonControl,
   requestDeferredComplete, pidAlive, agentRootPid, ancestorPids,
@@ -4014,6 +4014,8 @@ export async function screenshot(path) {
  * Read it. The app renders the chrome and composites the page (captured over
  * CDP, since the agent window is hidden) into the web area. In a split view
  * only the active pane's page is filled in; the other pane shows its chrome.
+ * Throws if the page's capture times out, since a page that won't paint is a
+ * failure and not a chrome-only shot; the error names the chrome-only file.
  */
 export async function screenshotBrowser(path) {
   // Nothing to photograph: a shadow window is alpha 0 and off-screen, so the
@@ -4032,6 +4034,7 @@ export async function screenshotBrowser(path) {
   // live page still yields a chrome-only shot.
   const webFile = join(tmpdir(), `phi-web-${Date.now()}.png`)
   let webPath
+  let captureTimeout
   try {
     // A dialog-blocked renderer cannot paint — skip straight to the
     // chrome-only shot instead of stalling 30s on the capture.
@@ -4040,7 +4043,11 @@ export async function screenshotBrowser(path) {
                                        { format: 'png' }, requireSession(), 30000)
     writeFileSync(webFile, Buffer.from(data, 'base64'))
     webPath = webFile
-  } catch { /* no page/session — chrome only */ }
+  } catch (err) {
+    // No page/session stays chrome only. A live page that never answered does
+    // not: the caller must not read that shot as the page having painted.
+    if (isEndpointTimeout(err)) captureTimeout = err
+  }
 
   try {
     // No outPath: choosing where Phi writes is the host's capability, so a
@@ -4051,10 +4058,14 @@ export async function screenshotBrowser(path) {
       copyFileSync(res.path, outFile)
       try { unlinkSync(res.path) } catch {}
     }
-    return outFile
   } finally {
     if (webPath) { try { unlinkSync(webFile) } catch {} }
   }
+  if (captureTimeout) {
+    throw new Error(`screenshotBrowser: the page did not paint ` +
+                    `(${captureTimeout.message}); chrome-only shot at ${outFile}`)
+  }
+  return outFile
 }
 
 // Draws fixed-position boxes + @ref labels over the given rects; lives in one

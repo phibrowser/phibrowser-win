@@ -357,6 +357,10 @@ class SpacesHost {
                                const PhiThemePalette& palette) = 0;
   virtual void PreviewSpacePalette(const std::string& space_id,
                                    const PhiThemePalette& palette) = 0;
+  // The theme editor's saved colours (the Mac's `26eeac82`), oldest first.
+  virtual std::vector<PhiThemePalette> SavedThemePalettes() const = 0;
+  virtual void SetSavedThemePalettes(
+      const std::vector<PhiThemePalette>& palettes) = 0;
   // Space management (the menu bar and the chip context menu). Only the
   // last Space is undeletable (the default hands its role on); deletion
   // takes the Space's bookmarks and space-scoped pins with it, as on Mac.
@@ -432,6 +436,8 @@ class ChromePrefsHost {
   // The Mac's GeneralSettings.doubleClickToCloseTabs: an unmodified
   // double-click closes an ordinary tab. Off by default.
   virtual bool DoubleClickToCloseTabs() const = 0;
+  // The Mac's GeneralSettings.tabSwitcherIncludesAllSpaces. Off by default.
+  virtual bool TabSwitcherIncludesAllSpaces() const = 0;
   // The Mac's GeneralSettings.directionalTabClosingEnabled: the positional
   // rows of the tab and group menus. On by default.
   virtual bool DirectionalTabClosing() const = 0;
@@ -828,6 +834,12 @@ class PhiShellWindow : public PhiHitSource,
   PhiPalette BarPalette() const;
   // Tab ids most-recently-used first — the Ctrl+Tab switcher's order.
   const std::vector<TabId>& TabMruOrder() const;
+  // The Tab Switcher across Spaces (the Mac's `cde2a6a1`): whether the
+  // setting is on, and when `tab` last held the focus of its Space on a
+  // clock shared by every Space of this window (0 = not since launch). A
+  // Space's focused tab is stamped again when the window leaves the Space.
+  bool TabSwitcherIncludesAllSpaces() const;
+  uint64_t TabSeenStamp(TabId tab) const;
   // The content card's client-coordinate rect (the group overview covers it).
   RECT ContentRect();
   // Whether `tab_id` is a pane of the split on screen; `*pane` is then its
@@ -1160,6 +1172,8 @@ class PhiShellWindow : public PhiHitSource,
   RECT update_rect();
   // The in-field Copy link and site-menu slots, for the layout verb.
   RECT copy_link_rect();
+  // The address field (a Win32 EDIT), for the test rig's readout.
+  HWND address_field() const;
   RECT site_menu_rect();
   // The active tab is one pane of a split.
   bool ActiveTabIsSplit() const;
@@ -1450,6 +1464,9 @@ class PhiShellWindow : public PhiHitSource,
   std::set<int> GroupMemberTabIds(BrowserId browser,
                                   const std::string& group_id) const;
   void ShowTabRowMenu(POINT pt, const MenuRow& row);
+  // The address "Replace Saved URL with Current" would save for the stored
+  // cell `row`: its bound tab's, or empty when the row is not offered it.
+  std::string ReplacementUrlForStoredRow(const MenuRow& row) const;
   void ShowPinnedCellMenu(POINT pt, const MenuRow& row);
   void ShowBookmarkRowMenu(POINT pt, const MenuRow& row);
   // `space_only`: the Space block alone — a right-click on a Space pip or
@@ -2090,6 +2107,19 @@ class PhiShellWindow : public PhiHitSource,
   // the nav state, so a colour that arrives alone still repaints.
   std::optional<PhiColor> page_color_;
   bool page_color_reader_ = false;
+  // The Mac's `074b9760`: a page colour that changes under the SAME tab
+  // crossfades over a quarter of a second; a tab switch still snaps. While
+  // the fade runs ActivePageColor() answers the blend, from the colour that
+  // was showing (the plain surface when there was none) to the settled one.
+  std::map<int, uint64_t> tab_seen_;
+  uint64_t tab_seen_clock_ = 0;
+  TabId tab_seen_last_;
+  void NoteTabSeen(TabId tab);
+  TabId page_color_tab_;
+  PhiColor page_fade_from_ = 0;
+  ULONGLONG page_fade_start_ = 0;  // 0 = no fade running.
+  void StartPageColorFade(PhiColor from);
+  void PageColorFadeTick();
   // The site menu is tracking (its button stays lit and shown).
   bool site_menu_open_ = false;
   std::string last_regular_space_;  // See last_regular_space().

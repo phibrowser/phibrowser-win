@@ -306,6 +306,10 @@ bool PhiPreferences::DoubleClickToCloseTabs() const {
   return settings_.double_click_to_close_tabs;
 }
 
+bool PhiPreferences::TabSwitcherIncludesAllSpaces() const {
+  return settings_.tab_switcher_all_spaces;
+}
+
 bool PhiPreferences::DirectionalTabClosing() const {
   return settings_.directional_tab_closing;
 }
@@ -487,6 +491,15 @@ void PhiPreferences::SetShowOpenTabIndicators(bool enabled) {
   settings_.show_open_tab_indicators = enabled;
   MarkDirty();
   Notify(PreferenceChange::kOpenIndicators);
+}
+
+void PhiPreferences::SetTabSwitcherIncludesAllSpaces(bool enabled) {
+  if (enabled == settings_.tab_switcher_all_spaces) {
+    return;
+  }
+  settings_.tab_switcher_all_spaces = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kTabClosing);
 }
 
 void PhiPreferences::SetDoubleClickToCloseTabs(bool enabled) {

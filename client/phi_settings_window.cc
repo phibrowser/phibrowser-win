@@ -2073,6 +2073,18 @@ void PhiSettingsWindow::BuildSpaces(int* y) {
     }
   }
   EndSection(y);
+  // The Mac's Tab Switcher scope card: its description says which of the two
+  // it is doing now.
+  const bool all_spaces = prefs_->TabSwitcherIncludesAllSpaces();
+  BeginSection(y, nullptr);
+  AddToggleRow(
+      y, PhiStr("settings.spaces.tabSwitcherScope.title"), all_spaces,
+      /*enabled=*/true, "tabswitcherscope",
+      PhiStr(all_spaces
+                 ? "settings.spaces.tabSwitcherScope.allSpacesDescription"
+                 : "settings.spaces.tabSwitcherScope.currentSpaceDescription"),
+      kChipIndent, 0xE8AB);
+  EndSection(y);
 }
 
 void PhiSettingsWindow::BuildSpaceCard(
@@ -6289,6 +6301,8 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetShowOpenTabIndicators(!item.on);
   } else if (item.action == "dimunloaded") {
     host_->SetDimUnloadedTabIcons(!item.on);
+  } else if (item.action == "tabswitcherscope") {
+    host_->SetTabSwitcherIncludesAllSpaces(!item.on);
   } else if (item.action == "doubleclickclose") {
     host_->SetDoubleClickToCloseTabs(!item.on);
   } else if (item.action == "directionalclose") {

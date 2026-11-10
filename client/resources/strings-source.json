@@ -5712,18 +5712,8 @@
    "en": "Phi member card, {0}"
   },
   "profile.card.dateJoined": {
-   "comment": "membership card — Mac key (translations by key); used at phi_holographic_card.cc Translations kept here: the Mac catalog dropped this key on 2026-11-05.",
-   "en": "Date Joined",
-   "translations": {
-    "de": "Mitglied seit",
-    "es": "Miembro desde",
-    "fr": "Date d'inscription",
-    "ja": "登録日",
-    "ko": "가입일",
-    "nl": "Lid sinds",
-    "zh-Hans": "加入日期",
-    "zh-Hant": "加入日期"
-   }
+   "comment": "membership card — Mac key (translations by key); used at phi_holographic_card.cc",
+   "en": "Member Since"
   },
   "profile.menu.bookmarks": {
    "comment": "profile menu — Mac key (translations by key); Manage Bookmarks row, phi_shell_menus.cc",
@@ -8415,6 +8405,18 @@
     "zh-Hant": "快速鍵"
    }
   },
+  "settings.spaces.tabSwitcherScope.allSpacesDescription": {
+   "comment": "Mac key (translations by key); spaces — Settings > Spaces: under the Tab Switcher toggle when it is on",
+   "en": "The Tab Switcher cycles through recent tabs in every Space and switches Spaces when needed."
+  },
+  "settings.spaces.tabSwitcherScope.currentSpaceDescription": {
+   "comment": "Mac key (translations by key); spaces — Settings > Spaces: under the Tab Switcher toggle when it is off",
+   "en": "The Tab Switcher cycles through recent tabs in the current Space."
+  },
+  "settings.spaces.tabSwitcherScope.title": {
+   "comment": "Mac key (translations by key); spaces — Settings > Spaces: toggle letting Ctrl+Tab list recent tabs from every Space of the window",
+   "en": "Tab Switcher includes all Spaces"
+  },
   "settings.spaces.theme.colorLabel": {
    "comment": "spaces — Settings > Spaces editor, color row label; used at phi_settings_window.cc",
    "en": "Color"
@@ -8817,6 +8819,10 @@
    "comment": "bookmarkManager — used at phi_bookmark_manager.cc:762",
    "en": "Edit..."
   },
+  "sidebar.bookmarkContextMenu.editSubmenu": {
+   "comment": "Mac key (translations by key); contextMenu — bookmark row: submenu holding Edit URL and Replace Saved URL with Current",
+   "en": "Edit Bookmark"
+  },
   "sidebar.bookmarkContextMenu.newNestedFolderAction": {
    "comment": "bookmarkManager — used at phi_bookmark_manager.cc:764",
    "en": "New Nested Folder..."
@@ -8824,6 +8830,10 @@
   "sidebar.bookmarkContextMenu.openInNewTabAction": {
    "comment": "sidebar — used at phi_shell_window.cc:6005",
    "en": "Open in New Tab"
+  },
+  "sidebar.bookmarkContextMenu.replaceSavedURL": {
+   "comment": "Mac key (translations by key); contextMenu — bookmark row: saves the open page's address as the bookmark's",
+   "en": "Replace Saved URL with Current"
   },
   "sidebar.bookmarks.dropHint": {
    "comment": "sidebar — the empty bookmark band's one-row drop zone while a tab or pin drags (no Mac counterpart); used at phi_sidebar_view.cc",
@@ -9022,6 +9032,14 @@
     "zh-Hans": "使用新个人资料新建空间…",
     "zh-Hant": "使用新設定檔新增空間…"
    }
+  },
+  "sidebar.pinnedTabContextMenu.editSubmenu": {
+   "comment": "Mac key (translations by key); contextMenu — pinned cell: submenu holding Edit URL and Replace Saved URL with Current",
+   "en": "Edit Pinned Tab"
+  },
+  "sidebar.pinnedTabContextMenu.replaceSavedURL": {
+   "comment": "Mac key (translations by key); contextMenu — pinned cell: saves the open page's address as the pin's",
+   "en": "Replace Saved URL with Current"
   },
   "sidebar.pinnedTabs.emptyHint": {
    "comment": "sidebar — the empty pinned band's drop zone while a tab drags (the Mac's emptyView hint); used at phi_sidebar_view.cc",
@@ -10176,6 +10194,30 @@
   "theme.editor.colorHandle": {
    "comment": "Mac key (translations by key); spaces — Space theme editor, accessible name of a color handle; {0} is the color number, one to three (used at phi_space_theme_panel.cc)",
    "en": "Color {0}"
+  },
+  "theme.editor.deleteColor": {
+   "comment": "Mac key (translations by key); theme editor — remove a saved swatch",
+   "en": "Delete saved color"
+  },
+  "theme.editor.nextColors": {
+   "comment": "Mac key (translations by key); theme editor — show the next group of seven swatches",
+   "en": "Next colors"
+  },
+  "theme.editor.presetColor": {
+   "comment": "Mac key (translations by key); theme editor — swatch name; {0} is its position from 1",
+   "en": "Color palette {0}"
+  },
+  "theme.editor.previousColors": {
+   "comment": "Mac key (translations by key); theme editor — show the previous group of seven swatches",
+   "en": "Previous colors"
+  },
+  "theme.editor.reset": {
+   "comment": "Mac key (translations by key); theme editor — restore the palette before manual adjustments",
+   "en": "Reset"
+  },
+  "theme.editor.save": {
+   "comment": "Mac key (translations by key); theme editor — save the current palette as a custom swatch",
+   "en": "Save color"
   },
   "theme.editor.singleColor": {
    "comment": "Mac key (translations by key); spaces — Space theme editor toolbar, select a palette with one color (used at phi_space_theme_panel.cc)",

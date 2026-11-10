@@ -119,6 +119,7 @@ class PhiPreferences : public ChromePrefsHost {
   bool ShowOpenTabIndicators() const override;
   bool DimUnloadedTabIcons() const override;
   bool DoubleClickToCloseTabs() const override;
+  bool TabSwitcherIncludesAllSpaces() const override;
   bool DirectionalTabClosing() const override;
   bool BookmarkRootCollapsed(const std::string& space_id) const override;
   void SetBookmarkRootCollapsed(const std::string& space_id,
@@ -178,6 +179,7 @@ class PhiPreferences : public ChromePrefsHost {
   void SetShowOpenTabIndicators(bool enabled);
   void SetDimUnloadedTabIcons(bool enabled);
   void SetDoubleClickToCloseTabs(bool enabled);
+  void SetTabSwitcherIncludesAllSpaces(bool enabled);
   void SetDirectionalTabClosing(bool enabled);
   void SetSidebarTransparency(int percent);
   bool PeekViewEnabled() const { return settings_.peek_view_enabled; }

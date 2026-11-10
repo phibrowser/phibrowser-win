@@ -976,6 +976,8 @@ constexpr PhiParamField kSettingsSet[] = {
     {"alwaysShowFullUrl", kParamBool, kOptional, "", "Omnibox url display."},
     {"showTabPreviews", kParamBool, kOptional, "", "Hover previews."},
     {"showOpenTabIndicators", kParamBool, kOptional, "", "Open-tab dots."},
+    {"tabSwitcherIncludesAllSpaces", kParamBool, kOptional, "",
+     "Ctrl+Tab lists every Space's recent tabs."},
     {"dimUnloadedTabIcons", kParamBool, kOptional, "",
      "Reclaimed tabs' icons at 30%."},
     {"sidebarTransparency", kParamInt, kOptional, "",

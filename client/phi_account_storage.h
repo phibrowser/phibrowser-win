@@ -122,6 +122,9 @@ inline constexpr char kDefaultsWinSpaceSaturations[] = "winSpaceSaturations";
 // the Mac's per-Space linked palettes (ThemePalette's own coding keys), a
 // LOCAL record on both clients — never on the Space sync payload.
 inline constexpr char kDefaultsSpaceThemePalettes[] = "spaceThemePalettes";
+// The theme editor's saved colours (the Mac's PhiSavedThemePalettes): a
+// dictionary whose "palettes" list holds one record per swatch.
+inline constexpr char kDefaultsSavedThemePalettes[] = "savedThemePalettes";
 
 }  // namespace phi_client
 

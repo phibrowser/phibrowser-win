@@ -1795,6 +1795,70 @@ bool PhiOmniboxSession::PaintField(HWND field) {
 }
 
 // static
+bool PhiUrlWordAt(std::wstring_view text, int at, int* start, int* end) {
+  const int size = static_cast<int>(text.size());
+  if (size == 0) {
+    return false;
+  }
+  at = std::clamp(at, 0, size - 1);
+  const auto type_of = [&](int i) {
+    WORD type = 0;
+    ::GetStringTypeW(CT_CTYPE1, &text[static_cast<size_t>(i)], 1, &type);
+    return type;
+  };
+  const auto digit = [&](int i) {
+    return i >= 0 && i < size && (type_of(i) & C1_DIGIT) != 0;
+  };
+  const auto letter = [&](int i) {
+    return i >= 0 && i < size && (type_of(i) & C1_ALPHA) != 0;
+  };
+  // 0 a space, 1 a word character, 2 punctuation. A dot stays inside a
+  // number and an apostrophe inside a word; an underscore joins.
+  const auto kind = [&](int i) {
+    const wchar_t c = text[static_cast<size_t>(i)];
+    const WORD type = type_of(i);
+    if (type & (C1_SPACE | C1_BLANK | C1_CNTRL)) {
+      return 0;
+    }
+    if (c == L'_' || (type & (C1_ALPHA | C1_DIGIT))) {
+      return 1;
+    }
+    if ((c == L'.' || c == 0xFF0E) && digit(i - 1) && digit(i + 1)) {
+      return 1;
+    }
+    if ((c == L'\'' || c == 0x2019) && letter(i - 1) && letter(i + 1)) {
+      return 1;
+    }
+    // Anything else that is not punctuation rides with its neighbours (an
+    // emoji's surrogates, a combining accent).
+    return (type & C1_PUNCT) ? 2 : 1;
+  };
+  const int what = kind(at);
+  int lo = at;
+  int hi = at + 1;
+  if (what == 2) {
+    // One punctuation mark is its own word; a run of the same one goes
+    // together ("://" is ":" then "//").
+    const wchar_t c = text[static_cast<size_t>(at)];
+    while (lo > 0 && text[static_cast<size_t>(lo - 1)] == c) {
+      --lo;
+    }
+    while (hi < size && text[static_cast<size_t>(hi)] == c) {
+      ++hi;
+    }
+  } else {
+    while (lo > 0 && kind(lo - 1) == what) {
+      --lo;
+    }
+    while (hi < size && kind(hi) == what) {
+      ++hi;
+    }
+  }
+  *start = lo;
+  *end = hi;
+  return true;
+}
+
 LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
                                               UINT msg,
                                               WPARAM wparam,
@@ -2104,6 +2168,33 @@ LRESULT CALLBACK PhiOmniboxSession::FieldProc(HWND hwnd,
         return 0;
       }
       break;
+    case WM_LBUTTONDBLCLK: {
+      // A double-click selects one part of an address, as Chromium's own
+      // field does (the Mac's `1ecc82b3`): the EDIT would take the whole
+      // run between two spaces, which in a URL is all of it.
+      const LRESULT result =
+          ::CallWindowProcW(g_edit_base_proc, hwnd, msg, wparam, lparam);
+      const int length = ::GetWindowTextLengthW(hwnd);
+      if (length > 0 && !(self && self->composing_field_)) {
+        std::wstring text(static_cast<size_t>(length) + 1, L'\0');
+        text.resize(static_cast<size_t>(::GetWindowTextW(
+            hwnd, text.data(), length + 1)));
+        const int at = LOWORD(::SendMessageW(hwnd, EM_CHARFROMPOS, 0, lparam));
+        int start = 0;
+        int end = 0;
+        if (PhiUrlWordAt(text, at, &start, &end)) {
+          ::SendMessageW(hwnd, EM_SETSEL, static_cast<WPARAM>(start),
+                         static_cast<LPARAM>(end));
+        }
+      }
+      return result;
+    }
+    case WM_MOUSEWHEEL:
+    case WM_MOUSEHWHEEL:
+      // A single-line field has nothing to scroll with the wheel, and the
+      // default would hand it up to the shell and on to the page behind the
+      // field (behind the floating card too).
+      return 0;
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
     case WM_MBUTTONDOWN:

@@ -308,6 +308,35 @@ void PhiSpaceManager::Save() {
   defaults_.SetDict(kDefaultsSpaceThemePalettes, std::move(palettes));
 }
 
+std::vector<PhiThemePalette> PhiSpaceManager::SavedThemePalettes() const {
+  std::vector<PhiThemePalette> out;
+  const base::DictValue* record =
+      defaults_.GetDict(kDefaultsSavedThemePalettes);
+  const base::ListValue* list = record ? record->FindList("palettes") : nullptr;
+  if (!list) {
+    return out;
+  }
+  for (const base::Value& entry : *list) {
+    if (const base::DictValue* dict = entry.GetIfDict()) {
+      if (std::optional<PhiThemePalette> palette = PaletteFromDict(*dict)) {
+        out.push_back(*palette);
+      }
+    }
+  }
+  return out;
+}
+
+void PhiSpaceManager::SetSavedThemePalettes(
+    const std::vector<PhiThemePalette>& palettes) {
+  base::ListValue list;
+  for (const PhiThemePalette& palette : palettes) {
+    list.Append(PaletteToDict(palette));
+  }
+  base::DictValue record;
+  record.Set("palettes", std::move(list));
+  defaults_.SetDict(kDefaultsSavedThemePalettes, std::move(record));
+}
+
 void PhiSpaceManager::RetreatFromMissingSpaces() {
   const std::string retreat = DefaultSpaceId();
   // Over a copy: a retreat can close a slot (its last browser going).

@@ -17,6 +17,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_agent_spaces.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_ids.h"
 #include "client/phi_popover.h"
@@ -49,6 +50,10 @@ void CALLBACK DeferredClose(HWND, UINT, UINT_PTR id, DWORD);
 
 struct Card {
   TabId tab_id;
+  // Where the tab lives: another Space of the window when the switcher
+  // includes all Spaces.
+  BrowserId browser;
+  std::string space_id;
   std::wstring title;
   std::vector<unsigned char> thumbnail;
   int thumb_w = 0;
@@ -152,11 +157,18 @@ class Hud : public PhiPopover {
 
   void Commit() {
     if (selected_ >= 0 && selected_ < static_cast<int>(cards_.size())) {
-      const Card& card = cards_[static_cast<size_t>(selected_)];
+      const Card card = cards_[static_cast<size_t>(selected_)];
       phi_framework::PhiFramework* framework = controller_->framework();
-      const BrowserId browser = controller_->active_browser_id();
+      const BrowserId browser =
+          card.browser.valid() ? card.browser : controller_->active_browser_id();
       if (framework && browser.valid() && card.tab_id.valid()) {
+        // A tab of another Space: the tab first, so the Space arrives
+        // showing it, then the Space.
         framework->ActivateTabById(browser.value, card.tab_id.value);
+        if (!card.space_id.empty() &&
+            card.space_id != controller_->active_space()) {
+          controller_->SwitchToSpace(card.space_id);
+        }
         // The framework's push refreshes the sidebar; nothing to do here.
       }
     }
@@ -229,17 +241,57 @@ class Hud : public PhiPopover {
     struct Entry {
       TabId id;
       std::wstring title;
+      BrowserId browser;
+      std::string space_id;
     };
     std::vector<Entry> entries;
-    if (const phi_framework::WindowSnapshot* snapshot = model->Get(browser)) {
-      for (const phi_framework::TabSnapshot& tab : snapshot->tabs) {
-        entries.push_back({tab.id, base::UTF8ToWide(tab.title)});
+    const phi_framework::WindowSnapshot* current = model->Get(browser);
+    if (current) {
+      for (const phi_framework::TabSnapshot& tab : current->tabs) {
+        entries.push_back({tab.id, base::UTF8ToWide(tab.title), browser,
+                           controller_->active_space()});
       }
     }
     std::vector<Entry> ordered;
+    if (current && controller_->TabSwitcherIncludesAllSpaces()) {
+      // Every Space of this window with the same profile and the same
+      // Incognito state, never an agent Space, so no title or thumbnail
+      // crosses those lines (the Mac's `c8c96bca`). The focused tab leads,
+      // then the newest seen first; tabs not seen since launch follow in
+      // strip order, the current Space's first.
+      for (const std::string& space_id : controller_->space_order()) {
+        const BrowserId other = controller_->BrowserIdForSpace(space_id);
+        if (!other.valid() || other == browser || PhiIsAgentSpaceId(space_id)) {
+          continue;
+        }
+        const phi_framework::WindowSnapshot* snapshot = model->Get(other);
+        if (!snapshot || snapshot->profile_id != current->profile_id ||
+            snapshot->incognito != current->incognito) {
+          continue;
+        }
+        for (const phi_framework::TabSnapshot& tab : snapshot->tabs) {
+          if (tab.surface == phi_framework::TabSurface::kContent) {
+            entries.push_back(
+                {tab.id, base::UTF8ToWide(tab.title), other, space_id});
+          }
+        }
+      }
+      const TabId focused = controller_->active_tab_id();
+      std::stable_sort(entries.begin(), entries.end(),
+                       [&](const Entry& a, const Entry& b) {
+                         if ((a.id == focused) != (b.id == focused)) {
+                           return a.id == focused;
+                         }
+                         return controller_->TabSeenStamp(a.id) >
+                                controller_->TabSeenStamp(b.id);
+                       });
+      ordered = entries;
+    }
     for (const TabId id : controller_->TabMruOrder()) {
       for (const Entry& entry : entries) {
-        if (entry.id == id) {
+        if (entry.id == id &&
+            std::none_of(ordered.begin(), ordered.end(),
+                         [&](const Entry& seen) { return seen.id == id; })) {
           ordered.push_back(entry);
           break;
         }
@@ -260,9 +312,11 @@ class Hud : public PhiPopover {
       Card card;
       card.tab_id = entry.id;
       card.title = entry.title;
+      card.browser = entry.browser;
+      card.space_id = entry.space_id;
       int w = 0, h = 0;
       if (const unsigned char* pixels = framework->TabThumbnailBgra(
-              browser.value, entry.id.value, &w, &h)) {
+              entry.browser.value, entry.id.value, &w, &h)) {
         const auto copy = UNSAFE_BUFFERS(base::span<const unsigned char>(
             pixels, static_cast<size_t>(w) * h * 4));
         card.thumbnail.assign(copy.begin(), copy.end());
@@ -270,7 +324,7 @@ class Hud : public PhiPopover {
         card.thumb_h = h;
       }
       if (const unsigned char* pixels = framework->TabFaviconBgraById(
-              browser.value, entry.id.value, &w, &h)) {
+              entry.browser.value, entry.id.value, &w, &h)) {
         const auto copy = UNSAFE_BUFFERS(base::span<const unsigned char>(
             pixels, static_cast<size_t>(w) * h * 4));
         card.favicon.assign(copy.begin(), copy.end());

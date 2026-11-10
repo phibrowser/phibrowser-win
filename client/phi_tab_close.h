@@ -170,6 +170,24 @@ inline std::vector<TabId> PhiClearAllCandidates(
   return PhiOtherCloseTargets(tabs, foreground);
 }
 
+// Whether Clear All Tabs has anything to offer: more than one ordinary tab,
+// a split counting as one (the Mac's canClearAllTabs, `01dafe08`). A lone
+// split has nothing behind it to clear.
+inline bool PhiCanClearAllTabs(const std::vector<TabSnapshot>& tabs) {
+  const std::set<int> ordinary = PhiOrdinaryTabIds(tabs);
+  std::set<std::string> splits;
+  int units = 0;
+  for (const TabSnapshot& tab : tabs) {
+    if (!ordinary.count(tab.id.value)) {
+      continue;
+    }
+    if (tab.split_id.empty() || splits.insert(tab.split_id).second) {
+      ++units;
+    }
+  }
+  return units > 1;
+}
+
 // One cleanup's record (the Mac's ClearedTabsBatch). Only removals Chromium
 // confirms come back: a page's beforeunload can refuse, and that tab is still
 // open. Navigation history is not saved.
