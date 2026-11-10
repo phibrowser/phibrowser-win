@@ -3930,6 +3930,13 @@ void PhiShellWindow::ClearHover() {
 }
 
 std::wstring PhiShellWindow::ChromeTipAt(POINT pt) {
+  if (caption_band_) {
+    // Minimize and close are client area.
+    const int caption = caption_band_->HitTest(pt);
+    if (caption == HTMINBUTTON || caption == HTCLOSE) {
+      return CaptionTip(static_cast<WPARAM>(caption));
+    }
+  }
   const Layout layout = ComputeLayout();
   // A menu row's label, its "\t<chord>" dropped.
   const auto label = [](const char* key) {
@@ -3967,6 +3974,15 @@ std::wstring PhiShellWindow::ChromeTipAt(POINT pt) {
     return hits_[static_cast<size_t>(hit)].name;
   }
   return std::wstring();
+}
+
+bool PhiShellWindow::OnCaptionPress(POINT pt) {
+  if (!caption_band_ || !caption_band_->OnLButtonDown(pt)) {
+    return false;
+  }
+  CloseExtensionPopup();
+  DismissChromeTip();
+  return true;
 }
 
 std::wstring PhiShellWindow::CaptionTip(WPARAM hit) const {
@@ -9095,6 +9111,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
     case WM_LBUTTONDOWN:
       if (self) {
         POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        if (self->OnCaptionPress(pt)) {
+          return 0;
+        }
         if (self->InSidebarResizeBand(pt)) {
           self->CloseExtensionPopup();
           self->BeginSidebarResize(pt.x);
@@ -9116,6 +9135,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         // A group header's double-click opens the group overview; anywhere
         // else the second press behaves like a plain click.
         const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        if (self->OnCaptionPress(pt)) {
+          return 0;
+        }
         for (const GroupHeader& gh : self->sidebar_->group_headers()) {
           if (::PtInRect(&gh.bounds, pt)) {
             self->CloseExtensionPopup();

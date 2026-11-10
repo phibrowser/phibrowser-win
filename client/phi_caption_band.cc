@@ -158,6 +158,15 @@ bool PhiCaptionBand::OnNcCalcSize(HWND hwnd,
   return true;
 }
 
+namespace {
+
+// The caption buttons that hit-test as client area (OnNcHitTest).
+bool IsClientButton(int code) {
+  return code == HTMINBUTTON || code == HTCLOSE;
+}
+
+}  // namespace
+
 bool PhiCaptionBand::OnNcHitTest(HWND hwnd, LPARAM lparam, LRESULT* result) {
   const LRESULT hit = ::DefWindowProcW(hwnd, WM_NCHITTEST, 0, lparam);
   if (hit != HTCLIENT) {
@@ -174,7 +183,10 @@ bool PhiCaptionBand::OnNcHitTest(HWND hwnd, LPARAM lparam, LRESULT* result) {
     return true;
   }
   const int band_hit = HitTest(pt);
-  *result = band_hit ? band_hit : HTCLIENT;
+  // Minimize and close answer HTCLIENT: for HTMINBUTTON / HTCLOSE the
+  // system shows its own tooltip beside ours. Maximize keeps its code, the
+  // snap layouts flyout needs it.
+  *result = band_hit && !IsClientButton(band_hit) ? band_hit : HTCLIENT;
   return true;
 }
 
@@ -202,6 +214,18 @@ bool PhiCaptionBand::OnNcLButtonDown(WPARAM hit) {
   pressed_caption_ = static_cast<int>(hit);
   if (shell_hwnd_) {
     ::SetCapture(shell_hwnd_);  // The release comes back as WM_LBUTTONUP.
+  }
+  return true;
+}
+
+bool PhiCaptionBand::OnLButtonDown(POINT client_pt) {
+  const int hit = HitTest(client_pt);
+  if (!IsClientButton(hit)) {
+    return false;
+  }
+  pressed_caption_ = hit;
+  if (shell_hwnd_) {
+    ::SetCapture(shell_hwnd_);
   }
   return true;
 }
@@ -252,19 +276,29 @@ void PhiCaptionBand::OnNcMouseMove(WPARAM hit, POINT client_pt) {
 }
 
 void PhiCaptionBand::OnNcMouseLeave() {
-  SetCaptionHot(0);
+  // Minimize and close are client area: a move onto one may already have
+  // lit it.
+  if (!IsClientButton(hot_caption_)) {
+    SetCaptionHot(0);
+  }
 }
 
 void PhiCaptionBand::OnMouseMove(POINT client_pt) {
-  // Client moves mean we left the buttons — except under a press's
-  // capture, where the pressed button stays hot while the pointer is on it.
-  SetCaptionHot(pressed_caption_ && HitTest(client_pt) == pressed_caption_
-                    ? pressed_caption_
-                    : 0);
+  // Minimize and close hover here (they are client area). Under a press's
+  // capture only the pressed button stays hot, while the pointer is on it.
+  const int hit = HitTest(client_pt);
+  if (pressed_caption_) {
+    SetCaptionHot(hit == pressed_caption_ ? pressed_caption_ : 0);
+  } else {
+    SetCaptionHot(IsClientButton(hit) ? hit : 0);
+  }
 }
 
 void PhiCaptionBand::OnMouseLeave() {
-  SetCaptionHot(0);
+  // Maximize is non-client: a move onto it may already have lit it.
+  if (hot_caption_ != HTMAXBUTTON) {
+    SetCaptionHot(0);
+  }
 }
 
 // --- Paint -----------------------------------------------------------------

@@ -1597,6 +1597,8 @@ class PhiShellWindow : public PhiHitSource,
   // empty; the caption buttons answer by their non-client hit code.
   std::wstring ChromeTipAt(POINT client_pt);
   std::wstring CaptionTip(WPARAM hit) const;
+  // A client press on minimize or close (they hit-test as client area).
+  bool OnCaptionPress(POINT pt);
   // The pointer is over `text` (empty: over nothing named): a change hides
   // the tip and restarts the system's tooltip delay. Dismiss hides it for a
   // press until the pointer moves on to something else.

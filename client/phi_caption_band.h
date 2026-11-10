@@ -113,6 +113,10 @@ class PhiCaptionBand {
   // stay armed: losing the capture (WM_CAPTURECHANGED, WM_CANCELMODE)
   // disarms it, as does any other non-client press.
   bool OnNcLButtonDown(WPARAM hit);
+  // Minimize and close hit-test as client area (HTMINBUTTON / HTCLOSE would
+  // bring up the system's own tooltip), so their press arrives as a client
+  // one. True when it landed on one of them.
+  bool OnLButtonDown(POINT client_pt);
   bool OnNcLButtonUp(HWND hwnd, WPARAM hit);
   // True when the release belonged to a caption press (the shell then
   // handles nothing else for it).
