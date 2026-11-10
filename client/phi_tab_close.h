@@ -19,6 +19,24 @@ namespace phi_client {
 using phi_framework::GroupSnapshot;
 using phi_framework::SplitSnapshot;
 using phi_framework::TabId;
+
+// Every pane of `split` in slot order: two to four. A snapshot from before
+// the pane list existed carries only the pair.
+inline std::vector<TabId> PhiSplitPanes(const SplitSnapshot& split) {
+  if (split.tabs.size() >= 2) {
+    return split.tabs;
+  }
+  return {split.primary, split.secondary};
+}
+
+// Each pane's share, matching PhiSplitPanes.
+inline std::vector<double> PhiSplitFractions(const SplitSnapshot& split) {
+  if (split.fractions.size() >= 2 &&
+      split.fractions.size() == PhiSplitPanes(split).size()) {
+    return split.fractions;
+  }
+  return {split.ratio, 1.0 - split.ratio};
+}
 using phi_framework::TabSnapshot;
 using phi_framework::TabSurface;
 using phi_framework::WindowSnapshot;
@@ -166,7 +184,7 @@ struct PhiClearedTabsBatch {
   std::vector<Page> pages;
   std::vector<int> order;  // The whole strip when it was cleared.
   std::vector<GroupSnapshot> groups;  // Those a cleared page belonged to.
-  std::vector<SplitSnapshot> splits;  // Those with both panes cleared.
+  std::vector<SplitSnapshot> splits;  // Those with every pane cleared.
   std::set<int> pending;              // Asked to close, not gone yet.
   std::set<int> closed;               // Confirmed gone.
 };
@@ -192,8 +210,10 @@ inline PhiClearedTabsBatch PhiCaptureClearedTabs(
     }
   }
   for (const SplitSnapshot& split : snapshot.splits) {
-    if (batch.pending.count(split.primary.value) &&
-        batch.pending.count(split.secondary.value)) {
+    const std::vector<TabId> panes = PhiSplitPanes(split);
+    if (std::all_of(panes.begin(), panes.end(), [&](const TabId pane) {
+          return batch.pending.count(pane.value) != 0;
+        })) {
       batch.splits.push_back(split);
     }
   }

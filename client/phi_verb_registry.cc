@@ -932,6 +932,8 @@ constexpr PhiParamField kSplitCreate[] = {
     {"taskId", kParamString, kOptional, "", "…or a task's window."},
     {"primaryTabId", kParamInt, kOptional, "", "The left/top tab."},
     {"secondaryTabId", kParamInt, kOptional, "", "The right/bottom tab."},
+    {"tabIds", kParamList, kOptional, "",
+     "Two to four tabs in pane order, in place of the two keys above."},
     {"layout", kParamString, kOptional, "", "vertical or horizontal."},
 };
 constexpr PhiParamField kSplitUpdate[] = {
@@ -940,7 +942,10 @@ constexpr PhiParamField kSplitUpdate[] = {
     {"taskId", kParamString, kOptional, "", "…or a task's window."},
     {"splitId", kParamString, kRequired, "", "The split."},
     {"layout", kParamString, kOptional, "", "A new axis."},
-    {"ratio", kParamDouble, kOptional, "", "A new divider ratio."},
+    {"ratio", kParamDouble, kOptional, "",
+     "A pair's new divider ratio (the first pane's share)."},
+    {"fractions", kParamList, kOptional, "",
+     "Every pane's share in pane order, one per pane."},
 };
 constexpr PhiParamField kSplitId[] = {
     {"windowId", kParamInt, kOptional, "", "The window."},
@@ -1701,18 +1706,20 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
       {"agentSpace.splitView.create", "", kAny, kUserSpaceWrite, kTargetWrite,
        kSplitCreate, false, false,
        &Call<&PhiControlDispatcher::VerbSplitViewCreate>,
-       "space_not_open create_failed user_space_operations_disabled",
-       "Splits two tabs and answers with the split id."},
+       "invalid_payload space_not_open create_failed "
+       "user_space_operations_disabled",
+       "Splits two to four tabs and answers with the split id."},
       {"agentSpace.splitView.update", "", kAny, kUserSpaceWrite, kTargetWrite,
        kSplitUpdate, false, false,
        &Call<&PhiControlDispatcher::VerbSplitViewUpdate>,
-       "invalid_payload space_not_open user_space_operations_disabled",
-       "Changes a split's axis or divider ratio."},
+       "invalid_payload fraction_count_mismatch ratio_requires_pair "
+       "space_not_open user_space_operations_disabled",
+       "Changes a split's axis or its panes' shares."},
       {"agentSpace.splitView.swap", "", kAny, kUserSpaceWrite, kTargetWrite,
        kSplitId, false, false,
        &Call<&PhiControlDispatcher::VerbSplitViewSwap>,
        "invalid_payload space_not_open user_space_operations_disabled",
-       "Swaps a split's two members."},
+       "Reverses a split's pane order (a pair swaps)."},
       {"agentSpace.splitView.remove", "", kAny, kUserSpaceWrite, kTargetWrite,
        kSplitId, false, false,
        &Call<&PhiControlDispatcher::VerbSplitViewRemove>,

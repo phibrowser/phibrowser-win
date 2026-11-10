@@ -63,6 +63,15 @@ struct PhiStoredRowView {
   std::vector<unsigned char> favicon_b_bgra;
   int favicon_b_width = 0;
   int favicon_b_height = 0;
+  // A split cell of three or four panes: the panes after the second.
+  struct ExtraPane {
+    std::string url;
+    std::string title;
+    std::vector<unsigned char> favicon_bgra;
+    int favicon_width = 0;
+    int favicon_height = 0;
+  };
+  std::vector<ExtraPane> more;
   // Folders only: the catalog symbol id (the Mac's folderIconName).
   std::string icon;
   // Split rows only: "vertical" (side-by-side) or "horizontal" (stacked).
@@ -1154,6 +1163,8 @@ class PhiShellWindow : public PhiHitSource,
   RECT site_menu_rect();
   // The active tab is one pane of a split.
   bool ActiveTabIsSplit() const;
+  // The active tab's split's pane count: 0 outside a split, else 2 to 4.
+  int ActiveSplitPaneCount() const;
   // Which corners of the split pane `pane` (client coordinates) meet the
   // content card's rounded outer corners -- PhiRoundRectCoverage's bits
   // (1 TL, 2 TR, 4 BL, 8 BR) -- the framework's rule
@@ -1391,6 +1402,11 @@ class PhiShellWindow : public PhiHitSource,
     std::wstring title;
     std::string url;    // UTF-8, as the framework and the store want it.
     std::string url_b;  // Pane B of a split row / cell.
+    // A tab row of three or four panes: the panes after B, and the pane the
+    // menu was opened over.
+    std::vector<TabId> more_ids;
+    std::vector<std::string> more_urls;
+    int pane = 0;
     std::string layout;  // A split's remembered divider axis.
     std::string icon;    // A bookmark folder's catalog symbol.
     bool merged = false;
@@ -1987,7 +2003,7 @@ class PhiShellWindow : public PhiHitSource,
       BrowserId browser,
       phi_framework::WindowSnapshot* out) const override;
   bool SidebarSplitIsStacked(TabId tab_id) const override;
-  bool SidebarSplitPaneRects(RECT* primary, RECT* secondary) const override;
+  std::vector<RECT> SidebarSplitPaneRects() const override;
   HFONT SidebarGlyphFont() const override;
   HFONT SidebarSemiboldFont() const override;
   HFONT SidebarTextFont() const override;

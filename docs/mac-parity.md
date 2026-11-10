@@ -7,8 +7,8 @@ either the decision to leave it out or that it still needs to be built.
 It is a list of surfaces, not of code: how a feature is implemented is in
 the owning doc each row points to.
 
-**Checked against phibrowser-mac `df894346` (2026-11-04) and
-phibrowser-win `7bb1bf6`, on 2026-11-04.**
+**Checked against phibrowser-mac `28df0d0d` (2026-11-10) and
+phibrowser-win `f967816`, on 2026-11-10.**
 
 ## Legend
 
@@ -101,6 +101,8 @@ Two standing decisions cover many rows and are not repeated in full:
 | Library (overlay / window: Space cards, pins, bookmarks, Downloads, Folio) | View ▸ Library; rail Folio / Spaces / Downloads | ⋯ ▸ Library, Ctrl+Shift+L, Settings ▸ Spaces ▸ Manage Spaces in Library, downloads popover ▸ All Downloads, profile menu ▸ Download List; rail Spaces / Downloads | ◐ | Built 2026-10-27 (`windows-native-ui-impl.md` Round L): scrim + 36-dip card over sidebar and content, Space cards (theme ground, icon picker, inline rename, theme panel, pins grid + bookmark outline, double-click opens, handle drag reorders, "…" menu, row context menus with Move to Space ▸), inline create card after the current Space (`space_created surface: library`), Downloads list (search, grouped, hover actions), standalone window, `library_section_viewed`. Gaps: no Folio section (Folio is being redesigned — deliberately omitted 2026-10-27); no drag of pins / bookmarks between cards (Move to Space ▸ stands in); no profile filter in Downloads (the framework lists per window, 20 rows); no spring flight / shadow blur. Rail and content grounds went neutral with the Mac's (`294d4d02`, 2026-11-02). |
 | Space theme palette editor: colour field, 1–3 linked handles, harmony (single / analogous / complementary / split), Light / Dark buttons (Mac `3d045cf6`, `4c9d919e`, `23c728d9`, 2026-10-21/23) | replaces the swatch row + saturation slider in the Space editor and the create form; 2–3 colours paint the sidebar as a vertical Oklab gradient | same editor (`phi_space_theme_panel.cc`: 260×296 popover, 244 field, 38/28/14 handles, harmony + Light/Dark toolbar), the create form's "Color ›" row on a draft, local `spaceThemePalettes` record (`model::Space::palette`, `PhiThemePalette`) | ◐ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round J), box-verified on gmk: Space editor light/dark, draft editor from the create form, a split-complementary palette on the chrome, preset choice drops the record, pinned-preset Spaces unchanged. Record is LOCAL on both sides (not on the Space sync payload), so a Mac palette Space still renders here as its pinned preset. 2026-10-28: 2–3 colours now paint the sidebar as the Mac's vertical Oklab gradient down the window's full height (`PhiPalette::ground_stops`, `PhiOklabGradient`): the sidebar is still painted on the flat primary ground and the shell regrades each pixel onto the row's gradient colour by its coverage over that ground (`PhiBackdropRowGrounds`, acrylic and opaque frames, the floating sidebar, the create form), so washes, labels and the active row keep their look over the secondary colours; the top bar and accent stay primary. Settings ▸ Spaces now has the Mac's single "Color ›" row (gradient dot + chevron) opening the editor beside it, in place of the eight dots and the saturation slider; since `d414679` Appearance has the same row, with a link to Spaces when there are several. Minor: handles are not named for UIA (one field hit, no "Color n" tooltip); the guest→account migration does not carry palettes; drag cost not measured against the Mac's `a6e3a27a` (cached field, frame-coalesced preview). 2026-11-02 (`a6e3a27a`): measured on nuc at 150 %, a field renders in 31 ms at 366 px and a drag preview costs 0.5 ms (median 446 µs, p95 829 µs, max 985 µs), so only the field became a process-wide cache and drags stay unthrottled. |
 | Group Overview page | yes | yes | ✅ | |
+| Tab Switcher includes all Spaces (Mac `cde2a6a1`, `c8c96bca`, 2026-11-04/05) | Settings ▸ Spaces toggle, off by default; Ctrl+Tab lists recent tabs from every Space of the window and switches Space when needed; only Spaces with the same profile and Incognito state, never agent Spaces | none; `phi_tab_switcher.cc` lists the current Space | 🔧 | Needs a recency stamp shared across Spaces, a re-stamp of the focused tab when the window leaves a Space, and the Spaces row (`settings.spaces.tabSwitcherScope.*`). |
+| Replace Saved URL with Current, on pins and bookmarks (Mac `0d8342c4`, 2026-11-09) | "Edit Pinned Tab ▸" and "Edit Bookmark ▸" submenus hold Edit URL and the new row; enabled when the item is open, not a split, not Incognito and its page has left the saved URL | Rename… / Edit URL… only | 🔧 | Saves only, no navigation. Small: two menu rows and the existing pin and bookmark URL updates. |
 
 ## 3. Address bar and page
 
@@ -114,6 +116,8 @@ Two standing decisions cover many rows and are not repeated in full:
 | Reader View (typography prefs) | yes | yes + read-aloud HUD | ✅ | Windows has read-aloud; Mac does not. `-phi-auto-reader` automation entry point not ported (analytics doc). |
 | Peek (Shift-click, auto-peek from pins/bookmarks) | chips: Close, Open as Tab, Open as Split, Reader View | chips: Close, Open as Tab, Open as Split | ◐ | No Reader chip on the Peek card; Peek is omitted from session restore (`analytics.md`). Page commands and the address field aim at the presented Peek since 2026-10-27 (`a19624bb`, `c11849cf`; Back / Forward and the Reader toggle stay on the opener). The Shift-click SPA-router guard + opener video pause landed 2026-10-27 (`80f92213`: fork `phi_peek_link_guard.{h,cc}` runs the Mac's capture-phase click guard in a Phi isolated world of every document, gated on `peekViewEnabled`; `OpenUrlAsPeek` pauses the opener's videos in every frame). Still missing: appear / close flights and the opener dim. The Mac turned its guard and the video pause OFF on 2026-10-27 (`3a6cbf2e`, for the CDP session it retained per tab; still off at `8c0b8596`). Windows keeps its version, which holds no DevTools session, so Windows does more than the Mac here until the Mac re-enables it. |
 | Split view (two panes, drop hints, swap, convert, pin/bookmark a split) | yes | yes | ✅ | `split-view-chrome.md`. |
+| Splits of three or four panes (Mac `b3a379e3`, 2026-11-05) | up to four panes with a share each; add, remove and move a pane; drop hints for add left / right / top / bottom / between and replace; pinned and bookmarked splits of three or four (LocalStore V14 columns `splitPaneGuids`, `splitExtraPanes`, local only) | up to four panes with a share each, laid out by the fork; one merged sidebar row and strip cell; Split with Current, Alt-click and Split with New Tab add a pane; page drops insert or replace; row menu and hover chip move, remove and close panes; `splitView.*` verbs take `tabIds` and `fractions` | ◐ | Built 2026-11-10 (`split-view-chrome.md`, "Three and four panes"), checked end to end on nuc. Pinned, bookmarked and duplicated splits of three or four work too (one optional `splitExtraPanes` column, store format still 13; a pinned split keeps its later panes on its first row, unlike the Mac's `splitPaneGuids`). Missing: the hover preview and drag card beyond two panes, and per-pane rows in a stored cell's own menu. No pane move handle by decision: the hover chip and the row menu move panes. |
+| Edge-to-edge web content (Mac `35f4d29c`, `0eceaa08`, 2026-11-05) | General ▸ Appearance toggle: no outer page margins in every layout, square corners in full screen, a soft page shadow on the sidebar | none | 🔧 | Page geometry lives in the shell layout; Peek, Reader, split panes and the placeholder follow it. No full screen on Windows yet (§1). |
 | Split with New Tab (Tab menu, rebindable shortcut, omnibox pane picker, Hold to add an open tab; Mac `6985cc34`, 2026-10-28) | yes | ⋯ row, Ctrl+Shift+\\ (rebindable, group Tab), New Tab Page mode, Omnibox mode with Hold to add an open tab | ✅ | Ported 2026-11-02. The Mac's Ctrl+Shift+= is zoom-in on Windows, so the chord is Ctrl+Shift+\\. No blank-pane preview, by decision: it has no twin under a hosted HWND. Box-verified on nuc: New Tab Page mode splits, a second chord does nothing, an Omnibox card commit splits. ⋯ row: splits in New Tab Page mode, disabled and refused on a split tab, and from the real popup opens the Omnibox card, whose commit splits. Hold: on a row with an open tab, Ctrl+Enter pairs that tab with no third tab, plain Enter opens a fresh pane. The "Hold Ctrl" hint on the row was not looked at. |
 | Modifier clicks: Shift → Peek, Alt/⌥ → split, Ctrl+Alt/⌘⌥ → Kiosk | yes | yes | ✅ | |
 | Kiosk window ("Open in" Space, profile chip) | yes, profile chip menu, cursor-zoom open animation, frame autosave | yes, no profile switch from the chip, default size | ◐ | `phi_kiosk_window.h` lists the four pieces as deliberately not ported; the profile-chip switch has no framework call. The page takes keyboard focus on open (`79b11061`, 2026-11-02, see §9). "Open in" reopens the page by URL rather than moving the live tab, and the Kiosk closes only once the page has opened (fixed 2026-11-02: with no user window it used to lose the page and exit Chromium, `74cb2bce`). With no user window the last session is restored first when that setting is on, as on the Mac. |
@@ -172,6 +176,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Send feedback: files, pasted images, diagnostics, outbox | 10 × 20 MiB, Sentinel logs | 5 × 10 MB, week-long outbox | ✅ | Sentinel logs are ⛔ AI suite. |
 | Sync problem telemetry (Mac `9921ac9a`, 2026-11-03): `sync_attention_entered` / `_snapshot` / `_cleared`, held counts by reason, sync counts in the launch snapshot, sync keys in feedback | PostHog, Sentry and feedback, enum values and counts only (Mac `docs/sync.md`, "Sync status contract") | `user_defaults_snapshot` carries `sync_enabled` and the three counts from a local mirror; feedback carries `sync_phase`. No `sync_attention_*` events and no attention keys in feedback | ◐ | Partly done 2026-11-04, see §9 port 7. The reporter was not built: this engine has no held counts by reason, no problem categories and none of the helper conditions. No Sentry half. |
 | Account deletion local data removal | yes | none | 🔧 | With the Delete account row above. |
+| Sign out discards the session (Mac `8655ec6b`, 2026-11-09) | Sign out marks a discard before closing windows; the next launch or the next sign-in or Guest entry empties Session restore and Undo Close for every profile, so the next account does not get the previous account's windows | none. The fork has `phi::MarkSignOutSessionDiscard` and the consume, called from the Mac bridge only | 🔧 | Export both through `phi_framework_api.h` and call them on the Windows sign-out and sign-in paths. Not checked: whether Windows restores the previous account's windows today. |
 | Membership card: holographic foil card with member ID (SHA-256(sub)[0:8]), "Date Joined", random style + PNG export, on the onboarding Welcome page and Settings ▸ You (Mac `6b300dc0`, `cda12eaf`, 2026-10-20/26) | `HolographicCardView` | `PhiHolographicCard` (`client/phi_holographic_card.cc`): the same layer stack composed in software — palette base + iridescence + radial, one of 6 procedural foil textures, seeded grain, logo + sweep, one of 6 seal ornaments, sheen, edge; pointer light + tilt, entrance spin, flat PNG export at 2× on the accent canvas | ◐ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round K); the Mac has moved since, see the end of this row. Foil / grain / seal masks are rasterised once per style and size with GDI+ on a worker and cached as PNG under `<user data>\PhiCardArtwork\v1`; the light-driven layers recompose per frame. Member id from `auth().user().sub`, join month from the profile's `created_at`, style in the account defaults under the Mac's `profileCardStyle` key (the Settings card keeps its own palette since 2026-11-02, `40ede7a7`). The conch frame sets (12.5 MB) are gone. Not ported: the Mac's `.random()` seeding details (both are uniform), IvyPresto Headline Light now ships for the name. Mac 2026-10-27/29 follow-ups ported 2026-11-02 (`92816ab6`, `40ede7a7`, `ba180400`, `1cf61180`, `8fb61ef5`): no radial highlight, a dark logo at rest, no printed member ID, no shadow in Settings, a style saved as soon as it is randomized. |
 
 ## 6. Agents and automation
@@ -195,13 +200,13 @@ Two standing decisions cover many rows and are not repeated in full:
 | Folio: Save to Folio, Open Folio, auto-save on site actions, Add Note | yes | yes | ✅ | `folio-port.md`. |
 | Folio library | Mirage `library.html` — the Mac DELETED its native library 2026-10-19 (`45a10144`; `docs/folio-native-library.md` now says the extension page is the only Folio UI) | Mirage `library.html` (`PhiFolio::OpenLibrary`) | ✅ | The 2026-10-19 "implement the native library" decision is void: both sides open `library.html`. The Library surface's Folio section (§2) hosts the same page. |
 
-## 7. Summary (2026-11-04)
+## 7. Summary (2026-11-10)
 
 | Status | Rows |
 |---|---|
 | ✅ ported | 59 |
-| ◐ partial | 26 |
-| 🔧 to implement | 24 |
+| ◐ partial | 27 |
+| 🔧 to implement | 28 |
 | ⛔ deliberately left | 19 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
@@ -296,6 +301,79 @@ it, pointing at the owning doc.
 ## 9. Triage log
 
 One table per pass, newest first. Commits are in Mac history order.
+
+### 2026-11-10 — phibrowser-mac `df894346` → `28df0d0d` (64 commits, 3 merges)
+
+Read through the diffs and the Windows code; nothing was built or run, and no port is
+started. Eleven commits are release-branch copies of others in the range and share a row.
+Five new 🔧 rows: splits of three or four panes and edge-to-edge content (§3), Tab Switcher
+across Spaces and Replace Saved URL (§2), sign-out session discard (§5).
+
+**Port recommendations, in order of user impact.** S under half a day, M about a day, L
+several days with box time.
+
+1. `8655ec6b` **sign-out session discard.** M. Export the fork's mark and consume and call
+   them on sign out, sign in and Guest entry.
+2. `b3a379e3` **splits of up to four panes.** L. The largest Mac change of the cycle.
+   Done 2026-11-10 (§3 row), stored splits included.
+3. `cde2a6a1` + `c8c96bca` **Tab Switcher across Spaces.** M.
+4. `0d8342c4` **Replace Saved URL with Current.** S.
+5. `35f4d29c` + `0eceaa08` **edge-to-edge web content.** M.
+6. `26eeac82` + `e9a3fe13` + `3fd3ad5c` **theme editor presets and saved colours.** M.
+7. `0b1ee030` **membership card look.** M. Open since 2026-11-04.
+8. `1ecc82b3` + `073b616c` **omnibox word selection and sideways scrolling.** S each.
+9. `074b9760` **page colour crossfade.** S.
+10. `422c08c0` **sidebar gradient through a Space switch.** S, check first.
+11. Small fixes: `01dafe08`, `1e890904`, `fd7357d1`, `a910dca8`, `d2497fae`, `0ad6c4ae`.
+
+**Decisions wanted:** the Time Machine row (the Mac hid the feature, `81602df9`), the
+Kiosk launch omnibox (`ebdbb259`), and the About conch (`094e85c8`).
+
+| Mac commit | Subject | Verdict | Windows action / reason |
+|---|---|---|---|
+| `e24c450a` | feat: open Phi Chat's Private AI settings from the AI settings row | skip | ⛔ AI suite. |
+| `422c08c0` | fix: crossfade the sidebar's navigation gradient through a Space switch instead of dropping it | port | S. Check first what the Windows slide does between a gradient Space and a flat one (`PhiBackdropRowGrounds`); blend the stops if the gradient drops. |
+| `860d24e7` | fix: show the arrow cursor over Next steps consent text and a hand over its links | done | Copy of `da5da806`, port 9 of 2026-11-04. |
+| `84bfeaf3` | fix: let Tab reach OOBE footer buttons and follow the Keyboard navigation setting | done | Copy of `597d76b5`, triaged 2026-11-03. |
+| `d2497fae` | fix: draw the omnibox and tab search above the floating sidebar they open from | port | S, check first. Open the floating omnibox and Tab Search from the floating sidebar and see which window is on top. |
+| `a910dca8` | fix: open Kiosk on the display the user acted on with multiple displays | port | S, check first. `PhiKioskWindow` opens at a default size; confirm which monitor it picks when the browser is on another one. |
+| `074b9760` | improve: crossfade the header, active tab and bookmark bar when the page color changes | port | S. The address row, strip tab and bookmark bar snap today. 0.25 s on a same-tab change only; a tab switch still snaps. |
+| `c27df341` | fix: focus a Kiosk page opened from an in-app link | done | A workaround for an AppKit first responder. Windows focuses the Kiosk page on open (`79b11061`, §3). |
+| `02dd39fa` | fix: zoom the window on titlebar double-click on macOS 27.2 | skip | macOS titlebar. |
+| `1ecc82b3`, `da25f095` | Fix URL word selection in the omnibox | port | S. Double-click and Ctrl+arrow in the address EDIT use the system word breaks; the Mac now follows Chromium's URL boundaries. A word-break procedure on the field, as `phi_text_wrap.cc` does for wrapping. |
+| `073b616c` | Fix horizontal scrolling in the omnibox | port | Copy of `345e60b0`, open since 2026-11-04. Neither omnibox file handles `WM_MOUSEHWHEEL`. |
+| `0b1ee030` | fix: refine shared membership card appearance | port | Copy of `df894346`, open since 2026-11-04. |
+| `26eeac82`, `22625592` | Color picker presets | port | M. `phi_space_theme_panel.cc`: pages of curated palettes, saved colours with save, remove and reset, previous and next buttons. Also carries the membership card change above. |
+| `e9a3fe13`, `29fa0c35` | improve: stop rebuilding preset swatch gradients on every drag frame | watch | With the presets. |
+| `3fd3ad5c`, `eab1a3c3` | feat: stop preset paging from wrapping and slide between pages | watch | With the presets. |
+| `70bdaeec`, `2feb550b` | fix: recover guest entry after keychain owner mismatch | skip | macOS keychain. |
+| `35f4d29c`, `5967630b` | feat: add an edge-to-edge web content option | port | M. New §3 row. |
+| `0eceaa08`, `c533a6d3` | fix: return the page edge shadow only after the Peek restore animation | watch | With edge-to-edge. |
+| `cdd17bc4` | i18n: theme editor palette controls, edge-to-edge content setting and the member since card label | watch | Regenerate the catalog when those ports land. |
+| `fd7357d1`, `277dd871` | fix: make screenshotBrowser fail when the page capture times out | port | S. The Windows skill's `helpers.mjs` has the same swallow-everything `catch`; take the change and the SKILL.md line. |
+| `e114075d`, `3ac3c2c9` | fix: keep a launch with its own data directory from taking over the running browser's agent socket | skip | The Windows pipe name carries the process id and a random suffix, so two instances never share one. |
+| `01dafe08` | fix: disable Clear All Tabs when the only normal tabs form one split | port | S. `CanClearAllTabs` counts raw ordinary tabs, so a lone split leaves the row enabled and `ClearAllTabs` then does nothing. |
+| `0ad6c4ae` | fix: show the drop indicator when dragging a folder between top-level folders | port | S, check first. Windows has the Space root row since 2026-11-04; drag a folder beside a collapsed sibling and look for the gap. |
+| `5142015f`, `4ffbbe39`, `441030bb` | xcstrings order and stale strings | skip | Catalog housekeeping. A removed key the Windows catalog still uses shows up at the next regeneration. |
+| `f6a9a59f`, `aabf38a0` | Auth0 credentials to the data protection keychain | skip | macOS keychain. |
+| `aff124e6`, `8295a1e8` | docs: bridge header comments | skip | Comments. |
+| `62e549a0` | feat: add the setting for PiP on other apps' fullscreen desktops | skip | macOS Spaces and full screen desktops. |
+| `f77afd55` | feat: grey out Phi menus while only a PiP is on the desktop | skip | macOS menu bar. |
+| `d12d4bbd`, `7bfc1239`, `4c7f766e`, `e123af5e`, `3c405222` | custom Telegram bots | skip | Phi Link, ⛔ AI suite. |
+| `cde2a6a1` | feat: add a setting to let the Tab Switcher include all Spaces | port | M. New §2 row. |
+| `c8c96bca` | fix: keep all-Spaces Tab Switcher recency across Space switches, limit it to matching Spaces, and support empty Spaces | port | With `cde2a6a1`. |
+| `094e85c8` | Add interactive conch logo to About Phi | watch | Needs a decision: Windows dropped the conch frame sets (12.5 MB) on 2026-11-02. |
+| `22fbb87d` | fix: stop the system beep when typing with focus outside web content | skip | AppKit responder chain. |
+| `81602df9` | feat: hide Time Machine backups and purge existing snapshots on launch | watch | The Mac turned the feature off. The §1 Time Machine row is 🔧 by the 2026-10-19 decision and needs a new one. |
+| `8655ec6b`, `0246e720` | feat: mark the session discard on sign-out, consume it on sign-in | port | M. New §5 row. |
+| `b3a379e3` | feat: support splits of up to four tabs, including pinned tabs and bookmarks | port | L. New §3 row. |
+| `1e890904` | fix: install the Grok Bot skill link into the common agents folder | port | S. `phi_skill_installer.cc` links Grok Bot to `.grok\skills`; it should be `.agents\skills`. Update the comment and the skill's `install.md`. |
+| `776f80d3` | fix: vendor a Bitwarden helper that doesn't embed the builder's home directory | skip | The Mac's vendored binary. Not checked: whether `PhiBitwardenHelper.exe` embeds a build path. |
+| `0d8342c4` | feat: replace saved pin and bookmark URLs with current URL | port | S. New §2 row. |
+| `ebdbb259` | Kiosk: ask for the URL in a Spotlight-style omnibox, and polish window placement and focus | watch | The launch omnibox serves the global Kiosk shortcut, which is ⛔ on Windows (§1), and the Mac's New Kiosk menu item. Windows has no New Kiosk row. Needs a decision. |
+| `3ffc5d1b` | fix: keep the sidebar toggle button visible after pinning or unpinning the sidebar | skip | Performance layout header and traffic lights. |
+| `8d5b0c8c` | fix: show the Update button beside the sidebar button in Performance layout | skip | Performance layout, removed on Windows. |
+| `28df0d0d` | i18n: four-pane split hints and pane menu items, Tab Switcher scope setting, saved URL replace, About conch labels | watch | Regenerate the catalog when those ports land. |
 
 ### 2026-11-04 — phibrowser-mac `597d76b5` → `df894346` (3 commits)
 

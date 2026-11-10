@@ -39,9 +39,8 @@ struct TabSnapshot {
 
 struct SplitSnapshot {
   std::string id;
-  // The first two panes, for callers that read a split as a pair (the
-  // Windows client, which draws two). `tabs` / `fractions` carry every
-  // pane: the Mac client composes up to four.
+  // The first two panes, for callers that read a split as a pair. `tabs` /
+  // `fractions` carry every pane, two to four.
   TabId primary;
   TabId secondary;
   SplitLayout layout = SplitLayout::kVertical;
@@ -96,8 +95,15 @@ inline WindowSnapshot ToOwnedSnapshot(const WindowSnapshotView& view) {
   owned.splits.reserve(view.split_count);
   for (size_t i = 0; i < view.split_count; ++i) {
     const SplitSnapshotView& split = view.splits[i];
-    owned.splits.push_back(
-        {split.id, split.primary, split.secondary, split.layout, split.ratio});
+    SplitSnapshot owned_split{split.id, split.primary, split.secondary,
+                              split.layout, split.ratio};
+    for (size_t pane = 0; pane < split.tab_count; ++pane) {
+      owned_split.tabs.push_back(split.tabs[pane]);
+    }
+    for (size_t pane = 0; pane < split.fraction_count; ++pane) {
+      owned_split.fractions.push_back(split.fractions[pane]);
+    }
+    owned.splits.push_back(std::move(owned_split));
   }
   owned.groups.reserve(view.group_count);
   for (size_t i = 0; i < view.group_count; ++i) {

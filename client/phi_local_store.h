@@ -119,6 +119,12 @@ struct Tab {
   int secondary_favicon_width = 0;
   int secondary_favicon_height = 0;
   std::optional<std::string> split_partner_guid;  // A split PIN's other row.
+  // A split of three or four panes: the panes after the second, as a JSON
+  // array (the Mac V14 `splitExtraPanes` on a split bookmark; here a pinned
+  // split's first row carries it too, where the Mac links N rows by
+  // `splitPaneGuids`). Local only: sync and export see the first two panes.
+  // Null for a pair, and unreadable text reads as none.
+  std::optional<std::string> split_extra_panes;
   std::optional<std::string> layout;              // "vertical"/"horizontal".
   std::optional<TimeMs> last_seen;
   std::string icon = kDefaultFolderIcon;  // Folder icon id.
@@ -387,6 +393,7 @@ class LocalStore {
     std::string secondary_favicon;
     int secondary_favicon_width = 0;
     int secondary_favicon_height = 0;
+    std::optional<std::string> split_extra_panes;  // With secondary_url.
     int source = 0;
   };
   // createBookmarkBody / insertBookmarkNode: an empty title becomes the url.
@@ -441,6 +448,11 @@ class LocalStore {
                   const std::string& bgra,
                   int width,
                   int height);
+  // The panes after the second of a split cell (a pinned split's first row
+  // or a split bookmark), as JSON; nullopt or empty text clears them. Not
+  // sync-visible: only `updated` is stamped.
+  bool SetSplitExtraPanes(const std::string& guid,
+                          const std::optional<std::string>& json);
   bool SetLastSeen(const std::string& guid, TimeMs seen_at);
 
   // --- Spaces ---------------------------------------------------------------

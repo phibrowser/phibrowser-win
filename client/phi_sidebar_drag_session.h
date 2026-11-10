@@ -317,7 +317,8 @@ class PhiSidebarDragSession {
                        TabId focused_id,
                        PhiSplitDropZone zone,
                        bool replace,
-                       const std::string& split_id);
+                       const std::string& split_id,
+                       int target);
 
   // Owns this session and outlives it; the shell is its shell.
   RAW_PTR_EXCLUSION PhiSidebarView* const view_;
@@ -404,12 +405,16 @@ class PhiSidebarDragSession {
   bool split_drop_replace_ = false;
   std::string split_drop_split_id_;  // Replace mode: the split being re-paned.
   bool split_drop_stacked_ = false;  // Its divider axis, for the pane cards.
-  double split_drop_ratio_ = 0.5;    // The primary pane's share.
+  // Every pane's share, in slot order.
+  std::vector<double> split_drop_fractions_;
   // Where Chromium laid its panes out when the pointer entered the page
-  // (the cards trace them); `panes` false = estimate from the ratio.
+  // (the cards trace them); `panes` false = estimate from the shares.
   bool split_drop_panes_ = false;
-  RECT split_drop_primary_{};
-  RECT split_drop_secondary_{};
+  std::vector<RECT> split_drop_pane_rects_;
+  // The split has fewer than four panes: a drop may insert one.
+  bool split_drop_can_add_ = false;
+  // Pane mode: the pane a drop replaces, or the slot it inserts at.
+  int split_drop_target_ = -1;
 };
 
 }  // namespace phi_client

@@ -24,13 +24,19 @@ namespace phi_client {
 // tag (PhiTabData::custom_value, session-restored by Chromium):
 //   <guid>     pane A, or the whole tab of a single (non-split) cell
 //   <guid>#b   pane B of a split cell
+//   <guid>#c   the third pane of a split cell of three or four
+//   <guid>#d   the fourth
 // Nothing else is ever written into the tag by this client — no pending
-// markers, no placeholders. These two functions are the only codec.
+// markers, no placeholders. These functions are the only codec.
 inline constexpr char kSidebarPaneBSuffix[] = "#b";
+inline constexpr int kSidebarMaxPanes = 4;
 std::string TagFor(const std::string& guid, bool pane_b);
+// `pane` 0 to 3; anything else reads as pane A.
+std::string TagForPane(const std::string& guid, int pane);
 struct SidebarTag {
   std::string guid;
-  bool pane_b = false;
+  int pane = 0;  // 0 = pane A … 3 = the fourth pane.
+  bool pane_b = false;  // pane == 1.
 };
 // False for an empty tag. A tag with no suffix is pane A.
 bool ParseTag(const std::string& tag, SidebarTag* out);
@@ -79,6 +85,7 @@ struct SidebarStoredItem {
   std::string parent_guid;  // Bookmarks/folders: the tree. Pins: empty.
   int index = 0;            // Order among siblings of the same kind+parent.
   bool split = false;       // Pins and bookmarks alike: the cell has a pane B.
+  int extra = 0;            // Split cells: panes after B (0 to 2).
 };
 
 enum class SidebarSurface { kContent, kPeek, kReader };
@@ -121,9 +128,19 @@ struct SidebarBinding {
   SidebarBindingState state = SidebarBindingState::kClosed;
   int tab_a = 0;  // Session ids; 0 = no live pane.
   int tab_b = 0;
-  std::string split_id;  // kSplitOpen: the live split both panes share.
+  // A cell of three or four panes: the panes after B, one entry each (0 =
+  // no live pane). Empty for a single cell and a pair.
+  std::vector<int> more;
+  std::string split_id;  // kSplitOpen: the live split every pane shares.
   bool active = false;   // A live pane is the strip's active tab.
-  bool open() const { return tab_a != 0 || tab_b != 0; }
+  bool open() const { return !TabIds().empty(); }
+  // The live tab of pane `pane` (0 = A), or 0.
+  int TabOfPane(int pane) const {
+    if (pane <= 0) return tab_a;
+    if (pane == 1) return tab_b;
+    const size_t i = static_cast<size_t>(pane - 2);
+    return i < more.size() ? more[i] : 0;
+  }
   std::vector<int> TabIds() const;
 };
 
@@ -134,6 +151,7 @@ struct SidebarCell {
   std::string parent_guid;
   int depth = 0;       // Bookmarks: outline depth (root children = 0).
   bool split = false;  // The cell has a pane B (two grid units).
+  int extra = 0;       // Panes after B.
   SidebarBinding binding;
   // Folders: a descendant cell is active. Groups use the content node.
   bool contains_active = false;
@@ -146,6 +164,10 @@ struct SidebarContentNode {
   SidebarNodeKind kind = SidebarNodeKind::kTab;
   int tab_a = 0;  // kTab: the tab. kSplit: strip-order first pane.
   int tab_b = 0;  // kSplit: second pane.
+  // kSplit of three or four panes: the panes after the second, in order.
+  std::vector<int> more;
+  // Every pane's tab, in order: one for kTab, two to four for kSplit.
+  std::vector<int> Panes() const;
   std::string group_id;  // A container relationship, not a type of tab.
   bool collapsed = false;        // kGroup header.
   bool hidden = false;           // Member of a collapsed group.

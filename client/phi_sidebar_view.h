@@ -401,13 +401,82 @@ struct TabRow {
   std::vector<unsigned char> b_favicon;
   int b_favicon_width = 0;
   int b_favicon_height = 0;
+  // A split of three or four panes: the panes after B, in order. The row
+  // still merges them all; each takes an equal segment.
+  struct ExtraPane {
+    int index = -1;
+    TabId id;
+    bool active = false;
+    bool unloaded = false;
+    std::wstring title;
+    std::wstring url;
+    std::vector<unsigned char> favicon;
+    int favicon_width = 0;
+    int favicon_height = 0;
+    RECT bounds{};  // Its segment of the row (activates the pane).
+  };
+  std::vector<ExtraPane> more;
+  // 1 for a plain row, 2 to 4 for a merged one.
+  int PaneCount() const {
+    return b_index < 0 ? 1 : 2 + static_cast<int>(more.size());
+  }
+  // The tab in pane `pane` (0 = the leading pane); invalid past the end.
+  TabId PaneId(int pane) const {
+    if (pane <= 0) return id;
+    if (pane == 1) return b_index >= 0 ? b_id : TabId();
+    const size_t i = static_cast<size_t>(pane - 2);
+    return i < more.size() ? more[i].id : TabId();
+  }
+  // The pane whose segment holds `pt`: 0 when the row is not merged or the
+  // point is in none of the later segments.
+  int PaneAt(POINT pt) const {
+    if (b_index < 0) return 0;
+    for (size_t i = 0; i < more.size(); ++i) {
+      if (::PtInRect(&more[i].bounds, pt)) return static_cast<int>(i) + 2;
+    }
+    return ::PtInRect(&pane_b, pt) ? 1 : 0;
+  }
+  // The pane `tab` sits in, or -1.
+  int PaneOf(TabId tab) const {
+    for (int pane = 0; pane < PaneCount(); ++pane) {
+      if (PaneId(pane) == tab) return pane;
+    }
+    return -1;
+  }
+  // Pane `pane`'s page, as its segment of the row and its hover chip draw
+  // it. `pane` must be below PaneCount().
+  const std::vector<unsigned char>& PaneFavicon(int pane, int* w, int* h) const {
+    if (pane >= 2) {
+      const ExtraPane& extra = more[static_cast<size_t>(pane - 2)];
+      *w = extra.favicon_width;
+      *h = extra.favicon_height;
+      return extra.favicon;
+    }
+    *w = pane == 1 ? b_favicon_width : favicon_width;
+    *h = pane == 1 ? b_favicon_height : favicon_height;
+    return pane == 1 ? b_favicon : favicon;
+  }
+  const std::wstring& PaneUrl(int pane) const {
+    return pane >= 2 ? more[static_cast<size_t>(pane - 2)].url
+                     : pane == 1 ? b_url : url;
+  }
+  const std::wstring& PaneTitle(int pane) const {
+    return pane >= 2 ? more[static_cast<size_t>(pane - 2)].title
+                     : pane == 1 ? b_title : title;
+  }
+  // Every pane's tab, in order.
+  std::vector<TabId> PaneIds() const {
+    std::vector<TabId> ids;
+    for (int pane = 0; pane < PaneCount(); ++pane) ids.push_back(PaneId(pane));
+    return ids;
+  }
   // A Peek or Reader View attached to this row's tab (either pane): the
   // trailing indicator, whose minus closes it (docs/sidebar-architecture
   // §4.6). While one is attached the row's own close box is withheld —
   // the indicator is the one close affordance, as on the Mac.
   SidebarSurface attached_surface = SidebarSurface::kContent;
   RECT bounds{};       // Row rect in client coords.
-  RECT pane_b{};       // Right half of a merged row (activates pane B).
+  RECT pane_b{};       // Pane B's segment of a merged row (activates it).
   RECT close_box{};    // The row's close affordance.
   RECT surface_box{};  // The attached-surface indicator.
 };
@@ -493,6 +562,22 @@ struct ShortcutRow {
   // closed cell has no tab and so is never dormant.
   bool unloaded = false;
   bool unloaded_b = false;
+  // A split cell of three or four panes: the panes after B, in order, each
+  // with what the store holds for it and its bound tab while open.
+  struct ExtraPane {
+    std::string url;
+    std::wstring title;
+    std::vector<unsigned char> favicon;
+    int favicon_width = 0;
+    int favicon_height = 0;
+    TabId tab_id;
+    bool unloaded = false;
+  };
+  std::vector<ExtraPane> more;
+  // 1 for a single cell, 2 to 4 for a split one.
+  int PaneCount() const {
+    return url_b.empty() ? 1 : 2 + static_cast<int>(more.size());
+  }
   // Where the row SITS (scrolled with the stored bands) — what paint and
   // the drag geometry read — and that rect clipped to the stored viewport,
   // what every hit test reads: a row scrolled out of the viewport (or the
@@ -559,12 +644,11 @@ class PhiSidebarShell {
       phi_framework::WindowSnapshot* out) const = 0;
   // True when the split holding `tab_id` stacks its panes.
   virtual bool SidebarSplitIsStacked(TabId tab_id) const = 0;
-  // Where Chromium laid the ACTIVE tab's split panes out, in shell client
-  // coordinates (the framework's TabContentBoundsById) — the replace-mode
-  // drop cards trace them. False when the active tab is not in a split or
-  // the layout has not run yet.
-  virtual bool SidebarSplitPaneRects(RECT* primary,
-                                     RECT* secondary) const = 0;
+  // Where Chromium laid the ACTIVE tab's split panes out, in slot order
+  // and shell client coordinates (the framework's TabContentBoundsById) —
+  // the pane-mode drop cards trace them. Empty when the active tab is not
+  // in a split or the layout has not run yet.
+  virtual std::vector<RECT> SidebarSplitPaneRects() const = 0;
   // The chrome fonts the rows draw with, all built and owned by the shell.
   virtual HFONT SidebarGlyphFont() const = 0;
   virtual HFONT SidebarSemiboldFont() const = 0;

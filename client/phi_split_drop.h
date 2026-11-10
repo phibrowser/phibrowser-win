@@ -8,6 +8,7 @@
 #include <windows.h>
 
 #include <array>
+#include <vector>
 
 #include <string>
 
@@ -32,22 +33,36 @@ class PhiShellWindow;
 //                dropped pane, the focused tab takes the other. Left/right
 //                make a side-by-side ("vertical") split, top/bottom a stacked
 //                ("horizontal") one. The middle band is a no-drop area.
-//   replace mode (the focused tab IS a split) — the page maps onto the split's
-//                two live panes and the dragged item swaps into the one under
-//                the cursor.
+//   pane mode    (the focused tab IS a split) — the page maps onto the split's
+//                live panes (two to four). While the split has room, the
+//                leading and trailing quarter of each pane insert a new pane
+//                there (kInsert); every other point swaps the dragged item
+//                into the pane under the cursor (kPane). A split of four
+//                only replaces.
 // kNewWindow: the page's centre (Chrome's and Edge's rule — a tab dragged
 // onto the page detaches) and the fifth snap tile (windows-native-ui.md
 // §4.8).
-enum class PhiSplitDropZone { kNone, kLeft, kRight, kTop, kBottom, kNewWindow };
+enum class PhiSplitDropZone {
+  kNone,
+  kLeft,
+  kRight,
+  kTop,
+  kBottom,
+  kNewWindow,
+  // Pane mode only; PhiSplitDropHints::target says which pane or slot.
+  kPane,
+  kInsert,
+};
 
 // The snap-tile flyout at the page's top centre (§4.8): five 56 × 40 dip
 // tiles — Left, Right, Top, Bottom split, then New window — in a radius-8
-// flyout, 8 apart, a divider before the fifth. In replace mode the first
-// two are the split's panes and the middle two are empty. `out[5]` is the
-// flyout's own rect. Shell client coordinates, from `area` and `dpi`.
+// flyout, 8 apart, a divider before the fifth. In pane mode (`panes` 2 to
+// 4) the first `panes` tiles are the split's panes and the rest of the
+// first four are empty; `panes` 0 is create mode. `out[5]` is the flyout's
+// own rect. Shell client coordinates, from `area` and `dpi`.
 void PhiSnapTileRects(const RECT& area,
                       UINT dpi,
-                      bool replace,
+                      int panes,
                       std::array<RECT, 6>* out);
 
 // True when the zone lands in Chromium's PRIMARY slot (leading / top).
@@ -71,33 +86,43 @@ PhiSplitDropZone PhiSplitCreateZoneAt(const RECT& area,
 // What the hint overlay should be showing right now.
 struct PhiSplitDropHints {
   RECT area{};        // The page area, in shell client coordinates.
-  bool replace = false;
-  bool stacked = false;  // Replace mode: the split's divider axis.
-  double ratio = 0.5;    // Replace mode: the primary pane's share.
-  // Replace mode: where Chromium actually laid the two panes out (the
-  // framework's TabContentBoundsById, mapped into the shell), so the cards
-  // trace the real cards rather than a ratio estimate — the Mac's
+  bool replace = false;   // Pane mode.
+  bool stacked = false;  // Pane mode: the split's divider axis.
+  // Pane mode: every pane's share in slot order (two to four).
+  std::vector<double> fractions = {0.5, 0.5};
+  // Pane mode: where Chromium actually laid the panes out (the framework's
+  // TabContentBoundsById, mapped into the shell), so the cards trace the
+  // real panes rather than an estimate from the shares — the Mac's
   // replacePaneRects mirrors its own SplitPaneHostView the same way. `panes`
-  // is false until the layout has run; the ratio estimate stands in.
+  // is false until the layout has run; the estimate stands in.
   bool panes = false;
-  RECT primary{};
-  RECT secondary{};
+  std::vector<RECT> pane_rects;
+  // Pane mode: the split has fewer than four panes, so a drop may insert.
+  bool can_add = false;
   PhiSplitDropZone active = PhiSplitDropZone::kNone;
+  // kPane: the pane the drop replaces. kInsert: the slot the new pane takes
+  // (0 = before the first pane, the pane count = after the last).
+  int target = -1;
 };
 
-// REPLACE mode hit test: the pane the point sits over, splitting at the
-// divider's midline. Always resolves to kLeft (the primary pane — left for a
-// side-by-side split, top for a stacked one) or kRight (the secondary).
-PhiSplitDropZone PhiSplitReplaceZoneAt(const PhiSplitDropHints& hints,
-                                       POINT pt,
-                                       UINT dpi = 96);
+// PANE mode hit test: a pane tile or the New window tile first, then the
+// panes themselves. Answers kPane (replace `*target`), kInsert (a new pane
+// at slot `*target`, only while `hints.can_add`) or kNewWindow (its tile,
+// or a divider gap of a full split). `*target` is -1 otherwise.
+PhiSplitDropZone PhiSplitPaneZoneAt(const PhiSplitDropHints& hints,
+                                    POINT pt,
+                                    UINT dpi,
+                                    int* target);
 
-// The live panes of the split `hints` describes: the real rects when it has
-// them, else an estimate from the ratio over `hints.area` with the
-// framework's flush panes and 4 DIP divider.
-void PhiSplitReplacePaneRects(const PhiSplitDropHints& hints,
-                              RECT* primary,
-                              RECT* secondary);
+// The live panes of the split `hints` describes, in slot order: the real
+// rects when it has them, else an estimate from the shares over
+// `hints.area` with the framework's flush panes and 1 DIP dividers.
+std::vector<RECT> PhiSplitPaneRects(const PhiSplitDropHints& hints);
+
+// The strip a kInsert drop at `slot` lights up: the leading quarter of the
+// first pane, the trailing quarter of the last, or the two quarters either
+// side of the divider between two panes.
+RECT PhiSplitInsertBand(const PhiSplitDropHints& hints, int slot);
 
 // The hint cards themselves: one layered, click-through child window above the
 // browser child, composed with GDI+ (per-pixel alpha, which is the only way to

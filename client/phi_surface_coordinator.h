@@ -241,6 +241,8 @@ class PhiSurfaceCoordinator {
  private:
   // `tab`'s split partner in `window`, or an invalid id.
   TabId SplitPartnerOf(BrowserId window, TabId tab) const;
+  // Every other pane of `tab`'s split in slot order; empty outside a split.
+  std::vector<int> SplitPartnersOf(BrowserId window, TabId tab) const;
   // Opens the peek's page and a tab on `partner_url` in the opener window,
   // in that strip order (`partner_leading` puts the partner first, on the
   // left), splits the two, focuses the partner and closes the peek without

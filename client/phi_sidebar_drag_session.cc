@@ -16,6 +16,7 @@
 #include "base/containers/span.h"
 #include "client/phi_app_model.h"
 #include "client/phi_dwrite.h"
+#include "client/phi_i18n.h"
 #include "client/phi_new_tab_page.h"
 #include "client/phi_sidebar_view.h"
 #include "client/phi_spaces_strip.h"
@@ -996,13 +997,37 @@ std::wstring PhiSidebarDragSession::BadgeText() const {
         case PhiSplitDropZone::kNewWindow:
           return L"New window";
         case PhiSplitDropZone::kLeft:
-          return split_drop_replace_
-                     ? (split_drop_stacked_ ? L"Replace top" : L"Replace left")
-                     : L"Split left";
+          return L"Split left";
         case PhiSplitDropZone::kRight:
-          return split_drop_replace_ ? (split_drop_stacked_ ? L"Replace bottom"
-                                                            : L"Replace right")
-                                     : L"Split right";
+          return L"Split right";
+        case PhiSplitDropZone::kPane: {
+          // The Mac's pane cards: the end panes are named, a middle pane
+          // of three or four is plain "Replace".
+          const int panes = static_cast<int>(split_drop_fractions_.size());
+          if (split_drop_target_ <= 0) {
+            return PhiStr(split_drop_stacked_ ? "browser.splitDropHint.top"
+                                              : "browser.splitDropHint.leftHalf");
+          }
+          if (split_drop_target_ + 1 >= panes) {
+            return PhiStr(split_drop_stacked_
+                              ? "browser.splitDropHint.bottom"
+                              : "browser.splitDropHint.rightHalf");
+          }
+          return PhiStr("browser.splitDropHint.replacePane");
+        }
+        case PhiSplitDropZone::kInsert: {
+          const int panes = static_cast<int>(split_drop_fractions_.size());
+          if (split_drop_target_ <= 0) {
+            return PhiStr(split_drop_stacked_ ? "browser.splitDropHint.addTop"
+                                              : "browser.splitDropHint.addLeft");
+          }
+          if (split_drop_target_ >= panes) {
+            return PhiStr(split_drop_stacked_
+                              ? "browser.splitDropHint.addBottom"
+                              : "browser.splitDropHint.addRight");
+          }
+          return PhiStr("browser.splitDropHint.addBetween");
+        }
         case PhiSplitDropZone::kTop:
           return L"Split top";
         case PhiSplitDropZone::kBottom:
@@ -1063,6 +1088,7 @@ bool PhiSidebarDragSession::CommitDragImpl() {
   const PhiSplitDropZone split_zone = split_drop_zone_;
   const bool split_replace = split_drop_replace_;
   const std::string split_id = split_drop_split_id_;
+  const int split_target = split_drop_target_;
   const TabId split_focus = focus_tab_id_;
   const TabId click_tab = click_tab_id_;
   const int chip_pos = Index();
@@ -1094,7 +1120,7 @@ bool PhiSidebarDragSession::CommitDragImpl() {
     }
     if (active && split_zone != PhiSplitDropZone::kNone) {
       CommitSplitDrop(kind, key, split_focus, split_zone, split_replace,
-                      split_id);
+                      split_id, split_target);
       return true;
     }
     return false;
@@ -2159,6 +2185,7 @@ bool PhiSidebarDragSession::ResolveSplitDrop(POINT pt, bool rebuild) {
     split_drop_zone_ = PhiSplitDropZone::kNone;
     split_drop_replace_ = false;
     split_drop_split_id_.clear();
+    split_drop_target_ = -1;
     PhiSplitDropOverlay::Hide();
     return false;
   };
@@ -2176,16 +2203,19 @@ bool PhiSidebarDragSession::ResolveSplitDrop(POINT pt, bool rebuild) {
     hints.area = area;
     hints.replace = split_drop_replace_;
     hints.stacked = split_drop_stacked_;
-    hints.ratio = split_drop_ratio_;
+    hints.fractions = split_drop_fractions_;
     hints.panes = split_drop_panes_;
-    hints.primary = split_drop_primary_;
-    hints.secondary = split_drop_secondary_;
-    split_drop_zone_ =
-        split_drop_replace_
-            ? PhiSplitReplaceZoneAt(hints, pt, shell_->SidebarDpi())
-            : PhiSplitCreateZoneAt(area, pt, split_drop_zone_,
-                                   shell_->SidebarDpi());
+    hints.pane_rects = split_drop_pane_rects_;
+    hints.can_add = split_drop_can_add_;
+    if (split_drop_replace_) {
+      split_drop_zone_ = PhiSplitPaneZoneAt(hints, pt, shell_->SidebarDpi(),
+                                            &split_drop_target_);
+    } else {
+      split_drop_zone_ = PhiSplitCreateZoneAt(area, pt, split_drop_zone_,
+                                              shell_->SidebarDpi());
+    }
     hints.active = split_drop_zone_;
+    hints.target = split_drop_target_;
     PhiSplitDropOverlay::Show(shell_->SidebarOwner(), hints);
     return true;
   }
@@ -2230,7 +2260,7 @@ bool PhiSidebarDragSession::ResolveSplitDrop(POINT pt, bool rebuild) {
     split_drop_zone_ = PhiSplitCreateZoneAt(area, pt, split_drop_zone_,
                                             shell_->SidebarDpi());
   } else {
-    // REPLACE: the page maps onto the focused split's two panes.
+    // PANE mode: the page maps onto the focused split's panes.
     const auto stored_is_pinned = [&](const std::string& tag) {
       SidebarTag parsed;
       if (!ParseTag(tag, &parsed)) {
@@ -2256,28 +2286,31 @@ bool PhiSidebarDragSession::ResolveSplitDrop(POINT pt, bool rebuild) {
       }
     }
     bool stacked = false;
-    double ratio = 0.5;
+    std::vector<double> fractions = {0.5, 0.5};
     if (const SplitSnapshot* split = PhiFindSplitIn(strip, focused->split_id)) {
       stacked = split->layout == phi_framework::SplitLayout::kHorizontal;
-      ratio = split->ratio;
+      fractions = PhiSplitFractions(*split);
     }
     split_drop_replace_ = true;
     split_drop_split_id_ = focused->split_id;
     split_drop_stacked_ = stacked;
-    split_drop_ratio_ = ratio;
+    split_drop_fractions_ = fractions;
+    split_drop_can_add_ = fractions.size() < 4;
     // The real pane rects (the framework's layout) while the split is on
     // screen — the focused tab is the active one here, so they are its.
-    split_drop_panes_ = shell_->SidebarSplitPaneRects(&split_drop_primary_,
-                                                      &split_drop_secondary_);
+    split_drop_pane_rects_ = shell_->SidebarSplitPaneRects();
+    split_drop_panes_ = split_drop_pane_rects_.size() == fractions.size();
     hints.replace = true;
     hints.stacked = stacked;
-    hints.ratio = ratio;
+    hints.fractions = fractions;
     hints.panes = split_drop_panes_;
-    hints.primary = split_drop_primary_;
-    hints.secondary = split_drop_secondary_;
-    split_drop_zone_ = PhiSplitReplaceZoneAt(hints, pt, shell_->SidebarDpi());
+    hints.pane_rects = split_drop_pane_rects_;
+    hints.can_add = split_drop_can_add_;
+    split_drop_zone_ = PhiSplitPaneZoneAt(hints, pt, shell_->SidebarDpi(),
+                                          &split_drop_target_);
   }
   hints.active = split_drop_zone_;
+  hints.target = split_drop_target_;
   split_drop_valid_ = true;
   PhiSplitDropOverlay::Show(shell_->SidebarOwner(), hints);
   return true;
@@ -2288,7 +2321,8 @@ void PhiSidebarDragSession::CommitSplitDrop(PhiDragKind kind,
                                           TabId focused_id,
                                           PhiSplitDropZone zone,
                                           bool replace,
-                                          const std::string& split_id) {
+                                          const std::string& split_id,
+                                          int target) {
   if (!framework_ || zone == PhiSplitDropZone::kNone || !focused_id.valid()) {
     return;
   }
@@ -2319,14 +2353,44 @@ void PhiSidebarDragSession::CommitSplitDrop(PhiDragKind kind,
     if (split_id.empty()) {
       return;
     }
-    // Which pane the drop targets, and which tab it evicts.
-    const int slot = dropped_primary ? 0 : 1;
-    const SplitSnapshot* target = PhiFindSplitIn(strip, split_id);
-    const TabId evicted_id =
-        target ? (slot == 0 ? target->primary : target->secondary) : TabId();
-    if (!evicted_id.valid()) {
+    const SplitSnapshot* split = PhiFindSplitIn(strip, split_id);
+    const std::vector<TabId> panes =
+        split ? PhiSplitPanes(*split) : std::vector<TabId>();
+    if (panes.empty() || target < 0) {
       return;  // The split went away mid-drag.
     }
+    if (zone == PhiSplitDropZone::kInsert) {
+      // A new pane at slot `target` (the Mac's addTabToSplit): the dragged
+      // tab itself, or its stored row's page opened for the purpose.
+      if (panes.size() >= 4 ||
+          std::find(panes.begin(), panes.end(), source_id) != panes.end()) {
+        return;
+      }
+      TabId joining_id = source_id;
+      if (joining_id.valid()) {
+        view_->UnbindStoredTab(browser, joining_id);
+      } else {
+        if (source_url.empty()) {
+          return;
+        }
+        joining_id = open_tab(source_url);
+        // The new tab took the focus: hand it back so the split stays up
+        // while the pane joins.
+        framework_->ActivateTabById(browser.value, focused_id.value);
+      }
+      if (joining_id.valid()) {
+        framework_->AddTabToSplitById(browser, split_id.c_str(), joining_id,
+                                      target);
+      }
+      return;
+    }
+    if (zone != PhiSplitDropZone::kPane ||
+        target >= static_cast<int>(panes.size())) {
+      return;
+    }
+    // Which pane the drop targets, and which tab it evicts.
+    const int slot = target;
+    const TabId evicted_id = panes[static_cast<size_t>(slot)];
     // The evicted pane is kept as a standalone tab beside the split, unless
     // it is an empty new-tab page — closing that beats littering the strip
     // (the Mac's splitPaneReplacementKeepsEvicted).

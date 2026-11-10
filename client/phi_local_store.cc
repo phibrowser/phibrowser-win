@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS tab(
   secondaryFaviconWidth INTEGER NOT NULL DEFAULT 0,
   secondaryFaviconHeight INTEGER NOT NULL DEFAULT 0,
   splitPartnerGuid TEXT,
+  splitExtraPanes TEXT,
   layout TEXT,
   lastSeen INTEGER,
   icon TEXT NOT NULL DEFAULT 'default',
@@ -349,7 +350,8 @@ constexpr char kTabColumns[] =
     "createdDate, updatedDate, overrideTitle, isOpenned, isCreatedByChromium, "
     "needUpdateMetaData, spaceId, profileId, source, secondaryUrl, "
     "secondaryTitle, secondaryFavicon, secondaryFaviconWidth, "
-    "secondaryFaviconHeight, splitPartnerGuid, layout, lastSeen, icon, "
+    "secondaryFaviconHeight, splitPartnerGuid, splitExtraPanes, layout, "
+    "lastSeen, icon, "
     "pinLineageId, isPinnedTabDormant, syncId, contentUpdatedDate, "
     "locationUpdatedDate, parentGuid";
 
@@ -379,6 +381,7 @@ Tab ReadTab(const Stmt& s) {
   t.secondary_favicon_width = static_cast<int>(s.ColInt(c++));
   t.secondary_favicon_height = static_cast<int>(s.ColInt(c++));
   t.split_partner_guid = s.ColOptText(c++);
+  t.split_extra_panes = s.ColOptText(c++);
   t.layout = s.ColOptText(c++);
   t.last_seen = s.ColOptInt(c++);
   t.icon = s.ColText(c++);
@@ -395,7 +398,7 @@ bool WriteTab(sqlite3* db, const Tab& t) {
   const std::string sql = std::string("INSERT OR REPLACE INTO tab(") +
                           kTabColumns +
                           ") VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
-                          "?,?,?,?,?,?,?,?,?,?,?,?)";
+                          "?,?,?,?,?,?,?,?,?,?,?,?,?)";
   Stmt s(db, sql.c_str());
   if (!s.ok()) {
     return false;
@@ -423,6 +426,7 @@ bool WriteTab(sqlite3* db, const Tab& t) {
       .Int(t.secondary_favicon_width)
       .Int(t.secondary_favicon_height)
       .Text(t.split_partner_guid)
+      .Text(t.split_extra_panes)
       .Text(t.layout)
       .Int(t.last_seen)
       .Text(t.icon)
@@ -520,6 +524,12 @@ LocalStore::OpenResult LocalStore::Open(const std::string& dir) {
     Close();
     return OpenResult::kFailed;
   }
+  // A store made before splits of three or four panes lacks the column;
+  // one that has it refuses the statement, which is the answer wanted. The
+  // format stays 13: the column is optional, and a build without it still
+  // opens the store and reads such a cell as a pair.
+  sqlite3_exec(db_, "ALTER TABLE tab ADD COLUMN splitExtraPanes TEXT;",
+               nullptr, nullptr, nullptr);
   if (!has_manifest ||
       ManifestFormatVersion(manifest) != kStoreFormatVersion) {
     WriteWholeFileAtomic(manifest_path, ManifestJson(kStoreFormatVersion));
@@ -1168,6 +1178,7 @@ bool LocalStore::RemovePin(const std::string& guid,
     auto it = tabs_.find(*partner);
     if (it != tabs_.end() && it->second.split_partner_guid == resolved_guid) {
       it->second.split_partner_guid.reset();
+      it->second.split_extra_panes.reset();  // No longer a split at all.
       it->second.layout.reset();
       it->second.updated = env_.now();
       PutTab(it->second);
@@ -1344,11 +1355,30 @@ bool LocalStore::ClearPinSplitPartner(const std::string& guid) {
   if (!db_ || it == tabs_.end() || it->second.type != RowType::kPinnedTab) {
     return false;
   }
-  if (!it->second.split_partner_guid && !it->second.layout) {
+  if (!it->second.split_partner_guid && !it->second.layout &&
+      !it->second.split_extra_panes) {
     return true;  // Already equal: success, and nothing to write.
   }
   it->second.split_partner_guid.reset();
+  it->second.split_extra_panes.reset();
   it->second.layout.reset();
+  it->second.updated = env_.now();
+  PutTab(it->second);
+  return Flush();
+}
+
+bool LocalStore::SetSplitExtraPanes(const std::string& guid,
+                                    const std::optional<std::string>& json) {
+  auto it = tabs_.find(guid);
+  if (!db_ || it == tabs_.end()) {
+    return false;
+  }
+  const std::optional<std::string> value =
+      json && !json->empty() ? json : std::nullopt;
+  if (it->second.split_extra_panes == value) {
+    return true;
+  }
+  it->second.split_extra_panes = value;
   it->second.updated = env_.now();
   PutTab(it->second);
   return Flush();
@@ -1487,6 +1517,7 @@ std::string LocalStore::TransferPin(const std::string& guid,
     copy.source = t->source;
     copy.secondary_url = t->secondary_url;
     copy.secondary_title = t->secondary_title;
+    copy.split_extra_panes = t->split_extra_panes;
     copy.layout = t->layout;
     copy.last_seen = t->last_seen;
     copy.icon = t->icon;
@@ -1745,6 +1776,7 @@ void LocalStore::MigratePins(PinScope from,
       model.source = src.source;
       model.secondary_url = src.secondary_url;
       model.secondary_title = src.secondary_title;
+      model.split_extra_panes = src.split_extra_panes;
       model.secondary_favicon = src.secondary_favicon;
       model.secondary_favicon_width = src.secondary_favicon_width;
       model.secondary_favicon_height = src.secondary_favicon_height;
@@ -2049,6 +2081,7 @@ std::string LocalStore::CreateBookmark(const BookmarkCreate& in,
   }
   if (in.secondary_url) {
     node.layout = in.layout;
+    node.split_extra_panes = in.split_extra_panes;
     node.secondary_favicon = in.secondary_favicon;
     node.secondary_favicon_width = in.secondary_favicon_width;
     node.secondary_favicon_height = in.secondary_favicon_height;
@@ -2318,6 +2351,7 @@ bool LocalStore::UpdateBookmark(const std::string& guid,
   }
   if (secondary_cleared) {
     node.layout.reset();
+    node.split_extra_panes.reset();
     node.secondary_favicon.clear();
     node.secondary_favicon_width = 0;
     node.secondary_favicon_height = 0;

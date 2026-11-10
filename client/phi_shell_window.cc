@@ -1834,7 +1834,9 @@ void PhiShellWindow::MenuNewTab() {
 }
 
 bool PhiShellWindow::MenuCanSplitWithNewTab() const {
-  return !AgentHoldsInput() && MenuActiveTab().valid() && !ActiveTabIsSplit();
+  // A split with room takes one more pane; four panes take none.
+  return !AgentHoldsInput() && MenuActiveTab().valid() &&
+         (!ActiveTabIsSplit() || ActiveSplitPaneCount() < 4);
 }
 
 bool PhiShellWindow::MenuCanClearAllTabs() const {
@@ -1849,7 +1851,9 @@ void PhiShellWindow::MenuSplitWithNewTab() {
   const TabId anchor = MenuActiveTab();
   // Under the Omnibox behaviour the card picks the pane, with no preview of a
   // blank one: a window hosted as a whole has no pane to show before the split.
-  if (omnibox_->StartSplitWithNewTab(anchor)) {
+  // A tab that is already a pane gets a new-tab pane right after it, with no
+  // card (the Mac's openNewTabIntoSplit).
+  if (!ActiveTabIsSplit() && omnibox_->StartSplitWithNewTab(anchor)) {
     return;
   }
   const BrowserId browser = active_browser_id();
@@ -2591,7 +2595,12 @@ std::vector<NativePane> PhiShellWindow::NativePagesSplitPanes() const {
   if (!split || !framework_ || !shell_hwnd_) {
     return panes;
   }
-  for (const TabId tab : {split->primary, split->secondary}) {
+  // Every pane in slot order: two to four.
+  const std::vector<TabId> split_tabs =
+      split->tabs.size() >= 2
+          ? split->tabs
+          : std::vector<TabId>{split->primary, split->secondary};
+  for (const TabId tab : split_tabs) {
     NativePane pane;
     pane.tab_id = tab.value;
     if (const TabSnapshot* snapshot = model_->FindTab(browser, tab)) {
@@ -2683,16 +2692,19 @@ PhiSidebarRects PhiShellWindow::SidebarRects() {
   return BandRects(ComputeLayout());
 }
 
-bool PhiShellWindow::SidebarSplitPaneRects(RECT* primary,
-                                           RECT* secondary) const {
+std::vector<RECT> PhiShellWindow::SidebarSplitPaneRects() const {
+  std::vector<RECT> rects;
   const std::vector<NativePane> panes = NativePagesSplitPanes();
-  if (panes.size() != 2 || ::IsRectEmpty(&panes[0].rect) ||
-      ::IsRectEmpty(&panes[1].rect)) {
-    return false;
+  if (panes.size() < 2) {
+    return rects;
   }
-  *primary = panes[0].rect;
-  *secondary = panes[1].rect;
-  return true;
+  for (const NativePane& pane : panes) {
+    if (::IsRectEmpty(&pane.rect)) {
+      return std::vector<RECT>();  // The layout has not run yet.
+    }
+    rects.push_back(pane.rect);
+  }
+  return rects;
 }
 
 void PhiShellWindow::SidebarSetRowCounts(int pinned_rows,
@@ -5967,6 +5979,15 @@ unsigned PhiShellWindow::SplitPaneCardCorners(const RECT& pane) {
   return corners;
 }
 
+int PhiShellWindow::ActiveSplitPaneCount() const {
+  const BrowserId browser = active_browser_id();
+  const TabId active = active_tab_id();
+  const SplitSnapshot* split = model_ && browser.valid() && active.valid()
+                                   ? model_->SplitOfTab(browser, active)
+                                   : nullptr;
+  return split ? static_cast<int>(PhiSplitPanes(*split).size()) : 0;
+}
+
 int PhiShellWindow::ContentCornerRadius() const {
   return Scaled(kContentRadius);
 }
@@ -6268,6 +6289,8 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
   in.grouped = !row.group_id.empty();
   in.split_bound = !row.split_id.empty();
   in.split_stacked = row.merged && SplitIsStacked(row.id);
+  in.pane_count = row.merged ? 2 + static_cast<int>(row.more_ids.size()) : 1;
+  in.pane = row.pane;
   if (services_.agent && row.id.valid()) {
     in.agent_driven = services_.agent->IsTabAgentDriven(row.id.value);
     in.agent_reclaimed =
@@ -6277,9 +6300,11 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
     // "Split with Current" pairs this row with the FOCUSED tab; on the
     // focused row itself — or when the focused tab is already split — it
     // becomes "Open as Split", a fresh pane (the Mac's two labels).
+    // A focused tab in a split with room takes this row as one more pane.
     for (const TabRow& other : sidebar_->tabs()) {
-      if (other.key != row.key && other.active && other.b_index < 0 &&
-          other.split_id.empty()) {
+      if (other.key != row.key && other.active &&
+          (other.b_index >= 0 ? other.PaneCount() < 4
+                              : other.split_id.empty())) {
         in.current_can_pair = true;
         break;
       }
@@ -6290,6 +6315,9 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
   std::set<int> row_tabs = {row.id.value};
   if (row.b_id.valid()) {
     row_tabs.insert(row.b_id.value);
+  }
+  for (const TabId id : row.more_ids) {
+    row_tabs.insert(id.value);
   }
   in.close_rows = DirectionalCloseRows(opening_browser, row_tabs);
   if (!row.merged) {
@@ -6367,15 +6395,43 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
       const TabId fresh_b = framework_->OpenTab(browser, row.url_b.c_str());
       framework_->ActivateTabById(browser.value, fresh_a.value);
       if (fresh_b.valid()) {
-        framework_->CreateSplitViewForTabs(browser.value, fresh_a.value,
-                                           fresh_b.value,
-                                           stacked ? "horizontal" : "vertical");
+        const std::string split = framework_->CreateSplitViewForTabs(
+            browser.value, fresh_a.value, fresh_b.value,
+            stacked ? "horizontal" : "vertical");
+        // A split of three or four: the later panes join in order.
+        for (size_t i = 0; i < row.more_urls.size() && !split.empty(); ++i) {
+          const TabId pane =
+              framework_->OpenTab(browser, row.more_urls[i].c_str());
+          if (pane.valid()) {
+            framework_->ActivateTabById(browser.value, fresh_a.value);
+            framework_->AddTabToSplitById(browser, split.c_str(), pane,
+                                          static_cast<int>(i) + 2);
+          }
+        }
       }
     }
   } else if (action.is("tab.copyUrl") || action.is("tab.copyLeft")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url));
   } else if (action.is("tab.copyRight")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url_b));
+  } else if (action.is("tab.copyPane")) {
+    int pane = 0;
+    base::StringToInt(action.target.id, &pane);
+    const size_t extra = static_cast<size_t>(std::max(pane - 2, 0));
+    const std::string& url = pane == 0   ? row.url
+                             : pane == 1 ? row.url_b
+                             : extra < row.more_urls.size()
+                                   ? row.more_urls[extra]
+                                   : row.url;
+    CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(url));
+  } else if (action.is("tab.movePaneBack")) {
+    sidebar_->Apply(SidebarMovePane{row.key, row.pane, row.pane - 1});
+  } else if (action.is("tab.movePaneForward")) {
+    sidebar_->Apply(SidebarMovePane{row.key, row.pane, row.pane + 1});
+  } else if (action.is("tab.removePane")) {
+    sidebar_->Apply(SidebarRemovePane{row.key, row.pane});
+  } else if (action.is("tab.closeSplit")) {
+    sidebar_->Apply(SidebarClose{row.key, -1});
   } else if (action.is("tab.splitCurrent")) {
     sidebar_->Apply(SidebarFormSplit{SidebarKey::Tab(opening_active_tab),
                                      row.key, "vertical"});
@@ -6415,6 +6471,7 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
         sidebar_->UnbindStoredTab(browser, row.b_id);
       }
     }
+    // Two ids name a split of any width: the framework moves it whole.
     const TabId ids[] = {row.id, row.b_id};
     framework_->MoveTabsToNewWindowByIds(browser, ids,
                                          row.b_id.valid() ? 2 : 1);
@@ -7016,6 +7073,11 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
     snapshot.url = base::WideToUTF8(row.url);
     snapshot.url_b =
         snapshot.merged ? base::WideToUTF8(row.b_url) : std::string();
+    for (const TabRow::ExtraPane& pane : row.more) {
+      snapshot.more_ids.push_back(pane.id);
+      snapshot.more_urls.push_back(base::WideToUTF8(pane.url));
+    }
+    snapshot.pane = row.PaneAt(pt);
     snapshot.split_id = row.split_id;
     snapshot.group_id = row.group_id;
     ShowTabRowMenu(pt, snapshot);
@@ -7289,7 +7351,7 @@ void PhiShellWindow::SyncSplitChipTimer() {
 
 const TabRow* PhiShellWindow::SplitRowForTab(int tab_id) const {
   for (const TabRow& row : sidebar_->tabs()) {
-    if (row.id.value == tab_id || row.b_id.value == tab_id) {
+    if (row.PaneOf(TabId{tab_id}) >= 0) {
       return &row;
     }
   }
@@ -7302,14 +7364,44 @@ void PhiShellWindow::SplitChipTick() {
     return;
   }
   const std::vector<NativePane> panes = NativePagesSplitPanes();
-  if (panes.size() != 2 || ::IsRectEmpty(&panes[0].rect) ||
-      ::IsRectEmpty(&panes[1].rect)) {
+  if (panes.size() < 2 ||
+      std::any_of(panes.begin(), panes.end(), [](const NativePane& pane) {
+        return ::IsRectEmpty(&pane.rect) != FALSE;
+      })) {
     HideSplitChip();
     return;
   }
-  // The UNFOCUSED pane: the one the active tab is not in.
+  POINT cursor = {};
+  ::GetCursorPos(&cursor);
+  // An UNFOCUSED pane: the one under the pointer, else the one the chip is
+  // already up for (the pointer is on the chip or on its way out), else the
+  // first. A split of three or four has several.
   const int active = active_tab_id().value;
-  const NativePane& other = panes[0].tab_id == active ? panes[1] : panes[0];
+  const NativePane* hovered = nullptr;
+  const NativePane* shown = nullptr;
+  const NativePane* first = nullptr;
+  for (const NativePane& pane : panes) {
+    if (pane.tab_id == active) {
+      continue;
+    }
+    RECT screen = pane.rect;
+    ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&screen),
+                      2);
+    if (::PtInRect(&screen, cursor)) {
+      hovered = &pane;
+    }
+    if (pane.tab_id == split_chip_tab_) {
+      shown = &pane;
+    }
+    if (!first) {
+      first = &pane;
+    }
+  }
+  if (!first) {
+    HideSplitChip();
+    return;
+  }
+  const NativePane& other = hovered ? *hovered : shown ? *shown : *first;
   // No chip over a surface: a reader over the unfocused pane, or a peek
   // (either pane's covers the whole split) would sit under it.
   if (services_.sidebar) {
@@ -7322,8 +7414,6 @@ void PhiShellWindow::SplitChipTick() {
       return;
     }
   }
-  POINT cursor = {};
-  ::GetCursorPos(&cursor);
   RECT pane_screen = other.rect;
   ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&pane_screen), 2);
   bool inside = ::PtInRect(&pane_screen, cursor) != FALSE;
@@ -7427,10 +7517,11 @@ void PhiShellWindow::PaintSplitChip(HDC dc) {
   if (!row) {
     return;
   }
-  const bool b = row->b_id.value == split_chip_tab_;
-  const std::vector<unsigned char>& favicon = b ? row->b_favicon : row->favicon;
-  const int fav_w = b ? row->b_favicon_width : row->favicon_width;
-  const int fav_h = b ? row->b_favicon_height : row->favicon_height;
+  const int chip_pane = std::max(0, row->PaneOf(TabId{split_chip_tab_}));
+  int fav_w = 0;
+  int fav_h = 0;
+  const std::vector<unsigned char>& favicon =
+      row->PaneFavicon(chip_pane, &fav_w, &fav_h);
   const int mid = (rc.top + rc.bottom) / 2;
   const int icon_px = Scaled(16);
   RECT icon = {rc.left + Scaled(8), mid - icon_px / 2,
@@ -7455,7 +7546,7 @@ void PhiShellWindow::PaintSplitChip(HDC dc) {
   HGDIOBJ previous = label_font_ ? ::SelectObject(dc, label_font_) : nullptr;
   ::SetTextColor(dc, palette.label_dim);
   RECT text = {icon.right + Scaled(6), rc.top, more.left - Scaled(6), rc.bottom};
-  const std::wstring host = HostOfUrl(b ? row->b_url : row->url);
+  const std::wstring host = HostOfUrl(row->PaneUrl(chip_pane));
   PhiDrawTextAA(dc, host.c_str(), -1, &text,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
                     DT_NOPREFIX);
@@ -7486,13 +7577,32 @@ void PhiShellWindow::OnSplitChipClick(POINT chip_pt) {
     framework_->ActivateTabById(browser.value, tab);
     return;
   }
-  // The pane menu: Swap panes · Convert · Unsplit · ─ · Close pane.
+  // The pane menu. A pair: Swap panes · Convert · Unsplit · ─ · Close pane.
+  // Three or four panes: Move pane left / right (up / down when stacked) in
+  // place of the swap, and Remove from split takes only this pane out.
+  const int pane = row.PaneOf(TabId{tab});
+  const int pane_count = row.PaneCount();
+  const bool stacked = SplitIsStacked(row.id);
   PhiMenuSpec spec;
-  spec.items.push_back(PhiMenuItem::Command("tab.reversePanes", L"Swap panes"));
+  if (pane_count > 2) {
+    PhiMenuItem back = PhiMenuItem::Command(
+        "split.movePaneBack", stacked ? L"Move pane up" : L"Move pane left");
+    back.enabled = pane > 0;
+    spec.items.push_back(std::move(back));
+    PhiMenuItem forward = PhiMenuItem::Command(
+        "split.movePaneForward",
+        stacked ? L"Move pane down" : L"Move pane right");
+    forward.enabled = pane >= 0 && pane + 1 < pane_count;
+    spec.items.push_back(std::move(forward));
+  } else {
+    spec.items.push_back(
+        PhiMenuItem::Command("tab.reversePanes", L"Swap panes"));
+  }
   spec.items.push_back(PhiMenuItem::Command(
-      "tab.convertSplit", SplitIsStacked(row.id) ? L"Convert to side by side"
-                                                 : L"Convert to stacked"));
-  spec.items.push_back(PhiMenuItem::Command("tab.removeSplit", L"Unsplit"));
+      "tab.convertSplit",
+      stacked ? L"Convert to side by side" : L"Convert to stacked"));
+  spec.items.push_back(PhiMenuItem::Command(
+      "tab.removeSplit", pane_count > 2 ? L"Remove from split" : L"Unsplit"));
   spec.items.push_back(PhiMenuItem::Separator());
   spec.items.push_back(PhiMenuItem::Command("split.closePane", L"Close pane"));
   POINT screen = {rc.right, rc.bottom};
@@ -7505,8 +7615,16 @@ void PhiShellWindow::OnSplitChipClick(POINT chip_pt) {
   } else if (action.is("tab.convertSplit")) {
     sidebar_->Apply(SidebarSetLayout{
         row.key, SplitIsStacked(row.id) ? "vertical" : "horizontal"});
+  } else if (action.is("split.movePaneBack")) {
+    sidebar_->Apply(SidebarMovePane{row.key, pane, pane - 1});
+  } else if (action.is("split.movePaneForward")) {
+    sidebar_->Apply(SidebarMovePane{row.key, pane, pane + 1});
   } else if (action.is("tab.removeSplit")) {
-    sidebar_->Apply(SidebarBreakSplit{row.key});
+    if (pane_count > 2 && pane >= 0) {
+      sidebar_->Apply(SidebarRemovePane{row.key, pane});
+    } else {
+      sidebar_->Apply(SidebarBreakSplit{row.key});
+    }
   } else if (action.is("split.closePane")) {
     framework_->CloseTabById(browser.value, tab);
   }

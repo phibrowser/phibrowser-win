@@ -7,6 +7,9 @@
 #include <climits>
 
 #include "base/base64.h"
+#include "base/json/json_reader.h"
+#include "base/json/json_writer.h"
+#include "base/values.h"
 
 namespace phi_client {
 
@@ -56,6 +59,75 @@ void FillFavicon(const std::string& bytes,
   }
 }
 
+
+// The panes after the second of a split cell, out of the row's JSON text:
+// [{"url":"…","title":"…","favicon":"<base64 BGRA>","faviconWidth":16,
+// "faviconHeight":16}]. `title` and the favicon keys are optional; a Mac
+// record has url and title only. Unreadable text, or an entry with no url,
+// reads as none, so the cell falls back to a pair.
+std::vector<PhiRow::ExtraPane> DecodeExtraPanes(
+    const std::optional<std::string>& json,
+    PhiFaviconForm favicons) {
+  std::vector<PhiRow::ExtraPane> out;
+  if (!json || json->empty()) {
+    return out;
+  }
+  const std::optional<base::Value> parsed =
+      base::JSONReader::Read(*json, base::JSON_PARSE_RFC);
+  if (!parsed || !parsed->is_list()) {
+    return out;
+  }
+  for (const base::Value& entry : parsed->GetList()) {
+    const base::DictValue* dict = entry.GetIfDict();
+    const std::string* url = dict ? dict->FindString("url") : nullptr;
+    if (!url || url->empty()) {
+      return {};
+    }
+    PhiRow::ExtraPane pane;
+    pane.url = *url;
+    if (const std::string* title = dict->FindString("title")) {
+      pane.title = *title;
+    }
+    if (const std::string* icon = dict->FindString("favicon")) {
+      FillFavicon(Decode(*icon), dict->FindInt("faviconWidth").value_or(0),
+                  dict->FindInt("faviconHeight").value_or(0), favicons,
+                  &pane.favicon_base64, &pane.favicon_raw,
+                  &pane.favicon_width, &pane.favicon_height);
+    }
+    out.push_back(std::move(pane));
+    if (out.size() == 2) {
+      break;  // A split holds four panes.
+    }
+  }
+  return out;
+}
+
+std::string EncodeExtraPanes(const std::vector<PhiRow::ExtraPane>& panes) {
+  base::ListValue list;
+  for (const PhiRow::ExtraPane& pane : panes) {
+    if (pane.url.empty() || list.size() == 2) {
+      continue;
+    }
+    base::DictValue entry;
+    entry.Set("url", pane.url);
+    if (!pane.title.empty()) {
+      entry.Set("title", pane.title);
+    }
+    if (!pane.favicon_base64.empty() && pane.favicon_width > 0 &&
+        pane.favicon_height > 0) {
+      entry.Set("favicon", pane.favicon_base64);
+      entry.Set("faviconWidth", pane.favicon_width);
+      entry.Set("faviconHeight", pane.favicon_height);
+    }
+    list.Append(std::move(entry));
+  }
+  std::string out;
+  if (!list.empty()) {
+    base::JSONWriter::Write(list, &out);
+  }
+  return out;
+}
+
 }  // namespace
 
 const char* PhiPinScopeName(PhiPinScope scope) {
@@ -102,6 +174,12 @@ PhiRow PhiTabStore::CellFromPin(const store::Tab& a,
     row.partner_guid = b->guid;
     if (row.layout.empty()) {
       row.layout = b->layout.value_or(std::string());
+    }
+    // The later panes ride the first row; a swap of the pair can leave
+    // them on the second.
+    row.more = DecodeExtraPanes(a.split_extra_panes, favicons);
+    if (row.more.empty()) {
+      row.more = DecodeExtraPanes(b->split_extra_panes, favicons);
     }
   }
   return row;
@@ -152,6 +230,9 @@ PhiRow PhiTabStore::CellFromBookmark(const store::Tab& t,
               &row.favicon_b_height);
   row.icon = t.icon == store::kDefaultFolderIcon ? std::string() : t.icon;
   row.layout = t.layout.value_or(std::string());
+  if (!row.url_b.empty()) {
+    row.more = DecodeExtraPanes(t.split_extra_panes, favicons);
+  }
   return row;
 }
 
@@ -338,6 +419,28 @@ bool PhiTabStore::SetRowSecondary(const std::string& guid,
   in.favicon_height = favicon.empty() ? 0 : favicon_b_height;
   const std::string created = store_.CreatePin(in);
   return !created.empty() && store_.SetPinSplitPair(guid, created, layout);
+}
+
+bool PhiTabStore::SetRowExtraPanes(
+    const std::string& guid,
+    const std::vector<PhiRow::ExtraPane>& panes) {
+  const store::Tab* t = store_.FindTab(guid);
+  if (!t) {
+    return false;
+  }
+  const bool pin = t->type == store::RowType::kPinnedTab;
+  const bool split = pin ? t->split_partner_guid.has_value()
+                         : t->secondary_url.has_value();
+  if (!split) {
+    return panes.empty();
+  }
+  if (pin) {
+    // One copy, on the row the cell is named by.
+    store_.SetSplitExtraPanes(*t->split_partner_guid, std::nullopt);
+  }
+  const std::string json = EncodeExtraPanes(panes);
+  return store_.SetSplitExtraPanes(
+      guid, json.empty() ? std::nullopt : std::optional<std::string>(json));
 }
 
 bool PhiTabStore::RenameRow(const std::string& guid, const std::string& title) {

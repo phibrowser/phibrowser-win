@@ -1751,12 +1751,12 @@ The scope's splits.
 
 #### `agentSpace.splitView.create`
 
-Splits two tabs and answers with the split id.
+Splits two to four tabs and answers with the split id.
 
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: agent, shadow, user — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
 - Mutates the user's state (arms the agent drive context).
-- **Errors**: `space_not_open`, `create_failed`, `user_space_operations_disabled`
+- **Errors**: `invalid_payload`, `space_not_open`, `create_failed`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -1765,16 +1765,17 @@ Splits two tabs and answers with the split id.
 | `taskId` | string | no | — | …or a task's window. |
 | `primaryTabId` | integer | no | — | The left/top tab. |
 | `secondaryTabId` | integer | no | — | The right/bottom tab. |
+| `tabIds` | list | no | — | Two to four tabs in pane order, in place of the two keys above. |
 | `layout` | string | no | — | vertical or horizontal. |
 
 #### `agentSpace.splitView.update`
 
-Changes a split's axis or divider ratio.
+Changes a split's axis or its panes' shares.
 
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: agent, shadow, user — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
 - Mutates the user's state (arms the agent drive context).
-- **Errors**: `invalid_payload`, `space_not_open`, `user_space_operations_disabled`
+- **Errors**: `invalid_payload`, `fraction_count_mismatch`, `ratio_requires_pair`, `space_not_open`, `user_space_operations_disabled`
 
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
@@ -1783,11 +1784,12 @@ Changes a split's axis or divider ratio.
 | `taskId` | string | no | — | …or a task's window. |
 | `splitId` | string | yes | — | The split. |
 | `layout` | string | no | — | A new axis. |
-| `ratio` | number | no | — | A new divider ratio. |
+| `ratio` | number | no | — | A pair's new divider ratio (the first pane's share). |
+| `fractions` | list | no | — | Every pane's share in pane order, one per pane. |
 
 #### `agentSpace.splitView.swap`
 
-Swaps a split's two members.
+Reverses a split's pane order (a pair swaps).
 
 - **Capabilities**: `userSpaceWrite`
 - **Scope**: agent, shadow, user — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.

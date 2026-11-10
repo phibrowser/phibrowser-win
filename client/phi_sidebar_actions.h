@@ -35,7 +35,8 @@ struct SidebarMove {
   SidebarKey key;  // kTab, kSplit, kCell (pin or bookmark) or kFolder.
   SidebarPlace place;
 };
-// Activate the row's tab; `pane` 1 = the second pane of a split row/cell.
+// Activate the row's tab; `pane` names a pane of a split row/cell (0 = the
+// first, up to 3 in a split row of four).
 struct SidebarActivate {
   SidebarKey key;
   int pane = 0;
@@ -44,7 +45,7 @@ struct SidebarActivate {
 // bound tabs and stays as a closed cell.
 struct SidebarClose {
   SidebarKey key;
-  int pane = -1;  // -1 = every pane; 0/1 = that pane only.
+  int pane = -1;  // -1 = every pane; 0 to 3 = that pane only.
 };
 // Delete a stored cell (unpin / remove bookmark / delete folder); its live
 // tabs stay as plain tabs.
@@ -52,7 +53,9 @@ struct SidebarRemoveCell {
   SidebarKey key;
 };
 // Pair two rows' tabs as a split with `a` primary; both are normalised to
-// plain first (a split never lives in a stored cell by accident).
+// plain first (a split never lives in a stored cell by accident). When
+// `a`'s tab is already a pane of a split with room (fewer than four panes),
+// `b` joins that split right after it instead; a full split refuses.
 struct SidebarFormSplit {
   SidebarKey a;
   SidebarKey b;
@@ -63,6 +66,18 @@ struct SidebarBreakSplit {
 };
 struct SidebarSwapPanes {
   SidebarKey key;
+};
+// Take one pane out of a split row: a pair dissolves, a wider split keeps
+// the rest and the tab lands right after it.
+struct SidebarRemovePane {
+  SidebarKey key;  // kSplit row.
+  int pane = 0;
+};
+// Move one pane of a split row of three or four to another slot.
+struct SidebarMovePane {
+  SidebarKey key;  // kSplit row.
+  int pane = 0;
+  int slot = 0;
 };
 struct SidebarSetLayout {
   SidebarKey key;  // kSplit row (live) or a split cell (stored + live).
@@ -104,6 +119,8 @@ using SidebarCommand = std::variant<SidebarMove,
                                     SidebarFormSplit,
                                     SidebarBreakSplit,
                                     SidebarSwapPanes,
+                                    SidebarRemovePane,
+                                    SidebarMovePane,
                                     SidebarSetLayout,
                                     SidebarJoinGroup,
                                     SidebarLeaveGroup,
@@ -128,7 +145,8 @@ int PlaceSiblingIndex(const SidebarTree& tree,
 int PlaceAnchorTab(const SidebarTree& tree, const SidebarPlace& place);
 
 // The tab a key stands for in the strip: a tab row's tab, a split row's
-// first pane, a cell's pane A (0 when closed). `pane` 1 selects the second.
+// first pane, a cell's pane A (0 when closed). `pane` selects a later pane
+// (a cell has two at most).
 int TabOfKey(const SidebarTree& tree, const SidebarKey& key, int pane = 0);
 
 // True when moving `key` to `place` would land it where it already is.

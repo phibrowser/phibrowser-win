@@ -725,6 +725,19 @@ PhiVerbResult PhiControlDispatcher::SplitViewOp(const PhiVerbContext& ctx,
         row.Set("ratio", split.ratio);
         row.Set("primaryTabId", split.primary.value);
         row.Set("secondaryTabId", split.secondary.value);
+        // Every pane in slot order (two to four) and its share; the three
+        // keys above are the first two panes and the first share.
+        base::ListValue tab_ids;
+        for (const TabId tab : split.tabs) {
+          tab_ids.Append(tab.value);
+        }
+        row.Set("paneCount", static_cast<int>(tab_ids.size()));
+        row.Set("tabIds", std::move(tab_ids));
+        base::ListValue fractions;
+        for (const double fraction : split.fractions) {
+          fractions.Append(fraction);
+        }
+        row.Set("fractions", std::move(fractions));
         splits.Append(std::move(row));
       }
     }
@@ -733,12 +746,36 @@ PhiVerbResult PhiControlDispatcher::SplitViewOp(const PhiVerbContext& ctx,
     return PhiVerbResult::Ok(std::move(out));
   }
   if (op == "create") {
+    // `tabIds` (two to four, each once) or the pair's two keys.
+    std::vector<int> tabs;
+    if (const base::ListValue* list = ctx.params.FindList("tabIds")) {
+      for (const base::Value& value : *list) {
+        if (!value.is_int() ||
+            std::find(tabs.begin(), tabs.end(), value.GetInt()) != tabs.end()) {
+          return PhiVerbResult::Fail("invalid_payload");
+        }
+        tabs.push_back(value.GetInt());
+      }
+      if (tabs.size() < 2 || tabs.size() > 4) {
+        return PhiVerbResult::Fail("invalid_payload");
+      }
+    } else {
+      tabs = {ctx.params.Int("primaryTabId", -1),
+              ctx.params.Int("secondaryTabId", -1)};
+    }
+    // A wider split starts as a pair and takes the rest a pane at a time.
     const std::string created = framework_->CreateSplitViewForTabs(
-        browser.value, ctx.params.Int("primaryTabId", -1),
-        ctx.params.Int("secondaryTabId", -1),
-        ctx.params.String("layout").c_str());
+        browser.value, tabs[0], tabs[1], ctx.params.String("layout").c_str());
     if (created.empty()) {
       return PhiVerbResult::Fail("create_failed");
+    }
+    for (size_t pane = 2; pane < tabs.size(); ++pane) {
+      if (!framework_->AddTabToSplitById(browser, created.c_str(),
+                                         TabId{tabs[pane]},
+                                         static_cast<int>(pane))) {
+        framework_->RemoveSplitById(browser.value, created.c_str());
+        return PhiVerbResult::Fail("create_failed");
+      }
     }
     base::DictValue out;
     out.Set("splitId", created);
@@ -746,6 +783,34 @@ PhiVerbResult PhiControlDispatcher::SplitViewOp(const PhiVerbContext& ctx,
   }
   const std::string split_id = ctx.params.String("splitId");
   if (op == "update") {
+    const phi_framework::SplitSnapshot* split =
+        coordinator_->window_model().FindSplit(browser, split_id);
+    const size_t pane_count = split ? split->tabs.size() : 0;
+    // `fractions` (one per pane) wins over `ratio`, which only a pair has.
+    if (const base::ListValue* list = ctx.params.FindList("fractions")) {
+      std::vector<double> fractions;
+      for (const base::Value& value : *list) {
+        if (!value.is_double() && !value.is_int()) {
+          return PhiVerbResult::Fail("invalid_payload");
+        }
+        fractions.push_back(value.GetDouble());
+      }
+      if (fractions.size() != pane_count) {
+        return PhiVerbResult::Fail("fraction_count_mismatch");
+      }
+      bool ok = framework_->UpdateSplitFractions(
+          browser.value, split_id.c_str(), fractions.data(),
+          static_cast<int>(fractions.size()));
+      if (ok && !ctx.params.String("layout").empty()) {
+        ok = framework_->UpdateSplitView(browser.value, split_id.c_str(),
+                                         ctx.params.String("layout").c_str(),
+                                         -1.0);
+      }
+      return PhiVerbOk(ok);
+    }
+    if (ctx.params.Has("ratio") && pane_count > 2) {
+      return PhiVerbResult::Fail("ratio_requires_pair");
+    }
     return PhiVerbOk(framework_->UpdateSplitView(
         browser.value, split_id.c_str(), ctx.params.String("layout").c_str(),
         ctx.params.Double("ratio", -1.0)));

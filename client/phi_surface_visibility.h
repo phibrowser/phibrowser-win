@@ -26,11 +26,12 @@ struct PhiVisiblePeek {
   bool valid() const { return opener != 0; }
 };
 
-// The peek on screen for `focused`: its own, else its split partner's — a
+// The peek on screen for `focused`: its own, else a split partner's — a
 // peek covers its opener's whole split, so it stays up whichever pane is
-// focused. The focused pane's own peek wins.
+// focused. The focused pane's own peek wins. `partners` are the split's
+// other panes in slot order (one to three; empty outside a split).
 inline PhiVisiblePeek PhiVisiblePeekFor(int focused,
-                                        int partner,
+                                        const std::vector<int>& partners,
                                         const std::map<int, int>& peeks) {
   if (focused == 0) {
     return {};
@@ -38,11 +39,10 @@ inline PhiVisiblePeek PhiVisiblePeekFor(int focused,
   if (const auto own = peeks.find(focused); own != peeks.end()) {
     return {focused, own->second};
   }
-  if (partner == 0) {
-    return {};
-  }
-  if (const auto other = peeks.find(partner); other != peeks.end()) {
-    return {partner, other->second};
+  for (const int partner : partners) {
+    if (const auto other = peeks.find(partner); other != peeks.end()) {
+      return {partner, other->second};
+    }
   }
   return {};
 }
@@ -54,23 +54,26 @@ inline PhiVisiblePeek PhiVisiblePeekFor(int focused,
 // tab, the opener's own reader, which covers the card peek included.
 inline std::vector<int> PhiVisibleReaderOrigins(
     int focused,
-    int partner,
+    const std::vector<int>& partners,
     const std::map<int, int>& peeks,
     const std::set<int>& readers) {
   std::vector<int> out;
   if (focused == 0) {
     return out;
   }
-  const PhiVisiblePeek peek = PhiVisiblePeekFor(focused, partner, peeks);
+  const PhiVisiblePeek peek = PhiVisiblePeekFor(focused, partners, peeks);
   if (peek.valid()) {
-    if (partner == 0 && readers.count(focused)) {
+    if (partners.empty() && readers.count(focused)) {
       out.push_back(focused);
     } else if (peek.peek_tab != 0 && readers.count(peek.peek_tab)) {
       out.push_back(peek.peek_tab);
     }
     return out;
   }
-  for (const int tab : {focused, partner}) {
+  if (readers.count(focused)) {
+    out.push_back(focused);
+  }
+  for (const int tab : partners) {
     if (tab != 0 && readers.count(tab)) {
       out.push_back(tab);
     }

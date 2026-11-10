@@ -16,17 +16,25 @@ std::string TagFor(const std::string& guid, bool pane_b) {
   return pane_b ? guid + kSidebarPaneBSuffix : guid;
 }
 
+std::string TagForPane(const std::string& guid, int pane) {
+  if (guid.empty()) return {};
+  if (pane <= 0 || pane >= kSidebarMaxPanes) return guid;
+  return guid + '#' + static_cast<char>('a' + pane);
+}
+
 bool ParseTag(const std::string& tag, SidebarTag* out) {
   if (tag.empty()) return false;
-  const std::string suffix = kSidebarPaneBSuffix;
-  if (tag.size() >= suffix.size() &&
-      tag.compare(tag.size() - suffix.size(), suffix.size(), suffix) == 0) {
-    out->guid = tag.substr(0, tag.size() - suffix.size());
-    out->pane_b = true;
-  } else {
-    out->guid = tag;
-    out->pane_b = false;
+  out->guid = tag;
+  out->pane = 0;
+  // "#b", "#c" or "#d" at the very end.
+  if (tag.size() >= 2 && tag[tag.size() - 2] == '#') {
+    const int pane = tag.back() - 'a';
+    if (pane >= 1 && pane < kSidebarMaxPanes) {
+      out->guid = tag.substr(0, tag.size() - 2);
+      out->pane = pane;
+    }
   }
+  out->pane_b = out->pane == 1;
   return !out->guid.empty();
 }
 
@@ -75,6 +83,19 @@ std::vector<int> SidebarBinding::TabIds() const {
   std::vector<int> ids;
   if (tab_a) ids.push_back(tab_a);
   if (tab_b && tab_b != tab_a) ids.push_back(tab_b);
+  for (int id : more) {
+    if (id && std::find(ids.begin(), ids.end(), id) == ids.end()) {
+      ids.push_back(id);
+    }
+  }
+  return ids;
+}
+
+std::vector<int> SidebarContentNode::Panes() const {
+  std::vector<int> ids;
+  if (tab_a) ids.push_back(tab_a);
+  if (tab_b) ids.push_back(tab_b);
+  ids.insert(ids.end(), more.begin(), more.end());
   return ids;
 }
 
@@ -103,9 +124,8 @@ int SidebarTree::IndexOf(int tab_id) const {
 namespace {
 
 SidebarSurface SurfaceFor(const std::map<int, SidebarSurface>& surfaces,
-                          int tab_a,
-                          int tab_b) {
-  for (int id : {tab_a, tab_b}) {
+                          const std::vector<int>& panes) {
+  for (int id : panes) {
     if (id == 0) continue;
     const auto it = surfaces.find(id);
     if (it != surfaces.end() && it->second != SidebarSurface::kContent) {
@@ -152,10 +172,21 @@ SidebarTree BuildSidebar(const SidebarInputs& in) {
     out.active_tab = surface_origin;
   }
   // Live split partners, by split identity — never by adjacency. A split
-  // straddling a group boundary is not merged.
+  // straddling a group boundary is not merged. `mates_of` holds every pane
+  // of a tab's split (two to four, strip order, itself included);
+  // `partner_of` only the other pane of a pair, which is what a stored
+  // split cell binds to.
   std::map<int, const SidebarLiveTab*> partner_of;
+  std::map<int, const std::vector<const SidebarLiveTab*>*> mates_of;
   for (const auto& [id, panes] : splits) {
-    if (panes.size() == 2 && panes[0]->group_id == panes[1]->group_id) {
+    if (panes.size() < 2 || panes.size() > 4 ||
+        !std::all_of(panes.begin(), panes.end(), [&](const auto* pane) {
+          return pane->group_id == panes[0]->group_id;
+        })) {
+      continue;
+    }
+    for (const auto* pane : panes) mates_of.emplace(pane->id, &panes);
+    if (panes.size() == 2) {
       partner_of.emplace(panes[0]->id, panes[1]);
       partner_of.emplace(panes[1]->id, panes[0]);
     }
@@ -192,11 +223,46 @@ SidebarTree BuildSidebar(const SidebarInputs& in) {
   for (const auto& [guid, item] : records) {
     if (item->kind == SidebarStoredKind::kFolder) continue;
     const SidebarLiveTab* a = tagged(TagFor(guid, false));
-    if (item->split) {
+    if (item->split && item->extra > 0) {
+      // Three or four panes: open as a split only when every pane is live
+      // and they form one split of exactly that many panes. Otherwise each
+      // pane that is not in some other split stays recoverable, as below.
+      std::vector<const SidebarLiveTab*> panes = {a, tagged(TagFor(guid, true))};
+      for (int pane = 2; pane < 2 + item->extra && pane < kSidebarMaxPanes;
+           ++pane) {
+        panes.push_back(tagged(TagForPane(guid, pane)));
+      }
+      const bool all_live =
+          std::none_of(panes.begin(), panes.end(),
+                       [](const SidebarLiveTab* pane) { return !pane; });
+      const auto mates = all_live ? mates_of.find(a->id) : mates_of.end();
+      const bool together =
+          mates != mates_of.end() && mates->second->size() == panes.size() &&
+          std::all_of(panes.begin(), panes.end(),
+                      [&](const SidebarLiveTab* pane) {
+                        return pane->split_id == a->split_id;
+                      });
+      SidebarBinding binding;
+      const auto id_of = [&](const SidebarLiveTab* pane) {
+        return pane && (together || pane->split_id.empty()) ? pane->id : 0;
+      };
+      binding.tab_a = id_of(panes[0]);
+      binding.tab_b = id_of(panes[1]);
+      for (size_t i = 2; i < panes.size(); ++i) {
+        binding.more.push_back(id_of(panes[i]));
+      }
+      if (together) {
+        binding.state = SidebarBindingState::kSplitOpen;
+        binding.split_id = a->split_id;
+      } else if (binding.open()) {
+        binding.state = SidebarBindingState::kPartial;
+      }
+      claim(guid, binding);
+    } else if (item->split) {
       const SidebarLiveTab* b = tagged(TagFor(guid, true));
       SidebarBinding binding;
       if (a && b && partner(a) == b) {
-        binding = {SidebarBindingState::kSplitOpen, a->id, b->id, a->split_id};
+        binding = {SidebarBindingState::kSplitOpen, a->id, b->id, {}, a->split_id};
       } else {
         // A closed/missing pane is recoverable. A pane in an unrelated
         // split is NOT: that whole split stays in the normal section.
@@ -206,7 +272,7 @@ SidebarTree BuildSidebar(const SidebarInputs& in) {
       }
       claim(guid, binding);
     } else if (a && a->split_id.empty()) {
-      claim(guid, {SidebarBindingState::kOpen, a->id, 0, {}});
+      claim(guid, {SidebarBindingState::kOpen, a->id, 0, {}, {}});
     }
   }
   // Which claims hide their tab from the strip (policy).
@@ -226,14 +292,14 @@ SidebarTree BuildSidebar(const SidebarInputs& in) {
     cell.parent_guid = item.parent_guid;
     cell.depth = depth;
     cell.split = item.split;
+    cell.extra = item.split ? item.extra : 0;
     cell.key = item.kind == SidebarStoredKind::kFolder
                    ? SidebarKey::Folder(item.guid)
                    : SidebarKey::Cell(item.guid);
     const auto b = bindings.find(item.guid);
     if (b != bindings.end()) {
       cell.binding = b->second;
-      cell.attached_surface =
-          SurfaceFor(in.surfaces, cell.binding.tab_a, cell.binding.tab_b);
+      cell.attached_surface = SurfaceFor(in.surfaces, cell.binding.TabIds());
     }
     return cell;
   };
@@ -322,25 +388,37 @@ SidebarTree BuildSidebar(const SidebarInputs& in) {
         }
       }
     }
-    const SidebarLiveTab* b = partner(tab);
+    // The whole split merges into one row, or none of it does.
+    const auto mates = mates_of.find(tab->id);
+    const bool merged =
+        mates != mates_of.end() &&
+        std::all_of(mates->second->begin(), mates->second->end(),
+                    [&](const auto* pane) {
+                      return pane == tab || (!out.owner_of.count(pane->id) &&
+                                             !emitted.count(pane->id));
+                    });
     SidebarContentNode node;
     node.group_id = group_id;
     node.hidden = group && group->collapsed;
-    if (b && !out.owner_of.count(b->id) && !emitted.count(b->id)) {
+    if (merged) {
+      const auto& panes = *mates->second;
       node.key = SidebarKey::Split(tab->split_id);
       node.kind = SidebarNodeKind::kSplit;
-      node.tab_a = tab->id;
-      node.tab_b = b->id;
-      emitted.insert(b->id);
+      node.tab_a = panes[0]->id;
+      node.tab_b = panes[1]->id;
+      for (size_t i = 2; i < panes.size(); ++i) node.more.push_back(panes[i]->id);
+      for (const auto* pane : panes) emitted.insert(pane->id);
     } else {
       node.key = SidebarKey::Tab(tab->id);
       node.kind = SidebarNodeKind::kTab;
       node.tab_a = tab->id;
     }
     emitted.insert(tab->id);
+    const std::vector<int> node_panes = node.Panes();
     node.active = out.active_tab != 0 &&
-                  (node.tab_a == out.active_tab || node.tab_b == out.active_tab);
-    node.attached_surface = SurfaceFor(in.surfaces, node.tab_a, node.tab_b);
+                  std::find(node_panes.begin(), node_panes.end(),
+                            out.active_tab) != node_panes.end();
+    node.attached_surface = SurfaceFor(in.surfaces, node_panes);
     if (node.active && !group_id.empty()) {
       for (SidebarContentNode& n : out.content) {
         if (n.kind == SidebarNodeKind::kGroup && n.group_id == group_id) {

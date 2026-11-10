@@ -155,14 +155,14 @@ class PhiNativePagesHost {
 
  private:
   // Where a slot's page should be: slot 0 is the card (no split) or the
-  // primary pane, slot 1 the secondary pane.
+  // first pane, slots 1 to 3 the later panes of a split.
   struct Placement {
     bool wanted = false;
     int tab_id = 0;
     bool pane = false;  // false: the whole content card.
     RECT rect = {};
   };
-  static constexpr int kSlots = 2;
+  static constexpr int kSlots = 4;
 
   // The two route predicates. Pure functions of the shell's state.
   bool WantsBookmarkPage() const;

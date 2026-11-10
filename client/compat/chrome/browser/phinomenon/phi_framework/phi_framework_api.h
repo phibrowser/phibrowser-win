@@ -224,6 +224,14 @@ struct SplitSnapshotView {
   TabId secondary;
   SplitLayout layout = SplitLayout::kVertical;
   double ratio = 0.5;  // The first pane's share.
+  // Appended (2026-11-10): every pane in slot order (two to four; slot 0 is
+  // the left pane of a vertical split, the top one of a horizontal one) and
+  // each pane's share of the split axis, summing to 1. `primary` and
+  // `secondary` are tabs[0] and tabs[1], `ratio` is fractions[0].
+  PHI_ABI_RAW_POINTER const TabId* tabs = nullptr;
+  size_t tab_count = 0;
+  PHI_ABI_RAW_POINTER const double* fractions = nullptr;
+  size_t fraction_count = 0;
 };
 
 struct GroupSnapshotView {
@@ -742,11 +750,37 @@ class PhiFramework {
                                const char* layout,
                                double ratio) = 0;
 
-  // Swaps the two panes of `split_id`.
+  // Reverses the pane order of `split_id` (a pair swaps).
   virtual bool SwapSplitView(int64_t window_id, const char* split_id) = 0;
 
   // Ends `split_id`; both tabs stay open as ordinary tabs.
   virtual bool RemoveSplitById(int64_t window_id, const char* split_id) = 0;
+
+  // --- Splits of three or four panes (2026-11-10). A split is one row or
+  // one column of two to four panes. A wider split starts as a pair
+  // (CreateSplitViewForTabs) and grows a pane at a time.
+  //
+  // Sets every pane's share of the split axis, in slot order: `count` must
+  // be the split's pane count and the shares are normalised to sum to 1.
+  virtual bool UpdateSplitFractions(int64_t window_id,
+                                    const char* split_id,
+                                    const double* fractions,
+                                    int count) = 0;
+  // Adds `tab` (in no split) to `split_id` as pane `slot` (clamped to the
+  // end). The tab moves next to the split and takes its group and pinned
+  // state; the new pane gets an equal share and the others keep their
+  // proportions. False once the split holds four panes.
+  virtual bool AddTabToSplitById(WindowId window,
+                                 const char* split_id,
+                                 TabId tab,
+                                 int slot) = 0;
+  // Takes `tab` out of its split: the other panes stay split and the tab
+  // lands right after them. A pair dissolves. False when the tab is in no
+  // split.
+  virtual bool RemoveTabFromSplitById(WindowId window, TabId tab) = 0;
+  // Moves `tab` to pane `slot` of its split. False when the tab is in no
+  // split or the split has no such pane.
+  virtual bool MoveTabInSplitById(WindowId window, TabId tab, int slot) = 0;
 
   // --- Tab groups (Chromium native model) ----------------------------------
   // Groups organize contiguous tabs under a colored, collapsible header; the
@@ -1750,7 +1784,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 1;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 2;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

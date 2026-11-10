@@ -2696,6 +2696,61 @@
    "zh-Hans": "无法在此网页使用阅读模式",
    "zh-Hant": "這個網頁無法使用閱讀模式"
   },
+  "browser.splitDropHint.addBetween": {
+   "de": "Hier hinzufügen",
+   "en": "Add Here",
+   "es": "Agregar aquí",
+   "fr": "Ajouter ici",
+   "ja": "ここに追加",
+   "ko": "여기에 추가",
+   "nl": "Voeg hier toe",
+   "zh-Hans": "在此处添加",
+   "zh-Hant": "加入此處"
+  },
+  "browser.splitDropHint.addBottom": {
+   "de": "Unten hinzufügen",
+   "en": "Add Bottom",
+   "es": "Agregar abajo",
+   "fr": "Ajouter en bas",
+   "ja": "下に追加",
+   "ko": "아래쪽 추가",
+   "nl": "Voeg onder toe",
+   "zh-Hans": "在底部添加",
+   "zh-Hant": "加入下方"
+  },
+  "browser.splitDropHint.addLeft": {
+   "de": "Links hinzufügen",
+   "en": "Add Left",
+   "es": "Agregar a la izquierda",
+   "fr": "Ajouter à gauche",
+   "ja": "左に追加",
+   "ko": "왼쪽 추가",
+   "nl": "Voeg links toe",
+   "zh-Hans": "在左侧添加",
+   "zh-Hant": "加入左側"
+  },
+  "browser.splitDropHint.addRight": {
+   "de": "Rechts hinzufügen",
+   "en": "Add Right",
+   "es": "Agregar a la derecha",
+   "fr": "Ajouter à droite",
+   "ja": "右に追加",
+   "ko": "오른쪽 추가",
+   "nl": "Voeg rechts toe",
+   "zh-Hans": "在右侧添加",
+   "zh-Hant": "加入右側"
+  },
+  "browser.splitDropHint.addTop": {
+   "de": "Oben hinzufügen",
+   "en": "Add Top",
+   "es": "Agregar arriba",
+   "fr": "Ajouter en haut",
+   "ja": "上に追加",
+   "ko": "위쪽 추가",
+   "nl": "Voeg boven toe",
+   "zh-Hans": "在顶部添加",
+   "zh-Hant": "加入上方"
+  },
   "browser.splitDropHint.bottom": {
    "de": "Unten ersetzen",
    "en": "Replace Bottom",
@@ -2739,6 +2794,17 @@
    "nl": "Voeg split links toe",
    "zh-Hans": "在左侧添加分屏",
    "zh-Hant": "加入左側分割畫面"
+  },
+  "browser.splitDropHint.replacePane": {
+   "de": "Ersetzen",
+   "en": "Replace",
+   "es": "Reemplazar",
+   "fr": "Remplacer",
+   "ja": "置き換え",
+   "ko": "바꾸기",
+   "nl": "Vervang",
+   "zh-Hans": "替换",
+   "zh-Hant": "取代"
   },
   "browser.splitDropHint.rightHalf": {
    "de": "Rechts ersetzen",
@@ -11686,6 +11752,17 @@
    "zh-Hans": "添加到标签页组",
    "zh-Hant": "加入群組"
   },
+  "sidebar.tabContextMenu.closeSplit": {
+   "de": "Split schließen",
+   "en": "Close Split",
+   "es": "Cerrar vista dividida",
+   "fr": "Fermer la Split View",
+   "ja": "分割表示を閉じる",
+   "ko": "분할 닫기",
+   "nl": "Sluit split",
+   "zh-Hans": "关闭分屏",
+   "zh-Hant": "關閉分割畫面"
+  },
   "sidebar.tabContextMenu.closeTabsAbove": {
    "de": "Tabs oberhalb schließen",
    "en": "Close tabs above",
@@ -11752,6 +11829,17 @@
    "zh-Hans": "转换为上下分屏",
    "zh-Hant": "轉換為上下分割畫面"
   },
+  "sidebar.tabContextMenu.copyPaneURLAtPosition": {
+   "de": "URL von Bereich {0} kopieren",
+   "en": "Copy Pane {0} URL",
+   "es": "Copiar URL del panel {0}",
+   "fr": "Copier l'URL du volet {0}",
+   "ja": "ペイン{0}のURLをコピー",
+   "ko": "{0}번째 패널 URL 복사",
+   "nl": "Kopieer URL van paneel {0}",
+   "zh-Hans": "拷贝第 {0} 个窗格的网址",
+   "zh-Hant": "拷貝第 {0} 個窗格的網址"
+  },
   "sidebar.tabContextMenu.duplicateSplit": {
    "de": "Split duplizieren",
    "en": "Duplicate Split",
@@ -11773,6 +11861,50 @@
    "nl": "Dupliceer",
    "zh-Hans": "复制",
    "zh-Hant": "複製"
+  },
+  "sidebar.tabContextMenu.movePaneDown": {
+   "de": "Bereich nach unten verschieben",
+   "en": "Move Pane Down",
+   "es": "Mover panel hacia abajo",
+   "fr": "Déplacer le volet vers le bas",
+   "ja": "ペインを下に移動",
+   "ko": "패널 아래로 이동",
+   "nl": "Verplaats paneel omlaag",
+   "zh-Hans": "向下移动窗格",
+   "zh-Hant": "將窗格向下移動"
+  },
+  "sidebar.tabContextMenu.movePaneLeft": {
+   "de": "Bereich nach links verschieben",
+   "en": "Move Pane Left",
+   "es": "Mover panel a la izquierda",
+   "fr": "Déplacer le volet vers la gauche",
+   "ja": "ペインを左に移動",
+   "ko": "패널 왼쪽으로 이동",
+   "nl": "Verplaats paneel naar links",
+   "zh-Hans": "向左移动窗格",
+   "zh-Hant": "將窗格向左移動"
+  },
+  "sidebar.tabContextMenu.movePaneRight": {
+   "de": "Bereich nach rechts verschieben",
+   "en": "Move Pane Right",
+   "es": "Mover panel a la derecha",
+   "fr": "Déplacer le volet vers la droite",
+   "ja": "ペインを右に移動",
+   "ko": "패널 오른쪽으로 이동",
+   "nl": "Verplaats paneel naar rechts",
+   "zh-Hans": "向右移动窗格",
+   "zh-Hant": "將窗格向右移動"
+  },
+  "sidebar.tabContextMenu.movePaneUp": {
+   "de": "Bereich nach oben verschieben",
+   "en": "Move Pane Up",
+   "es": "Mover panel hacia arriba",
+   "fr": "Déplacer le volet vers le haut",
+   "ja": "ペインを上に移動",
+   "ko": "패널 위로 이동",
+   "nl": "Verplaats paneel omhoog",
+   "zh-Hans": "向上移动窗格",
+   "zh-Hant": "將窗格向上移動"
   },
   "sidebar.tabContextMenu.moveToGroupSubmenu": {
    "de": "In Gruppe verschieben",

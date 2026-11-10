@@ -844,6 +844,14 @@ PhiVerbResult PhiControlDispatcher::VerbPinnedList(
       entry.Set("faviconWidth", row.favicon_width);
       entry.Set("faviconHeight", row.favicon_height);
       entry.Set("secondaryUrl", row.url_b);
+      if (!row.more.empty()) {
+        // A split of three or four panes: the panes after the second.
+        base::ListValue extra;
+        for (const PhiRow::ExtraPane& pane : row.more) {
+          extra.Append(pane.url);
+        }
+        entry.Set("extraPaneUrls", std::move(extra));
+      }
       entry.Set("secondaryTitle", row.title_b);
       entry.Set("layout", row.layout);
       list.Append(std::move(entry));
@@ -972,6 +980,14 @@ PhiVerbResult PhiControlDispatcher::VerbBookmarksListFlat(
       entry.Set("faviconWidth", row.favicon_width);
       entry.Set("faviconHeight", row.favicon_height);
       entry.Set("secondaryUrl", row.url_b);
+      if (!row.more.empty()) {
+        // A split of three or four panes: the panes after the second.
+        base::ListValue extra;
+        for (const PhiRow::ExtraPane& pane : row.more) {
+          extra.Append(pane.url);
+        }
+        entry.Set("extraPaneUrls", std::move(extra));
+      }
       entry.Set("secondaryTitle", row.title_b);
       list.Append(std::move(entry));
     }

@@ -55,12 +55,15 @@ int TabOfKey(const SidebarTree& tree, const SidebarKey& key, int pane) {
     case SidebarKey::Kind::kSplit: {
       const SidebarContentNode* node = NodeFor(tree, key);
       if (!node) return 0;
-      return pane == 0 ? node->tab_a : node->tab_b;
+      const std::vector<int> panes = node->Panes();
+      return pane >= 0 && pane < static_cast<int>(panes.size())
+                 ? panes[static_cast<size_t>(pane)]
+                 : 0;
     }
     case SidebarKey::Kind::kCell: {
       const SidebarCell* cell = tree.CellFor(key.id);
       if (!cell) return 0;
-      return pane == 0 ? cell->binding.tab_a : cell->binding.tab_b;
+      return cell->binding.TabOfPane(pane);
     }
     case SidebarKey::Kind::kGroup:
     case SidebarKey::Kind::kFolder:

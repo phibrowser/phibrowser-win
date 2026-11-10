@@ -1,7 +1,7 @@
 # Split view chrome (flush panes inside the content card)
 
 Since 2026-10-13 a split follows the Figma design (node 9044:26952): no
-pane cards. Both panes sit **flush** in the content card, under the
+pane cards. The panes sit **flush** in the content card, under the
 address row's separator — no inset, no per-pane border, radius or shadow,
 no gap but the divider. The divider is a 1 DIP hairline, the panes flush
 against it (its grab reaches 2 DIP into each pane); the focused pane wears a 2 DIP accent ring **inside** its bounds
@@ -19,6 +19,67 @@ shell window's own corner, which Windows 11 rounds at 8 only while the
 window is restored — maximized it is square. Fullscreen squares all.
 The design's card radius is 6; the Windows card is 8 (it follows the
 window's corner), and the panes follow the card.
+
+## Three and four panes (2026-11-10)
+
+A split is one row or one column of two to four panes, each with its own
+share of the split axis (the Mac's `b3a379e3`). Everything above holds for
+every pane: flush, a 1 DIP hairline between each two neighbours, the ring
+on the focused pane only. Only the first and last pane meet the card, so a
+middle pane is square all round.
+
+* **Layout.** Chromium's `MultiContentsView` lays out a pair as before.
+  For three or four panes the fork lays them out itself under
+  `IS_WIN_PHI_CLIENT` (`PhiPaneSizes`): each pane takes its share of the
+  axis less the dividers, the last takes the remainder, and no pane goes
+  below Chromium's minimum (the lesser of 200 DIP and a tenth of the axis,
+  never under 50). The two extra dividers are `MultiContentsResizeArea`s
+  created hidden with the view.
+* **Divider drag.** Divider *i* changes panes *i* and *i + 1* only. The
+  1/3, 1/2 and 2/3 snap points apply inside those two panes, and each stays
+  at a tenth of the whole axis or more. In a small window every position is
+  within 18 DIP of a snap point, so the divider moves in steps.
+* **Framework calls.** A wider split starts as a pair and grows:
+  `AddTabToSplitById`, `RemoveTabFromSplitById`, `MoveTabInSplitById` and
+  `UpdateSplitFractions`. The snapshot's `SplitSnapshot::tabs` and
+  `fractions` carry every pane; `primary`, `secondary` and `ratio` are the
+  first two panes and the first share. `kPhiFrameworkAbiVersion` is 2.
+* **Sidebar and strip.** One merged row with an equal segment per pane; a
+  click on a segment focuses that pane. In the horizontal strip a split of
+  three or four takes two tabs' room.
+* **Ways in.** "Split with Current" and Alt-click add the row as the pane
+  after the focused one while the focused split has fewer than four panes.
+  "Split with New Tab" does the same with a new-tab page. A tab dropped on
+  the page inserts at the leading or trailing quarter of a pane (and on a
+  divider) while the split has room, and replaces the pane under the
+  pointer otherwise; a split of four only replaces.
+* **Per-pane actions.** The row menu of a split of three or four has Copy
+  Pane *n* URL, Move Pane Left / Right (Up / Down when stacked), Remove
+  from Split for the pane under the pointer, and Close Split. The hover
+  chip over an unfocused pane has the same moves. Windows has no pane move
+  handle: the chip and the row menu stand in for the Mac's drag grip.
+* **Pinned and bookmarked.** A split of three or four pins, bookmarks and
+  duplicates like a pair. The cell stays one row in the store: the first
+  two panes as before, the later ones as JSON in a new optional column,
+  `splitExtraPanes` (`[{"url","title","favicon","faviconWidth",
+  "faviconHeight"}]`). For a bookmark that is the Mac's V14 column; a
+  pinned split keeps its later panes there too, on its first row, where the
+  Mac links N rows by `splitPaneGuids`. The column is local on both
+  platforms: sync and export carry the first two panes. The store format
+  stays 13, so an older build still opens the store and shows such a cell
+  as a pair; if it rewrites the row the later panes are lost. Live panes
+  bind by tag: `<guid>`, `<guid>#b`, `<guid>#c`, `<guid>#d`. A pinned cell
+  draws its favicons at the Mac's sizes (16, 14 or 12 dip for two, three or
+  four panes); a bookmark row draws one favicon per pane and joins the
+  titles.
+* **Not built yet.** The hover preview card and the drag card show the
+  first two panes. A stored cell's own menu still names only the left and
+  right pane's URL, and Reverse Panes on a stored cell of three or four
+  swaps the first two stored panes only. The bookmark manager and the
+  Library list the first two panes.
+
+Checked on nuc at 300 % on 2026-11-10 with a 17-case end-to-end run over
+the control pipe and real input; the suite was not kept.
 
 ## Who draws what
 

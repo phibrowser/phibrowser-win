@@ -2206,6 +2206,26 @@
    "comment": "reader — used at phi_reader.cc",
    "en": "Reader View is unavailable on this page"
   },
+  "browser.splitDropHint.addBetween": {
+   "comment": "Mac key (translations by key); splitDrop — a split with room: a pane lands between two panes",
+   "en": "Add Here"
+  },
+  "browser.splitDropHint.addBottom": {
+   "comment": "Mac key (translations by key); splitDrop — a split with room: a pane lands after the last pane of a stacked split",
+   "en": "Add Bottom"
+  },
+  "browser.splitDropHint.addLeft": {
+   "comment": "Mac key (translations by key); splitDrop — a split with room: a pane lands before the first pane",
+   "en": "Add Left"
+  },
+  "browser.splitDropHint.addRight": {
+   "comment": "Mac key (translations by key); splitDrop — a split with room: a pane lands after the last pane",
+   "en": "Add Right"
+  },
+  "browser.splitDropHint.addTop": {
+   "comment": "Mac key (translations by key); splitDrop — a split with room: a pane lands before the first pane of a stacked split",
+   "en": "Add Top"
+  },
   "browser.splitDropHint.bottom": {
    "comment": "splitDrop — used at phi_split_drop.cc",
    "en": "Replace Bottom"
@@ -2221,6 +2241,10 @@
   "browser.splitDropHint.leftThird": {
    "comment": "splitDrop — used at phi_split_drop.cc",
    "en": "Add Left Split"
+  },
+  "browser.splitDropHint.replacePane": {
+   "comment": "Mac key (translations by key); splitDrop — replaces a middle pane of a split of three or four",
+   "en": "Replace"
   },
   "browser.splitDropHint.rightHalf": {
    "comment": "splitDrop — used at phi_split_drop.cc",
@@ -5688,8 +5712,18 @@
    "en": "Phi member card, {0}"
   },
   "profile.card.dateJoined": {
-   "comment": "membership card — Mac key (translations by key); used at phi_holographic_card.cc",
-   "en": "Date Joined"
+   "comment": "membership card — Mac key (translations by key); used at phi_holographic_card.cc Translations kept here: the Mac catalog dropped this key on 2026-11-05.",
+   "en": "Date Joined",
+   "translations": {
+    "de": "Mitglied seit",
+    "es": "Miembro desde",
+    "fr": "Date d'inscription",
+    "ja": "登録日",
+    "ko": "가입일",
+    "nl": "Lid sinds",
+    "zh-Hans": "加入日期",
+    "zh-Hant": "加入日期"
+   }
   },
   "profile.menu.bookmarks": {
    "comment": "profile menu — Mac key (translations by key); Manage Bookmarks row, phi_shell_menus.cc",
@@ -8386,8 +8420,18 @@
    "en": "Color"
   },
   "settings.spaces.theme.saturationLabel": {
-   "comment": "spaces — Settings > Spaces editor, saturation row label; used at phi_settings_window.cc",
-   "en": "Saturation"
+   "comment": "spaces — Settings > Spaces editor, saturation row label; used at phi_settings_window.cc Translations kept here: the Mac catalog dropped this key on 2026-11-05.",
+   "en": "Saturation",
+   "translations": {
+    "de": "Sättigung",
+    "es": "Saturación",
+    "fr": "Saturation",
+    "ja": "彩度",
+    "ko": "채도",
+    "nl": "Verzadiging",
+    "zh-Hans": "饱和度",
+    "zh-Hant": "飽和度"
+   }
   },
   "settings.sync.approve": {
    "comment": "settings — Sync pane (Mac DevicesSettingView)",
@@ -9097,6 +9141,10 @@
    "comment": "sidebar — used at phi_shell_window.cc:5617",
    "en": "Add to Group"
   },
+  "sidebar.tabContextMenu.closeSplit": {
+   "comment": "Mac key (translations by key); contextMenu — split row: closes every pane",
+   "en": "Close Split"
+  },
   "sidebar.tabContextMenu.closeTabsAbove": {
    "comment": "Mac key (translations by key); contextMenu — tab row, phi_shell_menus.cc",
    "en": "Close tabs above"
@@ -9121,6 +9169,10 @@
    "comment": "sidebar — used at phi_shell_window.cc:5693",
    "en": "Convert to Vertical Split"
   },
+  "sidebar.tabContextMenu.copyPaneURLAtPosition": {
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes; {0} is the pane's position, from 1",
+   "en": "Copy Pane {0} URL"
+  },
   "sidebar.tabContextMenu.duplicateSplit": {
    "comment": "sidebar — used at phi_shell_window.cc:5682",
    "en": "Duplicate Split"
@@ -9128,6 +9180,22 @@
   "sidebar.tabContextMenu.duplicateTab": {
    "comment": "sidebar — used at phi_shell_window.cc:5541",
    "en": "Duplicate"
+  },
+  "sidebar.tabContextMenu.movePaneDown": {
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, stacked",
+   "en": "Move Pane Down"
+  },
+  "sidebar.tabContextMenu.movePaneLeft": {
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes",
+   "en": "Move Pane Left"
+  },
+  "sidebar.tabContextMenu.movePaneRight": {
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes",
+   "en": "Move Pane Right"
+  },
+  "sidebar.tabContextMenu.movePaneUp": {
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, stacked",
+   "en": "Move Pane Up"
   },
   "sidebar.tabContextMenu.moveToGroupSubmenu": {
    "comment": "sidebar — used at phi_shell_window.cc:5636",

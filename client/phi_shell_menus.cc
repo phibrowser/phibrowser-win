@@ -243,6 +243,48 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
           PhiStr("contextMenu.cloneToSpace"), ChoiceRows(in.spaces, "tab.cloneToSpace")));
       items.push_back(PhiMenuItem::Separator());
     }
+  } else if (in.pane_count > 2) {
+    // A merged row of three or four panes (the Mac's wider split menu): a
+    // copy row per pane, the pane under the pointer moves one slot or
+    // leaves, and the split converts or closes whole. No Reverse Panes —
+    // that is a pair's.
+    items.push_back(PersistCommand("tab.pin", PhiStr("contextMenu.pinSplit"), in.incognito));
+    items.push_back(PhiMenuItem::Command("tab.duplicate", PhiStr("contextMenu.duplicateSplit")));
+    for (int pane = 0; pane < in.pane_count; ++pane) {
+      PhiMenuItem copy = PhiMenuItem::Command(
+          "tab.copyPane",
+          PhiStrF("sidebar.tabContextMenu.copyPaneURLAtPosition",
+                  {std::to_wstring(pane + 1)}));
+      copy.target.id = std::to_string(pane);
+      items.push_back(std::move(copy));
+    }
+    items.push_back(PhiMenuItem::Separator());
+    PhiMenuItem back = PhiMenuItem::Command(
+        "tab.movePaneBack",
+        PhiStr(in.split_stacked ? "sidebar.tabContextMenu.movePaneUp"
+                                : "sidebar.tabContextMenu.movePaneLeft"));
+    back.enabled = in.pane > 0;
+    items.push_back(std::move(back));
+    PhiMenuItem forward = PhiMenuItem::Command(
+        "tab.movePaneForward",
+        PhiStr(in.split_stacked ? "sidebar.tabContextMenu.movePaneDown"
+                                : "sidebar.tabContextMenu.movePaneRight"));
+    forward.enabled = in.pane + 1 < in.pane_count;
+    items.push_back(std::move(forward));
+    items.push_back(PhiMenuItem::Command("tab.convertSplit",
+                                         in.split_stacked
+                                             ? PhiStr("contextMenu.convertToHorizontalSplit")
+                                             : PhiStr("contextMenu.convertToVerticalSplit")));
+    items.push_back(
+        PhiMenuItem::Command("tab.removePane", PhiStr("contextMenu.removeFromSplit")));
+    items.push_back(PhiMenuItem::Command(
+        "tab.closeSplit", PhiStr("sidebar.tabContextMenu.closeSplit")));
+    items.push_back(PhiMenuItem::Separator());
+    items.push_back(PersistCommand("tab.bookmark", PhiStr("contextMenu.addSplitToBookmarks"),
+                                   in.incognito));
+    items.push_back(PhiMenuItem::Separator());
+    AppendGroupBlock(in, items);
+    items.push_back(PhiMenuItem::Separator());
   } else {
     // The merged split row: every action operates on the pair.
     items.push_back(PersistCommand("tab.pin", PhiStr("contextMenu.pinSplit"), in.incognito));
@@ -261,6 +303,8 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
                                              : PhiStr("contextMenu.convertToVerticalSplit")));
     items.push_back(
         PhiMenuItem::Command("tab.removeSplit", PhiStr("contextMenu.removeFromSplit")));
+    items.push_back(PhiMenuItem::Command(
+        "tab.closeSplit", PhiStr("sidebar.tabContextMenu.closeSplit")));
     items.push_back(PhiMenuItem::Separator());
     items.push_back(PersistCommand("tab.bookmark", PhiStr("contextMenu.addSplitToBookmarks"),
                                    in.incognito));

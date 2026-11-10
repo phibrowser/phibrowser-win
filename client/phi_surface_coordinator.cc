@@ -483,15 +483,15 @@ void PhiSurfaceCoordinator::UpdateReaderPanelsForWindow(BrowserId window_id) {
     }
   }
   const int focused = active_tab.value;
-  const int partner = SplitPartnerOf(window_id, active_tab).value;
+  const std::vector<int> partners = SplitPartnersOf(window_id, active_tab);
   // A window hosts one browser per Space and shows one: surfaces over a
   // browser that is not on screen stay hidden (and keep their fit — the
   // pane rects are the shown browser's).
   const bool on_screen =
       active_tab.valid() && host_.WindowShowingTab(active_tab) != nullptr;
-  const PhiVisiblePeek peek = PhiVisiblePeekFor(focused, partner, peeks);
+  const PhiVisiblePeek peek = PhiVisiblePeekFor(focused, partners, peeks);
   const std::vector<int> shown_readers =
-      PhiVisibleReaderOrigins(focused, partner, peeks, readers);
+      PhiVisibleReaderOrigins(focused, partners, peeks, readers);
   for (PhiSurfacePanel* panel : live) {
     const int origin = static_cast<int>(panel->origin_tab_id());
     const bool shown =
@@ -539,7 +539,7 @@ BrowserId PhiSurfaceCoordinator::PresentedPeek(BrowserId window_id) const {
     return BrowserId();
   }
   const PhiVisiblePeek peek = PhiVisiblePeekFor(
-      active_tab.value, SplitPartnerOf(window_id, active_tab).value, peeks);
+      active_tab.value, SplitPartnersOf(window_id, active_tab), peeks);
   if (!peek.valid()) {
     return BrowserId();
   }
@@ -555,6 +555,26 @@ TabId PhiSurfaceCoordinator::SplitPartnerOf(BrowserId window,
     return TabId();
   }
   return split->primary == tab ? split->secondary : split->primary;
+}
+
+std::vector<int> PhiSurfaceCoordinator::SplitPartnersOf(BrowserId window,
+                                                        TabId tab) const {
+  std::vector<int> partners;
+  const phi_framework::SplitSnapshot* split =
+      tab.valid() ? window_model_.SplitOfTab(window, tab) : nullptr;
+  if (!split) {
+    return partners;
+  }
+  if (split->tabs.size() < 2) {
+    partners.push_back(SplitPartnerOf(window, tab).value);
+    return partners;
+  }
+  for (const TabId pane : split->tabs) {
+    if (pane != tab) {
+      partners.push_back(pane.value);
+    }
+  }
+  return partners;
 }
 
 bool PhiSurfaceCoordinator::PairPeekPageWith(PhiSurfacePanel& peek,
@@ -675,9 +695,17 @@ bool PhiSurfaceCoordinator::OpenPeekBesideSplitOpener(BrowserId peek_window) {
 
 bool PhiSurfaceCoordinator::ClosePartnerPeek(BrowserId window_id,
                                              TabId tab_id) {
-  const TabId partner = SplitPartnerOf(window_id, tab_id);
-  if (!partner.valid() || surfaces_.ForOrigin(tab_id, SidebarSurface::kPeek) ||
-      !surfaces_.ForOrigin(partner, SidebarSurface::kPeek)) {
+  // The pane of this split whose peek is up, if it is not this pane's own.
+  TabId partner;
+  if (!surfaces_.ForOrigin(tab_id, SidebarSurface::kPeek)) {
+    for (const int pane : SplitPartnersOf(window_id, tab_id)) {
+      if (surfaces_.ForOrigin(TabId{pane}, SidebarSurface::kPeek)) {
+        partner = TabId{pane};
+        break;
+      }
+    }
+  }
+  if (!partner.valid()) {
     return false;
   }
   LOG(INFO) << "[PhiClient] back/forward on pane " << tab_id.value

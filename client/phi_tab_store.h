@@ -69,6 +69,18 @@ struct PhiRow {
   int favicon_b_width = 0;
   int favicon_b_height = 0;
   std::string partner_guid;
+  // A split cell of three or four panes: the panes after B, in order. Pins
+  // and bookmarks alike keep them on the cell's own row, local to this
+  // device (sync carries the first two panes).
+  struct ExtraPane {
+    std::string url;
+    std::string title;
+    std::string favicon_base64;  // PhiFaviconForm::kBase64 only.
+    std::string favicon_raw;     // PhiFaviconForm::kRaw only.
+    int favicon_width = 0;
+    int favicon_height = 0;
+  };
+  std::vector<ExtraPane> more;
   std::string icon;    // Bookmark folders: the catalog symbol.
   std::string layout;  // Split cells: "vertical" (default) / "horizontal".
 };
@@ -135,6 +147,11 @@ class PhiTabStore {
                        const std::string& favicon_b_base64 = std::string(),
                        int favicon_b_width = 0,
                        int favicon_b_height = 0);
+  // Sets the panes after the second of a split cell (`favicon_base64`
+  // filled, at most two), or with none clears them. False for a cell that
+  // has no second pane.
+  bool SetRowExtraPanes(const std::string& guid,
+                        const std::vector<PhiRow::ExtraPane>& panes);
   bool RenameRow(const std::string& guid, const std::string& title);
   bool SetRowIcon(const std::string& guid, const std::string& icon);
   bool SetRowLayout(const std::string& guid, const std::string& layout);

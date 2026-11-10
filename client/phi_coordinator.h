@@ -783,6 +783,11 @@ class PhiCoordinator : public SidebarHost,
   std::string CaptureFavicon(BrowserId browser, int* width, int* height);
   // The url the slot is showing right now (the model's nav state).
   std::string LiveUrl(SlotId slot) const;
+  // The panes of `tab_a`'s live split other than `tab_a` and `tab_b`, in
+  // pane order: empty for a pair, or when the two are not in one split.
+  std::vector<TabId> LaterSplitPanes(BrowserId browser,
+                                     TabId tab_a,
+                                     TabId tab_b) const;
   void StoreSplitInternal(SlotId slot, TabId tab_a, TabId tab_b,
                           bool as_bookmark, int insert_index,
                           bool bind_bookmark);
@@ -1207,7 +1212,7 @@ class PhiCoordinator : public SidebarHost,
   struct BoundTab {
     BrowserId browser;
     TabId tab;
-    bool pane_b = false;
+    int pane = 0;  // 0 = pane A … 3 = the fourth pane.
   };
   // Every live tab (any browser the model knows) bound to the row `guid`.
   std::vector<BoundTab> TabsBoundTo(const std::string& guid) const;

@@ -929,6 +929,23 @@ PhiStoredRowView StoredRowView(const PhiRow& row) {
       view.favicon_b_height = row.favicon_b_height;
     }
   }
+  for (const PhiRow::ExtraPane& pane : row.more) {
+    PhiStoredRowView::ExtraPane extra;
+    extra.url = pane.url;
+    extra.title = pane.title;
+    std::string bytes = pane.favicon_raw;
+    if (bytes.empty() && !pane.favicon_base64.empty() &&
+        !base::Base64Decode(pane.favicon_base64, &bytes)) {
+      bytes.clear();
+    }
+    if (BgraSizeMatches(bytes.size(), pane.favicon_width,
+                        pane.favicon_height)) {
+      extra.favicon_bgra.assign(bytes.begin(), bytes.end());
+      extra.favicon_width = pane.favicon_width;
+      extra.favicon_height = pane.favicon_height;
+    }
+    view.more.push_back(std::move(extra));
+  }
   return view;
 }
 
@@ -1105,7 +1122,7 @@ std::vector<SidebarStoredItem> PhiCoordinator::SidebarStoredItems(
   for (const PhiRow& row : tab_store_.PinnedFor(profile_id, space_id,
                                                 PhiFaviconForm::kNone)) {
     items.push_back({row.guid, SidebarStoredKind::kPin, {}, row.index,
-                     !row.url_b.empty()});
+                     !row.url_b.empty(), static_cast<int>(row.more.size())});
   }
   // Read the entire owned tree, including children of collapsed folders.
   // Expansion is presentation state and cannot decide whether a tab binds.
@@ -1115,7 +1132,8 @@ std::vector<SidebarStoredItem> PhiCoordinator::SidebarStoredItems(
                      row.type == PhiRowType::kBookmarkFolder
                          ? SidebarStoredKind::kFolder
                          : SidebarStoredKind::kBookmark,
-                     row.parent_guid, row.index, !row.url_b.empty()});
+                     row.parent_guid, row.index, !row.url_b.empty(),
+                     static_cast<int>(row.more.size())});
   }
   return items;
 }
@@ -1132,6 +1150,19 @@ BrowserId PhiCoordinator::PresentedPeekBrowser(int64_t browser) const {
 // ---- The sidebar's one mutator (docs/sidebar-architecture.md §5) ---------
 
 namespace {
+
+// Every pane of the row `key` stands for, as IdsJson's list.
+std::string IdsJson(int a, int b);
+std::string PaneIdsJson(const SidebarTree& tree, const SidebarKey& key) {
+  std::string json = "[";
+  for (int pane = 0; pane < kSidebarMaxPanes; ++pane) {
+    const int tab = TabOfKey(tree, key, pane);
+    if (tab != 0) {
+      json += (json.size() > 1 ? "," : "") + std::to_string(tab);
+    }
+  }
+  return json + "]";
+}
 
 std::string IdsJson(int a, int b) {
   std::string json = "[" + std::to_string(a);
@@ -1200,10 +1231,25 @@ std::string PhiCoordinator::StoreTabsById(SlotId slot,
   if (guid.empty()) {
     return guid;
   }
+  // A split of three or four: the panes after the second ride the cell.
+  const std::vector<TabId> more =
+      split ? LaterSplitPanes(browser, tab_a, tab_b) : std::vector<TabId>();
   if (split) {
     const Icon icon_b = favicon(tab_b);
     tab_store_.SetRowSecondary(guid, b->url, b->title, icon_b.base64,
                                icon_b.width, icon_b.height);
+    std::vector<PhiRow::ExtraPane> extras;
+    for (const TabId tab : more) {
+      const phi_framework::TabSnapshot* live =
+          window_model_.FindTab(browser, tab);
+      if (!live || live->url.empty()) {
+        continue;
+      }
+      const Icon icon = favicon(tab);
+      extras.push_back({live->url, live->title, icon.base64, std::string(),
+                        icon.width, icon.height});
+    }
+    tab_store_.SetRowExtraPanes(guid, extras);
     if (!layout.empty()) {
       tab_store_.SetRowLayout(guid, layout);
     }
@@ -1219,6 +1265,10 @@ std::string PhiCoordinator::StoreTabsById(SlotId slot,
     if (split) {
       TagTab(browser, tab_b.value,
                                 TagFor(guid, true).c_str());
+      for (size_t i = 0; i < more.size(); ++i) {
+        TagTab(browser, more[i].value,
+               TagForPane(guid, static_cast<int>(i) + 2).c_str());
+      }
     }
   }
   registry_.InvalidateAll();
@@ -1246,6 +1296,10 @@ TabId PhiCoordinator::OpenCell(BrowserId browser, const std::string& guid) {
   // Copied out: the store may move under the tag writes below.
   const std::string url_b = row->url_b;
   const std::string layout = row->layout;
+  std::vector<std::string> more_urls;
+  for (const PhiRow::ExtraPane& pane : row->more) {
+    more_urls.push_back(pane.url);
+  }
   const TabId a = framework_->OpenTab(browser, row->url.c_str());
   if (!a.valid()) {
     return TabId();
@@ -1256,9 +1310,20 @@ TabId PhiCoordinator::OpenCell(BrowserId browser, const std::string& guid) {
     if (b.valid()) {
       TagTab(browser, b.value,
                                 TagFor(guid, true).c_str());
-      framework_->CreateSplitViewForTabs(
+      const std::string split = framework_->CreateSplitViewForTabs(
           browser.value, a.value, b.value,
           layout.empty() ? "vertical" : layout.c_str());
+      // The panes after the second join one at a time, in order.
+      for (size_t i = 0; i < more_urls.size() && !split.empty(); ++i) {
+        const TabId pane = framework_->OpenTab(browser, more_urls[i].c_str());
+        if (!pane.valid()) {
+          continue;
+        }
+        const int slot = static_cast<int>(i) + 2;
+        TagTab(browser, pane.value, TagForPane(guid, slot).c_str());
+        framework_->ActivateTabById(browser.value, a.value);
+        framework_->AddTabToSplitById(browser, split.c_str(), pane, slot);
+      }
     }
   }
   return a;
@@ -1405,7 +1470,7 @@ bool PhiCoordinator::Apply(int64_t slot_number,
               return true;
             }
             bool ok = false;
-            for (int pane : {1, 0}) {  // Pane B first; ids hold either way.
+            for (int pane : {3, 2, 1, 0}) {  // Last first; ids hold either way.
               if (cmd.pane >= 0 && cmd.pane != pane) {
                 continue;
               }
@@ -1431,6 +1496,26 @@ bool PhiCoordinator::Apply(int64_t slot_number,
             if (a == 0 || b == 0 || a == b) {
               return false;
             }
+            if (const phi_framework::SplitSnapshot* split =
+                    window_model_.SplitOfTab(browser, TabId{a})) {
+              // `a` is already a pane: `b` joins its split right after it
+              // (the Mac's performSplitAction with a focused split). A full
+              // split takes no more.
+              const auto pane = std::find(split->tabs.begin(),
+                                          split->tabs.end(), TabId{a});
+              if (split->tabs.size() >= 4 || pane == split->tabs.end() ||
+                  window_model_.SplitOfTab(browser, TabId{b})) {
+                return false;
+              }
+              const std::string split_id = split->id;
+              const int slot =
+                  static_cast<int>(pane - split->tabs.begin()) + 1;
+              TagTab(browser, b, "");
+              const bool added = framework_->AddTabToSplitById(
+                  browser, split_id.c_str(), TabId{b}, slot);
+              refresh();
+              return added;
+            }
             // A split never lives in a stored cell by accident: both panes
             // become plain first (their cells stay as closed placeholders).
             TagTab(browser, a, "");
@@ -1448,7 +1533,7 @@ bool PhiCoordinator::Apply(int64_t slot_number,
             }
             if (cmd.key.kind == SidebarKey::Kind::kCell) {
               // The cell stays as a closed split placeholder.
-              for (int pane : {0, 1}) {
+              for (int pane = 0; pane < kSidebarMaxPanes; ++pane) {
                 if (const int tab = TabOfKey(tree, cmd.key, pane)) {
                   TagTab(browser, tab, "");
                 }
@@ -1476,6 +1561,21 @@ bool PhiCoordinator::Apply(int64_t slot_number,
               if (a) TagTab(browser, a, TagFor(name, true).c_str());
               if (b) TagTab(browser, b, TagFor(name, false).c_str());
             }
+            refresh();
+            return ok;
+          },
+          [&](const SidebarRemovePane& cmd) {
+            const int tab = TabOfKey(tree, cmd.key, cmd.pane);
+            const bool ok =
+                tab != 0 &&
+                framework_->RemoveTabFromSplitById(browser, TabId{tab});
+            refresh();
+            return ok;
+          },
+          [&](const SidebarMovePane& cmd) {
+            const int tab = TabOfKey(tree, cmd.key, cmd.pane);
+            const bool ok = tab != 0 && framework_->MoveTabInSplitById(
+                                            browser, TabId{tab}, cmd.slot);
             refresh();
             return ok;
           },
@@ -1509,7 +1609,7 @@ bool PhiCoordinator::Apply(int64_t slot_number,
             if (a == 0) {
               return false;
             }
-            const std::string ids = IdsJson(a, TabOfKey(tree, cmd.key, 1));
+            const std::string ids = PaneIdsJson(tree, cmd.key);
             bool ok;
             if (cmd.group_id.empty()) {
               const char* created =
@@ -1527,7 +1627,7 @@ bool PhiCoordinator::Apply(int64_t slot_number,
             if (a == 0) {
               return false;
             }
-            const std::string ids = IdsJson(a, TabOfKey(tree, cmd.key, 1));
+            const std::string ids = PaneIdsJson(tree, cmd.key);
             const bool ok = framework_->RemoveTabsFromGroupByIds(browser.value, ids.c_str());
             refresh();
             return ok;
@@ -1552,7 +1652,7 @@ bool PhiCoordinator::Apply(int64_t slot_number,
           },
           [&](const SidebarCloseSurface& cmd) {
             bool any = false;
-            for (int pane : {0, 1}) {
+            for (int pane = 0; pane < kSidebarMaxPanes; ++pane) {
               const TabId tab{TabOfKey(tree, cmd.key, pane)};
               if (tab.valid() && surfaces().ForOrigin(tab)) {
                 CloseSurfacesForOrigin(tab);
@@ -1619,6 +1719,28 @@ std::string PhiCoordinator::LiveSplitLayout(BrowserId browser,
              : "vertical";
 }
 
+std::vector<TabId> PhiCoordinator::LaterSplitPanes(BrowserId browser,
+                                                   TabId tab_a,
+                                                   TabId tab_b) const {
+  std::vector<TabId> later;
+  const phi_framework::SplitSnapshot* split =
+      window_model_.SplitOfTab(browser, tab_a);
+  if (!split) {
+    return later;
+  }
+  const std::vector<TabId> panes = PhiSplitPanes(*split);
+  if (panes.size() < 3 ||
+      std::find(panes.begin(), panes.end(), tab_b) == panes.end()) {
+    return later;
+  }
+  for (const TabId pane : panes) {
+    if (pane != tab_a && pane != tab_b) {
+      later.push_back(pane);
+    }
+  }
+  return later;
+}
+
 void PhiCoordinator::StoreSplitInternal(SlotId slot, TabId tab_a,
                                         TabId tab_b, bool as_bookmark,
                                         int insert_index,
@@ -1680,6 +1802,24 @@ void PhiCoordinator::StoreSplitInternal(SlotId slot, TabId tab_a,
   if (!guid.empty()) {
     tab_store_.SetRowSecondary(guid, b.url, b.title, b.favicon,
                                b.favicon_width, b.favicon_height);
+    // A split of three or four: the panes after the second ride the cell.
+    const std::vector<TabId> more = LaterSplitPanes(browser, tab_a, tab_b);
+    std::vector<PhiRow::ExtraPane> extras;
+    for (const TabId tab : more) {
+      Pane pane;
+      capture(tab, &pane);
+      if (!pane.url.empty()) {
+        extras.push_back({pane.url, pane.title, pane.favicon, std::string(),
+                          pane.favicon_width, pane.favicon_height});
+      }
+    }
+    tab_store_.SetRowExtraPanes(guid, extras);
+    if (!as_bookmark || bind_bookmark) {
+      for (size_t i = 0; i < more.size(); ++i) {
+        TagTab(browser, more[i].value,
+               TagForPane(guid, static_cast<int>(i) + 2).c_str());
+      }
+    }
     if (insert_index >= 0) {
       tab_store_.Reorder(guid, insert_index);
     }
@@ -1707,7 +1847,7 @@ std::vector<PhiCoordinator::BoundTab> PhiCoordinator::TabsBoundTo(
          window_model_.Get(browser)->tabs) {
       SidebarTag parsed;
       if (ParseTag(tab.tag, &parsed) && parsed.guid == guid) {
-        bound.push_back({browser, tab.id, parsed.pane_b});
+        bound.push_back({browser, tab.id, parsed.pane});
       }
     }
   }
@@ -1726,7 +1866,7 @@ void PhiCoordinator::UnbindTabsOfMissingRows() {
       SidebarTag parsed;
       if (ParseTag(tab.tag, &parsed) && !parsed.guid.empty() &&
           !local_store_.FindTab(parsed.guid)) {
-        stale.push_back({browser, tab.id, parsed.pane_b});
+        stale.push_back({browser, tab.id, parsed.pane});
       }
     }
   }
@@ -1773,8 +1913,8 @@ void PhiCoordinator::FinishGuestMigration(const std::string& target) {
         }
         const auto mapped = guest_rebind_.find(parsed.guid);
         if (mapped != guest_rebind_.end() && mapped->second != parsed.guid) {
-          moved.push_back({{browser, tab.id, parsed.pane_b},
-                           TagFor(mapped->second, parsed.pane_b)});
+          moved.push_back({{browser, tab.id, parsed.pane},
+                           TagForPane(mapped->second, parsed.pane)});
         }
       }
     }
@@ -2358,16 +2498,20 @@ void PhiCoordinator::UndoClearedTabs(BrowserId browser, uint64_t serial) {
   }
   base::ListValue splits;
   for (const phi_framework::SplitSnapshot& split : batch.splits) {
-    if (!pages.count(split.primary.value) ||
-        !pages.count(split.secondary.value)) {
+    const std::vector<TabId> panes = PhiSplitPanes(split);
+    if (!std::all_of(panes.begin(), panes.end(), [&](const TabId pane) {
+          return pages.count(pane.value) != 0;
+        })) {
       continue;
     }
     base::ListValue keys;
-    keys.Append(base::NumberToString(split.primary.value));
-    keys.Append(base::NumberToString(split.secondary.value));
+    for (const TabId pane : panes) {
+      keys.Append(base::NumberToString(pane.value));
+    }
     base::ListValue fractions;
-    fractions.Append(split.ratio);
-    fractions.Append(1.0 - split.ratio);
+    for (const double share : PhiSplitFractions(split)) {
+      fractions.Append(share);
+    }
     base::DictValue entry;
     entry.Set("keys", std::move(keys));
     entry.Set("fractions", std::move(fractions));
@@ -2502,6 +2646,9 @@ void PhiCoordinator::CanonicalizePinTags(BrowserId window_id) {
     const store::Tab* row = local_store_.FindTab(parsed.guid);
     if (!row || row->type != store::RowType::kPinnedTab) {
       continue;  // Bookmarks are one row: their tags never drift.
+    }
+    if (parsed.pane >= 2) {
+      continue;  // A later pane rides the cell's own row: nothing drifts.
     }
     // The row this tab SHOWS: the tagged one, or for "#b" its partner.
     std::string shows = row->guid;
@@ -3051,6 +3198,7 @@ bool PhiCoordinator::MoveStoredRowToSpace(const std::string& guid,
     tab_store_.SetRowSecondary(added, row.url_b, row.title_b,
                                row.favicon_b_base64, row.favicon_b_width,
                                row.favicon_b_height);
+    tab_store_.SetRowExtraPanes(added, row.more);
   }
   if (!row.layout.empty()) {
     tab_store_.SetRowLayout(added, row.layout);
@@ -4362,6 +4510,7 @@ bool PhiCoordinator::ConvertStoredRow(SlotId slot,
     tab_store_.SetRowSecondary(new_guid, row.url_b, row.title_b,
                                row.favicon_b_base64, row.favicon_b_width,
                                row.favicon_b_height);
+    tab_store_.SetRowExtraPanes(new_guid, row.more);
   }
   if (!row.layout.empty()) {
     tab_store_.SetRowLayout(new_guid, row.layout);
@@ -4373,7 +4522,7 @@ bool PhiCoordinator::ConvertStoredRow(SlotId slot,
   if (framework_) {
     for (const BoundTab& b : bound) {
       TagTab(b.browser, b.tab.value,
-                                TagFor(new_guid, b.pane_b).c_str());
+                                TagForPane(new_guid, b.pane).c_str());
     }
   }
   tab_store_.Remove(guid);
@@ -4401,7 +4550,17 @@ bool PhiCoordinator::RequestDropTabOnWindow(int64_t source_slot,
   // resolves each index inside the call, after the previous move shifted
   // the strip. A tab no longer in the source is a refused drop.
   bool ok = true;
-  for (const TabId tab : {TabId{tab_a}, TabId{tab_b}}) {
+  // A split of three or four moves every pane, whichever two were named.
+  std::vector<TabId> moving = {TabId{tab_a}, TabId{tab_b}};
+  if (const phi_framework::SplitSnapshot* split =
+          window_model_.SplitOfTab(source_browser, TabId{tab_a})) {
+    for (const TabId pane : PhiSplitPanes(*split)) {
+      if (std::find(moving.begin(), moving.end(), pane) == moving.end()) {
+        moving.push_back(pane);
+      }
+    }
+  }
+  for (const TabId tab : moving) {
     if (!tab.valid()) {
       continue;
     }

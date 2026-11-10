@@ -84,10 +84,24 @@ size_t ZoneSlot(PhiSplitDropZone zone) {
       return 3;
     case PhiSplitDropZone::kNewWindow:
       return 4;
+    case PhiSplitDropZone::kPane:
+    case PhiSplitDropZone::kInsert:
     case PhiSplitDropZone::kNone:
       break;
   }
   return 0;
+}
+
+bool SameRects(const std::vector<RECT>& a, const std::vector<RECT>& b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < a.size(); ++i) {
+    if (!::EqualRect(&a[i], &b[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 Gdiplus::Color Blend(COLORREF color, double alpha) {
@@ -142,7 +156,10 @@ class Tiles : public PhiPanel {
         hints.area.right == hints_.area.right &&
         hints.area.bottom == hints_.area.bottom &&
         hints.replace == hints_.replace && hints.stacked == hints_.stacked &&
-        hints.ratio == hints_.ratio && hints.active == hints_.active;
+        hints.fractions == hints_.fractions &&
+        SameRects(hints.pane_rects, hints_.pane_rects) &&
+        hints.can_add == hints_.can_add && hints.active == hints_.active &&
+        hints.target == hints_.target;
     hints_ = hints;
     if (same) {
       return;  // Nothing the overlay draws has moved.
@@ -166,14 +183,17 @@ class Tiles : public PhiPanel {
     const int h = Height(hints_.area);
     RECT out = {};
     if (hints_.replace) {
-      RECT primary = {}, secondary = {};
-      PhiSplitReplacePaneRects(hints_, &primary, &secondary);
-      ::OffsetRect(&primary, -hints_.area.left, -hints_.area.top);
-      ::OffsetRect(&secondary, -hints_.area.left, -hints_.area.top);
-      if (hints_.active == PhiSplitDropZone::kLeft) {
-        out = primary;
-      } else if (hints_.active == PhiSplitDropZone::kRight) {
-        out = secondary;
+      if (hints_.active == PhiSplitDropZone::kPane) {
+        const std::vector<RECT> panes = PhiSplitPaneRects(hints_);
+        if (hints_.target >= 0 &&
+            hints_.target < static_cast<int>(panes.size())) {
+          out = panes[static_cast<size_t>(hints_.target)];
+        }
+      } else if (hints_.active == PhiSplitDropZone::kInsert) {
+        out = PhiSplitInsertBand(hints_, hints_.target);
+      }
+      if (!::IsRectEmpty(&out)) {
+        ::OffsetRect(&out, -hints_.area.left, -hints_.area.top);
       }
       return out;
     }
@@ -191,6 +211,8 @@ class Tiles : public PhiPanel {
         out = {0, h / 2, w, h};
         break;
       case PhiSplitDropZone::kNewWindow:
+      case PhiSplitDropZone::kPane:
+      case PhiSplitDropZone::kInsert:
       case PhiSplitDropZone::kNone:
         break;
     }
@@ -234,7 +256,10 @@ class Tiles : public PhiPanel {
       }
       // The flyout and its tiles.
       std::array<RECT, 6> tiles = {};
-      PhiSnapTileRects(hints_.area, dpi(), hints_.replace, &tiles);
+      const int pane_count =
+          hints_.replace ? static_cast<int>(PhiSplitPaneRects(hints_).size())
+                         : 0;
+      PhiSnapTileRects(hints_.area, dpi(), pane_count, &tiles);
       for (RECT& r : tiles) {
         ::OffsetRect(&r, -hints_.area.left, -hints_.area.top);
       }
@@ -259,12 +284,19 @@ class Tiles : public PhiPanel {
       }
       for (size_t i = 0; i < 5; ++i) {
         if (tiles[i].right <= tiles[i].left) {
-          continue;  // Replace mode leaves the top / bottom tiles out.
+          continue;  // Pane mode shows a tile per pane and no more.
         }
-        DrawTile(&graphics, tiles[i], i,
-                 hints_.active != PhiSplitDropZone::kNone &&
-                     ZoneSlot(hints_.active) == i,
-                 palette);
+        // Pane mode: tile i is pane i, lit while the drop replaces it.
+        const bool lit =
+            hints_.replace && i < 4
+                ? hints_.active == PhiSplitDropZone::kPane &&
+                      hints_.target == static_cast<int>(i)
+                : hints_.active != PhiSplitDropZone::kNone &&
+                      hints_.active != PhiSplitDropZone::kPane &&
+                      hints_.active != PhiSplitDropZone::kInsert &&
+                      ZoneSlot(hints_.active) == i;
+        DrawTile(&graphics, tiles[i], i, lit, palette, pane_count,
+                 hints_.stacked);
       }
     }
     surface.Commit(hwnd(), nullptr);
@@ -272,11 +304,15 @@ class Tiles : public PhiPanel {
 
   // One tile: the glyph is the arrangement itself — a frame with the
   // target half filled (New window: a small window with a caption bar).
+  // In pane mode (`pane_count` 2 to 4) tile `slot` shows the split's own
+  // arrangement with that pane filled.
   void DrawTile(Gdiplus::Graphics* graphics,
                 const RECT& tile,
                 size_t slot,
                 bool active,
-                const PhiPalette& palette) {
+                const PhiPalette& palette,
+                int pane_count,
+                bool stacked) {
     const Gdiplus::RectF rc(static_cast<Gdiplus::REAL>(tile.left),
                             static_cast<Gdiplus::REAL>(tile.top),
                             static_cast<Gdiplus::REAL>(Width(tile)),
@@ -304,6 +340,20 @@ class Tiles : public PhiPanel {
       Gdiplus::RectF bar(frame.X, frame.Y, frame.Width,
                          static_cast<Gdiplus::REAL>(Scaled(5)));
       graphics->FillRectangle(&half, bar);
+      return;
+    }
+    if (pane_count >= 2) {
+      Gdiplus::RectF pane = frame;
+      const Gdiplus::REAL index = static_cast<Gdiplus::REAL>(slot);
+      if (stacked) {
+        pane.Height = frame.Height / pane_count;
+        pane.Y = frame.Y + pane.Height * index;
+      } else {
+        pane.Width = frame.Width / pane_count;
+        pane.X = frame.X + pane.Width * index;
+      }
+      graphics->FillRectangle(&half, pane);
+      graphics->DrawRectangle(&pen, frame);
       return;
     }
     Gdiplus::RectF target = frame;
@@ -348,8 +398,10 @@ const char* PhiSplitZoneLayout(PhiSplitDropZone zone) {
 
 void PhiSnapTileRects(const RECT& area,
                       UINT dpi,
-                      bool replace,
+                      int panes,
                       std::array<RECT, 6>* out) {
+  const bool replace = panes >= 2;
+  panes = std::min(panes, 4);
   const auto scaled = [dpi](int dip) {
     return ::MulDiv(dip, static_cast<int>(dpi), 96);
   };
@@ -357,7 +409,7 @@ void PhiSnapTileRects(const RECT& area,
   const int th = scaled(kTileHeight);
   const int gap = scaled(kTileGap);
   const int pad = scaled(kFlyoutPad);
-  const int count = replace ? 3 : 5;  // Two panes + New window, or five.
+  const int count = replace ? panes + 1 : 5;  // The panes + New window, or five.
   const int width = pad * 2 + count * tw + (count - 1) * gap;
   const int left = (area.left + area.right - width) / 2;
   const int top = area.top + scaled(kFlyoutTop);
@@ -371,8 +423,9 @@ void PhiSnapTileRects(const RECT& area,
     x += tw + gap;
   };
   if (replace) {
-    place(0);
-    place(1);
+    for (int pane = 0; pane < panes; ++pane) {
+      place(static_cast<size_t>(pane));
+    }
     place(4);
   } else {
     for (size_t i = 0; i < 5; ++i) {
@@ -394,7 +447,7 @@ PhiSplitDropZone PhiSplitCreateZoneAt(const RECT& area,
       PhiSplitDropZone::kNewWindow};
   // A snap tile wins over the zone under it.
   std::array<RECT, 6> tiles = {};
-  PhiSnapTileRects(area, dpi, /*replace=*/false, &tiles);
+  PhiSnapTileRects(area, dpi, /*panes=*/0, &tiles);
   for (size_t i = 0; i < 5; ++i) {
     if (::PtInRect(&tiles[i], pt)) {
       return kOrder[i];
@@ -421,66 +474,121 @@ PhiSplitDropZone PhiSplitCreateZoneAt(const RECT& area,
   return PhiSplitDropZone::kNewWindow;
 }
 
-void PhiSplitReplacePaneRects(const PhiSplitDropHints& hints,
-                              RECT* primary,
-                              RECT* secondary) {
-  if (hints.panes) {
-    *primary = hints.primary;
-    *secondary = hints.secondary;
-    return;
+std::vector<RECT> PhiSplitPaneRects(const PhiSplitDropHints& hints) {
+  if (hints.panes && hints.pane_rects.size() >= 2) {
+    return hints.pane_rects;
   }
-  // The estimate: the panes over the page area, the divider between.
+  // The estimate: the panes over the page area by their shares, a divider
+  // between each two.
   RECT area = hints.area;
   ::InflateRect(&area, -kSplitPaneInset, -kSplitPaneInset);
   area.right = std::max(area.right, area.left);
   area.bottom = std::max(area.bottom, area.top);
-  const double share = std::min(1.0, std::max(0.0, hints.ratio));
-  if (hints.stacked) {
-    const int usable = std::max(0, Height(area) - kSplitDividerThickness);
-    const int top = static_cast<int>(usable * share);
-    *primary = {area.left, area.top, area.right, area.top + top};
-    *secondary = {area.left, area.top + top + kSplitDividerThickness,
-                  area.right, area.bottom};
-    return;
+  std::vector<double> shares = hints.fractions;
+  if (shares.size() < 2) {
+    shares = {0.5, 0.5};
   }
-  const int usable = std::max(0, Width(area) - kSplitDividerThickness);
-  const int lead = static_cast<int>(usable * share);
-  *primary = {area.left, area.top, area.left + lead, area.bottom};
-  *secondary = {area.left + lead + kSplitDividerThickness, area.top,
-                area.right, area.bottom};
+  const int count = static_cast<int>(shares.size());
+  const int axis = hints.stacked ? Height(area) : Width(area);
+  const int usable = std::max(0, axis - kSplitDividerThickness * (count - 1));
+  std::vector<RECT> out;
+  int offset = 0;
+  for (int i = 0; i < count; ++i) {
+    const double share = std::min(1.0, std::max(0.0, shares[i]));
+    const int size = i + 1 == count
+                         ? axis - offset
+                         : static_cast<int>(usable * share);
+    out.push_back(hints.stacked
+                      ? RECT{area.left, area.top + offset, area.right,
+                             area.top + offset + size}
+                      : RECT{area.left + offset, area.top,
+                             area.left + offset + size, area.bottom});
+    offset += size + kSplitDividerThickness;
+  }
+  return out;
 }
 
-PhiSplitDropZone PhiSplitReplaceZoneAt(const PhiSplitDropHints& hints,
-                                       POINT pt,
-                                       UINT dpi) {
+RECT PhiSplitInsertBand(const PhiSplitDropHints& hints, int slot) {
+  const std::vector<RECT> panes = PhiSplitPaneRects(hints);
+  const int count = static_cast<int>(panes.size());
+  if (slot < 0 || slot > count || count == 0) {
+    return RECT{};
+  }
+  const auto lead = [&](const RECT& r) {
+    return hints.stacked ? r.top : r.left;
+  };
+  const auto trail = [&](const RECT& r) {
+    return hints.stacked ? r.bottom : r.right;
+  };
+  const auto quarter = [&](const RECT& r) { return (trail(r) - lead(r)) / 4; };
+  // From the trailing quarter of the pane before the slot to the leading
+  // quarter of the pane after it; an end slot has only one of the two.
+  const int from = slot == 0 ? lead(panes[0])
+                             : trail(panes[slot - 1]) - quarter(panes[slot - 1]);
+  const int to = slot == count ? trail(panes[count - 1])
+                               : lead(panes[slot]) + quarter(panes[slot]);
+  const RECT& any = panes[0];
+  return hints.stacked ? RECT{any.left, from, any.right, to}
+                       : RECT{from, any.top, to, any.bottom};
+}
+
+PhiSplitDropZone PhiSplitPaneZoneAt(const PhiSplitDropHints& hints,
+                                    POINT pt,
+                                    UINT dpi,
+                                    int* target) {
+  *target = -1;
+  const std::vector<RECT> panes = PhiSplitPaneRects(hints);
+  const int count = static_cast<int>(panes.size());
   // The pane tiles and the New window tile first.
   std::array<RECT, 6> tiles = {};
-  PhiSnapTileRects(hints.area, dpi, /*replace=*/true, &tiles);
-  if (::PtInRect(&tiles[0], pt)) {
-    return PhiSplitDropZone::kLeft;
-  }
-  if (::PtInRect(&tiles[1], pt)) {
-    return PhiSplitDropZone::kRight;
+  PhiSnapTileRects(hints.area, dpi, count, &tiles);
+  for (int pane = 0; pane < std::min(count, 4); ++pane) {
+    if (::PtInRect(&tiles[static_cast<size_t>(pane)], pt)) {
+      *target = pane;
+      return PhiSplitDropZone::kPane;
+    }
   }
   if (::PtInRect(&tiles[4], pt)) {
     return PhiSplitDropZone::kNewWindow;
   }
-  RECT primary = {}, secondary = {};
-  PhiSplitReplacePaneRects(hints, &primary, &secondary);
-  // The centre rule applies to the divider gap only: between the panes a
-  // drop detaches.
-  if (hints.stacked) {
-    if (pt.y > primary.bottom && pt.y < secondary.top) {
-      return PhiSplitDropZone::kNewWindow;
+  const int at = hints.stacked ? pt.y : pt.x;
+  for (int pane = 0; pane < count; ++pane) {
+    const RECT& r = panes[static_cast<size_t>(pane)];
+    const int lead = hints.stacked ? r.top : r.left;
+    const int trail = hints.stacked ? r.bottom : r.right;
+    const bool last = pane + 1 == count;
+    if (!last) {
+      const RECT& next = panes[static_cast<size_t>(pane) + 1];
+      const int next_lead = hints.stacked ? next.top : next.left;
+      if (at > trail && at < next_lead) {
+        // The divider gap: a new pane goes there while the split has room;
+        // a full split detaches, as the page's centre does elsewhere.
+        if (hints.can_add) {
+          *target = pane + 1;
+          return PhiSplitDropZone::kInsert;
+        }
+        return PhiSplitDropZone::kNewWindow;
+      }
     }
-    return pt.y <= primary.bottom ? PhiSplitDropZone::kLeft
-                                  : PhiSplitDropZone::kRight;
+    if (at > trail && !last) {
+      continue;
+    }
+    // This pane (the first and the last also take what lies past them).
+    if (hints.can_add) {
+      const int quarter = (trail - lead) / 4;
+      if (at < lead + quarter) {
+        *target = pane;
+        return PhiSplitDropZone::kInsert;
+      }
+      if (at >= trail - quarter) {
+        *target = pane + 1;
+        return PhiSplitDropZone::kInsert;
+      }
+    }
+    *target = pane;
+    return PhiSplitDropZone::kPane;
   }
-  if (pt.x > primary.right && pt.x < secondary.left) {
-    return PhiSplitDropZone::kNewWindow;
-  }
-  return pt.x <= primary.right ? PhiSplitDropZone::kLeft
-                               : PhiSplitDropZone::kRight;
+  return PhiSplitDropZone::kNone;
 }
 
 // static

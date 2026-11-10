@@ -33,6 +33,7 @@
 #include "client/phi_shell_layout.h"
 #include "client/phi_sidebar_drag_session.h"
 #include "client/phi_spaces_strip.h"
+#include "client/phi_tab_close.h"
 #include "client/phi_uia.h"
 #include "client/phi_shell_window.h"
 #include "client/phi_window_model.h"
@@ -40,6 +41,12 @@
 namespace phi_client {
 
 namespace {
+
+// How many tabs' room a content row takes in the horizontal strip: a split
+// of three or four panes takes two.
+int StripUnits(const SidebarContentNode& node) {
+  return node.kind == SidebarNodeKind::kSplit && !node.more.empty() ? 2 : 1;
+}
 
 // Comfortable's strip overflow chevron in the keyboard ring, after the
 // tabs. It is no row, so it borrows a key no row (and no Space id) can
@@ -639,8 +646,8 @@ bool PhiSidebarView::OnContentRowClick(POINT pt) {
         // or a bookmark — the split takes both into the normal list.
         Apply(SidebarFormSplit{SidebarKey::Tab(sidebar_tree_.active_tab),
                                row.key, "vertical"});
-      } else if (row.b_index >= 0 && ::PtInRect(&row.pane_b, pt)) {
-        Apply(SidebarActivate{row.key, 1});
+      } else if (const int pane = row.PaneAt(pt); pane > 0) {
+        Apply(SidebarActivate{row.key, pane});
       } else {
         // The press only ARMS: a tab activates on the release of a plain
         // click (the session's commit), never because it was dragged — the
@@ -684,7 +691,7 @@ SidebarKey PhiSidebarView::TabBodyAt(POINT pt, int* pane) const {
       return {};
     }
     if (row.b_index >= 0) {
-      *pane = ::PtInRect(&row.pane_b, pt) ? 1 : 0;
+      *pane = row.PaneAt(pt);
     }
     return row.key;
   }
@@ -1277,6 +1284,20 @@ void PhiSidebarView::Rebuild() {
         row.b_active = b->active;
         fill_pane(*b, &row.b_title, &row.b_url, &row.b_favicon,
                   &row.b_favicon_width, &row.b_favicon_height);
+        for (int id : node.more) {
+          const TabSnapshot* tab = PhiFindTabIn(snapshot, TabId(id));
+          if (!tab) {
+            continue;
+          }
+          TabRow::ExtraPane pane;
+          pane.index = tab->index;
+          pane.id = tab->id;
+          pane.active = tab->active;
+          pane.unloaded = tab->unloaded;
+          fill_pane(*tab, &pane.title, &pane.url, &pane.favicon,
+                    &pane.favicon_width, &pane.favicon_height);
+          row.more.push_back(std::move(pane));
+        }
       }
     }
     return row;
@@ -1334,10 +1355,7 @@ void PhiSidebarView::Rebuild() {
         chip = &strip_chips.try_emplace(node.group_id, visuals->second)
                     .first->second;
       }
-      for (const int id : {node.tab_a, node.tab_b}) {
-        if (!id) {
-          continue;
-        }
+      for (const int id : node.Panes()) {
         ++member_counts[node.group_id];
         if (!chip || chip->icons.size() >= 4) {
           continue;
@@ -1389,10 +1407,14 @@ void PhiSidebarView::Rebuild() {
       if (node.kind == SidebarNodeKind::kGroup || node.hidden) {
         continue;  // Chips are measured; a collapsed group's members hide.
       }
+      // A split of three or four takes two tabs' room, so each pane keeps
+      // a readable segment.
+      const int units = StripUnits(node);
       if (node.active) {
         has_active = true;
+        resting += units - 1;
       } else {
-        ++resting;
+        resting += units;
       }
     }
     strip_widths = SolveStripWidths(
@@ -1414,10 +1436,20 @@ void PhiSidebarView::Rebuild() {
       row->close_box = RECT{};
     }
     if (row->b_index >= 0) {
-      // Right half of the merged row activates pane B (clicks in the close
-      // box still win — it is tested first).
-      row->pane_b = {(row->bounds.left + row->bounds.right) / 2,
-                     row->bounds.top, row->bounds.right, row->bounds.bottom};
+      // Each pane after the first activates from its own equal segment of
+      // the merged row (clicks in the close box still win — it is tested
+      // first).
+      const int panes = row->PaneCount();
+      const int width = row->bounds.right - row->bounds.left;
+      const auto segment = [&](int pane) {
+        return RECT{row->bounds.left + width * pane / panes, row->bounds.top,
+                    row->bounds.left + width * (pane + 1) / panes,
+                    row->bounds.bottom};
+      };
+      row->pane_b = segment(1);
+      for (size_t i = 0; i < row->more.size(); ++i) {
+        row->more[i].bounds = segment(static_cast<int>(i) + 2);
+      }
     }
   };
   int list_scroll_max = 0;
@@ -1462,9 +1494,11 @@ void PhiSidebarView::Rebuild() {
       // The active tab takes the wider slot — it is the one carrying the
       // page, and the extra room is what separates it from its neighbours
       // now that the tabs abut instead of standing apart.
-      items.push_back({&node, 0,
-                       node.active ? strip_widths.active : strip_widths.rest,
-                       Scaled(kHTabGap)});
+      const int extra = (StripUnits(node) - 1) * strip_widths.rest;
+      items.push_back(
+          {&node, 0,
+           (node.active ? strip_widths.active : strip_widths.rest) + extra,
+           Scaled(kHTabGap)});
     }
     const int count = static_cast<int>(items.size());
     // A new activation — or a strip that changed under it (resized, a tab
@@ -1784,9 +1818,8 @@ void PhiSidebarView::Rebuild() {
       if (row.active && !active_id.valid()) {
         active_id = row.id;
       }
-      live.push_back(row.id);
-      if (row.b_index >= 0) {
-        live.push_back(row.b_id);
+      for (const TabId id : row.PaneIds()) {
+        live.push_back(id);
       }
     }
     tab_mru_.Sync(live, active_id);
@@ -1820,6 +1853,9 @@ void PhiSidebarView::Rebuild() {
     for (TabRow& row : tabs_) {
       row.bounds = none;
       row.pane_b = none;
+      for (TabRow::ExtraPane& pane : row.more) {
+        pane.bounds = none;
+      }
       row.close_box = none;
       row.surface_box = none;
     }
@@ -1877,6 +1913,15 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     row.favicon_b_height = view.favicon_b_height;
     row.icon = std::move(view.icon);
     row.layout = std::move(view.layout);
+    for (PhiStoredRowView::ExtraPane& pane : view.more) {
+      ShortcutRow::ExtraPane extra;
+      extra.title = base::UTF8ToWide(pane.title);
+      extra.url = std::move(pane.url);
+      extra.favicon = std::move(pane.favicon_bgra);
+      extra.favicon_width = pane.favicon_width;
+      extra.favicon_height = pane.favicon_height;
+      row.more.push_back(std::move(extra));
+    }
     // Stored favicons come from disk and from sync: a buffer that is not
     // exactly width*height*4 bytes is dropped here, before any painter.
     const auto checked = [](std::vector<unsigned char>* bgra, int* width,
@@ -1891,6 +1936,9 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     };
     checked(&row.favicon, &row.favicon_width, &row.favicon_height);
     checked(&row.favicon_b, &row.favicon_b_width, &row.favicon_b_height);
+    for (ShortcutRow::ExtraPane& pane : row.more) {
+      checked(&pane.favicon, &pane.favicon_width, &pane.favicon_height);
+    }
     return row;
   };
   // The tree decides what a cell IS (open, active, which live panes); the
@@ -1908,6 +1956,11 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     row->tab_id_b = TabId(cell.binding.tab_b);
     row->unloaded = dormant(cell.binding.tab_a);
     row->unloaded_b = dormant(cell.binding.tab_b);
+    for (size_t i = 0; i < row->more.size(); ++i) {
+      const int tab = cell.binding.TabOfPane(static_cast<int>(i) + 2);
+      row->more[i].tab_id = TabId(tab);
+      row->more[i].unloaded = dormant(tab);
+    }
     row->attached_surface = cell.attached_surface;
   };
   std::map<std::string, PhiStoredRowView> pin_views;
@@ -2256,8 +2309,10 @@ bool PhiSidebarView::ShowsTab(TabId tab_id) const {
     return false;
   }
   for (const TabRow& row : tabs_) {
-    if (row.id == tab_id || (row.b_index >= 0 && row.b_id == tab_id)) {
-      return true;
+    for (const TabId id : row.PaneIds()) {
+      if (id == tab_id) {
+        return true;
+      }
     }
   }
   return sidebar_tree_.owner_of.count(tab_id.value) > 0;
@@ -2342,6 +2397,13 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     base::DictValue extra;
     extra.Set("tabId", tab.id.value);
     extra.Set("tabIdB", tab.b_id.value);
+    if (!tab.more.empty()) {
+      base::ListValue panes;
+      for (const TabId id : tab.PaneIds()) {
+        panes.Append(id.value);
+      }
+      extra.Set("paneTabIds", std::move(panes));
+    }
     extra.Set("groupId", tab.group_id);
     extra.Set("active", tab.active);
     extra.Set("unloaded", tab.unloaded);
@@ -2934,8 +2996,13 @@ std::string PhiSidebarView::OpenPinAt(POINT pt, int* pane) const {
       return {};
     }
     if (!pin.url_b.empty()) {
-      // A pinned pair spans two grid slots, pane A in the leading one.
-      *pane = pt.x >= (pin.frame.left + pin.frame.right) / 2 ? 1 : 0;
+      // A pinned split spans two grid slots, its panes in equal shares of
+      // them from the leading edge.
+      const int panes = pin.PaneCount();
+      const int width = std::max(1L, pin.frame.right - pin.frame.left);
+      *pane = std::clamp(
+          static_cast<int>((pt.x - pin.frame.left) * panes / width), 0,
+          panes - 1);
     }
     return pin.guid;
   }
@@ -3019,12 +3086,34 @@ void PhiSidebarView::OpenStoredSplit(const ShortcutRow& row) {
     return;
   }
   framework_->ActivateTabById(browser.value, id_a.value);
+  std::string split = split_a == split_b ? split_a : std::string();
   if (split_a.empty() && split_b.empty()) {
     // Married in the axis the cell remembers; the framework's default is
     // side-by-side, and Chromium picks the leading pane itself.
-    framework_->CreateSplitViewForTabs(
+    split = framework_->CreateSplitViewForTabs(
         browser.value, id_a.value, id_b.value,
         row.layout == "horizontal" ? "horizontal" : "vertical");
+  }
+  // A cell of three or four panes: each later pane is opened if it is not
+  // live and joins the split at its own slot (the Mac reopens the missing
+  // panes of a pinned split the same way). A pane already in some split is
+  // left where it is.
+  for (size_t i = 0; i < row.more.size() && !split.empty(); ++i) {
+    const int slot = static_cast<int>(i) + 2;
+    TabId id;
+    std::string pane_split;
+    lookup(TagForPane(row.guid, slot), &id, &pane_split);
+    if (!id.valid() && !row.more[i].url.empty()) {
+      id = framework_->OpenTab(browser, row.more[i].url.c_str());
+      if (id.valid()) {
+        framework_->SetTabTagById(browser.value, id.value,
+                                  TagForPane(row.guid, slot).c_str());
+        framework_->ActivateTabById(browser.value, id_a.value);
+      }
+    }
+    if (id.valid() && pane_split.empty()) {
+      framework_->AddTabToSplitById(browser, split.c_str(), id, slot);
+    }
   }
 }
 
@@ -3075,6 +3164,27 @@ bool PhiSidebarView::SplitTabsNormalized(BrowserId browser,
   if (!framework_ || !primary.valid() || !secondary.valid() ||
       primary == secondary) {
     return false;
+  }
+  // `primary` already a pane: `secondary` joins its split right after it
+  // while the split has room (the Mac's openNewTabIntoSplit and
+  // addTabToSplit); four panes take no more.
+  WindowSnapshot current;
+  if (shell_->SidebarPullSnapshot(browser, &current)) {
+    for (const SplitSnapshot& split : current.splits) {
+      const std::vector<TabId> panes = PhiSplitPanes(split);
+      const auto pane = std::find(panes.begin(), panes.end(), primary);
+      if (pane == panes.end()) {
+        continue;
+      }
+      if (panes.size() >= 4 ||
+          std::find(panes.begin(), panes.end(), secondary) != panes.end()) {
+        return false;
+      }
+      UnbindStoredTab(browser, secondary);
+      return framework_->AddTabToSplitById(
+          browser, split.id.c_str(), secondary,
+          static_cast<int>(pane - panes.begin()) + 1);
+    }
   }
   UnbindStoredTab(browser, primary);
   UnbindStoredTab(browser, secondary);
@@ -3469,11 +3579,16 @@ void PhiSidebarView::PaintBand(HDC dc,
     // The fade is behind "Dim unloaded tab icons" (on by default).
     const bool dormant_a = pin.unloaded && !pin.active && dim_reclaimed;
     const bool dormant_b = pin.unloaded_b && !pin.active && dim_reclaimed;
+    // The Mac's PinnedSplitItem favicon size and centre spacing by pane
+    // count: 16 / 20 for a pair, 14 / 17 for three, 12 / 14 for four.
+    const int pin_panes = pin.PaneCount();
+    const int split_icon = pin_panes >= 4 ? 12 : pin_panes == 3 ? 14 : 16;
+    const int split_step = pin_panes >= 4 ? 14 : pin_panes == 3 ? 17 : 20;
     const int cx = (cell.left + cell.right) / 2;
     const int cy = (cell.top + cell.bottom) / 2;
     // The favicon's row: the open dot hangs under it.
     const int icon_size =
-        Scaled(!pin.url_b.empty()        ? 16
+        Scaled(!pin.url_b.empty()        ? split_icon
                : layout.horizontal_tabs ? kStripPinFavicon
                                         : kPinnedFavicon);
     const int icon_bottom = cy + icon_size / 2;
@@ -3481,10 +3596,14 @@ void PhiSidebarView::PaintBand(HDC dc,
       // A merged split cell: two 16pt favicons side by side, the Mac's
       // PinnedSplitItem (16 + 4 + 16 centred in the double-width cell).
       const int size = icon_size;
-      const RECT icon_a = {cx - Scaled(2) - size, cy - size / 2,
-                           cx - Scaled(2), cy + size / 2};
-      const RECT icon_b = {cx + Scaled(2), cy - size / 2,
-                           cx + Scaled(2) + size, cy + size / 2};
+      const int step = Scaled(split_step);
+      const int run_left = cx - (step * (pin_panes - 1) + size) / 2;
+      const auto icon_slot = [&](int pane) {
+        const int left = run_left + step * pane;
+        return RECT{left, cy - size / 2, left + size, cy + size / 2};
+      };
+      const RECT icon_a = icon_slot(0);
+      const RECT icon_b = icon_slot(1);
       const auto pane_icon = [&](const RECT& slot,
                                  const std::vector<unsigned char>& bgra,
                                  int width, int height, bool dormant) {
@@ -3504,6 +3623,12 @@ void PhiSidebarView::PaintBand(HDC dc,
                 dormant_a);
       pane_icon(icon_b, pin.favicon_b, pin.favicon_b_width,
                 pin.favicon_b_height, dormant_b);
+      for (size_t i = 0; i < pin.more.size(); ++i) {
+        const ShortcutRow::ExtraPane& pane = pin.more[i];
+        pane_icon(icon_slot(static_cast<int>(i) + 2), pane.favicon,
+                  pane.favicon_width, pane.favicon_height,
+                  pane.unloaded && !pin.active && dim_reclaimed);
+      }
     } else if (!pin.favicon.empty()) {
       const int size = icon_size;
       const RECT icon = {cx - size / 2, cy - size / 2, cx + size / 2,
@@ -3768,6 +3893,24 @@ void PhiSidebarView::PaintBand(HDC dc,
         }
       }
       text.left += Scaled(24);
+      // A split of three or four: one more favicon per later pane.
+      for (const ShortcutRow::ExtraPane& pane : bookmark.more) {
+        ::OffsetRect(&icon_b, Scaled(24), 0);
+        if (!pane.favicon.empty()) {
+          DrawFavicon(dc, icon_b, pane.favicon, pane.favicon_width,
+                      pane.favicon_height, bookmark_bg,
+                      pane.unloaded && !bookmark.active ? kReclaimedOpacity
+                                                        : 1.0f);
+        } else {
+          HGDIOBJ previous_glyph_font =
+              glyph_font ? ::SelectObject(dc, glyph_font) : nullptr;
+          PhiDrawGlyph(dc, icon_b, L"\uE774", kLabelDim);
+          if (previous_glyph_font) {
+            ::SelectObject(dc, previous_glyph_font);
+          }
+        }
+        text.left += Scaled(24);
+      }
     }
     // The open dot leads the favicon (the Mac's BookmarkCellView leading
     // overlay), decorative so the title never moves; faded when a bound
@@ -3818,6 +3961,11 @@ void PhiSidebarView::PaintBand(HDC dc,
       }
       if (!second.empty()) {
         label += L" \u2022 " + second;
+      }
+      for (const ShortcutRow::ExtraPane& pane : bookmark.more) {
+        if (!pane.title.empty()) {
+          label += L" \u2022 " + pane.title;
+        }
       }
     }
     RECT bookmark_badge = bookmark.surface_box;
@@ -4139,8 +4287,13 @@ void PhiSidebarView::PaintBand(HDC dc,
                           : strip_lifted ? palette.hover : ground)
             : (is_dragged ? palette.hover_strong
                           : row.active ? kRowSelectedBg : ground);
+    // Pane 0 is the row's own tab, 1 its pane B, 2 and 3 the later panes
+    // of a split of three or four.
     const auto draw_pane = [&](int left, int right, const TabRow& r,
-                               bool pane_b) {
+                               int pane) {
+      const bool pane_b = pane == 1;
+      const TabRow::ExtraPane* extra =
+          pane >= 2 ? &r.more[static_cast<size_t>(pane - 2)] : nullptr;
       RECT slot = {left + Scaled(6), mid - Scaled(kFaviconSlot) / 2,
                    left + Scaled(6) + Scaled(kFaviconSlot),
                    mid + Scaled(kFaviconSlot) / 2};
@@ -4149,7 +4302,8 @@ void PhiSidebarView::PaintBand(HDC dc,
           mid - Scaled(kFaviconSize) / 2, 0, 0};
       icon.right = icon.left + Scaled(kFaviconSize);
       icon.bottom = icon.top + Scaled(kFaviconSize);
-      const auto& favicon = pane_b ? r.b_favicon : r.favicon;
+      const auto& favicon =
+          extra ? extra->favicon : pane_b ? r.b_favicon : r.favicon;
       const std::vector<unsigned char>& logo = PhiLogoBgra256();
       // A DORMANT tab (restored but never loaded, or discarded) draws its
       // favicon at the Mac's 30% and reads dimmer than a live one. The
@@ -4158,8 +4312,11 @@ void PhiSidebarView::PaintBand(HDC dc,
       const bool dim = dormant && dim_reclaimed;
       if (!favicon.empty()) {
         DrawFavicon(dc, icon, favicon,
-                    pane_b ? r.b_favicon_width : r.favicon_width,
-                    pane_b ? r.b_favicon_height : r.favicon_height, row_bg,
+                    extra ? extra->favicon_width
+                          : pane_b ? r.b_favicon_width : r.favicon_width,
+                    extra ? extra->favicon_height
+                          : pane_b ? r.b_favicon_height : r.favicon_height,
+                    row_bg,
                     dim ? kReclaimedOpacity : 1.0f);
       } else if (r.internal_page && !logo.empty() &&
                  PhiDrawBgra(dc, icon, logo.data(), 256, 256)) {
@@ -4177,7 +4334,9 @@ void PhiSidebarView::PaintBand(HDC dc,
       ::SetTextColor(dc, dormant ? row_palette.label_dim : row_palette.label);
       RECT title_rc = {slot.right + Scaled(8), pill.top, right - Scaled(4),
                        pill.bottom};
-      PhiDrawTextAA(dc, (pane_b ? r.b_title : r.title).c_str(), -1, &title_rc,
+      PhiDrawTextAA(dc,
+                  (extra ? extra->title : pane_b ? r.b_title : r.title).c_str(),
+                  -1, &title_rc,
                   DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
                       DT_NOPREFIX);
     };
@@ -4192,16 +4351,25 @@ void PhiSidebarView::PaintBand(HDC dc,
                          : attached ? surface_box.left
                                     : pill.right;
     if (row.b_index >= 0) {
-      const int div_x = (pill.left + pill.right) / 2;
-      draw_pane(pill.left, div_x, row, /*pane_b=*/false);
-      draw_pane(div_x, trailing, row, /*pane_b=*/true);
-      RECT divider = {div_x, pill.top + Scaled(6), div_x + 1,
-                      pill.bottom - Scaled(6)};
+      // Equal segments, a hairline between each two.
+      const int panes = row.PaneCount();
+      const int pill_width = pill.right - pill.left;
       HBRUSH sep = ::CreateSolidBrush(palette.separator);
-      ::FillRect(dc, &divider, sep);
+      for (int pane = 0; pane < panes; ++pane) {
+        const int left = pill.left + pill_width * pane / panes;
+        const int right = pane + 1 == panes
+                              ? trailing
+                              : pill.left + pill_width * (pane + 1) / panes;
+        draw_pane(left, right, row, pane);
+        if (pane > 0) {
+          RECT divider = {left, pill.top + Scaled(6), left + 1,
+                          pill.bottom - Scaled(6)};
+          ::FillRect(dc, &divider, sep);
+        }
+      }
       ::DeleteObject(sep);
     } else {
-      draw_pane(pill.left, trailing, row, /*pane_b=*/false);
+      draw_pane(pill.left, trailing, row, 0);
     }
     if (show_close) {
       PhiDrawGlyph(dc, close_box, L"\u00D7", row_palette.label_dim);
