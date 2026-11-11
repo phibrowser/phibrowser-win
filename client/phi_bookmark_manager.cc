@@ -49,6 +49,11 @@ constexpr int kSearchId = 4101;
 // The New Folder button rides in hits_ with the rows; its key is out of
 // the rows' index space.
 constexpr int kNewFolderKey = -1;
+// The Import button beside it (GitHub issue 6): the app menu's "Import from
+// another browser…" window, reachable from the page a user looks on first.
+constexpr int kImportKey = -2;
+// The width kept clear for the "Bookmarks" title before the header buttons.
+constexpr int kTitleReserve = 130;
 
 // The four faces, in DESIGN units — the base's PhiFontSet scales them.
 constexpr int kTitleSize = 20;
@@ -133,9 +138,9 @@ PhiPalette PhiBookmarkManager::QueryPalette() const {
   return controller_ ? controller_->CurrentPalette() : PhiPalette();
 }
 
-bool PhiBookmarkManager::NewFolderHot() const {
+bool PhiBookmarkManager::HeaderButtonHot(int key) const {
   const int hit = hovered();
-  return hit >= 0 && hits()[static_cast<size_t>(hit)].key == kNewFolderKey;
+  return hit >= 0 && hits()[static_cast<size_t>(hit)].key == key;
 }
 
 void PhiBookmarkManager::EnsureWindow() {
@@ -201,6 +206,13 @@ void PhiBookmarkManager::LayoutChrome() {
                         header_mid - button_h / 2,
                         rc.right - pad - search_w - Scaled(12),
                         header_mid + button_h / 2};
+  import_button_ = new_folder_button_;
+  ::OffsetRect(&import_button_, -(button_w + Scaled(8)), 0);
+  // A narrow page has no room for it beside the title: the button goes,
+  // and the app menu's Bookmarks ▸ Import bookmarks… stays.
+  if (import_button_.left < rc.left + pad + Scaled(kTitleReserve)) {
+    ::SetRectEmpty(&import_button_);
+  }
 }
 
 void PhiBookmarkManager::Show() {
@@ -440,6 +452,11 @@ void PhiBookmarkManager::RebuildHits() {
   // the two independent PtInRect tests this replaces could both answer yes.
   AddHit(new_folder_button_, kNewFolderKey, L"New Folder",
          PhiHitRole::kButton);
+  if (!::IsRectEmpty(&import_button_)) {
+    AddHit(import_button_, kImportKey,
+           std::wstring(PhiStr("appMenu.importFromBrowser")),
+           PhiHitRole::kButton);
+  }
 }
 
 int PhiBookmarkManager::ContentHeight() const {
@@ -588,15 +605,29 @@ void PhiBookmarkManager::Paint(HDC dc, const RECT&) {
   ::DrawTextW(dc, L"Bookmarks", -1, &title_rc,
               DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
-  // "New Folder" button.
-  PhiFillRoundRectAA(dc, new_folder_button_, Scaled(6),
-                     NewFolderHot() ? palette.hover_strong : palette.hover);
-  PhiStrokeRoundRectAA(dc, new_folder_button_, Scaled(6), palette.border, 1);
+  // The "Import…" and "New Folder" buttons.
   ::SelectObject(dc, fonts().Get(kButtonSize, FW_NORMAL));
   ::SetTextColor(dc, palette.label);
-  RECT button_text = new_folder_button_;
-  ::DrawTextW(dc, L"New Folder", -1, &button_text,
-              DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+  const std::wstring import_label(PhiStr("bookmarkManager.import"));
+  const struct {
+    RECT bounds;
+    int key;
+    const wchar_t* label;
+  } buttons[] = {{import_button_, kImportKey, import_label.c_str()},
+                 {new_folder_button_, kNewFolderKey, L"New Folder"}};
+  for (const auto& button : buttons) {
+    if (::IsRectEmpty(&button.bounds)) {
+      continue;
+    }
+    PhiFillRoundRectAA(
+        dc, button.bounds, Scaled(6),
+        HeaderButtonHot(button.key) ? palette.hover_strong : palette.hover);
+    PhiStrokeRoundRectAA(dc, button.bounds, Scaled(6), palette.border, 1);
+    RECT button_text = button.bounds;
+    ::DrawTextW(dc, button.label, -1, &button_text,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX |
+                    DT_END_ELLIPSIS);
+  }
 
   // A hairline under the header, then the rows.
   RECT rule = {rc.left + pad, rc.top + Scaled(kHeaderHeight) - 1,
@@ -639,6 +670,12 @@ void PhiBookmarkManager::Paint(HDC dc, const RECT&) {
 void PhiBookmarkManager::ClickAt(POINT pt, bool ctrl, bool shift) {
   if (::PtInRect(&new_folder_button_, pt)) {
     NewFolder(std::string());
+    return;
+  }
+  if (::PtInRect(&import_button_, pt)) {
+    if (controller_ && controller_->window_host()) {
+      controller_->window_host()->RequestBrowserImport();
+    }
     return;
   }
   const int index = RowAt(pt);

@@ -1364,6 +1364,20 @@
     "zh-Hant": "水平分頁"
    }
   },
+  "appMenu.importBookmarks": {
+   "comment": "appMenu — the ⋯ flyout's Bookmarks submenu; opens the Import from another browser window. Windows only (GitHub issue 6).",
+   "en": "Import bookmarks…",
+   "translations": {
+    "de": "Lesezeichen importieren…",
+    "es": "Importar marcadores…",
+    "fr": "Importer des favoris…",
+    "ja": "ブックマークをインポート…",
+    "ko": "북마크 가져오기…",
+    "nl": "Bladwijzers importeren…",
+    "zh-Hans": "导入书签…",
+    "zh-Hant": "匯入書籤…"
+   }
+  },
   "appMenu.importFromBrowser": {
    "comment": "appMenu — the ⋯ Settings-and-more flyout (docs/windows-native-ui.md §3.1); \"\\t<chord>\" is the right-aligned shortcut. Translations authored for Windows (impl log D14).",
    "en": "Import from another browser…",
@@ -1976,6 +1990,20 @@
     "nl": "Mapnaam:",
     "zh-Hans": "文件夹名称：",
     "zh-Hant": "資料夾名稱："
+   }
+  },
+  "bookmarkManager.import": {
+   "comment": "Windows only; bookmarks page — header button that opens the Import from another browser window (used at phi_bookmark_manager.cc)",
+   "en": "Import…",
+   "translations": {
+    "de": "Importieren…",
+    "es": "Importar…",
+    "fr": "Importer…",
+    "ja": "インポート…",
+    "ko": "가져오기…",
+    "nl": "Importeren…",
+    "zh-Hans": "导入…",
+    "zh-Hant": "匯入…"
    }
   },
   "bookmarkManager.noBookmarksMatchYourSearch": {
@@ -10194,6 +10222,20 @@
   "theme.editor.colorHandle": {
    "comment": "Mac key (translations by key); spaces — Space theme editor, accessible name of a color handle; {0} is the color number, one to three (used at phi_space_theme_panel.cc)",
    "en": "Color {0}"
+  },
+  "theme.editor.brightness": {
+   "comment": "Windows only; theme editor — name of the slider that makes the Space colour darker or brighter (used at phi_space_theme_panel.cc)",
+   "en": "Brightness",
+   "translations": {
+    "de": "Helligkeit",
+    "es": "Brillo",
+    "fr": "Luminosité",
+    "ja": "明るさ",
+    "ko": "밝기",
+    "nl": "Helderheid",
+    "zh-Hans": "亮度",
+    "zh-Hant": "亮度"
+   }
   },
   "theme.editor.deleteColor": {
    "comment": "Mac key (translations by key); theme editor — remove a saved swatch",

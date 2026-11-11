@@ -1728,6 +1728,17 @@
    "zh-Hans": "水平标签页",
    "zh-Hant": "水平分頁"
   },
+  "appMenu.importBookmarks": {
+   "de": "Lesezeichen importieren…",
+   "en": "Import bookmarks…",
+   "es": "Importar marcadores…",
+   "fr": "Importer des favoris…",
+   "ja": "ブックマークをインポート…",
+   "ko": "북마크 가져오기…",
+   "nl": "Bladwijzers importeren…",
+   "zh-Hans": "导入书签…",
+   "zh-Hant": "匯入書籤…"
+  },
   "appMenu.importFromBrowser": {
    "de": "Aus anderem Browser importieren…",
    "en": "Import from another browser…",
@@ -2233,6 +2244,17 @@
    "nl": "Mapnaam:",
    "zh-Hans": "文件夹名称：",
    "zh-Hant": "資料夾名稱："
+  },
+  "bookmarkManager.import": {
+   "de": "Importieren…",
+   "en": "Import…",
+   "es": "Importar…",
+   "fr": "Importer…",
+   "ja": "インポート…",
+   "ko": "가져오기…",
+   "nl": "Importeren…",
+   "zh-Hans": "导入…",
+   "zh-Hant": "匯入…"
   },
   "bookmarkManager.noBookmarksMatchYourSearch": {
    "de": "Keine Lesezeichen entsprechen deiner Suche",
@@ -13786,6 +13808,17 @@
    "nl": "Analoge kleuren",
    "zh-Hans": "类似色",
    "zh-Hant": "類似色"
+  },
+  "theme.editor.brightness": {
+   "de": "Helligkeit",
+   "en": "Brightness",
+   "es": "Brillo",
+   "fr": "Luminosité",
+   "ja": "明るさ",
+   "ko": "밝기",
+   "nl": "Helderheid",
+   "zh-Hans": "亮度",
+   "zh-Hant": "亮度"
   },
   "theme.editor.colorHandle": {
    "de": "Farbe {0}",

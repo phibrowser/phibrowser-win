@@ -671,6 +671,12 @@ void PhiAppMenu::RefreshBookmarks() {
                       PhiStr("appMenu.bookmarkManager"), nullptr,
                       services_->MenuFramework() != nullptr &&
                           !services_->MenuIncognito());
+  // The same window as More tools' "Import from another browser…", under
+  // the name a user looks for here (GitHub issue 6).
+  rows_.AppendCommand(bookmarks_, kCmdImportBrowser,
+                      PhiStr("appMenu.importBookmarks"), fluent::kImport,
+                      services_->MenuFramework() != nullptr &&
+                          !services_->MenuIncognito());
   rows_.AppendCommand(bookmarks_, kCmdExportBookmarks,
                       PhiStr("appMenu.exportBookmarks"), fluent::kExport,
                       store);

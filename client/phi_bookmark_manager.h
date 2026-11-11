@@ -107,7 +107,7 @@ class PhiBookmarkManager : public PhiPanel {
   // Folder button on top of them, so a row scrolled under the header
   // cannot take the button's pointer.
   void RebuildHits();
-  bool NewFolderHot() const;
+  bool HeaderButtonHot(int key) const;
 
   // Rebuilds `rows_` from the store: the outline in normal mode, or the flat
   // depth-first match list while a search is active.
@@ -158,6 +158,7 @@ class PhiBookmarkManager : public PhiPanel {
   std::wstring query_;
   int scroll_ = 0;
   RECT new_folder_button_{};
+  RECT import_button_{};
   bool session_open_ = false;
   bool session_edited_ = false;
 };

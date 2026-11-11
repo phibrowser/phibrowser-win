@@ -20,12 +20,14 @@ class PhiShellWindow;
 
 // The Mac's SpaceThemeEditorView (SpaceThemeEditorView.swift, 3d045cf6 /
 // 4c9d919e / 23c728d9), shown from a Space menu's "Set Theme" item: a
-// 260x296 popover holding a 244-pt colour field — hue is the angle through
+// 260-wide popover holding a 244-pt colour field — hue is the angle through
 // the Figma spectrum stops, saturation the radius, with the linked
 // handles (38 / 28 / 14 pt) showing the palette's exact resolved colours —
 // over a toolbar of Light / Dark buttons (the app-wide appearance) and
 // the four harmony buttons (single, analogous, complementary, split
-// complementary). No brightness slider, no confirm button: a drag
+// complementary). Windows adds a brightness slider under the field (the
+// Mac's record keeps the value but its editor has no control for it), so
+// a dark sidebar can go darker than the field's range. No confirm button: a drag
 // PREVIEWS the Space's windows per pointer move and persists ONCE on
 // release; a click, a harmony button and the arrow keys persist at once.
 //

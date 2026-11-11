@@ -31,7 +31,8 @@ namespace {
 // SpaceThemeEditorView's metrics, in DIP: contentSize 260x296, the field
 // 244 square under 8 of padding, a 10 gap, the 24 toolbar, 10 below.
 constexpr int kPanelWidth = 260;
-constexpr int kPanelHeight = 328;  // 296 + the preset strip and its gap.
+// 296 + the preset strip and its gap + the brightness slider and its gap.
+constexpr int kPanelHeight = 352;
 constexpr int kPadding = 8;
 constexpr int kField = 244;
 constexpr int kFieldRadius = 12;  // LiquidGlassCompatible.cornerRadius.
@@ -63,12 +64,22 @@ constexpr int kPreviousKey = 20;
 constexpr int kNextKey = 21;
 constexpr int kResetKey = 22;
 constexpr int kSaveKey = 23;
+constexpr int kBrightnessKey = 24;
 constexpr int kPresetKey = 30;  // + the slot on the page, 0 to 6.
 constexpr int kDeleteKey = 40;  // + the slot.
 
 // The preset strip under the field (the Mac's `26eeac82`): seven swatches a
 // page between two paging buttons.
 constexpr int kStripGap = 8;
+// The brightness slider between the field and the strip (GitHub issue 7:
+// a dark sidebar could not be made darker than the field's own range). The
+// record's `brightness` is the Mac's, which its resolver already honours.
+constexpr int kSliderGap = 8;
+constexpr int kSliderHeight = 16;
+constexpr int kSliderTrack = 6;
+constexpr int kSliderThumb = 14;
+constexpr double kSliderStep = 0.02;  // One field render per step at most.
+constexpr double kSliderKeyStep = 0.05;
 constexpr int kStripHeight = 24;
 constexpr int kStripButton = 24;
 constexpr int kSwatchesPerPage = 7;
@@ -377,6 +388,10 @@ class Panel : public PhiPopover {
       BeginDrag(client_pt);
       return;
     }
+    if (key == kBrightnessKey) {
+      BeginSliderDrag(client_pt);
+      return;
+    }
     if (key == kLightKey || key == kDarkKey) {
       // The app-wide appearance, as the Mac's ThemeManager choice.
       if (ChromePrefsHost* prefs =
@@ -437,6 +452,16 @@ class Panel : public PhiPopover {
       const PhiThemePalette before = Current();
       Edit(before, before.RotatingHue(virtual_key == VK_LEFT ? -1.0 / 360
                                                              : 1.0 / 360));
+      return true;
+    }
+    // Up and Down: the brightness slider.
+    if (virtual_key == VK_UP || virtual_key == VK_DOWN) {
+      const PhiThemePalette before = Current();
+      Edit(before,
+           before.SettingBrightness(std::clamp(
+               before.brightness +
+                   (virtual_key == VK_UP ? kSliderKeyStep : -kSliderKeyStep),
+               0.0, 1.0)));
       return true;
     }
     return PhiPopover::OnKey(virtual_key);
@@ -508,6 +533,7 @@ class Panel : public PhiPopover {
 
     const PhiThemePalette shown = Displayed();
     PaintField(dc, shown, dark, ground);
+    PaintSlider(dc, shown, dark, ground);
     PaintStrip(dc, chrome);
     PaintToolbar(dc, shown, chrome);
   }
@@ -727,8 +753,24 @@ class Panel : public PhiPopover {
   // the right; each button a 22 circle inside the group's 1 padding.
   // The preset strip: a paging button at each end, seven 24 slots spread
   // evenly between them.
+  RECT SliderRect() const {
+    const int top = Scaled(kPadding) + Scaled(kField) + Scaled(kSliderGap);
+    return {Scaled(kPadding), top, Scaled(kPanelWidth) - Scaled(kPadding),
+            top + Scaled(kSliderHeight)};
+  }
+
+  // The thumb's centre travels the slider inset by its own radius.
+  double SliderValue(POINT pt) const {
+    const RECT slider = SliderRect();
+    const double radius = Scaled(kSliderThumb) / 2.0;
+    const double span = (slider.right - slider.left) - 2 * radius;
+    const double value =
+        std::clamp((pt.x - slider.left - radius) / span, 0.0, 1.0);
+    return std::round(value / kSliderStep) * kSliderStep;
+  }
+
   RECT StripRect() const {
-    const int top = Scaled(kPadding) + Scaled(kField) + Scaled(kStripGap);
+    const int top = SliderRect().bottom + Scaled(kStripGap);
     return {Scaled(kPadding), top, Scaled(kPanelWidth) - Scaled(kPadding),
             top + Scaled(kStripHeight)};
   }
@@ -804,6 +846,9 @@ class Panel : public PhiPopover {
     // screen reader but also raise the base's tooltip ("Color 1") under
     // the pointer on every click, which the Mac's handles never do.
     AddHit(FieldRect(), kFieldKey, std::wstring(), PhiHitRole::kGroup);
+    AddHit(SliderRect(), kBrightnessKey,
+           std::wstring(PhiStr("theme.editor.brightness")),
+           PhiHitRole::kSlider);
     const PhiThemePalette palette = Current();
     const bool dark = QueryPalette().dark;
     const RECT appearance = AppearanceGroup();
@@ -880,8 +925,24 @@ class Panel : public PhiPopover {
     drag_palette_ = press_palette_;
     press_pt_ = pt;
     moved_ = false;
+    drag_slider_ = false;
     dragging_ = true;
     capture_ = BeginCapture();
+  }
+
+  // A press on the brightness slider: the thumb jumps to the pointer and
+  // follows it, previewing like a handle drag and persisting on release.
+  void BeginSliderDrag(POINT pt) {
+    animating_ = false;
+    animation_.Stop();
+    press_palette_ = Current();
+    drag_palette_ = press_palette_;
+    press_pt_ = pt;
+    moved_ = true;  // Never a click: the press itself sets the value.
+    drag_slider_ = true;
+    dragging_ = true;
+    capture_ = BeginCapture();
+    Drag(pt);
   }
 
   void Drag(POINT pt) {
@@ -890,8 +951,11 @@ class Panel : public PhiPopover {
       return;
     }
     moved_ = true;
-    const PhiThemePalette next = press_palette_.MovingHandle(
-        drag_index_, UnitPoint(pt), /*snap_to_center=*/true);
+    const PhiThemePalette next =
+        drag_slider_
+            ? press_palette_.SettingBrightness(SliderValue(pt))
+            : press_palette_.MovingHandle(drag_index_, UnitPoint(pt),
+                                          /*snap_to_center=*/true);
     if (next == drag_palette_) {
       return;
     }
@@ -973,6 +1037,36 @@ class Panel : public PhiPopover {
   }
 
   // A button's wash: selected ink 6 % (dark: white 20 %), hovered 4 %.
+  // The brightness slider: a track running from the primary colour at
+  // brightness 0 to the same colour at 1, in the appearance being edited,
+  // under a thumb of the exact resolved colour.
+  void PaintSlider(HDC dc, const PhiThemePalette& palette, bool dark,
+                   COLORREF ground) {
+    const RECT slider = SliderRect();
+    const int mid = (slider.top + slider.bottom) / 2;
+    const int track_h = Scaled(kSliderTrack);
+    const RECT track = {slider.left, mid - track_h / 2, slider.right,
+                        mid - track_h / 2 + track_h};
+    const COLORREF low = palette.SettingBrightness(0).ResolvedColor(0, dark);
+    const COLORREF high = palette.SettingBrightness(1).ResolvedColor(0, dark);
+    const int width = track.right - track.left;
+    for (int x = 0; x < width; ++x) {
+      const RECT column = {track.left + x, track.top, track.left + x + 1,
+                           track.bottom};
+      HBRUSH brush =
+          ::CreateSolidBrush(PhiBlend(high, low, 255 * x / (width - 1)));
+      ::FillRect(dc, &column, brush);
+      ::DeleteObject(brush);
+    }
+    PhiKnockOutRoundRectAA(dc, track, track_h / 2, ground);
+    const double radius = Scaled(kSliderThumb) / 2.0;
+    const double cx = slider.left + radius +
+                      palette.brightness * (width - 2 * radius);
+    const RECT thumb = CircleRect(cx, mid, radius);
+    PhiFillEllipseAA(dc, thumb, palette.ResolvedColor(0, dark));
+    PhiStrokeEllipseAA(dc, thumb, RGB(0xFF, 0xFF, 0xFF), Scaled(kHandleRim));
+  }
+
   COLORREF ButtonWash(const PhiPalette& chrome, bool selected, bool hovered) const {
     if (selected) {
       return PhiBlend(chrome.ink, chrome.flyout, chrome.dark ? 51 : 15);
@@ -1211,6 +1305,7 @@ class Panel : public PhiPopover {
   Capture capture_;
   bool dragging_ = false;
   bool moved_ = false;
+  bool drag_slider_ = false;  // The drag is the brightness slider's.
   int drag_index_ = 0;
   POINT press_pt_ = {};
   PhiThemePalette press_palette_;
