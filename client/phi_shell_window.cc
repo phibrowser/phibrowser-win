@@ -5509,6 +5509,11 @@ void PhiShellWindow::RebuildTabs() {
     rows_dirty_ = false;
     sidebar_->Rebuild();
   }
+  // Again, now that the rebuild has read the active tab: the call above ran
+  // on the one from the last rebuild, and a change of focus that needs no
+  // further rebuild (the focused pane leaving its split) left the chip and
+  // the move grip switched off for the panes that stayed.
+  SyncSplitChipTimer();
   // A group overview open over this window lists the rows just rebuilt.
   PhiGroupOverview::RefreshIfBoundTo(this);
   // The Library's cards re-read their Spaces, pins and bookmarks; a changed
