@@ -264,21 +264,25 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
         "tab.movePaneBack",
         PhiStr(in.split_stacked ? "sidebar.tabContextMenu.movePaneUp"
                                 : "sidebar.tabContextMenu.movePaneLeft"));
-    // Neither moves without a focused pane in the split.
-    back.enabled = in.pane > 0;
+    // Neither moves without a focused pane in the split, nor in a stored
+    // split.
+    back.enabled = !in.split_stored && in.pane > 0;
     items.push_back(std::move(back));
     PhiMenuItem forward = PhiMenuItem::Command(
         "tab.movePaneForward",
         PhiStr(in.split_stacked ? "sidebar.tabContextMenu.movePaneDown"
                                 : "sidebar.tabContextMenu.movePaneRight"));
-    forward.enabled = in.pane >= 0 && in.pane + 1 < in.pane_count;
+    forward.enabled =
+        !in.split_stored && in.pane >= 0 && in.pane + 1 < in.pane_count;
     items.push_back(std::move(forward));
     items.push_back(PhiMenuItem::Command("tab.convertSplit",
                                          in.split_stacked
                                              ? PhiStr("contextMenu.convertToHorizontalSplit")
                                              : PhiStr("contextMenu.convertToVerticalSplit")));
-    items.push_back(
-        PhiMenuItem::Command("tab.removeSplit", PhiStr("contextMenu.removeFromSplit")));
+    PhiMenuItem remove = PhiMenuItem::Command(
+        "tab.removeSplit", PhiStr("contextMenu.removeFromSplit"));
+    remove.enabled = !in.split_stored;
+    items.push_back(std::move(remove));
     items.push_back(PhiMenuItem::Command(
         "tab.closeSplit", PhiStr("sidebar.tabContextMenu.closeSplit")));
     items.push_back(PhiMenuItem::Separator());
@@ -295,16 +299,20 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
     items.push_back(PhiMenuItem::Command("tab.copyRight", PhiStr("contextMenu.copyRightURL")));
     items.push_back(PhiMenuItem::Separator());
     // The Mac's "Reverse Panes": swap the two sides of this split.
-    items.push_back(
-        PhiMenuItem::Command("tab.reversePanes", PhiStr("contextMenu.reversePanes")));
+    PhiMenuItem reverse = PhiMenuItem::Command(
+        "tab.reversePanes", PhiStr("contextMenu.reversePanes"));
+    reverse.enabled = !in.split_stored;
+    items.push_back(std::move(reverse));
     // The Mac's convert item, labelled by where it takes you: a side-by-side
     // pair offers the stacked arrangement and vice versa.
     items.push_back(PhiMenuItem::Command("tab.convertSplit",
                                          in.split_stacked
                                              ? PhiStr("contextMenu.convertToHorizontalSplit")
                                              : PhiStr("contextMenu.convertToVerticalSplit")));
-    items.push_back(
-        PhiMenuItem::Command("tab.removeSplit", PhiStr("contextMenu.removeFromSplit")));
+    PhiMenuItem remove = PhiMenuItem::Command(
+        "tab.removeSplit", PhiStr("contextMenu.removeFromSplit"));
+    remove.enabled = !in.split_stored;
+    items.push_back(std::move(remove));
     items.push_back(PhiMenuItem::Command(
         "tab.closeSplit", PhiStr("sidebar.tabContextMenu.closeSplit")));
     items.push_back(PhiMenuItem::Separator());
@@ -363,6 +371,9 @@ PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in) {
         PhiStr("sidebar.pinnedTabContextMenu.editSubmenu"), std::move(edit)));
   }
   if (in.split_cell) {
+    // The Mac's split editor: every pane's name and address in one dialog.
+    items.push_back(
+        PhiMenuItem::Command("pin.editSplit", PhiStr("contextMenu.editURL")));
     items.push_back(PhiMenuItem::Separator());
     items.push_back(PhiMenuItem::Command("pin.convertSplit",
                                          in.horizontal
@@ -414,6 +425,8 @@ PhiMenuSpec PhiBuildBookmarkRowMenu(const PhiBookmarkMenuInputs& in) {
         PhiStr("sidebar.bookmarkContextMenu.editSubmenu"), std::move(edit)));
   }
   if (in.split_row) {
+    items.push_back(
+        PhiMenuItem::Command("bm.editSplit", PhiStr("contextMenu.editURL")));
     items.push_back(PhiMenuItem::Command("bm.convertSplit",
                                          in.horizontal
                                              ? PhiStr("contextMenu.convertToHorizontalSplit")

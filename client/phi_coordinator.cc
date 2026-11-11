@@ -1423,6 +1423,24 @@ bool PhiCoordinator::Apply(int64_t slot_number,
   const SlotId slot{slot_number};
   const BrowserId browser = ResolveBrowser(slot);
   const auto refresh = [&] { registry_.InvalidateAll(); };
+  // The Mac's splitAllowsPaneRearrangement, read from the other side: a
+  // pinned cell or a bookmark stands for the split `key` names, so its panes
+  // stay as saved. A bound pane carries its cell's tag. Asked of a row's
+  // key only: a cell's own commands know what they store.
+  const auto stored_split_row = [&](const SidebarKey& key) {
+    if (key.kind == SidebarKey::Kind::kCell) {
+      return false;
+    }
+    for (int pane = 0; pane < kSidebarMaxPanes; ++pane) {
+      const int tab = TabOfKey(tree, key, pane);
+      const phi_framework::TabSnapshot* live =
+          tab ? window_model_.FindTab(browser, TabId{tab}) : nullptr;
+      if (live && !live->tag.empty()) {
+        return true;
+      }
+    }
+    return false;
+  };
   // The live split a key stands for: a split row's token, or a split cell's
   // live split when both panes are open.
   const auto split_of = [&](const SidebarKey& key) -> std::string {
@@ -1528,8 +1546,8 @@ bool PhiCoordinator::Apply(int64_t slot_number,
           },
           [&](const SidebarBreakSplit& cmd) {
             const std::string split_id = split_of(cmd.key);
-            if (split_id.empty()) {
-              return false;
+            if (split_id.empty() || stored_split_row(cmd.key)) {
+              return false;  // The Mac's dissolveSplit refuses a stored one.
             }
             if (cmd.key.kind == SidebarKey::Kind::kCell) {
               // The cell stays as a closed split placeholder.
@@ -1544,6 +1562,9 @@ bool PhiCoordinator::Apply(int64_t slot_number,
             return ok;
           },
           [&](const SidebarSwapPanes& cmd) {
+            if (stored_split_row(cmd.key)) {
+              return false;  // The Mac's reverseTabsInSplit, likewise.
+            }
             const std::string split_id = split_of(cmd.key);
             bool ok = false;
             if (!split_id.empty()) {
@@ -1567,15 +1588,21 @@ bool PhiCoordinator::Apply(int64_t slot_number,
           [&](const SidebarRemovePane& cmd) {
             const int tab = TabOfKey(tree, cmd.key, cmd.pane);
             const bool ok =
-                tab != 0 &&
+                tab != 0 && !stored_split_row(cmd.key) &&
                 framework_->RemoveTabFromSplitById(browser, TabId{tab});
             refresh();
             return ok;
           },
           [&](const SidebarMovePane& cmd) {
+            // The Mac's moveTabInSplit: refused for a stored split and for
+            // a slot the split does not have.
             const int tab = TabOfKey(tree, cmd.key, cmd.pane);
-            const bool ok = tab != 0 && framework_->MoveTabInSplitById(
-                                            browser, TabId{tab}, cmd.slot);
+            const bool ok = tab != 0 && cmd.slot >= 0 &&
+                            cmd.slot < kSidebarMaxPanes &&
+                            TabOfKey(tree, cmd.key, cmd.slot) != 0 &&
+                            !stored_split_row(cmd.key) &&
+                            framework_->MoveTabInSplitById(
+                                browser, TabId{tab}, cmd.slot);
             refresh();
             return ok;
           },
@@ -1968,6 +1995,228 @@ bool PhiCoordinator::SetStoredRowUrl(const std::string& guid,
   registry_.InvalidateAll();
   NotifySettingsObservers(PhiSettingsChange::kStoredRows);
   return true;
+}
+
+std::vector<SidebarHost::StoredPane> PhiCoordinator::StoredSplitPanes(
+    const std::string& guid) const {
+  std::vector<StoredPane> panes;
+  const std::optional<PhiRow> row = tab_store_.Find(guid);
+  if (!row || row->url_b.empty()) {
+    return panes;
+  }
+  panes.push_back({row->title, row->url});
+  panes.push_back({row->title_b, row->url_b});
+  for (const PhiRow::ExtraPane& pane : row->more) {
+    panes.push_back({pane.title, pane.url});
+  }
+  return panes;
+}
+
+bool PhiCoordinator::SetStoredSplitPanes(const std::string& guid,
+                                         const std::vector<StoredPane>& panes) {
+  const std::optional<PhiRow> row = tab_store_.Find(guid);
+  if (!row || row->url_b.empty() || panes.size() != 2 + row->more.size()) {
+    return false;
+  }
+  for (const StoredPane& pane : panes) {
+    if (pane.url.empty()) {
+      return false;  // Every pane keeps an address.
+    }
+  }
+  const std::vector<StoredPane> before = StoredSplitPanes(guid);
+  // Pane A is the cell's own row; B and the later panes ride it (or, for a
+  // pin's B, its partner row). A pane that keeps its address keeps its
+  // favicon.
+  if (panes[0].url != row->url) {
+    tab_store_.SetRowUrl(guid, panes[0].url);
+  }
+  if (!panes[0].title.empty() && panes[0].title != row->title) {
+    tab_store_.RenameRow(guid, panes[0].title);
+  }
+  const bool same_b = panes[1].url == row->url_b;
+  tab_store_.SetRowSecondary(guid, panes[1].url, panes[1].title,
+                             same_b ? row->favicon_b_base64 : std::string(),
+                             same_b ? row->favicon_b_width : 0,
+                             same_b ? row->favicon_b_height : 0);
+  std::vector<PhiRow::ExtraPane> extras;
+  for (size_t i = 0; i < row->more.size(); ++i) {
+    PhiRow::ExtraPane pane = row->more[i];
+    const StoredPane& edited = panes[i + 2];
+    if (edited.url != pane.url) {
+      pane.favicon_base64.clear();
+      pane.favicon_width = 0;
+      pane.favicon_height = 0;
+    }
+    pane.url = edited.url;
+    pane.title = edited.title;
+    extras.push_back(std::move(pane));
+  }
+  tab_store_.SetRowExtraPanes(guid, extras);
+  // An open split follows: each bound pane whose address changed loads it
+  // (the Mac's navigateSplitPane).
+  if (framework_) {
+    for (size_t i = 0; i < panes.size() && i < before.size(); ++i) {
+      if (panes[i].url == before[i].url) {
+        continue;
+      }
+      for (const auto& [browser, tab] : window_model_.TabsWithTag(
+               TagForPane(guid, static_cast<int>(i)))) {
+        framework_->NavigateTabInPlace(browser.value, tab.value,
+                                       panes[i].url.c_str(),
+                                       /*keep_current=*/false);
+      }
+    }
+  }
+  registry_.InvalidateAll();
+  NotifySettingsObservers(PhiSettingsChange::kStoredRows);
+  return true;
+}
+
+bool PhiCoordinator::RewriteStoredSplit(
+    const std::string& guid,
+    const std::vector<PhiRow::ExtraPane>& panes) {
+  const std::optional<PhiRow> row = tab_store_.Find(guid);
+  if (!row || row->url_b.empty() || panes.size() < 2 ||
+      panes.size() > static_cast<size_t>(kSidebarMaxPanes)) {
+    return false;
+  }
+  if (panes[0].url != row->url) {
+    tab_store_.SetRowUrl(guid, panes[0].url);
+  }
+  if (!panes[0].title.empty() && panes[0].title != row->title) {
+    tab_store_.RenameRow(guid, panes[0].title);
+  }
+  tab_store_.SetFavicon(guid, /*pane_b=*/false, panes[0].favicon_base64,
+                        panes[0].favicon_width, panes[0].favicon_height);
+  tab_store_.SetRowSecondary(guid, panes[1].url, panes[1].title,
+                             panes[1].favicon_base64, panes[1].favicon_width,
+                             panes[1].favicon_height);
+  tab_store_.SetRowExtraPanes(
+      guid, std::vector<PhiRow::ExtraPane>(panes.begin() + 2, panes.end()));
+  return true;
+}
+
+namespace {
+
+// The panes a split cell stores, each with its favicon, in slot order.
+std::vector<PhiRow::ExtraPane> StoredPaneRecords(const PhiRow& row) {
+  std::vector<PhiRow::ExtraPane> panes;
+  panes.push_back({row.url, row.title, row.favicon_base64, std::string(),
+                   row.favicon_width, row.favicon_height});
+  panes.push_back({row.url_b, row.title_b, row.favicon_b_base64, std::string(),
+                   row.favicon_b_width, row.favicon_b_height});
+  for (const PhiRow::ExtraPane& pane : row.more) {
+    panes.push_back(pane);
+  }
+  return panes;
+}
+
+}  // namespace
+
+void PhiCoordinator::NoteStoredPaneClosing(int64_t browser_id, int tab_id) {
+  const BrowserId browser{browser_id};
+  const phi_framework::TabSnapshot* closing =
+      window_model_.FindTab(browser, TabId{tab_id});
+  SidebarTag tag;
+  if (!closing || !ParseTag(closing->tag, &tag)) {
+    return;
+  }
+  const phi_framework::SplitSnapshot* split =
+      window_model_.SplitOfTab(browser, TabId{tab_id});
+  const std::optional<PhiRow> row = tab_store_.Find(tag.guid);
+  if (!split || !row || row->url_b.empty()) {
+    return;
+  }
+  std::vector<PhiRow::ExtraPane> panes = StoredPaneRecords(*row);
+  const std::vector<TabId> live = PhiSplitPanes(*split);
+  // Only a split that is open in full and wider than a pair shrinks: a pair
+  // dissolves instead, and a split still opening its panes is left alone.
+  if (live.size() <= 2 || live.size() != panes.size() ||
+      tag.pane >= static_cast<int>(panes.size())) {
+    return;
+  }
+  // Every live pane must be this cell's, each at its own slot.
+  std::vector<int> bound(panes.size(), 0);
+  for (const TabId pane : live) {
+    const phi_framework::TabSnapshot* tab = window_model_.FindTab(browser, pane);
+    SidebarTag pane_tag;
+    if (!tab || !ParseTag(tab->tag, &pane_tag) || pane_tag.guid != tag.guid ||
+        pane_tag.pane >= static_cast<int>(bound.size()) ||
+        bound[static_cast<size_t>(pane_tag.pane)] != 0) {
+      return;
+    }
+    bound[static_cast<size_t>(pane_tag.pane)] = pane.value;
+  }
+  panes.erase(panes.begin() + tag.pane);
+  if (!RewriteStoredSplit(tag.guid, panes)) {
+    return;
+  }
+  // The closing tab goes free and the later panes move up a slot.
+  TagTab(browser, tab_id, "");
+  for (size_t i = static_cast<size_t>(tag.pane) + 1; i < bound.size(); ++i) {
+    TagTab(browser, bound[i],
+           TagForPane(tag.guid, static_cast<int>(i) - 1).c_str());
+  }
+  registry_.InvalidateAll();
+  NotifySettingsObservers(PhiSettingsChange::kStoredRows);
+}
+
+void PhiCoordinator::NoteStoredPaneReplaced(int64_t browser_id,
+                                            int evicted_tab,
+                                            int incoming_tab) {
+  const BrowserId browser{browser_id};
+  const phi_framework::TabSnapshot* evicted =
+      window_model_.FindTab(browser, TabId{evicted_tab});
+  SidebarTag tag;
+  if (!evicted || !ParseTag(evicted->tag, &tag) || !framework_) {
+    return;
+  }
+  const std::optional<PhiRow> row = tab_store_.Find(tag.guid);
+  if (!row || row->url_b.empty()) {
+    return;
+  }
+  std::vector<PhiRow::ExtraPane> panes = StoredPaneRecords(*row);
+  if (tag.pane >= static_cast<int>(panes.size())) {
+    return;
+  }
+  // A pane that replaced another is saved as the page it shows. A tab
+  // opened for the drop may not be in the model yet: pull the strip.
+  phi_framework::WindowSnapshot strip;
+  const phi_framework::TabSnapshot* incoming =
+      window_model_.FindTab(browser, TabId{incoming_tab});
+  if (!incoming && PhiWindowModel::Pull(framework_, browser, &strip)) {
+    for (const phi_framework::TabSnapshot& tab : strip.tabs) {
+      if (tab.id.value == incoming_tab) {
+        incoming = &tab;
+      }
+    }
+  }
+  if (!incoming || incoming->url.empty()) {
+    return;
+  }
+  PhiRow::ExtraPane saved;
+  saved.url = incoming->url;
+  saved.title = incoming->title.empty() ? incoming->url : incoming->title;
+  int width = 0, height = 0;
+  const unsigned char* pixels = framework_->TabFaviconBgraById(
+      browser.value, incoming_tab, &width, &height);
+  if (pixels && width > 0 && height > 0) {
+    const size_t bytes =
+        static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
+    // SAFETY: TabFaviconBgraById reports the buffer's own dimensions.
+    const auto view = UNSAFE_BUFFERS(base::span<const uint8_t>(pixels, bytes));
+    saved.favicon_base64 = base::Base64Encode(view);
+    saved.favicon_width = width;
+    saved.favicon_height = height;
+  }
+  panes[static_cast<size_t>(tag.pane)] = saved;
+  if (!RewriteStoredSplit(tag.guid, panes)) {
+    return;
+  }
+  TagTab(browser, evicted_tab, "");
+  TagTab(browser, incoming_tab, TagForPane(tag.guid, tag.pane).c_str());
+  registry_.InvalidateAll();
+  NotifySettingsObservers(PhiSettingsChange::kStoredRows);
 }
 
 bool PhiCoordinator::IsTabAgentDriven(int tab_id) const {

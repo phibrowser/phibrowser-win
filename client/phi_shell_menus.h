@@ -178,10 +178,15 @@ struct PhiTabMenuInputs {
   // Split".
   bool current_can_pair = false;
   bool split_stacked = false;  // Merged rows: the divider's current axis.
-  // Merged rows: the split's pane count (2 to 4) and the pane under the
-  // pointer, which the per-pane rows of a split of three or four act on.
+  // Merged rows: the split's pane count (2 to 4) and the FOCUSED pane (-1
+  // when the focus is outside the split), which the move rows of a split of
+  // three or four act on.
   int pane_count = 2;
   int pane = 0;
+  // Merged rows: a pinned cell or a bookmark stands for this split (its row
+  // shows in the horizontal layout). Its panes stay as saved: no reverse, no
+  // move, no Remove from Split.
+  bool split_stored = false;
   bool grouped = false;        // The row is in a tab group.
   bool bookmark_folders = false;  // Emit the "Add to Folder" submenu.
   std::vector<PhiMenuChoice> folders;  // Labels already indented.

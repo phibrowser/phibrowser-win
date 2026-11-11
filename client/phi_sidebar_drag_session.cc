@@ -2430,6 +2430,12 @@ void PhiSidebarDragSession::CommitSplitDrop(PhiDragKind kind,
     if (!incoming_id.valid() || incoming_id == evicted_id) {
       return;
     }
+    // A split a pinned cell or a bookmark stands for saves the new pane
+    // (the Mac's saveBoundBookmarkPanes after swapTabInSplit).
+    if (SidebarHost* host = view_->sidebar_host()) {
+      host->NoteStoredPaneReplaced(browser.value, evicted_id.value,
+                                   incoming_id.value);
+    }
     framework_->SwapTabIntoSplitById(browser, split_id.c_str(), slot,
                                      incoming_id, keep_evicted);
     return;

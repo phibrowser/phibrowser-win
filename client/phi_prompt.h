@@ -116,6 +116,25 @@ bool PhiPromptText(HWND owner,
                    const wchar_t* confirm_label,
                    const PhiTextRules& rules);
 
+// One pane of a stored split in PhiPromptPanes: its two labelled fields.
+struct PhiPromptPane {
+  std::wstring name_label;  // "Left Name", "Pane 3 Name", …
+  std::wstring url_label;   // "Left URL", "Pane 3 URL", …
+  std::wstring name;        // In and out. May come back empty.
+  std::wstring url;         // In and out. Never comes back empty.
+};
+// A modal editor for the panes of a split bookmark or a pinned split (the
+// Mac's EditPinnedTabView with its secondary and extra-pane fields): one row
+// per pane, the name beside the address, each under its label. True when
+// the user confirms with every address filled in; `panes` then holds the
+// trimmed entries. An empty address asks again with the text kept, where
+// the Mac greys its Save button. Labels MUST be localized by the caller.
+bool PhiPromptPanes(HWND owner,
+                    const wchar_t* title,
+                    const wchar_t* message,
+                    std::vector<PhiPromptPane>* panes,
+                    const wchar_t* confirm_label = nullptr);
+
 // Code points in `text` (a surrogate pair counts once).
 size_t PhiCodePointCount(const std::wstring& text);
 // `text` without leading or trailing white space.

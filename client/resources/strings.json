@@ -2927,6 +2927,39 @@
    "zh-Hans": "停止\tEsc",
    "zh-Hant": "停止載入\tEsc"
   },
+  "common.bookmarkEditor.editMultiPaneSplitSubtitle": {
+   "de": "Bearbeite den Namen und die Adresse für jeden Bereich dieses Split-Lesezeichens.",
+   "en": "Edit the name and address for each pane of this split-view bookmark.",
+   "es": "Edita el nombre y la dirección de cada panel de este marcador de vista dividida.",
+   "fr": "Modifiez le nom et l'adresse de chaque volet de ce favori Split View.",
+   "ja": "この分割表示のブックマークの各ペインの名前とアドレスを編集します。",
+   "ko": "이 분할 북마크의 각 패널 이름과 주소를 편집하세요.",
+   "nl": "Wijzig de naam en het adres van elk paneel van deze Split View-bladwijzer.",
+   "zh-Hans": "编辑此分屏书签每个窗格的名称和地址。",
+   "zh-Hant": "編輯這個分割畫面書籤每個窗格的名稱和網址。"
+  },
+  "common.bookmarkEditor.editSplitSubtitle": {
+   "de": "Bearbeite den Namen und beide Adressen dieses Split-Lesezeichens.",
+   "en": "Edit the name and both addresses for this split-view bookmark.",
+   "es": "Edita el nombre y ambas direcciones de este marcador de vista dividida.",
+   "fr": "Modifiez le nom et les deux adresses de ce favori Split View.",
+   "ja": "この分割表示のブックマークの名前と両方のアドレスを編集します。",
+   "ko": "이 분할 북마크의 이름과 양쪽 주소를 편집하세요.",
+   "nl": "Wijzig de naam en beide adressen van deze Split View-bladwijzer.",
+   "zh-Hans": "编辑此分屏书签的名称和两个地址。",
+   "zh-Hant": "編輯這個分割畫面書籤的名稱和兩個網址。"
+  },
+  "common.bookmarkEditor.editSplitTitle": {
+   "de": "Split-Lesezeichen bearbeiten",
+   "en": "Edit Split Bookmark",
+   "es": "Editar marcador de vista dividida",
+   "fr": "Modifier le favori Split View",
+   "ja": "分割表示のブックマークを編集",
+   "ko": "분할 북마크 편집",
+   "nl": "Wijzig Split View-bladwijzer",
+   "zh-Hans": "编辑分屏书签",
+   "zh-Hant": "編輯分割畫面書籤"
+  },
   "common.bookmarkEditor.editTitle": {
    "de": "Lesezeichen bearbeiten",
    "en": "Edit Bookmark",
@@ -2948,6 +2981,72 @@
    "nl": "Nieuwe map…",
    "zh-Hans": "新建文件夹…",
    "zh-Hant": "新增資料夾…"
+  },
+  "common.bookmarkEditor.paneNameField.label": {
+   "de": "Name von Bereich {0}",
+   "en": "Pane {0} Name",
+   "es": "Nombre del panel {0}",
+   "fr": "Nom du volet {0}",
+   "ja": "ペイン{0}の名前",
+   "ko": "{0}번째 패널 이름",
+   "nl": "Naam van paneel {0}",
+   "zh-Hans": "第 {0} 个窗格的名称",
+   "zh-Hant": "第 {0} 個窗格的名稱"
+  },
+  "common.bookmarkEditor.paneURLField.label": {
+   "de": "URL von Bereich {0}",
+   "en": "Pane {0} URL",
+   "es": "URL del panel {0}",
+   "fr": "URL du volet {0}",
+   "ja": "ペイン{0}のURL",
+   "ko": "{0}번째 패널 URL",
+   "nl": "URL van paneel {0}",
+   "zh-Hans": "第 {0} 个窗格的网址",
+   "zh-Hant": "第 {0} 個窗格的網址"
+  },
+  "common.bookmarkEditor.primaryNameField.label": {
+   "de": "Linker Name",
+   "en": "Left Name",
+   "es": "Nombre izquierdo",
+   "fr": "Nom de gauche",
+   "ja": "左側の名前",
+   "ko": "왼쪽 이름",
+   "nl": "Naam links",
+   "zh-Hans": "左侧名称",
+   "zh-Hant": "左側名稱"
+  },
+  "common.bookmarkEditor.primaryURLField.label": {
+   "de": "Linke URL",
+   "en": "Left URL",
+   "es": "URL izquierda",
+   "fr": "URL de gauche",
+   "ja": "左側のURL",
+   "ko": "왼쪽 URL",
+   "nl": "URL links",
+   "zh-Hans": "左侧网址",
+   "zh-Hant": "左側網址"
+  },
+  "common.bookmarkEditor.secondaryNameField.label": {
+   "de": "Rechter Name",
+   "en": "Right Name",
+   "es": "Nombre derecho",
+   "fr": "Nom de droite",
+   "ja": "右側の名前",
+   "ko": "오른쪽 이름",
+   "nl": "Naam rechts",
+   "zh-Hans": "右侧名称",
+   "zh-Hant": "右側名稱"
+  },
+  "common.bookmarkEditor.secondaryURLField.label": {
+   "de": "Rechte URL",
+   "en": "Right URL",
+   "es": "URL derecha",
+   "fr": "URL de droite",
+   "ja": "右側のURL",
+   "ko": "오른쪽 URL",
+   "nl": "URL rechts",
+   "zh-Hans": "右侧网址",
+   "zh-Hant": "右側網址"
   },
   "common.bookmarkFolder.defaultName": {
    "de": "Unbenannt",
@@ -3036,6 +3135,39 @@
    "nl": "Nieuw Incognito-tabblad",
    "zh-Hans": "新无痕标签页",
    "zh-Hant": "新無痕分頁"
+  },
+  "common.pinnedTabEditor.editMultiPaneSplitSubtitle": {
+   "de": "Bearbeite den Namen und die Adresse für jeden Bereich dieses angehefteten Splits.",
+   "en": "Edit the name and address for each pane of this pinned split.",
+   "es": "Edita el nombre y la dirección de cada panel de esta vista dividida fijada.",
+   "fr": "Modifiez le nom et l'adresse de chaque volet de cette Split View épinglée.",
+   "ja": "この固定した分割表示の各ペインの名前とアドレスを編集します。",
+   "ko": "이 고정 분할의 각 패널 이름과 주소를 편집하세요.",
+   "nl": "Wijzig de naam en het adres van elk paneel van deze vastgezette split.",
+   "zh-Hans": "编辑此固定分屏每个窗格的名称和地址。",
+   "zh-Hant": "編輯這個釘選分割畫面每個窗格的名稱和網址。"
+  },
+  "common.pinnedTabEditor.editSplitSubtitle": {
+   "de": "Bearbeite die Namen und Adressen beider Bereiche dieses angehefteten Splits.",
+   "en": "Edit the names and addresses for both panes of this pinned split.",
+   "es": "Edita los nombres y las direcciones de ambos paneles de esta vista dividida fijada.",
+   "fr": "Modifiez les noms et les adresses des deux volets de cette Split View épinglée.",
+   "ja": "この固定した分割表示の両方のペインの名前とアドレスを編集します。",
+   "ko": "이 고정 분할의 양쪽 이름과 주소를 편집하세요.",
+   "nl": "Wijzig de namen en adressen van beide helften van deze vastgezette split.",
+   "zh-Hans": "编辑此固定分屏两个窗格的名称和地址。",
+   "zh-Hant": "編輯這個釘選分割畫面兩個窗格的名稱和網址。"
+  },
+  "common.pinnedTabEditor.editSplitTitle": {
+   "de": "Angehefteten Split bearbeiten",
+   "en": "Edit Pinned Split",
+   "es": "Editar vista dividida fijada",
+   "fr": "Modifier la Split View épinglée",
+   "ja": "固定した分割表示を編集",
+   "ko": "고정 분할 편집",
+   "nl": "Wijzig vastgezette split",
+   "zh-Hans": "编辑固定的分屏",
+   "zh-Hant": "編輯釘選分割畫面"
   },
   "common.pinnedTabEditor.editTitle": {
    "de": "Angehefteten Tab bearbeiten",

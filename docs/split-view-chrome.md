@@ -58,8 +58,22 @@ middle pane is square all round.
   Pane *n* URL, Move Focused Pane Left / Right (Up / Down when stacked),
   which move the focused pane wherever the menu opened and are greyed when
   the focus is outside the split, Remove from Split, which dissolves the
-  whole split, and Close Split. The hover chip over an unfocused pane moves
-  that pane, and its Remove from split dissolves the split too.
+  whole split, and Close Split. The hover chip's menu has the same move
+  rows with the same rule, and its Remove from split dissolves the split
+  too.
+* **Stored splits** (a pinned cell or a bookmark stands for the split; its
+  panes carry the cell's tag). Their panes stay as saved: move, swap and
+  Remove from Split are greyed in the menus and refused by the commands
+  (`stored_split_row` in `phi_coordinator.cc`), and there is no move grip.
+  Three things do change what the cell saves. Edit URL in the cell's menu
+  opens a name and an address per pane (`PhiPromptPanes`,
+  `SetStoredSplitPanes`); an open pane whose address changed loads it.
+  Closing just one pane of a fully open split of three or four (Ctrl+W on
+  the focused pane, the chip's Close pane) drops that pane from the cell
+  and the later panes move up (`NoteStoredPaneClosing`); panes that leave
+  because the whole split, the window or the app closes do not. A tab
+  dropped onto a pane of a bookmark-bound split is saved as that pane
+  (`NoteStoredPaneReplaced`); a pinned split takes no drop.
 * **The move grip** (the Mac's `PaneMoveHandle`, 2026-11-11). A pill at the
   top of the pane under the pointer, shown while the pointer is in the top
   44 DIP of a pane. Dragging it along the split moves the pane to the

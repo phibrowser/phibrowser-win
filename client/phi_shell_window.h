@@ -261,6 +261,36 @@ class SidebarHost {
   // Retargets a bookmark (the manager's Address cell edit).
   virtual bool SetStoredRowUrl(const std::string& guid,
                                const std::string& url) = 0;
+  // The panes a split cell stores, in slot order (two to four); empty for a
+  // single cell or an unknown guid. And their rewrite — the Mac's split
+  // editor (EditPinnedTabView's secondary and extra-pane fields, `8422f31d`):
+  // `panes` must name every pane the cell has. A pane whose address changed
+  // loses its stored favicon, and its live tab, when the split is open,
+  // goes to the new address.
+  struct StoredPane {
+    std::string title;
+    std::string url;
+  };
+  virtual std::vector<StoredPane> StoredSplitPanes(
+      const std::string& guid) const = 0;
+  virtual bool SetStoredSplitPanes(const std::string& guid,
+                                   const std::vector<StoredPane>& panes) = 0;
+  // The Mac's `6e786436`: a stored split follows its live split when the
+  // user takes ONE pane out of it or replaces one. Both are called BEFORE
+  // the framework call that does it, and do nothing for a tab no cell is
+  // bound to.
+  //  * Closing: the user is closing just the pane `tab_id` of a fully open
+  //    split of three or four. The cell drops that pane and the later panes
+  //    move up. Panes also leave one at a time while a whole split, a
+  //    window or the app closes, which must leave the cell intact, so only
+  //    the single-pane close paths call this.
+  //  * Replaced: `incoming_tab` is about to take the pane `evicted_tab`
+  //    holds. The cell saves the incoming page there and binds its tab; the
+  //    evicted tab goes free.
+  virtual void NoteStoredPaneClosing(int64_t browser_id, int tab_id) = 0;
+  virtual void NoteStoredPaneReplaced(int64_t browser_id,
+                                      int evicted_tab,
+                                      int incoming_tab) = 0;
   // Remembers a split row's divider axis so it reopens stacked or
   // side-by-side (the Mac's persistent split layout).
   virtual bool SetStoredRowLayout(const std::string& guid,
@@ -2319,6 +2349,12 @@ class PhiShellWindow : public PhiHitSource,
   int pane_handoff_tab_ = 0;
   ULONGLONG pane_handoff_deadline_ = 0;
   bool SplitAllowsPaneMove(const std::vector<NativePane>& panes) const;
+  // Whether a pinned cell or a bookmark stands for the split `tab_id` is a
+  // pane of (the Mac's splitAllowsPaneRearrangement, negated).
+  bool SplitRowIsStored(TabId tab_id) const;
+  // The Mac's split editor for a pinned split or a split bookmark: a name
+  // and an address per pane.
+  void EditStoredSplit(const std::string& guid, bool pinned);
   void UpdatePaneGrip(const std::vector<NativePane>& panes, POINT cursor);
   void ShowPaneGrip(int tab_id, const RECT& pane);
   void HidePaneGrip();

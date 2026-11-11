@@ -1047,6 +1047,12 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       // cell or a bookmark is no row in the list, and Ctrl+W must still
       // close it (lane 1 D2).
       if (c->MenuFramework() && target.valid() && c->MenuActiveTab().valid()) {
+        // Closing the focused pane of a stored split takes just that pane
+        // out of what the cell saves (the Mac's noteUserRemovingSplitPane).
+        if (SidebarHost* sidebar = c->MenuSidebarHost()) {
+          sidebar->NoteStoredPaneClosing(target.value,
+                                         c->MenuActiveTab().value);
+        }
         c->MenuFramework()->CloseTabById(target.value, c->MenuActiveTab().value);
       } else if (target.valid() && c->MenuModel()) {
         // Only a known, empty browser is a placeholder. A cold Space whose

@@ -10344,6 +10344,54 @@
   "settings.advanced.keepPinnedTabsLoaded.description": {
    "comment": "Mac key (translations by key); settings — Advanced ▸ Tabs, hint under the keep pinned tabs loaded switch",
    "en": "Pinned tabs you have opened stay in memory instead of being unloaded to free it."
+  },
+  "common.bookmarkEditor.editSplitTitle": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Edit Split Bookmark"
+  },
+  "common.bookmarkEditor.editSplitSubtitle": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Edit the name and both addresses for this split-view bookmark."
+  },
+  "common.bookmarkEditor.editMultiPaneSplitSubtitle": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Edit the name and address for each pane of this split-view bookmark."
+  },
+  "common.bookmarkEditor.paneNameField.label": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes); {0} is the pane's position, from 1",
+   "en": "Pane {0} Name"
+  },
+  "common.bookmarkEditor.paneURLField.label": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes); {0} is the pane's position, from 1",
+   "en": "Pane {0} URL"
+  },
+  "common.bookmarkEditor.primaryNameField.label": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Left Name"
+  },
+  "common.bookmarkEditor.primaryURLField.label": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Left URL"
+  },
+  "common.bookmarkEditor.secondaryNameField.label": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Right Name"
+  },
+  "common.bookmarkEditor.secondaryURLField.label": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Right URL"
+  },
+  "common.pinnedTabEditor.editSplitTitle": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Edit Pinned Split"
+  },
+  "common.pinnedTabEditor.editSplitSubtitle": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Edit the names and addresses for both panes of this pinned split."
+  },
+  "common.pinnedTabEditor.editMultiPaneSplitSubtitle": {
+   "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
+   "en": "Edit the name and address for each pane of this pinned split."
   }
  }
 }

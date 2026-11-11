@@ -395,6 +395,14 @@ class PhiCoordinator : public SidebarHost,
   void RemoveStoredRow(const std::string& guid) override;
   bool SetStoredRowIcon(const std::string& guid,
                         const std::string& icon) override;
+  std::vector<StoredPane> StoredSplitPanes(
+      const std::string& guid) const override;
+  bool SetStoredSplitPanes(const std::string& guid,
+                           const std::vector<StoredPane>& panes) override;
+  void NoteStoredPaneClosing(int64_t browser_id, int tab_id) override;
+  void NoteStoredPaneReplaced(int64_t browser_id,
+                              int evicted_tab,
+                              int incoming_tab) override;
   bool SetStoredRowUrl(const std::string& guid,
                        const std::string& url) override;
   bool SetStoredRowLayout(const std::string& guid,
@@ -1240,6 +1248,10 @@ class PhiCoordinator : public SidebarHost,
   // SetTabTagById + a model pull, so the row rebuild this gesture posts
   // already sees the tag (see the definition for why the push is not enough).
   void TagTab(BrowserId browser, int tab_id, const char* tag);
+  // Rewrites every pane of the split cell `guid` in place (two to four, in
+  // slot order); the cell keeps its guid.
+  bool RewriteStoredSplit(const std::string& guid,
+                          const std::vector<PhiRow::ExtraPane>& panes);
   // Former host verbs, now internal to Apply and the agent dialect.
   bool ConvertStoredRow(SlotId slot,
                         const std::string& guid,

@@ -51,7 +51,15 @@ constexpr int kCheckboxHeight = 20;
 constexpr UINT_PTR kControlId = 100;
 constexpr UINT_PTR kActionIdFirst = 1000;
 
-enum class Accessory { kNone, kField, kList, kRecorder, kCheckbox };
+// kPanes: a row per pane, a name field beside a wider address field, each
+// under its own label.
+constexpr int kPaneLabelHeight = 16;
+constexpr int kPaneLabelGap = 4;
+constexpr int kPaneRowGap = 10;
+constexpr int kPaneColumnGap = 8;
+constexpr int kPaneNameWidth = 140;
+
+enum class Accessory { kNone, kField, kList, kRecorder, kCheckbox, kPanes };
 
 struct Action {
   std::wstring label;
@@ -83,6 +91,7 @@ struct Spec {
   // double-click) and the list selection it confirms count only when
   // genuine hardware input made them — see Alert::hardware_target_.
   bool hardware_confirm = false;
+  std::vector<PhiPromptPane> panes;  // kPanes.
 };
 
 // Whether the input message just retrieved came from a real keyboard or
@@ -193,7 +202,8 @@ class Alert : public PhiSecondaryWindow {
       focus = buttons_.back();
     }
     ::SetFocus(focus ? focus : hwnd());
-    if (control_ && spec_.accessory == Accessory::kField) {
+    if (control_ && (spec_.accessory == Accessory::kField ||
+                     spec_.accessory == Accessory::kPanes)) {
       ::SendMessageW(control_, EM_SETSEL, 0, -1);
     }
 
@@ -268,18 +278,29 @@ class Alert : public PhiSecondaryWindow {
            ::SendMessageW(control_, BM_GETCHECK, 0, 0) == BST_CHECKED;
   }
 
-  std::wstring ControlText() const {
-    if (!control_) {
+  std::wstring ControlText() const { return TextOf(control_); }
+
+  static std::wstring TextOf(HWND control) {
+    if (!control) {
       return std::wstring();
     }
-    const int length = ::GetWindowTextLengthW(control_);
+    const int length = ::GetWindowTextLengthW(control);
     if (length <= 0) {
       return std::wstring();
     }
     std::wstring text(static_cast<size_t>(length) + 1, L'\0');
-    ::GetWindowTextW(control_, text.data(), length + 1);
+    ::GetWindowTextW(control, text.data(), length + 1);
     text.resize(static_cast<size_t>(length));
     return text;
+  }
+
+  // kPanes: what every field holds, in pane order.
+  std::vector<std::pair<std::wstring, std::wstring>> PaneTexts() const {
+    std::vector<std::pair<std::wstring, std::wstring>> out;
+    for (const PaneRow& row : pane_rows_) {
+      out.emplace_back(TextOf(row.name), TextOf(row.url));
+    }
+    return out;
   }
 
   int ListSelection() const {
@@ -372,6 +393,28 @@ class Alert : public PhiSecondaryWindow {
       case Accessory::kCheckbox:
         well_h = Scaled(kCheckboxHeight);
         break;
+      case Accessory::kPanes: {
+        // Laid out here, not as one well: every field has its own.
+        y += Scaled(kAccessorySpacing);
+        const int name_w = Scaled(kPaneNameWidth);
+        const int gap = Scaled(kPaneColumnGap);
+        for (size_t i = 0; i < spec_.panes.size(); ++i) {
+          if (i > 0) {
+            y += Scaled(kPaneRowGap);
+          }
+          PaneRow row;
+          row.name_label = {x0, y, x0 + name_w, y + Scaled(kPaneLabelHeight)};
+          row.url_label = {x0 + name_w + gap, y, x0 + content_w,
+                           y + Scaled(kPaneLabelHeight)};
+          y += Scaled(kPaneLabelHeight + kPaneLabelGap);
+          row.name_well = {x0, y, x0 + name_w, y + Scaled(kFieldHeight)};
+          row.url_well = {x0 + name_w + gap, y, x0 + content_w,
+                          y + Scaled(kFieldHeight)};
+          y += Scaled(kFieldHeight);
+          pane_rows_.push_back(row);
+        }
+        break;
+      }
     }
     if (well_h) {
       y += Scaled(kAccessorySpacing);
@@ -460,6 +503,30 @@ class Alert : public PhiSecondaryWindow {
           ::SendMessageW(control_, BM_SETCHECK, BST_CHECKED, 0);
         }
         break;
+      case Accessory::kPanes: {
+        const int line = Scaled(20);
+        const auto field = [&](const RECT& well, const std::wstring& text,
+                               UINT_PTR id) {
+          RECT rc = {well.left + Scaled(kFieldInsetX),
+                     (well.top + well.bottom - line) / 2,
+                     well.right - Scaled(kFieldInsetX),
+                     (well.top + well.bottom + line) / 2};
+          HWND edit = Child(L"EDIT", text.c_str(),
+                            WS_TABSTOP | ES_AUTOHSCROLL | ES_LEFT, rc, id,
+                            body_font_);
+          PhiPopupThemeControl(edit, colors().dark);
+          return edit;
+        };
+        for (size_t i = 0; i < pane_rows_.size(); ++i) {
+          pane_rows_[i].name = field(pane_rows_[i].name_well,
+                                     spec_.panes[i].name, kControlId + 2 * i);
+          pane_rows_[i].url = field(pane_rows_[i].url_well, spec_.panes[i].url,
+                                    kControlId + 2 * i + 1);
+        }
+        // The first field takes the focus, as a single field would.
+        control_ = pane_rows_.empty() ? nullptr : pane_rows_.front().name;
+        return;
+      }
     }
     PhiPopupThemeControl(control_, colors().dark);
   }
@@ -520,8 +587,25 @@ class Alert : public PhiSecondaryWindow {
       PhiDrawTextAA(dc, spec_.message.c_str(), -1, &message,
                     DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
     }
-    if (spec_.accessory != Accessory::kNone &&
-        spec_.accessory != Accessory::kCheckbox) {
+    if (spec_.accessory == Accessory::kPanes) {
+      if (body_font_) {
+        ::SelectObject(dc, body_font_);
+      }
+      ::SetTextColor(dc, colors().secondary);
+      for (size_t i = 0; i < pane_rows_.size(); ++i) {
+        RECT name_label = pane_rows_[i].name_label;
+        RECT url_label = pane_rows_[i].url_label;
+        PhiDrawTextAA(dc, spec_.panes[i].name_label.c_str(), -1, &name_label,
+                      DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                          DT_NOPREFIX);
+        PhiDrawTextAA(dc, spec_.panes[i].url_label.c_str(), -1, &url_label,
+                      DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                          DT_NOPREFIX);
+        PhiPopupPaintWell(dc, pane_rows_[i].name_well, colors(), dpi());
+        PhiPopupPaintWell(dc, pane_rows_[i].url_well, colors(), dpi());
+      }
+    } else if (spec_.accessory != Accessory::kNone &&
+               spec_.accessory != Accessory::kCheckbox) {
       PhiPopupPaintWell(dc, well_, colors(), dpi());
     }
     if (previous) {
@@ -753,6 +837,13 @@ class Alert : public PhiSecondaryWindow {
   HBRUSH card_brush_ = nullptr;
   HBRUSH ground_brush_ = nullptr;
   HWND control_ = nullptr;
+  // kPanes: one row per pane.
+  struct PaneRow {
+    RECT name_label{}, url_label{}, name_well{}, url_well{};
+    HWND name = nullptr;
+    HWND url = nullptr;
+  };
+  std::vector<PaneRow> pane_rows_;
   std::vector<HWND> buttons_;
   RECT title_ = {};
   RECT message_ = {};
@@ -918,6 +1009,50 @@ bool PhiPromptText(HWND owner,
     if (value) {
       *value = entered;
     }
+    return true;
+  }
+}
+
+bool PhiPromptPanes(HWND owner,
+                    const wchar_t* title,
+                    const wchar_t* message,
+                    std::vector<PhiPromptPane>* panes,
+                    const wchar_t* confirm_label) {
+  if (!panes || panes->empty()) {
+    return false;
+  }
+  std::vector<PhiPromptPane> entries = *panes;
+  for (;;) {
+    Spec spec;
+    spec.title = title ? title : L"";
+    spec.message = message ? message : L"";
+    spec.accessory = Accessory::kPanes;
+    spec.panes = entries;
+    spec.actions = {{confirm_label ? confirm_label : PhiStr("prompt.ok"),
+                     PhiPopupButtonRole::kPrimary},
+                    {PhiStr("prompt.cancel"), PhiPopupButtonRole::kSecondary}};
+    spec.default_index = 0;
+    spec.cancel_index = 1;
+    Alert alert(owner, std::move(spec));
+    if (!alert.Open()) {
+      return false;
+    }
+    if (alert.Run() != 0) {
+      return false;
+    }
+    const std::vector<std::pair<std::wstring, std::wstring>> texts =
+        alert.PaneTexts();
+    bool complete = texts.size() == entries.size();
+    for (size_t i = 0; i < texts.size() && i < entries.size(); ++i) {
+      entries[i].name = PhiTrimWhitespace(texts[i].first);
+      entries[i].url = PhiTrimWhitespace(texts[i].second);
+      complete = complete && !entries[i].url.empty();
+    }
+    if (!complete) {
+      ::MessageBeep(MB_ICONWARNING);
+      continue;  // Every pane needs an address: asked again, the text kept.
+    }
+    *panes = std::move(entries);
     return true;
   }
 }

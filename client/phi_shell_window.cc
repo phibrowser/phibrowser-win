@@ -6443,6 +6443,7 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
     }
   }
   in.pane = focused_pane;
+  in.split_stored = row.merged && SplitRowIsStored(row.id);
   if (services_.agent && row.id.valid()) {
     in.agent_driven = services_.agent->IsTabAgentDriven(row.id.value);
     in.agent_reclaimed =
@@ -6702,6 +6703,8 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
         !edited.empty()) {
       services_.sidebar->SetStoredRowUrl(row.guid, base::WideToUTF8(edited));
     }
+  } else if (action.is("pin.editSplit")) {
+    EditStoredSplit(row.guid, /*pinned=*/true);
   } else if (action.is("pin.replaceUrl") && services_.sidebar &&
              !current_url.empty()) {
     // Saves only: the page stays where it is.
@@ -6755,6 +6758,8 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
         !edited.empty()) {
       services_.sidebar->SetStoredRowUrl(row.guid, base::WideToUTF8(edited));
     }
+  } else if (action.is("bm.editSplit")) {
+    EditStoredSplit(row.guid, /*pinned=*/false);
   } else if (action.is("bm.replaceUrl") && services_.sidebar &&
              !current_url.empty()) {
     services_.sidebar->SetStoredRowUrl(row.guid, current_url);
@@ -7532,6 +7537,74 @@ void PhiShellWindow::SyncSplitChipTimer() {
   }
 }
 
+void PhiShellWindow::EditStoredSplit(const std::string& guid, bool pinned) {
+  if (!services_.sidebar || guid.empty()) {
+    return;
+  }
+  const std::vector<SidebarHost::StoredPane> stored =
+      services_.sidebar->StoredSplitPanes(guid);
+  if (stored.size() < 2) {
+    return;
+  }
+  // A pair has a left and a right; three or four panes are numbered (the
+  // Mac's hasExtraPanes labels).
+  const bool numbered = stored.size() > 2;
+  std::vector<PhiPromptPane> panes;
+  for (size_t i = 0; i < stored.size(); ++i) {
+    PhiPromptPane pane;
+    if (numbered) {
+      const std::wstring number = std::to_wstring(i + 1);
+      pane.name_label =
+          PhiStrF("common.bookmarkEditor.paneNameField.label", {number});
+      pane.url_label =
+          PhiStrF("common.bookmarkEditor.paneURLField.label", {number});
+    } else {
+      pane.name_label =
+          PhiStr(i == 0 ? "common.bookmarkEditor.primaryNameField.label"
+                        : "common.bookmarkEditor.secondaryNameField.label");
+      pane.url_label =
+          PhiStr(i == 0 ? "common.bookmarkEditor.primaryURLField.label"
+                        : "common.bookmarkEditor.secondaryURLField.label");
+    }
+    pane.name = base::UTF8ToWide(stored[i].title);
+    pane.url = base::UTF8ToWide(stored[i].url);
+    panes.push_back(std::move(pane));
+  }
+  const char* title = pinned ? "common.pinnedTabEditor.editSplitTitle"
+                             : "common.bookmarkEditor.editSplitTitle";
+  const char* message =
+      pinned ? (numbered ? "common.pinnedTabEditor.editMultiPaneSplitSubtitle"
+                         : "common.pinnedTabEditor.editSplitSubtitle")
+             : (numbered ? "common.bookmarkEditor.editMultiPaneSplitSubtitle"
+                         : "common.bookmarkEditor.editSplitSubtitle");
+  if (!PhiPromptPanes(shell_hwnd_, PhiStr(title), PhiStr(message), &panes)) {
+    return;
+  }
+  std::vector<SidebarHost::StoredPane> edited;
+  for (const PhiPromptPane& pane : panes) {
+    edited.push_back({base::WideToUTF8(pane.name), base::WideToUTF8(pane.url)});
+  }
+  services_.sidebar->SetStoredSplitPanes(guid, edited);
+}
+
+bool PhiShellWindow::SplitRowIsStored(TabId tab_id) const {
+  // A pane bound to a pinned cell or a bookmark carries the cell's tag.
+  const BrowserId browser = active_browser_id();
+  const SplitSnapshot* split = model_ && browser.valid() && tab_id.valid()
+                                   ? model_->SplitOfTab(browser, tab_id)
+                                   : nullptr;
+  if (!split) {
+    return false;
+  }
+  for (const TabId pane : PhiSplitPanes(*split)) {
+    const TabSnapshot* tab = model_->FindTab(browser, pane);
+    if (tab && !tab->tag.empty()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const TabRow* PhiShellWindow::SplitRowForTab(int tab_id) const {
   for (const TabRow& row : sidebar_->tabs()) {
     if (row.PaneOf(TabId{tab_id}) >= 0) {
@@ -7772,32 +7845,43 @@ void PhiShellWindow::OnSplitChipClick(POINT chip_pt) {
     return;
   }
   // The pane menu. A pair: Swap panes · Convert · Unsplit · ─ · Close pane.
-  // Three or four panes: Move pane left / right (up / down when stacked) in
-  // place of the swap; Remove from split dissolves the split whatever its
-  // width (Mac `80bd9bdb`), and Close pane takes one pane away.
-  const int pane = row.PaneOf(TabId{tab});
+  // Three or four panes: Move Focused Pane Left / Right (Up / Down when
+  // stacked) in place of the swap, the row menu's rows and rule (the Mac's
+  // `153044b1`): they move the FOCUSED pane one slot, whichever pane the
+  // menu opened on, and are greyed at that end. Remove from split dissolves
+  // the split whatever its width (Mac `80bd9bdb`), and Close pane takes one
+  // pane away. A stored split (a pinned cell or a bookmark stands for it)
+  // keeps its panes as saved: no swap, no move, no remove.
+  const int pane = row.PaneOf(TabId{active_tab_id()});
   const int pane_count = row.PaneCount();
   const bool stacked = SplitIsStacked(row.id);
+  const bool stored = SplitRowIsStored(row.id);
   PhiMenuSpec spec;
   if (pane_count > 2) {
     PhiMenuItem back = PhiMenuItem::Command(
-        "split.movePaneBack", stacked ? L"Move pane up" : L"Move pane left");
-    back.enabled = pane > 0;
+        "split.movePaneBack",
+        PhiStr(stacked ? "sidebar.tabContextMenu.movePaneUp"
+                       : "sidebar.tabContextMenu.movePaneLeft"));
+    back.enabled = !stored && pane > 0;
     spec.items.push_back(std::move(back));
     PhiMenuItem forward = PhiMenuItem::Command(
         "split.movePaneForward",
-        stacked ? L"Move pane down" : L"Move pane right");
-    forward.enabled = pane >= 0 && pane + 1 < pane_count;
+        PhiStr(stacked ? "sidebar.tabContextMenu.movePaneDown"
+                       : "sidebar.tabContextMenu.movePaneRight"));
+    forward.enabled = !stored && pane >= 0 && pane + 1 < pane_count;
     spec.items.push_back(std::move(forward));
   } else {
-    spec.items.push_back(
-        PhiMenuItem::Command("tab.reversePanes", L"Swap panes"));
+    PhiMenuItem swap = PhiMenuItem::Command("tab.reversePanes", L"Swap panes");
+    swap.enabled = !stored;
+    spec.items.push_back(std::move(swap));
   }
   spec.items.push_back(PhiMenuItem::Command(
       "tab.convertSplit",
       stacked ? L"Convert to side by side" : L"Convert to stacked"));
-  spec.items.push_back(PhiMenuItem::Command(
-      "tab.removeSplit", pane_count > 2 ? L"Remove from split" : L"Unsplit"));
+  PhiMenuItem remove = PhiMenuItem::Command(
+      "tab.removeSplit", pane_count > 2 ? L"Remove from split" : L"Unsplit");
+  remove.enabled = !stored;
+  spec.items.push_back(std::move(remove));
   spec.items.push_back(PhiMenuItem::Separator());
   spec.items.push_back(PhiMenuItem::Command("split.closePane", L"Close pane"));
   POINT screen = {rc.right, rc.bottom};
@@ -7817,6 +7901,9 @@ void PhiShellWindow::OnSplitChipClick(POINT chip_pt) {
   } else if (action.is("tab.removeSplit")) {
     sidebar_->Apply(SidebarBreakSplit{row.key});
   } else if (action.is("split.closePane")) {
+    if (services_.sidebar) {
+      services_.sidebar->NoteStoredPaneClosing(browser.value, tab);
+    }
     framework_->CloseTabById(browser.value, tab);
   }
   HideSplitChip();
