@@ -176,8 +176,8 @@ Two standing decisions cover many rows and are not repeated in full:
 | Send feedback: files, pasted images, diagnostics, outbox | 10 × 20 MiB, Sentinel logs | 5 × 10 MB, week-long outbox | ✅ | Sentinel logs are ⛔ AI suite. |
 | Sync problem telemetry (Mac `9921ac9a`, 2026-11-03): `sync_attention_entered` / `_snapshot` / `_cleared`, held counts by reason, sync counts in the launch snapshot, sync keys in feedback | PostHog, Sentry and feedback, enum values and counts only (Mac `docs/sync.md`, "Sync status contract") | `user_defaults_snapshot` carries `sync_enabled` and the three counts from a local mirror; feedback carries `sync_phase`. No `sync_attention_*` events and no attention keys in feedback | ◐ | Partly done 2026-11-04, see §9 port 7. The reporter was not built: this engine has no held counts by reason, no problem categories and none of the helper conditions. No Sentry half. |
 | Account deletion local data removal | yes | none | 🔧 | With the Delete account row above. |
-| Sign out discards the session (Mac `8655ec6b`, 2026-11-09) | Sign out marks a discard before closing windows; the next launch or the next sign-in or Guest entry empties Session restore and Undo Close for every profile, so the next account does not get the previous account's windows | Sign out marks the same discard (`MarkSignOutSessionDiscard`). Windows keeps its windows hidden behind the login gate rather than closing them, so at the next sign-in or Guest entry it closes every tab they hold, then consumes the mark (`PhiCoordinator::DiscardSignedOutSession`) | ◐ | Built 2026-11-10, not run: the test profile has no signed-in session. Before this, the next account got the previous account's open tabs back in the same run. Framework ABI 3. |
-| Membership card: holographic foil card with member ID (SHA-256(sub)[0:8]), "Date Joined", random style + PNG export, on the onboarding Welcome page and Settings ▸ You (Mac `6b300dc0`, `cda12eaf`, 2026-10-20/26) | `HolographicCardView` | `PhiHolographicCard` (`client/phi_holographic_card.cc`): the same layer stack composed in software — palette base + iridescence + radial, one of 6 procedural foil textures, seeded grain, logo + sweep, one of 6 seal ornaments, sheen, edge; pointer light + tilt, entrance spin, flat PNG export at 2× on the accent canvas | ◐ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round K); the Mac has moved since, see the end of this row. Foil / grain / seal masks are rasterised once per style and size with GDI+ on a worker and cached as PNG under `<user data>\PhiCardArtwork\v1`; the light-driven layers recompose per frame. Member id from `auth().user().sub`, join month from the profile's `created_at`, style in the account defaults under the Mac's `profileCardStyle` key (the Settings card keeps its own palette since 2026-11-02, `40ede7a7`). The conch frame sets (12.5 MB) are gone. Not ported: the Mac's `.random()` seeding details (both are uniform), IvyPresto Headline Light now ships for the name. Mac 2026-10-27/29 follow-ups ported 2026-11-02 (`92816ab6`, `40ede7a7`, `ba180400`, `1cf61180`, `8fb61ef5`): no radial highlight, a dark logo at rest, no printed member ID, no shadow in Settings, a style saved as soon as it is randomized. 2026-11-10: look refreshed to Mac `0b1ee030` (foil on both faces, hairline edge, "Member Since" in Share Tech Mono, a random style always has an ornament); built, not looked at on a box. |
+| Sign out discards the session (Mac `8655ec6b`, 2026-11-09) | Sign out marks a discard before closing windows; the next launch or the next sign-in or Guest entry empties Session restore and Undo Close for every profile, so the next account does not get the previous account's windows | Sign out marks the same discard (`MarkSignOutSessionDiscard`). Windows keeps its windows hidden behind the login gate rather than closing them, so at the next sign-in or Guest entry it closes every tab they hold, then consumes the mark (`PhiCoordinator::DiscardSignedOutSession`) | ✅ | Ported 2026-11-10, run on nuc 2026-11-11 with a stand-in session (no tenant contact). Same run: Sign out, then Continue as Guest closed all 6 tabs in two Spaces and Ctrl+Shift+T brought nothing back. Relaunch: Sign out, quit, launch emptied the session files and the guest got one new tab; without the Sign out the same quit and launch restored the tabs. The account's Spaces stay. Framework ABI 3. |
+| Membership card: holographic foil card with member ID (SHA-256(sub)[0:8]), "Date Joined", random style + PNG export, on the onboarding Welcome page and Settings ▸ You (Mac `6b300dc0`, `cda12eaf`, 2026-10-20/26) | `HolographicCardView` | `PhiHolographicCard` (`client/phi_holographic_card.cc`): the same layer stack composed in software — palette base + iridescence + radial, one of 6 procedural foil textures, seeded grain, logo + sweep, one of 6 seal ornaments, sheen, edge; pointer light + tilt, entrance spin, flat PNG export at 2× on the accent canvas | ◐ | Ported 2026-10-27 (`windows-native-ui-impl.md` Round K); the Mac has moved since, see the end of this row. Foil / grain / seal masks are rasterised once per style and size with GDI+ on a worker and cached as PNG under `<user data>\PhiCardArtwork\v1`; the light-driven layers recompose per frame. Member id from `auth().user().sub`, join month from the profile's `created_at`, style in the account defaults under the Mac's `profileCardStyle` key (the Settings card keeps its own palette since 2026-11-02, `40ede7a7`). The conch frame sets (12.5 MB) are gone. Not ported: the Mac's `.random()` seeding details (both are uniform), IvyPresto Headline Light now ships for the name. Mac 2026-10-27/29 follow-ups ported 2026-11-02 (`92816ab6`, `40ede7a7`, `ba180400`, `1cf61180`, `8fb61ef5`): no radial highlight, a dark logo at rest, no printed member ID, no shadow in Settings, a style saved as soon as it is randomized. 2026-11-10: look refreshed to Mac `0b1ee030` (foil on both faces, hairline edge, "Member Since" in Share Tech Mono, a random style always has an ornament); looked at on nuc 2026-11-11, on the Welcome page and in Settings ▸ You, the back face caught during the entrance turn. |
 
 ## 6. Agents and automation
 
@@ -204,8 +204,8 @@ Two standing decisions cover many rows and are not repeated in full:
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 61 |
-| ◐ partial | 28 |
+| ✅ ported | 62 |
+| ◐ partial | 27 |
 | 🔧 to implement | 24 |
 | ⛔ deliberately left | 20 |
 | ❓ needs a decision | 0 |
@@ -332,7 +332,8 @@ Kiosk launch omnibox (`ebdbb259`), and the About conch (`094e85c8`).
 **Results, 2026-11-10.** Ports 1 to 9 and the small fixes are in the tree; where a line
 says "nuc" it was run there by real input or over the control pipe.
 
-* 1 sign-out discard: built, not run (no signed-in test session).
+* 1 sign-out discard: run on nuc 2026-11-11, both the same-run and the relaunch path
+  (§3 row).
 * 2 splits of up to four panes: done, see the §3 row.
 * 3 Tab Switcher across Spaces, 4 Replace Saved URL: done, nuc.
 * 5 edge-to-edge: nothing to port, the Windows page has no outer margin (§3, ⛔).
@@ -342,7 +343,7 @@ says "nuc" it was run there by real input or over the control pipe.
 * 7 membership card: both faces carry the foil, a dark hairline edge, the name pressed
   in with a lower highlight, "Member Since" with the date in Share Tech Mono (the font
   and its OFL licence ship in `resources\fonts`), and a random style always has an
-  ornament. Built, not looked at: the card needs a signed-in onboarding.
+  ornament. Looked at on nuc 2026-11-11 with a stand-in session and a cached join date.
 * 8 omnibox: a double-click selects one part of an address (a number keeps its dots).
   nuc. Sideways wheel scrolling is not ported: a single-line EDIT scrolls only by
   moving its caret. The wheel no longer falls through the field to the page behind.
@@ -352,8 +353,14 @@ says "nuc" it was run there by real input or over the control pipe.
 * Small fixes: `01dafe08` nuc; `1e890904` and `fd7357d1` by reading only.
 * `a910dca8`: the Kiosk opened centred on the primary display whatever display the user
   was on. It now opens on the display of the Phi window under the pointer, else the one
-  with the keyboard. Built, not run: nuc has one display.
-* `d2497fae` and `0ad6c4ae` were not checked.
+  with the keyboard. On nuc's one display it still opens centred (2026-11-11); the
+  choice between displays is not run, neither box has a second one.
+* `d2497fae`: nothing to port. Checked on nuc 2026-11-11: with the floating sidebar up,
+  the address field's suggestions and Tab Search both draw above the panel.
+* `0ad6c4ae`: nothing to port. Checked on nuc 2026-11-11: a top-level folder dragged
+  beside a collapsed sibling opens the gap and the drop lands. Seen on the way: pressing
+  a folder row to drag it also toggles the folder (`PhiSidebarView`, the toggle is on the
+  press), and while it is dragged its children stay drawn where they were.
 
 | Mac commit | Subject | Verdict | Windows action / reason |
 |---|---|---|---|
@@ -361,7 +368,7 @@ says "nuc" it was run there by real input or over the control pipe.
 | `422c08c0` | fix: crossfade the sidebar's navigation gradient through a Space switch instead of dropping it | done | `LerpPalette` (`phi_spaces_strip.cc`) already blends the gradient stops through a Space switch. |
 | `860d24e7` | fix: show the arrow cursor over Next steps consent text and a hand over its links | done | Copy of `da5da806`, port 9 of 2026-11-04. |
 | `84bfeaf3` | fix: let Tab reach OOBE footer buttons and follow the Keyboard navigation setting | done | Copy of `597d76b5`, triaged 2026-11-03. |
-| `d2497fae` | fix: draw the omnibox and tab search above the floating sidebar they open from | port | S, check first. Open the floating omnibox and Tab Search from the floating sidebar and see which window is on top. |
+| `d2497fae` | fix: draw the omnibox and tab search above the floating sidebar they open from | skip | Checked on nuc 2026-11-11: both already draw above the floating sidebar. |
 | `a910dca8` | fix: open Kiosk on the display the user acted on with multiple displays | port | S, check first. `PhiKioskWindow` opens at a default size; confirm which monitor it picks when the browser is on another one. |
 | `074b9760` | improve: crossfade the header, active tab and bookmark bar when the page color changes | port | S. The address row, strip tab and bookmark bar snap today. 0.25 s on a same-tab change only; a tab switch still snaps. |
 | `c27df341` | fix: focus a Kiosk page opened from an in-app link | done | A workaround for an AppKit first responder. Windows focuses the Kiosk page on open (`79b11061`, §3). |
@@ -379,7 +386,7 @@ says "nuc" it was run there by real input or over the control pipe.
 | `fd7357d1`, `277dd871` | fix: make screenshotBrowser fail when the page capture times out | port | S. The Windows skill's `helpers.mjs` has the same swallow-everything `catch`; take the change and the SKILL.md line. |
 | `e114075d`, `3ac3c2c9` | fix: keep a launch with its own data directory from taking over the running browser's agent socket | skip | The Windows pipe name carries the process id and a random suffix, so two instances never share one. |
 | `01dafe08` | fix: disable Clear All Tabs when the only normal tabs form one split | port | S. `CanClearAllTabs` counts raw ordinary tabs, so a lone split leaves the row enabled and `ClearAllTabs` then does nothing. |
-| `0ad6c4ae` | fix: show the drop indicator when dragging a folder between top-level folders | port | S, check first. Windows has the Space root row since 2026-11-04; drag a folder beside a collapsed sibling and look for the gap. |
+| `0ad6c4ae` | fix: show the drop indicator when dragging a folder between top-level folders | skip | Checked on nuc 2026-11-11: the gap shows and the drop lands. |
 | `5142015f`, `4ffbbe39`, `441030bb` | xcstrings order and stale strings | skip | Catalog housekeeping. A removed key the Windows catalog still uses shows up at the next regeneration. |
 | `f6a9a59f`, `aabf38a0` | Auth0 credentials to the data protection keychain | skip | macOS keychain. |
 | `aff124e6`, `8295a1e8` | docs: bridge header comments | skip | Comments. |
