@@ -8033,14 +8033,34 @@ void PhiShellWindow::RenderFloatingSidebar(HDC dc, const RECT& panel_rc) {
   // is painted by hand where the layout has a field.
   PaintChrome(mem, layout, palette, /*include_child_controls=*/true);
   sidebar_->DrawDragIndicator(mem);  // As the shell's paint: after the rows.
-  if (bits && palette.ground_stop_count > 1) {
+  if (bits && (palette.ground_stop_count > 1 || sidebar_backdrop_)) {
     // The docked sidebar's regrade (PrepareBackdropPixels), opaque: the
     // panel is a plain window over the page.
     ::GdiFlush();
     const uint32_t rgb = PhiPackedRgb(palette.ground_top);
     const int column = std::clamp<int>(panel_rc.right, 0, width);
-    const std::vector<uint32_t> grounds = PhiBackdropRowGrounds(
+    std::vector<uint32_t> grounds = PhiBackdropRowGrounds(
         palette, 0, height, height, /*glass=*/false);
+    if (sidebar_backdrop_) {
+      // The docked sidebar shows its ground at the "Sidebar transparency"
+      // alpha over the OS backdrop, so the full-strength ground here read
+      // as another, stronger colour. The panel has no backdrop of its own:
+      // it takes the same alpha over the neutral the acrylic settles to
+      // (the flyout ground), which is the docked look on a plain desktop.
+      const uint32_t neutral = PhiPackedRgb(palette.flyout);
+      const int alpha = g_phi_backdrop_tint_alpha;
+      for (uint32_t& ground : grounds) {
+        uint32_t mixed = 0xFF000000u;
+        for (int shift : {0, 8, 16}) {
+          const int g = (ground >> shift) & 255;
+          const int n = (neutral >> shift) & 255;
+          mixed |= static_cast<uint32_t>(
+                       (g * alpha + n * (255 - alpha) + 127) / 255)
+                   << shift;
+        }
+        ground = mixed;
+      }
+    }
     // SAFETY: CreateDIBSection allocated width * height 32-bit pixels in a
     // top-down DIB; 32bpp rows require no additional stride padding.
     auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
