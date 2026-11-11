@@ -9228,20 +9228,20 @@
    "en": "Duplicate"
   },
   "sidebar.tabContextMenu.movePaneDown": {
-   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, stacked",
-   "en": "Move Pane Down"
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, moves the focused pane",
+   "en": "Move Focused Pane Down"
   },
   "sidebar.tabContextMenu.movePaneLeft": {
-   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes",
-   "en": "Move Pane Left"
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, moves the focused pane",
+   "en": "Move Focused Pane Left"
   },
   "sidebar.tabContextMenu.movePaneRight": {
-   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes",
-   "en": "Move Pane Right"
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, moves the focused pane",
+   "en": "Move Focused Pane Right"
   },
   "sidebar.tabContextMenu.movePaneUp": {
-   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, stacked",
-   "en": "Move Pane Up"
+   "comment": "Mac key (translations by key); contextMenu — split row of three or four panes, moves the focused pane",
+   "en": "Move Focused Pane Up"
   },
   "sidebar.tabContextMenu.moveToGroupSubmenu": {
    "comment": "sidebar — used at phi_shell_window.cc:5636",
@@ -10316,6 +10316,34 @@
   "themes.theme.pure.name": {
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): a theme dot's accessible name",
    "en": "Pure"
+  },
+  "app.viewMenu.appearance": {
+   "comment": "Mac key (translations by key); appMenu — Layout ▸ Appearance submenu (System / Light / Dark)",
+   "en": "Appearance"
+  },
+  "common.tabAreaContextMenu.bottomButtonsSubmenu": {
+   "comment": "Mac key (translations by key); contextMenu — sidebar area menu, submenu choosing the bottom bar buttons",
+   "en": "Bottom Buttons"
+  },
+  "common.tabAreaContextMenu.bottomButtons.profile": {
+   "comment": "Mac key (translations by key); contextMenu — Bottom Buttons ▸ profile button",
+   "en": "Profile"
+  },
+  "common.tabAreaContextMenu.bottomButtons.downloads": {
+   "comment": "Mac key (translations by key); contextMenu — Bottom Buttons ▸ Downloads button",
+   "en": "Downloads"
+  },
+  "common.tabAreaContextMenu.bottomButtons.feedback": {
+   "comment": "Mac key (translations by key); contextMenu — Bottom Buttons ▸ Feedback button",
+   "en": "Feedback"
+  },
+  "settings.advanced.keepPinnedTabsLoaded.toggle": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ Tabs, keep pinned tabs loaded switch",
+   "en": "Keep pinned tabs loaded"
+  },
+  "settings.advanced.keepPinnedTabsLoaded.description": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ Tabs, hint under the keep pinned tabs loaded switch",
+   "en": "Pinned tabs you have opened stay in memory instead of being unloaded to free it."
   }
  }
 }

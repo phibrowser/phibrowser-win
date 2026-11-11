@@ -18,6 +18,7 @@
 
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "client/phi_animator.h"
 #include "client/phi_bookmark_manager.h"
@@ -1043,6 +1044,72 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
   }
 }
 
+namespace {
+
+// The Mac's URLProcessor.normalizedForOriginNavigation: the scheme and host
+// in lower case, an http(s) host without its "www.", and a lone root slash
+// dropped. Port, any other path, the query and the fragment stay as they
+// are.
+std::string NormalizedForOriginNavigation(const std::string& url) {
+  const size_t scheme_end = url.find("://");
+  if (scheme_end == std::string::npos) {
+    return url;
+  }
+  std::string scheme = base::ToLowerASCII(url.substr(0, scheme_end));
+  const size_t host_start = scheme_end + 3;
+  size_t host_end = url.find_first_of("/?#", host_start);
+  if (host_end == std::string::npos) {
+    host_end = url.size();
+  }
+  std::string host =
+      base::ToLowerASCII(url.substr(host_start, host_end - host_start));
+  if ((scheme == "http" || scheme == "https") && host.size() > 4 &&
+      host.rfind("www.", 0) == 0) {
+    host.erase(0, 4);
+  }
+  std::string rest = url.substr(host_end);
+  if (!rest.empty() && rest[0] == '/' &&
+      (rest.size() == 1 || rest[1] == '?' || rest[1] == '#')) {
+    rest.erase(0, 1);
+  }
+  return scheme + "://" + host + rest;
+}
+
+bool SameForOriginNavigation(const std::string& a, const std::string& b) {
+  return a == b ||
+         NormalizedForOriginNavigation(a) == NormalizedForOriginNavigation(b);
+}
+
+}  // namespace
+
+void PhiSidebarView::PushKeepLoaded(BrowserId browser,
+                                    const WindowSnapshot& snapshot) {
+  std::set<int> pinned;
+  if (prefs_host_ && prefs_host_->KeepPinnedTabsLoaded()) {
+    for (const SidebarCell& cell : sidebar_tree_.pins) {
+      for (int id : cell.binding.TabIds()) {
+        pinned.insert(id);
+      }
+    }
+  }
+  std::map<int, bool> pushed;
+  for (const TabSnapshot& tab : snapshot.tabs) {
+    const bool keep = pinned.count(tab.id.value) > 0;
+    const auto known = keep_loaded_pushed_.find(tab.id.value);
+    // A tab seen for the first time is pushed only when it is kept: a fresh
+    // page starts out not kept. One that another window dropped may arrive
+    // kept, so a tab new to this window that is not pinned here is cleared
+    // once too.
+    if (known == keep_loaded_pushed_.end() || known->second != keep) {
+      if (!framework_->SetTabKeepLoaded(browser.value, tab.id.value, keep)) {
+        continue;  // Not in the strip yet: tried again on the next rebuild.
+      }
+    }
+    pushed[tab.id.value] = keep;
+  }
+  keep_loaded_pushed_ = std::move(pushed);
+}
+
 // THE writer of the row vectors (docs/sidebar-architecture.md §2.2, §2.7):
 // SidebarInputs -> BuildSidebar -> LayoutSidebar -> rows, in one pass, on
 // the shell's posted rebuild turn. Nothing else fills tabs_, pinned_,
@@ -1121,6 +1188,7 @@ void PhiSidebarView::Rebuild() {
     }
     sidebar_tree_ = BuildSidebar(in);
   }
+  PushKeepLoaded(browser, snapshot);
   active_tab_id_ = TabId(sidebar_tree_.active_tab);
   if (const TabSnapshot* active = PhiFindTabIn(snapshot, active_tab_id_)) {
     // The bookmark bar's "show on new tab" and the native new-tab page
@@ -2004,6 +2072,12 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     row.parent_guid = cell->parent_guid;
     row.expanded = row.folder && expanded_bookmarks_.count(row.guid) > 0;
     bind(*cell, &row);
+    if (!row.folder && row.url_b.empty() && row.open) {
+      const TabSnapshot* live = PhiFindTabIn(snapshot, row.tab_id);
+      row.navigated_away =
+          live && !live->url.empty() && !row.url.empty() &&
+          !SameForOriginNavigation(live->url, row.url);
+    }
     bookmarks_.push_back(std::move(row));
   }
 
@@ -3928,6 +4002,17 @@ void PhiSidebarView::PaintBand(HDC dc,
         }
         text.left += Scaled(24);
       }
+    }
+    if (bookmark.navigated_away) {
+      // The Mac's NavigatedAwaySeparator: a 2 x 14 capsule leaning 15
+      // degrees, centred in the gap after the favicon, and the title moves
+      // 6 along for it.
+      const int slash_mid = text.left - Scaled(3) / 2;
+      const RECT slash = {slash_mid - Scaled(4), mid - Scaled(7),
+                          slash_mid + Scaled(4), mid + Scaled(7)};
+      PhiFillSlantedCapsuleAA(dc, slash, std::max(1, Scaled(2)), 15.0f,
+                              palette.label_tertiary);
+      text.left += Scaled(6);
     }
     // The open dot leads the favicon (the Mac's BookmarkCellView leading
     // overlay), decorative so the title never moves; faded when a bound

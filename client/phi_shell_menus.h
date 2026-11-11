@@ -238,6 +238,13 @@ struct PhiTabAreaMenuInputs {
   // on a Space pip or the Space chip — rename, icon, theme, profile,
   // delete — without the tab-area rows.
   bool space_only = false;
+  // The Mac's trailing "Bottom Buttons" submenu (`ce1f357f`): which buttons
+  // the sidebar's bottom bar shows. Offered in the vertical layout only,
+  // where the bar is.
+  bool bottom_buttons = false;
+  bool bottom_profile = true;
+  bool bottom_downloads = true;
+  bool bottom_feedback = true;
 };
 PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in);
 

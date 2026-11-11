@@ -162,6 +162,11 @@ enum : UINT {
   kCmdSaveToFolio,
   kCmdOpenFolio,
   kCmdLibrary,  // View — the Library overlay (Spaces / Downloads).
+  // Layout ▸ Appearance ▸ System / Light / Dark (the Mac's View ▸
+  // Appearance, `6952fddf`): the app-wide colour appearance.
+  kCmdAppearanceSystem,
+  kCmdAppearanceLight,
+  kCmdAppearanceDark,
   // Layout ▸ Show sidebar — the same toggle as kCmdToggleSidebar, listed
   // under its own name so the remote surface can address the row.
   kCmdShowBookmarksBar = kCmdAlwaysShowBookmarkBar,
@@ -410,6 +415,7 @@ class PhiAppMenu {
   HMENU extensions_ = nullptr;
   HMENU zoom_ = nullptr;
   HMENU layout_ = nullptr;
+  HMENU appearance_ = nullptr;  // Layout ▸ Appearance.
   HMENU tools_ = nullptr;
   HMENU help_ = nullptr;
   bool open_ = false;

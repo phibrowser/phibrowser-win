@@ -245,9 +245,10 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
     }
   } else if (in.pane_count > 2) {
     // A merged row of three or four panes (the Mac's wider split menu): a
-    // copy row per pane, the pane under the pointer moves one slot or
-    // leaves, and the split converts or closes whole. No Reverse Panes —
-    // that is a pair's.
+    // copy row per pane, the FOCUSED pane moves one slot whichever pane the
+    // menu opened on (Mac `153044b1`), and the split converts, dissolves
+    // (Remove from Split, Mac `80bd9bdb`) or closes whole. No Reverse Panes
+    // — that is a pair's.
     items.push_back(PersistCommand("tab.pin", PhiStr("contextMenu.pinSplit"), in.incognito));
     items.push_back(PhiMenuItem::Command("tab.duplicate", PhiStr("contextMenu.duplicateSplit")));
     for (int pane = 0; pane < in.pane_count; ++pane) {
@@ -263,20 +264,21 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
         "tab.movePaneBack",
         PhiStr(in.split_stacked ? "sidebar.tabContextMenu.movePaneUp"
                                 : "sidebar.tabContextMenu.movePaneLeft"));
+    // Neither moves without a focused pane in the split.
     back.enabled = in.pane > 0;
     items.push_back(std::move(back));
     PhiMenuItem forward = PhiMenuItem::Command(
         "tab.movePaneForward",
         PhiStr(in.split_stacked ? "sidebar.tabContextMenu.movePaneDown"
                                 : "sidebar.tabContextMenu.movePaneRight"));
-    forward.enabled = in.pane + 1 < in.pane_count;
+    forward.enabled = in.pane >= 0 && in.pane + 1 < in.pane_count;
     items.push_back(std::move(forward));
     items.push_back(PhiMenuItem::Command("tab.convertSplit",
                                          in.split_stacked
                                              ? PhiStr("contextMenu.convertToHorizontalSplit")
                                              : PhiStr("contextMenu.convertToVerticalSplit")));
     items.push_back(
-        PhiMenuItem::Command("tab.removePane", PhiStr("contextMenu.removeFromSplit")));
+        PhiMenuItem::Command("tab.removeSplit", PhiStr("contextMenu.removeFromSplit")));
     items.push_back(PhiMenuItem::Command(
         "tab.closeSplit", PhiStr("sidebar.tabContextMenu.closeSplit")));
     items.push_back(PhiMenuItem::Separator());
@@ -448,6 +450,7 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
     // and without the "New Space" row (the "+" pip and the switcher do that).
     PhiTabAreaMenuInputs rest = in;
     rest.space_only = false;
+    rest.bottom_buttons = false;
     PhiMenuSpec full = PhiBuildTabAreaMenu(rest);
     bool past_layout = false;
     for (PhiMenuItem& item : full.items) {
@@ -490,8 +493,39 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
     layouts.push_back(std::move(item));
   }
   items.push_back(PhiMenuItem::Submenu(PhiStr("contextMenu.layout"), std::move(layouts)));
+  // The menu's last entry either way.
+  const auto append_bottom_buttons = [&] {
+    if (!in.bottom_buttons) {
+      return;
+    }
+    const struct {
+      const char* id;
+      const char* label;
+      bool shown;
+    } kButtons[] = {
+        {"profile", "common.tabAreaContextMenu.bottomButtons.profile",
+         in.bottom_profile},
+        {"downloads", "common.tabAreaContextMenu.bottomButtons.downloads",
+         in.bottom_downloads},
+        {"feedback", "common.tabAreaContextMenu.bottomButtons.feedback",
+         in.bottom_feedback},
+    };
+    std::vector<PhiMenuItem> buttons;
+    for (const auto& entry : kButtons) {
+      PhiMenuItem item =
+          PhiMenuItem::Command("area.bottomButton", PhiStr(entry.label));
+      item.target.id = entry.id;
+      item.checked = entry.shown;
+      buttons.push_back(std::move(item));
+    }
+    items.push_back(PhiMenuItem::Separator());
+    items.push_back(PhiMenuItem::Submenu(
+        PhiStr("common.tabAreaContextMenu.bottomButtonsSubmenu"),
+        std::move(buttons)));
+  };
   if (in.incognito && !in.incognito_space) {
     // Incognito shells have no Spaces: the active-Space block never appears.
+    append_bottom_buttons();
     return spec;
   }
   // The active Space's own theme and profile, in the Mac's order
@@ -542,6 +576,7 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
         "area.closeIncognitoSpace",
         PhiStr("app.spacesMenu.closeActiveIncognitoSpace")));
   }
+  append_bottom_buttons();
   return spec;
 }
 

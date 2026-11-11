@@ -121,6 +121,16 @@ bool PhiStrokeRoundRectAA(HDC dc,
 bool PhiFillCapsuleAA(HDC dc, const RECT& rect, COLORREF fill);
 bool PhiStrokeCapsuleAA(HDC dc, const RECT& rect, COLORREF ink, int width);
 
+// A capsule `width` wide and as tall as `rect`, centred in it and turned
+// `degrees` clockwise about its centre (the sidebar's "navigated away"
+// slash). `rect` must leave room for the turned ends. False when no blend
+// surface could be built: nothing is drawn, and the mark is decorative.
+bool PhiFillSlantedCapsuleAA(HDC dc,
+                             const RECT& rect,
+                             int width,
+                             float degrees,
+                             COLORREF fill);
+
 // The ellipse inscribed in `rect` (a circle for a square rect).
 bool PhiFillEllipseAA(HDC dc, const RECT& rect, COLORREF fill);
 bool PhiStrokeEllipseAA(HDC dc, const RECT& rect, COLORREF ink, int width);

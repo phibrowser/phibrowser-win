@@ -1321,6 +1321,17 @@
    "zh-Hans": "始终显示书签栏\tCtrl+Shift+B",
    "zh-Hant": "一律顯示書籤列\tCtrl+Shift+B"
   },
+  "app.viewMenu.appearance": {
+   "de": "Erscheinungsbild",
+   "en": "Appearance",
+   "es": "Apariencia",
+   "fr": "Apparence",
+   "ja": "外観",
+   "ko": "모양",
+   "nl": "Weergave",
+   "zh-Hans": "外观",
+   "zh-Hant": "外觀"
+  },
   "app.viewMenu.layoutModeSectionTitle": {
    "de": "Layout-Modus",
    "en": "Layout Mode",
@@ -3047,6 +3058,50 @@
    "nl": "Maak bladwijzers van alle tabbladen",
    "zh-Hans": "为所有标签页添加书签",
    "zh-Hant": "將所有分頁加入書籤"
+  },
+  "common.tabAreaContextMenu.bottomButtons.downloads": {
+   "de": "Downloads",
+   "en": "Downloads",
+   "es": "Descargas",
+   "fr": "Téléchargements",
+   "ja": "ダウンロード",
+   "ko": "다운로드",
+   "nl": "Downloads",
+   "zh-Hans": "下载",
+   "zh-Hant": "下載項目"
+  },
+  "common.tabAreaContextMenu.bottomButtons.feedback": {
+   "de": "Feedback",
+   "en": "Feedback",
+   "es": "Comentarios",
+   "fr": "Commentaires",
+   "ja": "フィードバック",
+   "ko": "피드백",
+   "nl": "Feedback",
+   "zh-Hans": "反馈",
+   "zh-Hant": "意見回饋"
+  },
+  "common.tabAreaContextMenu.bottomButtons.profile": {
+   "de": "Profil",
+   "en": "Profile",
+   "es": "Perfil",
+   "fr": "Profil",
+   "ja": "プロファイル",
+   "ko": "프로필",
+   "nl": "Profiel",
+   "zh-Hans": "个人资料",
+   "zh-Hant": "設定檔"
+  },
+  "common.tabAreaContextMenu.bottomButtonsSubmenu": {
+   "de": "Untere Tasten",
+   "en": "Bottom Buttons",
+   "es": "Botones inferiores",
+   "fr": "Boutons du bas",
+   "ja": "下部のボタン",
+   "ko": "하단 버튼",
+   "nl": "Knoppen onderin",
+   "zh-Hans": "底部按钮",
+   "zh-Hant": "底部按鈕"
   },
   "common.tabAreaContextMenu.reopenClosedTabAction": {
    "de": "Geschlossenen Tab wieder öffnen\tCtrl+Shift+T",
@@ -7660,6 +7715,28 @@
    "zh-Hans": "智能体访问、权限和密码管理器都在「开发者」标签页中。",
    "zh-Hant": "AI 代理存取、權限與密碼管理員都在「開發者」分頁中。"
   },
+  "settings.advanced.keepPinnedTabsLoaded.description": {
+   "de": "Angeheftete Tabs, die du geöffnet hast, bleiben im Speicher, statt entladen zu werden, um Speicher freizugeben.",
+   "en": "Pinned tabs you have opened stay in memory instead of being unloaded to free it.",
+   "es": "Las pestañas fijadas que has abierto permanecen en la memoria en lugar de descargarse para liberarla.",
+   "fr": "Les onglets épinglés que vous avez ouverts restent en mémoire au lieu d'être déchargés pour la libérer.",
+   "ja": "開いた固定タブは、メモリを空けるために解放されず、メモリに保持されたままになります。",
+   "ko": "열어 둔 고정된 탭은 메모리 확보를 위해 해제되지 않고 메모리에 계속 유지돼요.",
+   "nl": "Vastgezette tabbladen die je hebt geopend, blijven in het geheugen in plaats van te worden ontladen om geheugen vrij te maken.",
+   "zh-Hans": "你已打开的固定标签页会保留在内存中，而不会被卸载以释放内存。",
+   "zh-Hant": "你已開啟的釘選分頁會保留在記憶體中，不會為了釋放記憶體而被卸載。"
+  },
+  "settings.advanced.keepPinnedTabsLoaded.toggle": {
+   "de": "Angeheftete Tabs geladen lassen",
+   "en": "Keep pinned tabs loaded",
+   "es": "Mantener cargadas las pestañas fijadas",
+   "fr": "Garder les onglets épinglés chargés",
+   "ja": "固定タブをメモリに保持",
+   "ko": "고정된 탭을 메모리에 유지",
+   "nl": "Houd vastgezette tabbladen geladen",
+   "zh-Hans": "保持固定标签页处于加载状态",
+   "zh-Hant": "讓釘選分頁保持載入"
+  },
   "settings.advanced.openTabIndicators.showToggle": {
    "de": "Indikatoren für offene Tabs anzeigen",
    "en": "Show open tab indicators",
@@ -11962,48 +12039,48 @@
    "zh-Hant": "複製"
   },
   "sidebar.tabContextMenu.movePaneDown": {
-   "de": "Bereich nach unten verschieben",
-   "en": "Move Pane Down",
-   "es": "Mover panel hacia abajo",
-   "fr": "Déplacer le volet vers le bas",
-   "ja": "ペインを下に移動",
-   "ko": "패널 아래로 이동",
-   "nl": "Verplaats paneel omlaag",
-   "zh-Hans": "向下移动窗格",
-   "zh-Hant": "將窗格向下移動"
+   "de": "Fokussierten Bereich nach unten verschieben",
+   "en": "Move Focused Pane Down",
+   "es": "Mover panel enfocado hacia abajo",
+   "fr": "Déplacer le volet sélectionné vers le bas",
+   "ja": "フォーカス中のペインを下に移動",
+   "ko": "포커스된 패널 아래로 이동",
+   "nl": "Verplaats paneel met focus omlaag",
+   "zh-Hans": "向下移动当前聚焦的窗格",
+   "zh-Hant": "將焦點所在的窗格向下移動"
   },
   "sidebar.tabContextMenu.movePaneLeft": {
-   "de": "Bereich nach links verschieben",
-   "en": "Move Pane Left",
-   "es": "Mover panel a la izquierda",
-   "fr": "Déplacer le volet vers la gauche",
-   "ja": "ペインを左に移動",
-   "ko": "패널 왼쪽으로 이동",
-   "nl": "Verplaats paneel naar links",
-   "zh-Hans": "向左移动窗格",
-   "zh-Hant": "將窗格向左移動"
+   "de": "Fokussierten Bereich nach links verschieben",
+   "en": "Move Focused Pane Left",
+   "es": "Mover panel enfocado a la izquierda",
+   "fr": "Déplacer le volet sélectionné vers la gauche",
+   "ja": "フォーカス中のペインを左に移動",
+   "ko": "포커스된 패널 왼쪽으로 이동",
+   "nl": "Verplaats paneel met focus naar links",
+   "zh-Hans": "向左移动当前聚焦的窗格",
+   "zh-Hant": "將焦點所在的窗格向左移動"
   },
   "sidebar.tabContextMenu.movePaneRight": {
-   "de": "Bereich nach rechts verschieben",
-   "en": "Move Pane Right",
-   "es": "Mover panel a la derecha",
-   "fr": "Déplacer le volet vers la droite",
-   "ja": "ペインを右に移動",
-   "ko": "패널 오른쪽으로 이동",
-   "nl": "Verplaats paneel naar rechts",
-   "zh-Hans": "向右移动窗格",
-   "zh-Hant": "將窗格向右移動"
+   "de": "Fokussierten Bereich nach rechts verschieben",
+   "en": "Move Focused Pane Right",
+   "es": "Mover panel enfocado a la derecha",
+   "fr": "Déplacer le volet sélectionné vers la droite",
+   "ja": "フォーカス中のペインを右に移動",
+   "ko": "포커스된 패널 오른쪽으로 이동",
+   "nl": "Verplaats paneel met focus naar rechts",
+   "zh-Hans": "向右移动当前聚焦的窗格",
+   "zh-Hant": "將焦點所在的窗格向右移動"
   },
   "sidebar.tabContextMenu.movePaneUp": {
-   "de": "Bereich nach oben verschieben",
-   "en": "Move Pane Up",
-   "es": "Mover panel hacia arriba",
-   "fr": "Déplacer le volet vers le haut",
-   "ja": "ペインを上に移動",
-   "ko": "패널 위로 이동",
-   "nl": "Verplaats paneel omhoog",
-   "zh-Hans": "向上移动窗格",
-   "zh-Hant": "將窗格向上移動"
+   "de": "Fokussierten Bereich nach oben verschieben",
+   "en": "Move Focused Pane Up",
+   "es": "Mover panel enfocado hacia arriba",
+   "fr": "Déplacer le volet sélectionné vers le haut",
+   "ja": "フォーカス中のペインを上に移動",
+   "ko": "포커스된 패널 위로 이동",
+   "nl": "Verplaats paneel met focus omhoog",
+   "zh-Hans": "向上移动当前聚焦的窗格",
+   "zh-Hant": "將焦點所在的窗格向上移動"
   },
   "sidebar.tabContextMenu.moveToGroupSubmenu": {
    "de": "In Gruppe verschieben",

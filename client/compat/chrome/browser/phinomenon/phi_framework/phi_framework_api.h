@@ -1733,6 +1733,16 @@ class PhiFramework {
                                   int tab_id,
                                   const char* url,
                                   bool keep_current) = 0;
+
+  // Whether Chromium keeps the tab `tab_id` loaded (phi::PhiKeepLoaded).
+  // While true, Memory Saver and memory-pressure unloading skip the tab; an
+  // extension's explicit discard still goes through. Every new WebContents
+  // starts at false and the value is not saved with the session, so the
+  // client sets it again for a restored or re-bound tab. False when the tab
+  // names nothing.
+  virtual bool SetTabKeepLoaded(int64_t window_id,
+                                int tab_id,
+                                bool keep_loaded) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -1803,7 +1813,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 3;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 4;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

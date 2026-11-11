@@ -386,12 +386,17 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // The profile (avatar) button leads, as the Mac's SidebarBottomBar does
   // (ProfileButton at x 8, then its 4 dip gap): the same 32 dip hit box
   // as its neighbours, the 24 dip disc centred in it by the painter.
-  out.sidebar_profile = {bx, bar_mid - btn / 2, bx + btn, bar_mid + btn / 2};
-  bx += btn + btn_gap;
+  if (in.bottom_profile) {
+    out.sidebar_profile = {bx, bar_mid - btn / 2, bx + btn, bar_mid + btn / 2};
+    bx += btn + btn_gap;
+  }
   // Downloads next, as the board draws it — its own slot, beside the tool
   // cluster's copy in the address row — then the memory chip.
-  out.sidebar_downloads = {bx, bar_mid - btn / 2, bx + btn, bar_mid + btn / 2};
-  bx += btn + btn_gap;
+  if (in.bottom_downloads) {
+    out.sidebar_downloads = {bx, bar_mid - btn / 2, bx + btn,
+                             bar_mid + btn / 2};
+    bx += btn + btn_gap;
+  }
   if (in.ai_enabled) {
     out.memory = {bx, bar_mid - btn / 2, bx + btn, bar_mid + btn / 2};
     bx += btn + btn_gap;
@@ -404,9 +409,11 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     br = out.chat.left - btn_gap;
   }
   // Feedback trails as an outlined capsule (Figma Frame 48).
-  const int feedback_top = bar_mid - scaled(kPillHeight) / 2;
-  out.feedback = {br - scaled(kFeedbackPillWidth), feedback_top, br,
-                  feedback_top + scaled(kPillHeight)};
+  if (in.bottom_feedback) {
+    const int feedback_top = bar_mid - scaled(kPillHeight) / 2;
+    out.feedback = {br - scaled(kFeedbackPillWidth), feedback_top, br,
+                    feedback_top + scaled(kPillHeight)};
+  }
 
   out.tabs_left = inset;
   out.tabs_limit = out.bottom_bar.top - scaled(kFavoritesSpacer);

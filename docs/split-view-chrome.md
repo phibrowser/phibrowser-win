@@ -43,7 +43,8 @@ middle pane is square all round.
   `AddTabToSplitById`, `RemoveTabFromSplitById`, `MoveTabInSplitById` and
   `UpdateSplitFractions`. The snapshot's `SplitSnapshot::tabs` and
   `fractions` carry every pane; `primary`, `secondary` and `ratio` are the
-  first two panes and the first share. `kPhiFrameworkAbiVersion` is 2.
+  first two panes and the first share. `kPhiFrameworkAbiVersion` was 2 with
+  these calls.
 * **Sidebar and strip.** One merged row with an equal segment per pane; a
   click on a segment focuses that pane. In the horizontal strip a split of
   three or four takes two tabs' room.
@@ -54,9 +55,11 @@ middle pane is square all round.
   divider) while the split has room, and replaces the pane under the
   pointer otherwise; a split of four only replaces.
 * **Per-pane actions.** The row menu of a split of three or four has Copy
-  Pane *n* URL, Move Pane Left / Right (Up / Down when stacked), Remove
-  from Split for the pane under the pointer, and Close Split. The hover
-  chip over an unfocused pane has the same moves. Windows has no pane move
+  Pane *n* URL, Move Focused Pane Left / Right (Up / Down when stacked),
+  which move the focused pane wherever the menu opened and are greyed when
+  the focus is outside the split, Remove from Split, which dissolves the
+  whole split, and Close Split. The hover chip over an unfocused pane moves
+  that pane, and its Remove from split dissolves the split too. Windows has no pane move
   handle: the chip and the row menu stand in for the Mac's drag grip.
 * **Pinned and bookmarked.** A split of three or four pins, bookmarks and
   duplicates like a pair. The cell stays one row in the store: the first

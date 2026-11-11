@@ -56,6 +56,8 @@ class PhiPreferences : public ChromePrefsHost {
     kOpenIndicators,  // The sidebar's open-tab dots: every sidebar repaints.
     kDimUnloaded,     // The reclaimed-tab dimming: every sidebar repaints.
     kTabClosing,      // Both tab-closing switches: read at the click or menu.
+    kKeepPinnedLoaded,  // Every sidebar pushes its pinned tabs' state again.
+    kBottomBar,       // A bottom-bar button came or went: every slot re-fits.
     kBookmarkRoot,    // A Space's bookmark root: every sidebar rebuilds.
     kSidebarTransparency,  // The acrylic slider: every slot re-applies it.
     kPeek,           // Both peek switches: the framework mirror is due.
@@ -119,6 +121,9 @@ class PhiPreferences : public ChromePrefsHost {
   bool ShowOpenTabIndicators() const override;
   bool DimUnloadedTabIcons() const override;
   bool DoubleClickToCloseTabs() const override;
+  bool KeepPinnedTabsLoaded() const override;
+  bool BottomBarShows(PhiBottomButton button) const override;
+  void SetBottomBarShows(PhiBottomButton button, bool shown) override;
   bool TabSwitcherIncludesAllSpaces() const override;
   bool DirectionalTabClosing() const override;
   bool BookmarkRootCollapsed(const std::string& space_id) const override;
@@ -179,6 +184,7 @@ class PhiPreferences : public ChromePrefsHost {
   void SetShowOpenTabIndicators(bool enabled);
   void SetDimUnloadedTabIcons(bool enabled);
   void SetDoubleClickToCloseTabs(bool enabled);
+  void SetKeepPinnedTabsLoaded(bool enabled);
   void SetTabSwitcherIncludesAllSpaces(bool enabled);
   void SetDirectionalTabClosing(bool enabled);
   void SetSidebarTransparency(int percent);

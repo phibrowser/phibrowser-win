@@ -415,6 +415,11 @@ class SpacesHost {
       const char* surface) = 0;
 };
 
+// A button of the sidebar's bottom bar the user can show or hide (the Mac's
+// GeneralSettings.sidebarBottomBarShows*). The memory chip is the AI
+// suite's and has no switch here.
+enum class PhiBottomButton { kProfile, kDownloads, kFeedback };
+
 // The client-wide chrome preferences: layout, palette, previews, the
 // bookmark-bar flags, the sidebar width. PhiPreferences implements it.
 class ChromePrefsHost {
@@ -436,6 +441,12 @@ class ChromePrefsHost {
   // The Mac's GeneralSettings.doubleClickToCloseTabs: an unmodified
   // double-click closes an ordinary tab. Off by default.
   virtual bool DoubleClickToCloseTabs() const = 0;
+  // The Mac's GeneralSettings.keepPinnedTabsLoaded: an open pinned tab is
+  // kept out of Memory Saver's and memory pressure's reach. On by default.
+  virtual bool KeepPinnedTabsLoaded() const = 0;
+  // Whether the sidebar's bottom bar shows `button`. On by default.
+  virtual bool BottomBarShows(PhiBottomButton button) const = 0;
+  virtual void SetBottomBarShows(PhiBottomButton button, bool shown) = 0;
   // The Mac's GeneralSettings.tabSwitcherIncludesAllSpaces. Off by default.
   virtual bool TabSwitcherIncludesAllSpaces() const = 0;
   // The Mac's GeneralSettings.directionalTabClosingEnabled: the positional

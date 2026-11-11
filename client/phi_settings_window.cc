@@ -1711,6 +1711,15 @@ void PhiSettingsWindow::BuildAdvanced(int* y) {
                /*enabled=*/true, "directionalclose",
                PhiStr("settings.advanced.tabs.directionalClosingDescription"),
                kChipIndent, 0xE711);
+  AddDividerRow(y);
+  // The Mac's "Keep pinned tabs loaded" (`734319a9`). It sits with the
+  // unloaded-tab row there; that row is an Appearance one on Windows, and
+  // this switch changes behaviour, so it joins the tab card here.
+  AddToggleRow(y, PhiStr("settings.advanced.keepPinnedTabsLoaded.toggle"),
+               prefs_->KeepPinnedTabsLoaded(),
+               /*enabled=*/true, "keeppinnedloaded",
+               PhiStr("settings.advanced.keepPinnedTabsLoaded.description"),
+               kChipIndent, 0xE718);
   EndSection(y);
 
   // The Mac's "Shorten links to selected text" row is not drawn: "Copy
@@ -6303,6 +6312,8 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetDimUnloadedTabIcons(!item.on);
   } else if (item.action == "tabswitcherscope") {
     host_->SetTabSwitcherIncludesAllSpaces(!item.on);
+  } else if (item.action == "keeppinnedloaded") {
+    host_->SetKeepPinnedTabsLoaded(!item.on);
   } else if (item.action == "doubleclickclose") {
     host_->SetDoubleClickToCloseTabs(!item.on);
   } else if (item.action == "directionalclose") {

@@ -437,6 +437,9 @@ class PhiCoordinator : public SidebarHost,
   bool ShowOpenTabIndicators() const override;
   bool DimUnloadedTabIcons() const override;
   bool DoubleClickToCloseTabs() const override;
+  bool KeepPinnedTabsLoaded() const override;
+  bool BottomBarShows(PhiBottomButton button) const override;
+  void SetBottomBarShows(PhiBottomButton button, bool shown) override;
   bool TabSwitcherIncludesAllSpaces() const override;
   bool DirectionalTabClosing() const override;
   bool BookmarkRootCollapsed(const std::string& space_id) const override;
@@ -472,6 +475,7 @@ class PhiCoordinator : public SidebarHost,
   void SetShowOpenTabIndicators(bool enabled) override;
   void SetDimUnloadedTabIcons(bool enabled) override;
   void SetDoubleClickToCloseTabs(bool enabled) override;
+  void SetKeepPinnedTabsLoaded(bool enabled) override;
   void SetTabSwitcherIncludesAllSpaces(bool enabled) override;
   void SetDirectionalTabClosing(bool enabled) override;
   void SetSidebarTransparency(int percent) override;

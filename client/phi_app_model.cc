@@ -110,6 +110,14 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
                                       .value_or(out->show_open_tab_indicators);
   out->dim_unloaded_tab_icons = dict.FindBool("dimUnloadedTabIcons")
                                     .value_or(out->dim_unloaded_tab_icons);
+  out->keep_pinned_tabs_loaded = dict.FindBool("keepPinnedTabsLoaded")
+                                     .value_or(out->keep_pinned_tabs_loaded);
+  out->bottom_bar_profile = dict.FindBool("sidebarBottomBarShowsProfile")
+                                .value_or(out->bottom_bar_profile);
+  out->bottom_bar_downloads = dict.FindBool("sidebarBottomBarShowsDownloads")
+                                  .value_or(out->bottom_bar_downloads);
+  out->bottom_bar_feedback = dict.FindBool("sidebarBottomBarShowsFeedback")
+                                 .value_or(out->bottom_bar_feedback);
   out->double_click_to_close_tabs =
       dict.FindBool("doubleClickToCloseTabs")
           .value_or(out->double_click_to_close_tabs);
@@ -325,6 +333,10 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("showTabPreviews", value.show_tab_previews);
   root.Set("showOpenTabIndicators", value.show_open_tab_indicators);
   root.Set("dimUnloadedTabIcons", value.dim_unloaded_tab_icons);
+  root.Set("keepPinnedTabsLoaded", value.keep_pinned_tabs_loaded);
+  root.Set("sidebarBottomBarShowsProfile", value.bottom_bar_profile);
+  root.Set("sidebarBottomBarShowsDownloads", value.bottom_bar_downloads);
+  root.Set("sidebarBottomBarShowsFeedback", value.bottom_bar_feedback);
   root.Set("doubleClickToCloseTabs", value.double_click_to_close_tabs);
   root.Set("tabSwitcherIncludesAllSpaces", value.tab_switcher_all_spaces);
   root.Set("directionalTabClosingEnabled", value.directional_tab_closing);

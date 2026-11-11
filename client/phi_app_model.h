@@ -211,6 +211,15 @@ struct PhiSettings {
   // The Mac's GeneralSettings.dimUnloadedTabIcons: a reclaimed (unloaded or
   // discarded) tab's favicon and open dot draw at 30%. On by default.
   bool dim_unloaded_tab_icons = true;
+  // The Mac's GeneralSettings.keepPinnedTabsLoaded: a pinned tab that is
+  // open stays in memory instead of being unloaded to free it. On by
+  // default, as on Mac; this device only.
+  bool keep_pinned_tabs_loaded = true;
+  // The Mac's GeneralSettings.sidebarBottomBarShows*: which buttons the
+  // sidebar's bottom bar shows. All on by default; this device only.
+  bool bottom_bar_profile = true;
+  bool bottom_bar_downloads = true;
+  bool bottom_bar_feedback = true;
   // The Mac's GeneralSettings.doubleClickToCloseTabs: an unmodified
   // double-click on an ordinary tab closes it. Off by default, as on Mac.
   bool double_click_to_close_tabs = false;

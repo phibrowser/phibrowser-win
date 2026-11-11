@@ -306,6 +306,22 @@ bool PhiPreferences::DoubleClickToCloseTabs() const {
   return settings_.double_click_to_close_tabs;
 }
 
+bool PhiPreferences::KeepPinnedTabsLoaded() const {
+  return settings_.keep_pinned_tabs_loaded;
+}
+
+bool PhiPreferences::BottomBarShows(PhiBottomButton button) const {
+  switch (button) {
+    case PhiBottomButton::kProfile:
+      return settings_.bottom_bar_profile;
+    case PhiBottomButton::kDownloads:
+      return settings_.bottom_bar_downloads;
+    case PhiBottomButton::kFeedback:
+      return settings_.bottom_bar_feedback;
+  }
+  return true;
+}
+
 bool PhiPreferences::TabSwitcherIncludesAllSpaces() const {
   return settings_.tab_switcher_all_spaces;
 }
@@ -500,6 +516,29 @@ void PhiPreferences::SetTabSwitcherIncludesAllSpaces(bool enabled) {
   settings_.tab_switcher_all_spaces = enabled;
   MarkDirty();
   Notify(PreferenceChange::kTabClosing);
+}
+
+void PhiPreferences::SetKeepPinnedTabsLoaded(bool enabled) {
+  if (enabled == settings_.keep_pinned_tabs_loaded) {
+    return;
+  }
+  settings_.keep_pinned_tabs_loaded = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kKeepPinnedLoaded);
+}
+
+void PhiPreferences::SetBottomBarShows(PhiBottomButton button, bool shown) {
+  bool* value = button == PhiBottomButton::kProfile
+                    ? &settings_.bottom_bar_profile
+                    : button == PhiBottomButton::kDownloads
+                          ? &settings_.bottom_bar_downloads
+                          : &settings_.bottom_bar_feedback;
+  if (*value == shown) {
+    return;
+  }
+  *value = shown;
+  MarkDirty();
+  Notify(PreferenceChange::kBottomBar);
 }
 
 void PhiPreferences::SetDoubleClickToCloseTabs(bool enabled) {

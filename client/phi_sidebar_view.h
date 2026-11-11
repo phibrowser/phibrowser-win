@@ -562,6 +562,10 @@ struct ShortcutRow {
   // closed cell has no tab and so is never dormant.
   bool unloaded = false;
   bool unloaded_b = false;
+  // A single bookmark row whose open tab is on a page other than the saved
+  // one: a slash sits between the favicon and the title (the Mac's
+  // NavigatedAwaySeparator, `e917b732`).
+  bool navigated_away = false;
   // A split cell of three or four panes: the panes after B, in order, each
   // with what the store holds for it and its bound tab while open.
   struct ExtraPane {
@@ -1077,6 +1081,18 @@ class PhiSidebarView {
   void UpdateDragAutoScroll(POINT pt);
   void DragAutoScrollTick();
   void StopDragAutoScroll();
+
+  // The Mac's Tab.pushKeepLoaded (`375fed24`, `734319a9`): tells Chromium to
+  // keep the live tabs of this window's pinned cells loaded while Settings ▸
+  // Advanced ▸ "Keep pinned tabs loaded" is on, and to let go of the rest.
+  // Bookmark-bound tabs are not kept. Runs on every rebuild, and calls the
+  // framework only for a tab whose state it has not pushed yet or that
+  // changed, since a fresh page starts out not kept.
+  void PushKeepLoaded(BrowserId browser,
+                      const phi_framework::WindowSnapshot& snapshot);
+  // Live tab -> the state last pushed for it, for the tabs of the snapshot
+  // last seen.
+  std::map<int, bool> keep_loaded_pushed_;
 
   // Owns this view and outlives it.
   RAW_PTR_EXCLUSION PhiSidebarShell* const shell_;

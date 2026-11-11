@@ -158,6 +158,11 @@ struct ShellLayoutInputs {
   bool bookmark_bar = false;      // The bar takes the content's first band.
   bool reader_offerable = false;  // The address capsule gets a reader slot.
   bool ai_enabled = false;        // The Chat / memory controls exist at all.
+  // The bottom bar's buttons the user can hide (the sidebar menu's Bottom
+  // Buttons). A hidden one leaves no slot: its neighbours close up.
+  bool bottom_profile = true;
+  bool bottom_downloads = true;
+  bool bottom_feedback = true;
   int field_ext_count = 0;   // Pinned-extension icons inside the capsule.
   int pinned_row_count = 0;  // The pinned grid's rows (0 = no band).
   int bookmark_row_count = 0;  // Visible outline rows (0 = no separator).
@@ -198,6 +203,9 @@ struct ShellLayoutInputs {
            a.bookmark_bar == b.bookmark_bar &&
            a.reader_offerable == b.reader_offerable &&
            a.ai_enabled == b.ai_enabled &&
+           a.bottom_profile == b.bottom_profile &&
+           a.bottom_downloads == b.bottom_downloads &&
+           a.bottom_feedback == b.bottom_feedback &&
            a.field_ext_count == b.field_ext_count &&
            a.pinned_row_count == b.pinned_row_count &&
            a.bookmark_row_count == b.bookmark_row_count &&

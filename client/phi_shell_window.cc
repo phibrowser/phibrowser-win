@@ -639,6 +639,13 @@ ShellLayoutInputs PhiShellWindow::CurrentLayoutInputs(bool include_floating) con
   in.bookmark_bar = layout_bookmark_bar_;
   in.reader_offerable = layout_reader_;
   in.ai_enabled = kPhiAiEnabled;
+  if (services_.prefs) {
+    in.bottom_profile = services_.prefs->BottomBarShows(PhiBottomButton::kProfile);
+    in.bottom_downloads =
+        services_.prefs->BottomBarShows(PhiBottomButton::kDownloads);
+    in.bottom_feedback =
+        services_.prefs->BottomBarShows(PhiBottomButton::kFeedback);
+  }
   in.field_ext_count = field_ext_count_;
   in.pinned_row_count = pinned_row_count_;
   in.bookmark_row_count = bookmark_row_count_;
@@ -6416,7 +6423,23 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
   in.split_bound = !row.split_id.empty();
   in.split_stacked = row.merged && SplitIsStacked(row.id);
   in.pane_count = row.merged ? 2 + static_cast<int>(row.more_ids.size()) : 1;
-  in.pane = row.pane;
+  // The wider split's move rows act on the focused pane, not the one under
+  // the pointer; -1 when the focus is outside this split.
+  int focused_pane = -1;
+  if (row.merged && opening_active_tab != 0) {
+    if (row.id.value == opening_active_tab) {
+      focused_pane = 0;
+    } else if (row.b_id.value == opening_active_tab) {
+      focused_pane = 1;
+    } else {
+      for (size_t i = 0; i < row.more_ids.size(); ++i) {
+        if (row.more_ids[i].value == opening_active_tab) {
+          focused_pane = static_cast<int>(i) + 2;
+        }
+      }
+    }
+  }
+  in.pane = focused_pane;
   if (services_.agent && row.id.valid()) {
     in.agent_driven = services_.agent->IsTabAgentDriven(row.id.value);
     in.agent_reclaimed =
@@ -6550,12 +6573,10 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
                                    ? row.more_urls[extra]
                                    : row.url;
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(url));
-  } else if (action.is("tab.movePaneBack")) {
-    sidebar_->Apply(SidebarMovePane{row.key, row.pane, row.pane - 1});
-  } else if (action.is("tab.movePaneForward")) {
-    sidebar_->Apply(SidebarMovePane{row.key, row.pane, row.pane + 1});
-  } else if (action.is("tab.removePane")) {
-    sidebar_->Apply(SidebarRemovePane{row.key, row.pane});
+  } else if (action.is("tab.movePaneBack") && focused_pane > 0) {
+    sidebar_->Apply(SidebarMovePane{row.key, focused_pane, focused_pane - 1});
+  } else if (action.is("tab.movePaneForward") && focused_pane >= 0) {
+    sidebar_->Apply(SidebarMovePane{row.key, focused_pane, focused_pane + 1});
   } else if (action.is("tab.closeSplit")) {
     sidebar_->Apply(SidebarClose{row.key, -1});
   } else if (action.is("tab.splitCurrent")) {
@@ -6873,6 +6894,15 @@ void PhiShellWindow::ShowTabAreaMenu(POINT pt,
   in.tabs_empty = sidebar_->tabs().empty();
   in.mode = layout_mode_;
   in.space_only = space_only;
+  if (services_.prefs) {
+    // The bottom bar exists in the vertical layout only.
+    in.bottom_buttons = layout_mode_ != PhiLayoutMode::kComfortable;
+    in.bottom_profile = services_.prefs->BottomBarShows(PhiBottomButton::kProfile);
+    in.bottom_downloads =
+        services_.prefs->BottomBarShows(PhiBottomButton::kDownloads);
+    in.bottom_feedback =
+        services_.prefs->BottomBarShows(PhiBottomButton::kFeedback);
+  }
   if (!incognito_) {
     in.can_delete_space = services_.spaces->CanDeleteSpace(space);
     for (const PhiSpaceView& view : services_.spaces->Spaces()) {
@@ -6930,6 +6960,14 @@ void PhiShellWindow::ShowTabAreaMenu(POINT pt,
       services_.sidebar->AddBookmarkFolder(slot_.value, std::string(),
                                base::WideToUTF8(name));
     }
+  } else if (action.is("area.bottomButton")) {
+    const PhiBottomButton button =
+        action.target.id == "profile"
+            ? PhiBottomButton::kProfile
+            : action.target.id == "downloads" ? PhiBottomButton::kDownloads
+                                              : PhiBottomButton::kFeedback;
+    services_.prefs->SetBottomBarShows(button,
+                                       !services_.prefs->BottomBarShows(button));
   } else if (action.is("area.layout")) {
     services_.prefs->RequestLayoutMode(action.target.id == "comfortable"
                                            ? PhiLayoutMode::kComfortable
@@ -7716,7 +7754,8 @@ void PhiShellWindow::OnSplitChipClick(POINT chip_pt) {
   }
   // The pane menu. A pair: Swap panes · Convert · Unsplit · ─ · Close pane.
   // Three or four panes: Move pane left / right (up / down when stacked) in
-  // place of the swap, and Remove from split takes only this pane out.
+  // place of the swap; Remove from split dissolves the split whatever its
+  // width (Mac `80bd9bdb`), and Close pane takes one pane away.
   const int pane = row.PaneOf(TabId{tab});
   const int pane_count = row.PaneCount();
   const bool stacked = SplitIsStacked(row.id);
@@ -7757,11 +7796,7 @@ void PhiShellWindow::OnSplitChipClick(POINT chip_pt) {
   } else if (action.is("split.movePaneForward")) {
     sidebar_->Apply(SidebarMovePane{row.key, pane, pane + 1});
   } else if (action.is("tab.removeSplit")) {
-    if (pane_count > 2 && pane >= 0) {
-      sidebar_->Apply(SidebarRemovePane{row.key, pane});
-    } else {
-      sidebar_->Apply(SidebarBreakSplit{row.key});
-    }
+    sidebar_->Apply(SidebarBreakSplit{row.key});
   } else if (action.is("split.closePane")) {
     framework_->CloseTabById(browser.value, tab);
   }

@@ -158,6 +158,7 @@ void PhiAppMenu::Install(HWND shell) {
   extensions_ = ::CreatePopupMenu();
   zoom_ = ::CreatePopupMenu();
   layout_ = ::CreatePopupMenu();
+  appearance_ = ::CreatePopupMenu();
   tools_ = ::CreatePopupMenu();
   help_ = ::CreatePopupMenu();
   BuildStatic();
@@ -278,7 +279,18 @@ void PhiAppMenu::BuildStatic() {
   row(history_, kCmdShowFullHistory, "appMenu.showFullHistory",
       fluent::kHistory, false);
 
-  // Layout ▸: the two layouts (radio), the sidebar, the bookmarks bar.
+  // Layout ▸: the colour appearance (the Mac's View ▸ Appearance, above its
+  // layout section), the two layouts (radio), the sidebar, the bookmarks bar.
+  sub(layout_, appearance_, "app.viewMenu.appearance", nullptr);
+  row(appearance_, kCmdAppearanceSystem,
+      "settings.general.appearance.useSystemOption", nullptr)
+      ->radio = true;
+  row(appearance_, kCmdAppearanceLight, "themes.appearance.lightOption",
+      nullptr)
+      ->radio = true;
+  row(appearance_, kCmdAppearanceDark, "themes.appearance.darkOption", nullptr)
+      ->radio = true;
+  rows_.AppendSeparator(layout_);
   row(layout_, kCmdLayoutComfortable, "appMenu.horizontalTabs", nullptr)
       ->radio = true;
   row(layout_, kCmdLayoutBalanced, "appMenu.verticalTabs", nullptr)->radio =
@@ -391,9 +403,17 @@ void PhiAppMenu::RefreshRoot() {
 
 void PhiAppMenu::RefreshLayout() {
   PhiLayoutMode mode = PhiLayoutMode::kBalanced;
+  PhiAppearance appearance = PhiAppearance::kSystem;
   if (services_->MenuPrefsHost()) {
     mode = services_->MenuPrefsHost()->LayoutMode();
+    appearance = services_->MenuPrefsHost()->Appearance();
   }
+  SetChecked(appearance_, kCmdAppearanceSystem,
+             appearance == PhiAppearance::kSystem);
+  SetChecked(appearance_, kCmdAppearanceLight,
+             appearance == PhiAppearance::kLight);
+  SetChecked(appearance_, kCmdAppearanceDark,
+             appearance == PhiAppearance::kDark);
   const bool horizontal = mode == PhiLayoutMode::kComfortable;
   SetChecked(layout_, kCmdLayoutComfortable, horizontal);
   SetChecked(layout_, kCmdLayoutBalanced, !horizontal);
@@ -1143,6 +1163,17 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       if (c->MenuPrefsHost()) {
         c->MenuPrefsHost()->RequestAgentAutoView(
             !c->MenuPrefsHost()->AgentAutoView());
+      }
+      return true;
+    case kCmdAppearanceSystem:
+    case kCmdAppearanceLight:
+    case kCmdAppearanceDark:
+      if (c->MenuPrefsHost()) {
+        c->MenuPrefsHost()->RequestAppearance(
+            id == kCmdAppearanceLight
+                ? PhiAppearance::kLight
+                : id == kCmdAppearanceDark ? PhiAppearance::kDark
+                                           : PhiAppearance::kSystem);
       }
       return true;
     case kCmdLayoutBalanced:

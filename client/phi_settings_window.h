@@ -158,6 +158,8 @@ class PhiSettingsHost {
   // GeneralSettings.doubleClickToCloseTabs and directionalTabClosingEnabled
   // (Advanced ▸ the tab-closing card). Off and on by default, as on Mac.
   virtual void SetDoubleClickToCloseTabs(bool enabled) = 0;
+  // GeneralSettings.keepPinnedTabsLoaded (Advanced ▸ Tabs). On by default.
+  virtual void SetKeepPinnedTabsLoaded(bool enabled) = 0;
   // GeneralSettings.tabSwitcherIncludesAllSpaces (Spaces ▸ its own card).
   virtual void SetTabSwitcherIncludesAllSpaces(bool enabled) = 0;
   virtual void SetDirectionalTabClosing(bool enabled) = 0;

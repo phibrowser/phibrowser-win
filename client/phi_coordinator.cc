@@ -3628,6 +3628,22 @@ void PhiCoordinator::SetDoubleClickToCloseTabs(bool enabled) {
   preferences_.SetDoubleClickToCloseTabs(enabled);
 }
 
+bool PhiCoordinator::KeepPinnedTabsLoaded() const {
+  return preferences_.KeepPinnedTabsLoaded();
+}
+
+void PhiCoordinator::SetKeepPinnedTabsLoaded(bool enabled) {
+  preferences_.SetKeepPinnedTabsLoaded(enabled);
+}
+
+bool PhiCoordinator::BottomBarShows(PhiBottomButton button) const {
+  return preferences_.BottomBarShows(button);
+}
+
+void PhiCoordinator::SetBottomBarShows(PhiBottomButton button, bool shown) {
+  preferences_.SetBottomBarShows(button, shown);
+}
+
 bool PhiCoordinator::DirectionalTabClosing() const {
   return preferences_.DirectionalTabClosing();
 }
@@ -4159,6 +4175,7 @@ void PhiCoordinator::OnPreferencesChanged(
       }
       return;
     case PreferenceChange::kSidebarWidth:
+    case PreferenceChange::kBottomBar:
     case PreferenceChange::kBookmarkBar:
       // The sidebar, or the bar's band, takes/releases part of the content
       // rect in every window.
@@ -4188,6 +4205,8 @@ void PhiCoordinator::OnPreferencesChanged(
       break;
     case PreferenceChange::kTabClosing:
       break;  // Read at the double-click and when a menu opens.
+    case PreferenceChange::kKeepPinnedLoaded:
+      // Each sidebar pushes its pinned tabs' state on its next rebuild.
     case PreferenceChange::kBookmarkRoot:
       // Another window may be showing the same Space.
       for (PhiShellWindow* controller : registry_.Controllers()) {

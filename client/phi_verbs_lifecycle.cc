@@ -619,8 +619,24 @@ PhiVerbResult PhiControlDispatcher::VerbAgentPanelSize(
   if (!ctx.scope.valid()) {
     return PhiVerbResult::Fail(ctx.scope.error);
   }
+  //
+  // A hidden agent Space is measured from the window the user is working in,
+  // so it would reflow the agent's page whenever the user collapsed that
+  // sidebar or resized the window, moving what the agent had just located.
+  // A hidden Space therefore answers with the size it holds, and only a
+  // watched one, or one with nothing held yet, is measured.
   PhiShellWindow* shell = ctx.scope.controller;
+  PhiAgentSpaces::Space* task =
+      ctx.scope.kind == Scope::Kind::kAgent
+          ? coordinator_->agent_spaces().Find(ctx.scope.task_id)
+          : nullptr;
   if (ctx.scope.kind == Scope::Kind::kAgent && (!shell || shell->is_agent())) {
+    if (task && task->held_page_width > 0 && task->held_page_height > 0) {
+      base::DictValue held;
+      held.Set("width", task->held_page_width);
+      held.Set("height", task->held_page_height);
+      return PhiVerbResult::Ok(std::move(held));
+    }
     if (PhiShellWindow* user = coordinator_->FocusedUserController()) {
       shell = user;
     }
@@ -633,9 +649,15 @@ PhiVerbResult PhiControlDispatcher::VerbAgentPanelSize(
   const RECT content = shell->ContentRect();
   const int dpi = static_cast<int>(shell->dpi());
   const auto css = [dpi](int px) { return (px * 96 + dpi - 1) / dpi; };
+  const int width = css(content.right - content.left);
+  const int height = css(content.bottom - content.top);
+  if (task && width > 0 && height > 0) {
+    task->held_page_width = width;
+    task->held_page_height = height;
+  }
   base::DictValue out;
-  out.Set("width", css(content.right - content.left));
-  out.Set("height", css(content.bottom - content.top));
+  out.Set("width", width);
+  out.Set("height", height);
   return PhiVerbResult::Ok(std::move(out));
 }
 

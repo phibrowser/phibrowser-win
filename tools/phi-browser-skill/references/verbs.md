@@ -1986,6 +1986,10 @@ Changes app settings. developerMode / allowAgentUserSpaces / testRig / analytics
 | `showOpenTabIndicators` | boolean | no | — | Open-tab dots. |
 | `tabSwitcherIncludesAllSpaces` | boolean | no | — | Ctrl+Tab lists every Space's recent tabs. |
 | `dimUnloadedTabIcons` | boolean | no | — | Reclaimed tabs' icons at 30%. |
+| `keepPinnedTabsLoaded` | boolean | no | — | Open pinned tabs are not unloaded to free memory. |
+| `sidebarBottomBarShowsProfile` | boolean | no | — | The bottom bar's profile button. |
+| `sidebarBottomBarShowsDownloads` | boolean | no | — | The bottom bar's Downloads button. |
+| `sidebarBottomBarShowsFeedback` | boolean | no | — | The bottom bar's Feedback button. |
 | `sidebarTransparency` | integer | no | — | Acrylic through the sidebar, 0-100 %. |
 | `restoreLastSession` | boolean | no | — | Session restore. |
 | `peekViewEnabled` | boolean | no | — | Peek's master switch. |

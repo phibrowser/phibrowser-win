@@ -7,8 +7,8 @@ either the decision to leave it out or that it still needs to be built.
 It is a list of surfaces, not of code: how a feature is implemented is in
 the owning doc each row points to.
 
-**Checked against phibrowser-mac `28df0d0d` (2026-11-10) and
-phibrowser-win `f967816`, on 2026-11-10.**
+**Checked against phibrowser-mac `80bd9bdb` (2026-11-11) and
+phibrowser-win `d067af2`, on 2026-11-11.**
 
 ## Legend
 
@@ -39,6 +39,7 @@ Two standing decisions cover many rows and are not repeated in full:
 |---|---|---|---|---|
 | Layout modes | Balanced / Performance / Comfortable | Vertical tabs / Horizontal tabs | ◐ | Performance removed on purpose (`windows-native-ui.md` §4.3); a synced Performance peer reads as Vertical and is not written back. Wire names kept. |
 | Menu bar | AppKit menu bar | ⋯ app menu (F10, Alt+F/E, solo Alt) | ⛔ | Windows-native redesign, `windows-native-ui.md` §3 and §8. Every Mac menu item has a mapped home (§3.2) except the rows marked below. |
+| View ▸ Appearance: System / Light / Dark (Mac `6952fddf`, 2026-11-10) | submenu above the layout section | ⋯ ▸ Layout ▸ Appearance, three radio rows above the layouts | ✅ | Ported 2026-11-11, run on nuc through the menu: each row sets the app-wide appearance and the tick follows. |
 | Full screen | ⌃⌘F | F11 row shown, never enabled | 🔧 | `IDC_FULLSCREEN` is not routed; the shell has to drive it (`phi_app_menu.cc`). |
 | Window title follows the active tab (Space name while the placeholder / NTP is up) | Mac `9387a460`, `9068b449` | `PhiShellWindow::RetitleShell` on every rows rebuild and placeholder change | ✅ | Ported 2026-10-19, box-verified (page → tab title, Ctrl+T → Space name, close → back). A tab showing the native new-tab page counts as the Mac's placeholder. D29's agent-title cue ("Claude — Research") is still open. |
 | Window ▸ Name window | yes | dropped | ⛔ | Never worked on Windows; `windows-native-ui.md` §8. |
@@ -73,7 +74,7 @@ Two standing decisions cover many rows and are not repeated in full:
 |---|---|---|---|---|
 | Docked sidebar: Space pips, pinned grid, bookmarks, tab tree, bottom bar | yes | yes, 200–480 dip | ✅ | `sidebar-architecture.md`. |
 | Floating sidebar (edge hover) | yes | yes | ✅ | No fade on slide-in (impl doc §4.4). |
-| Sidebar bottom bar: profile, chat, memory, downloads, feedback | all five | profile avatar + Downloads + Feedback pill | ✅ | Chat and memory are ⛔ AI suite. The profile button returned 2026-10-27 on request (left-most 24 dip avatar / person glyph, the Mac's menu: Download List → Library ▸ Downloads, Manage Bookmarks, Manage Extensions, New Tab, New Incognito Space / Window, Settings, Sign in when guest), reversing the 2026-09 decision in `windows-native-ui.md` §4.2. |
+| Sidebar bottom bar: profile, chat, memory, downloads, feedback | all five | profile avatar + Downloads + Feedback pill | ✅ | Chat and memory are ⛔ AI suite. The profile button returned 2026-10-27 on request (left-most 24 dip avatar / person glyph, the Mac's menu: Download List → Library ▸ Downloads, Manage Bookmarks, Manage Extensions, New Tab, New Incognito Space / Window, Settings, Sign in when guest), reversing the 2026-09 decision in `windows-native-ui.md` §4.2. 2026-11-11 (Mac `ce1f357f`): the sidebar area menu ends in a "Bottom Buttons" submenu that shows or hides Profile, Downloads and Feedback (`sidebarBottomBarShows*`, this device only, all on by default); a hidden button leaves no slot. Run on nuc. No Memory entry: the chip is ⛔ AI suite. |
 | Horizontal strip: Space chip, group chips, overflow, bookmarks bar | yes | yes | ✅ | Group headers in the horizontal layout: none on either side's strip beyond chips. |
 | Tab groups (9 colours, collapse, overview) | yes | yes | ✅ | |
 | Tab hover preview card | yes | yes | ✅ | |
@@ -86,8 +87,9 @@ Two standing decisions cover many rows and are not repeated in full:
 | Close the tabs above / below / left / right of a tab or group (Mac `b47255d6`, 2026-10-31) | tab and group context menus, titles follow the layout; Advanced toggle, on by default; a split counts as one unit and a whole group protects its range; pins and bookmark-bound tabs stay | Tab and group menus, titled by layout, greyed when empty; Advanced toggle, on by default; a split is one unit, a group protects its range, bound tabs stay. Close Other Tabs follows the same rules | ◐ | Done 2026-11-04, see §9 port 3. Not ported: `IDC_WINDOW_CLOSE_TABS_TO_RIGHT` routing, and tabs close one by one, so a whole group as a target closes with no group prompt. |
 | Clear All Tabs with Undo (Mac `06bee451`, `af8702c3`, `ea18f661`, 2026-11-02) | File menu, rebindable ⇧⌘K, sidebar separator button; closes ordinary background tabs and keeps the foreground tab, its split, a visible Peek, pins and bookmark-bound tabs; Edit ▸ Undo and Redo per window bring the pages back unloaded with their order, groups and splits; a toast names the shortcut (`docs/architecture/clear-tabs.md`) | ⋯ menu row, rebindable Ctrl+Shift+K. Keeps the foreground tab, its split, pins and bound tabs. A toast's Undo button brings the pages back unloaded in one batch with their order, groups and splits; only removals Chromium confirmed return | ◐ | Done 2026-11-04, see §9 port 5. Left out by decision: the sidebar button, Edit ▸ Undo and Redo. The toast lasts 10 s and holds only the latest cleanup. Fork `RestoreTabs` export in `phi_framework_api.h`. |
 | Pinned tabs: scope App / Profile / Space, split pins, rename, edit URL | yes | yes | ✅ | |
+| Keep pinned tabs loaded (Mac `375fed24`, `734319a9`, 2026-11-10) | Advanced toggle, on by default, this Mac only; an open pinned tab is skipped by Memory Saver and memory-pressure unloading | Advanced toggle, on by default, this device only; the sidebar pushes each pinned cell's live tabs through the framework call `SetTabKeepLoaded` (ABI 4) | ✅ | Ported 2026-11-11. nuc, read from `chrome://discards`: the pinned tab carries "Tab is a Phi pinned tab" with the switch on, loses it with the switch off, and a plain tab never has it. A real unload under memory pressure was not provoked. Pinned tabs of a Space that is not on screen get the state the next time that Space's sidebar rebuilds. |
 | Edit pinned tab icon | Edit… dialog has icon | Rename… / Edit URL… only | ◐ | No icon override on a pin. |
-| Bookmark favicon actions: Separate From Bookmark / Back to Saved URL | row favicon menu | none | 🔧 | The "bookmark drifted from its saved URL" affordance. |
+| Bookmark favicon actions: Separate From Bookmark / Back to Saved URL; a slash before the title when the open tab left the saved page (Mac `e917b732`, 2026-11-10) | row favicon menu; slanted separator between favicon and title | the slash only | ◐ | The slash was ported 2026-11-11 (single bookmark rows, the Mac's URL comparison: `www.` and a lone root slash do not count), seen on nuc. The favicon actions themselves are still missing. |
 | Bookmark folder icon picker | yes | yes (24 symbols) | ✅ | |
 | Close an open bookmark from its row (hover minus, Mac `7ec6e1b7`, 2026-10-27) | minus on hover while open | minus on hover while open | ✅ | Ported 2026-11-02, box-verified on nuc: `ShortcutRow::close_box`, a `fluent::kRemove` minus and a UIA button; a click closes the tab through `SidebarClose` and the bookmark stays. `kRemove` is new in `phi_fluent.h`. |
 | Space bookmark root: a collapsible row named after the Space above its bookmarks (Mac `705af790`, `b457988a`, `2a0a49c2`, `0372e721`, 2026-11-02/03) | presentation only, no persisted parent changes; collapsed state kept per Space across relaunch, local; hidden with no bookmarks and in Incognito; a focused bookmark floats under a collapsed root; drops insert at the top level, and a collapsed root highlights as a target | A row named after the Space above its bookmarks, children one level in, collapsed state per Space in local preferences, hidden with no bookmarks, in Incognito, in an agent Space and in Comfortable. A collapsed root highlights as a drop target and takes the item at the top level; an expanded one opens the gap under it | ◐ | Done 2026-11-04, see §9 port 6. Differs by decision: no floating row; a collapsed root holding the active bookmark wears the hover wash and full-strength text. Folder expansion is still per shell and not persisted. |
@@ -116,7 +118,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Reader View (typography prefs) | yes | yes + read-aloud HUD | ✅ | Windows has read-aloud; Mac does not. `-phi-auto-reader` automation entry point not ported (analytics doc). |
 | Peek (Shift-click, auto-peek from pins/bookmarks) | chips: Close, Open as Tab, Open as Split, Reader View | chips: Close, Open as Tab, Open as Split | ◐ | No Reader chip on the Peek card; Peek is omitted from session restore (`analytics.md`). Page commands and the address field aim at the presented Peek since 2026-10-27 (`a19624bb`, `c11849cf`; Back / Forward and the Reader toggle stay on the opener). The Shift-click SPA-router guard + opener video pause landed 2026-10-27 (`80f92213`: fork `phi_peek_link_guard.{h,cc}` runs the Mac's capture-phase click guard in a Phi isolated world of every document, gated on `peekViewEnabled`; `OpenUrlAsPeek` pauses the opener's videos in every frame). Still missing: appear / close flights and the opener dim. The Mac turned its guard and the video pause OFF on 2026-10-27 (`3a6cbf2e`, for the CDP session it retained per tab; still off at `8c0b8596`). Windows keeps its version, which holds no DevTools session, so Windows does more than the Mac here until the Mac re-enables it. |
 | Split view (two panes, drop hints, swap, convert, pin/bookmark a split) | yes | yes | ✅ | `split-view-chrome.md`. |
-| Splits of three or four panes (Mac `b3a379e3`, 2026-11-05) | up to four panes with a share each; add, remove and move a pane; drop hints for add left / right / top / bottom / between and replace; pinned and bookmarked splits of three or four (LocalStore V14 columns `splitPaneGuids`, `splitExtraPanes`, local only) | up to four panes with a share each, laid out by the fork; one merged sidebar row and strip cell; Split with Current, Alt-click and Split with New Tab add a pane; page drops insert or replace; row menu and hover chip move, remove and close panes; `splitView.*` verbs take `tabIds` and `fractions` | ◐ | Built 2026-11-10 (`split-view-chrome.md`, "Three and four panes"), checked end to end on nuc. Pinned, bookmarked and duplicated splits of three or four work too (one optional `splitExtraPanes` column, store format still 13; a pinned split keeps its later panes on its first row, unlike the Mac's `splitPaneGuids`). Missing: the hover preview and drag card beyond two panes, and per-pane rows in a stored cell's own menu. No pane move handle by decision: the hover chip and the row menu move panes. |
+| Splits of three or four panes (Mac `b3a379e3`, 2026-11-05) | up to four panes with a share each; add, remove and move a pane; drop hints for add left / right / top / bottom / between and replace; pinned and bookmarked splits of three or four (LocalStore V14 columns `splitPaneGuids`, `splitExtraPanes`, local only) | up to four panes with a share each, laid out by the fork; one merged sidebar row and strip cell; Split with Current, Alt-click and Split with New Tab add a pane; page drops insert or replace; row menu and hover chip move, remove and close panes; `splitView.*` verbs take `tabIds` and `fractions` | ◐ | Built 2026-11-10 (`split-view-chrome.md`, "Three and four panes"), checked end to end on nuc. Pinned, bookmarked and duplicated splits of three or four work too (one optional `splitExtraPanes` column, store format still 13; a pinned split keeps its later panes on its first row, unlike the Mac's `splitPaneGuids`). Missing: the hover preview and drag card beyond two panes, and per-pane rows in a stored cell's own menu. No pane move handle by decision: the hover chip and the row menu move panes. 2026-11-11 (Mac `153044b1`, `80bd9bdb`): the row menu's move rows act on the focused pane and say so, and Remove from Split dissolves the whole split (row menu and hover chip); run on nuc. Still open from that Mac batch: pane removal and replacement are not saved back into a pinned or bookmarked split (`6e786436`), and a stored split has no URL editor at all, so there is nothing to extend to every pane (`8422f31d`). |
 | Edge-to-edge web content (Mac `35f4d29c`, `0eceaa08`, 2026-11-05) | General ▸ Appearance toggle: no outer page margins in every layout, square corners in full screen, a soft page shadow on the sidebar | the page has no outer margin in any layout (`kContentMargin` 0, `phi_shell_layout.h`) | ⛔ | Decided 2026-11-10: nothing to switch. The Windows page card already runs to the window's edges (`windows-native-ui.md`), so the Mac's option would have one state. |
 | Split with New Tab (Tab menu, rebindable shortcut, omnibox pane picker, Hold to add an open tab; Mac `6985cc34`, 2026-10-28) | yes | ⋯ row, Ctrl+Shift+\\ (rebindable, group Tab), New Tab Page mode, Omnibox mode with Hold to add an open tab | ✅ | Ported 2026-11-02. The Mac's Ctrl+Shift+= is zoom-in on Windows, so the chord is Ctrl+Shift+\\. No blank-pane preview, by decision: it has no twin under a hosted HWND. Box-verified on nuc: New Tab Page mode splits, a second chord does nothing, an Omnibox card commit splits. ⋯ row: splits in New Tab Page mode, disabled and refused on a split tab, and from the real popup opens the Omnibox card, whose commit splits. Hold: on a row with an open tab, Ctrl+Enter pairs that tab with no third tab, plain Enter opens a fresh pane. The "Hold Ctrl" hint on the row was not looked at. |
 | Modifier clicks: Shift → Peek, Alt/⌥ → split, Ctrl+Alt/⌘⌥ → Kiosk | yes | yes | ✅ | |
@@ -184,7 +186,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Feature | Mac | Windows | Status | Gap / decision |
 |---|---|---|---|---|
 | Agent Spaces: overlay, fog, ring, pill (Take control / Hand back / Finish), "The agent needs you", Autoview | yes | yes | ✅ | Agent cues D26–D30 deferred: brand accent per agent, pulsing ring, window title, ⋯ on the capsule, omnibox dim/eye. |
-| Agent viewport follows the agent Space's own page area (Mac `1c39d48c`, 2026-10-29) | `agentSpace.panelSize` answers for the aimed Space, re-measured before each action | same; `VerbAgentPanelSize` answers in CSS pixels for the shell hosting the watched Space, else the focused user window, else the parked agent shell | ✅ | Ported 2026-11-02, box-verified on nuc at 300 % and 150 %: an agent tab matches a real tab's size hidden and watched, and follows sidebar and window changes at the next action. Before, the skill's un-aimed call was refused (`scope_not_allowed`), so agent pages laid out at the parked shell's fixed frame (1027×684 at 300 %, 1386×849 at 150 %) whatever the user's window was. The skill names the task, not the Mac's `windowId`, which resolves to the user's shell while watched. Hand-off fixed the same day, see `1c39d48c` in §9: an exact-size override made Chromium restore the hidden frame's size on clear (fork `web_contents_impl.cc`), and the pill's Take control left the page pinned until the agent exited (skill `ownershipChanged`). Also verified: several windows of different sizes, a visible bookmark bar, the Horizontal layout, no user window. |
+| Agent viewport follows the agent Space's own page area (Mac `1c39d48c`, 2026-10-29) | `agentSpace.panelSize` answers for the aimed Space, re-measured before each action | same; `VerbAgentPanelSize` answers in CSS pixels for the shell hosting the watched Space, else the focused user window, else the parked agent shell | ✅ | Ported 2026-11-02, box-verified on nuc at 300 % and 150 %: an agent tab matches a real tab's size hidden and watched, and follows sidebar and window changes at the next action. Before, the skill's un-aimed call was refused (`scope_not_allowed`), so agent pages laid out at the parked shell's fixed frame (1027×684 at 300 %, 1386×849 at 150 %) whatever the user's window was. The skill names the task, not the Mac's `windowId`, which resolves to the user's shell while watched. Hand-off fixed the same day, see `1c39d48c` in §9: an exact-size override made Chromium restore the hidden frame's size on clear (fork `web_contents_impl.cc`), and the pill's Take control left the page pinned until the agent exited (skill `ownershipChanged`). Also verified: several windows of different sizes, a visible bookmark bar, the Horizontal layout, no user window. 2026-11-11 (Mac `ff8e9238`): a hidden Space now answers with the page area it holds (the first one measured, then the last one it had on screen), so collapsing the user's sidebar no longer reflows the agent's page. nuc: 848 wide before and after hiding the sidebar, where a task first measured then got 1088. |
 | Agent Transcript console | View menu, pip "Show Transcript" | built, `kPhiTranscriptEnabled = false` | ⛔ | Decided off 2026-09-09 (`phi_features.h`). |
 | Agent approval (Allow Once / Always / Deny per agent) | yes | one admission switch | ⛔ | See Developer row in §4. |
 | Companion apps (Folio.app): signed admission past the agent switch, an allowlisted channel, `pageActions.*` rows in File and the page context menu, built-in Folio stepping aside (Mac `6a54718b`, `dc18d2c5`, fork `03d1b24aa3b`, 2026-10-30) | yes, `docs/companion-apps.md` | none. The fork half is compiled but dormant: nothing fills `PhiPageActionMenuRegistry`, so no row shows and the `PhiBridgeWrapper::InvokePageAction` stub is unreachable | ⛔ | Decided 2026-11-02: not needed for now. Reopen when a Windows companion app exists. Admission would need its own decision first: the pipe has no peer identity (decided 2026-09-08), and the Mac's check rests on kernel facts Windows lacks (live code signature, responsible process), so an Authenticode check of the image on disk proves less. |
@@ -200,13 +202,13 @@ Two standing decisions cover many rows and are not repeated in full:
 | Folio: Save to Folio, Open Folio, auto-save on site actions, Add Note | yes | yes | ✅ | `folio-port.md`. |
 | Folio library | Mirage `library.html` — the Mac DELETED its native library 2026-10-19 (`45a10144`; `docs/folio-native-library.md` now says the extension page is the only Folio UI) | Mirage `library.html` (`PhiFolio::OpenLibrary`) | ✅ | The 2026-10-19 "implement the native library" decision is void: both sides open `library.html`. The Library surface's Folio section (§2) hosts the same page. |
 
-## 7. Summary (2026-11-10)
+## 7. Summary (2026-11-11)
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 62 |
-| ◐ partial | 27 |
-| 🔧 to implement | 23 |
+| ✅ ported | 64 |
+| ◐ partial | 28 |
+| 🔧 to implement | 22 |
 | ⛔ deliberately left | 21 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
@@ -220,7 +222,7 @@ Export/Import user data · account export + deletion · invitation code
 (backend) · full screen · client-side
 external-link hook (Kiosk preference, App rules, return to the sending
 app) · `agentSpace.app.info` · tab audio indicator ·
-bookmark Separate/Back-to-saved ·
+bookmark Separate/Back-to-saved (the slash is there) ·
 What's new / Documentation / Improve
 translations rows · Export logs / Extension info rows · settings deeplink ·
 sync problem telemetry.
@@ -301,6 +303,40 @@ it, pointing at the owning doc.
 ## 9. Triage log
 
 One table per pass, newest first. Commits are in Mac history order.
+
+### 2026-11-11 — phibrowser-mac `28df0d0d` → `80bd9bdb` (16 commits, no merges)
+
+Read through the diffs and the Windows code, then ported on request the same day. Built
+(fork + client, framework ABI 3 → 4) and run on nuc at 300 % with a throwaway script over the
+control pipe and real input; nothing was added to the box tests. Two new ✅ rows (keep pinned
+tabs loaded §2, View ▸ Appearance §1); the bookmark favicon row went 🔧 → ◐.
+
+**Left open, both about stored splits of three or four panes:**
+
+1. `6e786436` **save pane changes into the split's bookmark or pinned tabs.** M. Windows
+   writes a stored split's panes once, when the cell is made. Closing one pane of an open
+   stored split, or replacing one by a page drop, is not written back. Needs the tag rules
+   in `phi_coordinator.cc` worked through and box time.
+2. `8422f31d` **edit every pane of a stored split.** M. Windows offers Edit URL on single
+   pins and bookmarks only, through a one-field prompt. A split editor would be new UI
+   here, for pairs too.
+
+| Commit | Subject | Verdict | Windows note |
+|---|---|---|---|
+| `ff8e9238` | fix: keep a hidden agent Space's viewport from following the user's window layout | done | `VerbAgentPanelSize` holds the size on the task record (`PhiAgentSpaces::Space::held_page_*`). nuc: held at 848 with the sidebar hidden. §6 row. |
+| `e917b732` | feat: show a slash before the title when an open bookmark navigated away | done | `ShortcutRow::navigated_away`, drawn by `PhiFillSlantedCapsuleAA`. nuc: no slash on the saved page or its `www.` twin, a slash after a move to another URL. No hover hiding: Windows has no favicon return button. §2 row. |
+| `2749084b` | fix: keep a closing split bookmark pane out of the sidebar tab list | skip | A Mac ordering fix in `updateNormalTabs`. The Windows rows come from one snapshot per rebuild. Not checked on a box whether a row flashes when a pane of a bound split closes. |
+| `153044b1` | improve: split context menu moves the focused pane and says so | done | The row menu passes the focused pane, greyed when the focus is outside the split. nuc: with A focused and the menu opened on the row, the move turned ABC into BAC. The hover chip still moves its own pane. |
+| `7ac5208c` | fix: keep file and extension URLs intact when saving bookmarks and opening typed addresses | skip | The Windows client has no URL fix-up of its own; the fork's omnibox classifies typed text. |
+| `8422f31d` | fix: edit every pane of a three- or four-pane split bookmark or pinned split | watch | See "Left open" 2. |
+| `6e786436` | feat: save pane reorder, replace and removal into the split's bookmark or pinned tabs | port | Not done, see "Left open" 1. |
+| `b36d2c7d` | fix: lock pane move and removal on a split attached to a bookmark, as on a pinned split | skip | Already so: a stored split has no hover chip and its cell menu has no pane rows. A stored pair can still swap, and the swap is saved. |
+| `6952fddf` | feat: add Appearance submenu to the View menu | done | ⋯ ▸ Layout ▸ Appearance. nuc: Dark, Light and Use system setting each land. §1 row. |
+| `375fed24`, `734319a9` | feat: keep pinned tabs loaded, with its setting | done | Fork `SetTabKeepLoaded` over the Mac's `PhiKeepLoaded`, client `PhiSidebarView::PushKeepLoaded`, Advanced switch. §2 row. |
+| `ae257280`, `436aafc6` | i18n: split editor labels, keep pinned tabs loaded, View menu Appearance, focused pane wording, Bottom Buttons | done | Catalog regenerated; the four move rows changed wording in every language. The split editor keys are not taken. |
+| `14b4586c` | fix: keep extensions popup padding even when the grid scrolls | skip | A SwiftUI ScrollView width. The Windows popover draws its own grid and scroll cue. |
+| `ce1f357f` | feat: let users choose which sidebar bottom buttons are shown | done | Submenu at the end of the sidebar area menu, vertical layout only. nuc: the Profile row unticks and ticks through the real menu, and the bar closes up. §2 row. |
+| `80bd9bdb` | improve: Remove from Split dissolves the whole split, whatever its width | done | Row menu and hover chip both break the split. nuc: three panes became three tabs. `splitView` verbs can still take one pane out. |
 
 ### 2026-11-10 — phibrowser-mac `df894346` → `28df0d0d` (64 commits, 3 merges)
 

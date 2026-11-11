@@ -76,6 +76,11 @@ class PhiAgentSpaces {
     // (persistent, or while the user holds control).
     uint64_t keepalive_deadline_ms = 0;
     std::deque<UserMessage> pending_messages;  // capped kMaxQueued
+    // The page area (CSS px) agentSpace.panelSize answers with while the
+    // Space is hidden: the first one measured, then the last one it had on
+    // screen (the Mac's AgentTask.heldPageArea, `ff8e9238`). 0 = none yet.
+    int held_page_width = 0;
+    int held_page_height = 0;
   };
 
   PhiAgentSpaces();

@@ -1364,6 +1364,31 @@ bool PhiFillEllipseAA(HDC dc, const RECT& rect, COLORREF fill) {
   return true;
 }
 
+bool PhiFillSlantedCapsuleAA(HDC dc,
+                             const RECT& rect,
+                             int width,
+                             float degrees,
+                             COLORREF fill) {
+  const int w = rect.right - rect.left;
+  const int h = rect.bottom - rect.top;
+  if (w <= 0 || h <= 0 || width <= 0) {
+    return false;
+  }
+  const D2D1_POINT_2F centre = D2D1::Point2F(w / 2.0f, h / 2.0f);
+  const float half = width / 2.0f;
+  const D2D1_ROUNDED_RECT capsule = D2D1::RoundedRect(
+      D2D1::RectF(centre.x - half, 0.0f, centre.x + half,
+                  static_cast<float>(h)),
+      half, half);
+  return BlendD2DShape(dc, rect, 0, 0, fill,
+                       [&](ID2D1RenderTarget* target, ID2D1Brush* brush) {
+                         target->SetTransform(
+                             D2D1::Matrix3x2F::Rotation(degrees, centre));
+                         target->FillRoundedRectangle(capsule, brush);
+                         target->SetTransform(D2D1::Matrix3x2F::Identity());
+                       });
+}
+
 bool PhiStrokeEllipseAA(HDC dc, const RECT& rect, COLORREF ink, int width) {
   const int w = rect.right - rect.left;
   const int h = rect.bottom - rect.top;

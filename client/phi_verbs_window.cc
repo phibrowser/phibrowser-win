@@ -1073,6 +1073,14 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
           coordinator_->settings().tab_switcher_all_spaces);
   out.Set("dimUnloadedTabIcons",
           coordinator_->settings().dim_unloaded_tab_icons);
+  out.Set("keepPinnedTabsLoaded",
+          coordinator_->settings().keep_pinned_tabs_loaded);
+  out.Set("sidebarBottomBarShowsProfile",
+          coordinator_->settings().bottom_bar_profile);
+  out.Set("sidebarBottomBarShowsDownloads",
+          coordinator_->settings().bottom_bar_downloads);
+  out.Set("sidebarBottomBarShowsFeedback",
+          coordinator_->settings().bottom_bar_feedback);
   out.Set("sidebarTransparency",
           coordinator_->settings().sidebar_transparency);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
@@ -1133,6 +1141,24 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   if (std::optional<bool> dots = ctx.params.FindBool("showOpenTabIndicators")) {
     coordinator_->SetShowOpenTabIndicators(*dots);
     ok = true;
+  }
+  if (std::optional<bool> keep = ctx.params.FindBool("keepPinnedTabsLoaded")) {
+    coordinator_->SetKeepPinnedTabsLoaded(*keep);
+    ok = true;
+  }
+  const struct {
+    const char* key;
+    PhiBottomButton button;
+  } kBottomButtons[] = {
+      {"sidebarBottomBarShowsProfile", PhiBottomButton::kProfile},
+      {"sidebarBottomBarShowsDownloads", PhiBottomButton::kDownloads},
+      {"sidebarBottomBarShowsFeedback", PhiBottomButton::kFeedback},
+  };
+  for (const auto& entry : kBottomButtons) {
+    if (std::optional<bool> shown = ctx.params.FindBool(entry.key)) {
+      coordinator_->SetBottomBarShows(entry.button, *shown);
+      ok = true;
+    }
   }
   if (std::optional<bool> dim = ctx.params.FindBool("dimUnloadedTabIcons")) {
     coordinator_->SetDimUnloadedTabIcons(*dim);
@@ -1208,6 +1234,14 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
           coordinator_->settings().tab_switcher_all_spaces);
   out.Set("dimUnloadedTabIcons",
           coordinator_->settings().dim_unloaded_tab_icons);
+  out.Set("keepPinnedTabsLoaded",
+          coordinator_->settings().keep_pinned_tabs_loaded);
+  out.Set("sidebarBottomBarShowsProfile",
+          coordinator_->settings().bottom_bar_profile);
+  out.Set("sidebarBottomBarShowsDownloads",
+          coordinator_->settings().bottom_bar_downloads);
+  out.Set("sidebarBottomBarShowsFeedback",
+          coordinator_->settings().bottom_bar_feedback);
   out.Set("sidebarTransparency",
           coordinator_->settings().sidebar_transparency);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
