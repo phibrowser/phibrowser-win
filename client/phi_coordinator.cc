@@ -2123,42 +2123,24 @@ void PhiCoordinator::NoteStoredPaneClosing(int64_t browser_id, int tab_id) {
   }
   const phi_framework::SplitSnapshot* split =
       window_model_.SplitOfTab(browser, TabId{tab_id});
-  const std::optional<PhiRow> row = tab_store_.Find(tag.guid);
-  if (!split || !row || row->url_b.empty()) {
-    return;
+  if (!split) {
+    return;  // A single stored tab closing: its cell simply goes unopened.
   }
-  std::vector<PhiRow::ExtraPane> panes = StoredPaneRecords(*row);
-  const std::vector<TabId> live = PhiSplitPanes(*split);
-  // Only a split that is open in full and wider than a pair shrinks: a pair
-  // dissolves instead, and a split still opening its panes is left alone.
-  if (live.size() <= 2 || live.size() != panes.size() ||
-      tag.pane >= static_cast<int>(panes.size())) {
-    return;
-  }
-  // Every live pane must be this cell's, each at its own slot.
-  std::vector<int> bound(panes.size(), 0);
-  for (const TabId pane : live) {
+  // The cell keeps every pane it saved. The split that is left is no longer
+  // what the cell stands for, so its panes go free: they stay split, as a
+  // row of the ordinary tab list, and the cell reads as not open.
+  bool freed = false;
+  for (const TabId pane : PhiSplitPanes(*split)) {
     const phi_framework::TabSnapshot* tab = window_model_.FindTab(browser, pane);
     SidebarTag pane_tag;
-    if (!tab || !ParseTag(tab->tag, &pane_tag) || pane_tag.guid != tag.guid ||
-        pane_tag.pane >= static_cast<int>(bound.size()) ||
-        bound[static_cast<size_t>(pane_tag.pane)] != 0) {
-      return;
+    if (tab && ParseTag(tab->tag, &pane_tag) && pane_tag.guid == tag.guid) {
+      TagTab(browser, pane.value, "");
+      freed = true;
     }
-    bound[static_cast<size_t>(pane_tag.pane)] = pane.value;
   }
-  panes.erase(panes.begin() + tag.pane);
-  if (!RewriteStoredSplit(tag.guid, panes)) {
-    return;
+  if (freed) {
+    registry_.InvalidateAll();
   }
-  // The closing tab goes free and the later panes move up a slot.
-  TagTab(browser, tab_id, "");
-  for (size_t i = static_cast<size_t>(tag.pane) + 1; i < bound.size(); ++i) {
-    TagTab(browser, bound[i],
-           TagForPane(tag.guid, static_cast<int>(i) - 1).c_str());
-  }
-  registry_.InvalidateAll();
-  NotifySettingsObservers(PhiSettingsChange::kStoredRows);
 }
 
 void PhiCoordinator::NoteStoredPaneReplaced(int64_t browser_id,

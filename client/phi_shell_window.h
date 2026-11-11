@@ -275,15 +275,17 @@ class SidebarHost {
       const std::string& guid) const = 0;
   virtual bool SetStoredSplitPanes(const std::string& guid,
                                    const std::vector<StoredPane>& panes) = 0;
-  // The Mac's `6e786436`: a stored split follows its live split when the
-  // user takes ONE pane out of it or replaces one. Both are called BEFORE
-  // the framework call that does it, and do nothing for a tab no cell is
-  // bound to.
-  //  * Closing: the user is closing just the pane `tab_id` of a fully open
-  //    split of three or four. The cell drops that pane and the later panes
-  //    move up. Panes also leave one at a time while a whole split, a
-  //    window or the app closes, which must leave the cell intact, so only
-  //    the single-pane close paths call this.
+  // What a stored split does when the user takes ONE pane out of its live
+  // split or replaces one. Both are called BEFORE the framework call that
+  // does it, and do nothing for a tab no cell is bound to.
+  //  * Closing: the user is closing just the pane `tab_id` (Ctrl+W, the
+  //    chip's Close pane). The cell is NOT changed: it keeps every pane it
+  //    saved. The panes that stay are let go of instead, so what is left of
+  //    the split moves to the ordinary tab list and the cell reads as not
+  //    open (decided 2026-11-11; the Mac's `6e786436` drops the pane from
+  //    the cell instead). Panes also leave one at a time while a whole
+  //    split, a window or the app closes, which must leave the binding
+  //    alone, so only the single-pane close paths call this.
   //  * Replaced: `incoming_tab` is about to take the pane `evicted_tab`
   //    holds. The cell saves the incoming page there and binds its tab; the
   //    evicted tab goes free.

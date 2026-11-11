@@ -1048,8 +1048,8 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       // cell or a bookmark is no row in the list, and Ctrl+W must still
       // close it (lane 1 D2).
       if (c->MenuFramework() && target.valid() && c->MenuActiveTab().valid()) {
-        // Closing the focused pane of a stored split takes just that pane
-        // out of what the cell saves (the Mac's noteUserRemovingSplitPane).
+        // Closing the focused pane of a stored split leaves its cell as it
+        // was and hands the panes that stay to the ordinary tab list.
         if (SidebarHost* sidebar = c->MenuSidebarHost()) {
           sidebar->NoteStoredPaneClosing(target.value,
                                          c->MenuActiveTab().value);

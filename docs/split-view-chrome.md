@@ -65,15 +65,18 @@ middle pane is square all round.
   panes carry the cell's tag). Their panes stay as saved: move, swap and
   Remove from Split are greyed in the menus and refused by the commands
   (`stored_split_row` in `phi_coordinator.cc`), and there is no move grip.
-  Three things do change what the cell saves. Edit URL in the cell's menu
+  Two things do change what the cell saves. Edit URL in the cell's menu
   opens a name and an address per pane (`PhiPromptPanes`,
   `SetStoredSplitPanes`); an open pane whose address changed loads it.
-  Closing just one pane of a fully open split of three or four (Ctrl+W on
-  the focused pane, the chip's Close pane) drops that pane from the cell
-  and the later panes move up (`NoteStoredPaneClosing`); panes that leave
-  because the whole split, the window or the app closes do not. A tab
+  A tab
   dropped onto a pane of a bookmark-bound split is saved as that pane
   (`NoteStoredPaneReplaced`); a pinned split takes no drop.
+  Closing just one pane (Ctrl+W on the focused pane, the chip's Close pane)
+  does NOT change the cell: it keeps every pane it saved, and the panes
+  that stay are let go of (`NoteStoredPaneClosing` clears their tags), so
+  what is left of the split becomes a row of the ordinary tab list and the
+  cell reads as not open. Decided 2026-11-11; the Mac drops the closed pane
+  from the cell instead. Opening the cell again brings back all its panes.
 * **The move grip** (the Mac's `PaneMoveHandle`, 2026-11-11). A pill at the
   top of the pane under the pointer, shown while the pointer is in the top
   44 DIP of a pane. Dragging it along the split moves the pane to the
