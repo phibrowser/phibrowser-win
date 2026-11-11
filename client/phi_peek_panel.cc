@@ -4,6 +4,10 @@
 
 #include "client/phi_peek_panel.h"
 
+#include <string_view>
+
+#include "client/phi_card_flight.h"
+
 #include "client/phi_dwrite.h"
 #include "client/phi_fluent.h"
 
@@ -59,6 +63,12 @@ constexpr int kShadowBlur = 20;
 constexpr int kShadowOffsetY = 6;
 constexpr double kShadowAlphaLight = 0.44;
 constexpr double kShadowAlphaDark = 0.60;
+// The dim over the opener's page while a peek is up (the Mac shows that
+// page at half strength).
+constexpr double kScrimAlphaLight = 0.22;
+constexpr double kScrimAlphaDark = 0.36;
+// The Mac's flightStartWidth: the link-sized card the panel grows out of.
+constexpr int kFlightStartWidth = 44;
 
 enum HotControl {
   kHotClose = 0,
@@ -123,93 +133,142 @@ class PhiPeekShadow : public PhiPanel {
     return CreatePanel(spec, shell, nothing, options);
   }
 
-  // `radius`, `blur` and `margin` are already in device pixels. A call with
-  // the inputs of the last one is free: the committed layer still holds
-  // those pixels, and a reposition only moves the window.
+  // The layer covers the opener's whole page card: a dim over the page
+  // (the Mac's de-emphasised background, its page at half strength behind a
+  // peek) and, round `card`, the card's drop shadow. `card` is in the
+  // layer's own pixels; the radii and the blur are device pixels. A call
+  // with the inputs of the last one is free.
   void Render(int width,
               int height,
-              int margin,
+              const RECT& card,
               double radius,
               double blur,
-              double base_alpha) {
+              int offset_y,
+              double shadow_alpha,
+              double scrim_alpha,
+              double page_radius) {
     if (!alive() || width <= 0 || height <= 0) {
       return;
     }
-    const Inputs inputs = {width, height, margin, radius, blur, base_alpha};
-    if (rendered_ && inputs == last_) {
+    const Inputs inputs = {width, height, card.left, card.top, card.right,
+                           card.bottom, radius, blur, offset_y, shadow_alpha,
+                           scrim_alpha, page_radius};
+    if (layer_ && inputs == last_) {
       return;
     }
-    PhiLayerSurface layer(width, height);
-    if (!layer.valid()) {
+    auto layer = std::make_unique<PhiLayerSurface>(width, height);
+    if (!layer->valid()) {
       return;
     }
-    // The card's silhouette, centred in the surface: everything is expressed
-    // as a signed distance to it, which is what makes the corners fade like
-    // the edges instead of stepping.
-    const double cx = width / 2.0;
-    const double cy = height / 2.0;
-    const double half_x = (width - 2.0 * margin) / 2.0 - radius;
-    const double half_y = (height - 2.0 * margin) / 2.0 - radius;
     // SAFETY: the layer holds exactly width*height 32-bit pixels.
     const base::span<uint32_t> pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
-        static_cast<uint32_t*>(layer.bits()),
+        static_cast<uint32_t*>(layer->bits()),
         static_cast<size_t>(width) * height));
-    // Everything deeper inside than half a blur past the corner arcs is at
-    // full strength (t clamps to 1 there), so only a band round the edge
-    // needs the distance field: a fill, then four strips, instead of a
-    // sqrt for every pixel of a card-sized surface.
-    std::fill(pixels.begin(), pixels.end(),
-              static_cast<uint32_t>(base_alpha * 255.0 + 0.5) << 24);
-    const int band = margin + static_cast<int>(std::ceil(radius + blur)) + 2;
-    const int band_x = std::min(width, band);
-    const int band_y = std::min(height, band);
-    for (int y = 0; y < height; ++y) {
-      const bool edge_row = y < band_y || y >= height - band_y;
-      for (int x = 0; x < width; ++x) {
-        if (!edge_row && x == band_x) {
-          x = std::max(x, width - band_x);  // Skip the solid middle.
-        }
-        const double dx = std::abs(x + 0.5 - cx) - half_x;
-        const double dy = std::abs(y + 0.5 - cy) - half_y;
-        double distance;
-        if (dx <= 0.0 && dy <= 0.0) {
-          distance = std::max(dx, dy) - radius;  // Well inside: no sqrt.
-        } else {
-          const double ox = std::max(dx, 0.0);
-          const double oy = std::max(dy, 0.0);
-          distance = std::sqrt(ox * ox + oy * oy) - radius;
-        }
-        // Centred on the edge — full strength half a blur inside, nothing
-        // half a blur outside, half strength ON it. Ramping from the edge
-        // outwards instead leaves a hard band of full black under the
-        // offset card.
-        const double t = std::clamp(0.5 - distance / blur, 0.0, 1.0);
-        const double alpha = base_alpha * t * t * (3.0 - 2.0 * t);
-        // Premultiplied black: the colour channels stay 0 at every alpha.
-        pixels[static_cast<size_t>(y) * width + x] =
-            static_cast<uint32_t>(alpha * 255.0 + 0.5) << 24;
+    // Premultiplied black: the colour channels stay 0 at every alpha.
+    const auto black = [](double alpha) {
+      return static_cast<uint32_t>(std::clamp(alpha, 0.0, 1.0) * 255.0 + 0.5)
+             << 24;
+    };
+    std::fill(pixels.begin(), pixels.end(), black(scrim_alpha));
+    // The page card's own rounded corners stay clear of the dim.
+    const int corner = static_cast<int>(std::ceil(page_radius));
+    for (int y = 0; y < std::min(corner, height); ++y) {
+      for (int x = 0; x < std::min(corner, width); ++x) {
+        const double ox = page_radius - (x + 0.5);
+        const double oy = page_radius - (y + 0.5);
+        const double cover = std::clamp(
+            0.5 - (std::sqrt(ox * ox + oy * oy) - page_radius), 0.0, 1.0);
+        const uint32_t value = black(scrim_alpha * cover);
+        pixels[static_cast<size_t>(y) * width + x] = value;
+        pixels[static_cast<size_t>(y) * width + (width - 1 - x)] = value;
+        pixels[static_cast<size_t>(height - 1 - y) * width + x] = value;
+        pixels[static_cast<size_t>(height - 1 - y) * width + (width - 1 - x)] =
+            value;
       }
     }
-    rendered_ = layer.Commit(hwnd(), nullptr);
+    if (shadow_alpha > 0.0) {
+      // The card's silhouette, a little lower: a signed distance to it, so
+      // the corners fade like the edges. Only a band round the edge needs
+      // it; deeper inside the card covers the layer anyway.
+      const double cx = (card.left + card.right) / 2.0;
+      const double cy = (card.top + card.bottom) / 2.0 + offset_y;
+      const double half_x = (card.right - card.left) / 2.0 - radius;
+      const double half_y = (card.bottom - card.top) / 2.0 - radius;
+      const int reach = static_cast<int>(std::ceil(blur)) + 2;
+      const int inner = static_cast<int>(std::ceil(radius + blur)) + 2;
+      const int top = std::max(0, static_cast<int>(card.top) + offset_y - reach);
+      const int bottom =
+          std::min(height, static_cast<int>(card.bottom) + offset_y + reach);
+      const int left = std::max(0, static_cast<int>(card.left) - reach);
+      const int right = std::min(width, static_cast<int>(card.right) + reach);
+      for (int y = top; y < bottom; ++y) {
+        const bool edge_row = y < card.top + offset_y + inner ||
+                              y >= card.bottom + offset_y - inner;
+        for (int x = left; x < right; ++x) {
+          if (!edge_row && x == card.left + inner) {
+            x = std::max(x, static_cast<int>(card.right) - inner);
+          }
+          const double dx = std::abs(x + 0.5 - cx) - half_x;
+          const double dy = std::abs(y + 0.5 - cy) - half_y;
+          double distance;
+          if (dx <= 0.0 && dy <= 0.0) {
+            distance = std::max(dx, dy) - radius;
+          } else {
+            const double ox = std::max(dx, 0.0);
+            const double oy = std::max(dy, 0.0);
+            distance = std::sqrt(ox * ox + oy * oy) - radius;
+          }
+          // Centred on the edge: full strength half a blur inside, nothing
+          // half a blur outside.
+          const double t = std::clamp(0.5 - distance / blur, 0.0, 1.0);
+          const double shadow = shadow_alpha * t * t * (3.0 - 2.0 * t);
+          pixels[static_cast<size_t>(y) * width + x] =
+              black(scrim_alpha + (1.0 - scrim_alpha) * shadow);
+        }
+      }
+    }
+    layer_ = std::move(layer);
     last_ = inputs;
+    layer_->Commit(hwnd(), nullptr, opacity_);
+  }
+
+  // The whole layer's strength: the dim fades in with the card's flight.
+  void SetOpacity(double opacity) {
+    const BYTE value =
+        static_cast<BYTE>(std::clamp(opacity, 0.0, 1.0) * 255.0 + 0.5);
+    if (value == opacity_) {
+      return;
+    }
+    opacity_ = value;
+    if (layer_ && alive()) {
+      layer_->Commit(hwnd(), nullptr, opacity_);
+    }
   }
 
  private:
   struct Inputs {
     int width = 0;
     int height = 0;
-    int margin = 0;
+    LONG left = 0, top = 0, right = 0, bottom = 0;
     double radius = 0;
     double blur = 0;
-    double alpha = 0;
+    int offset_y = 0;
+    double shadow_alpha = 0;
+    double scrim_alpha = 0;
+    double page_radius = 0;
     bool operator==(const Inputs& other) const {
       return width == other.width && height == other.height &&
-             margin == other.margin && radius == other.radius &&
-             blur == other.blur && alpha == other.alpha;
+             left == other.left && top == other.top && right == other.right &&
+             bottom == other.bottom && radius == other.radius &&
+             blur == other.blur && offset_y == other.offset_y &&
+             shadow_alpha == other.shadow_alpha &&
+             scrim_alpha == other.scrim_alpha &&
+             page_radius == other.page_radius;
     }
   };
   Inputs last_;
-  bool rendered_ = false;
+  std::unique_ptr<PhiLayerSurface> layer_;
+  BYTE opacity_ = 255;
 };
 
 // ---------------------------------------------------------------------------
@@ -294,6 +353,62 @@ PhiPeekPanel::PhiPeekPanel(int64_t window_id,
   // reorder above it.
   Reposition();
   RefreshState();
+  StartAppearFlight();
+}
+
+PhiCardFlight::Look PhiPeekPanel::FlightLook() const {
+  const PhiPalette colors = QueryPalette();
+  PhiCardFlight::Look look;
+  look.radius_px = Scaled(kCardRadius);
+  look.fill = colors.flyout;
+  look.stroke = colors.stroke_strong;
+  look.shadow_margin_px = Scaled(kShadowMargin);
+  look.shadow_blur_px = std::max(1, Scaled(kShadowBlur));
+  look.shadow_offset_y_px = Scaled(kShadowOffsetY);
+  look.shadow_alpha = colors.dark ? kShadowAlphaDark : kShadowAlphaLight;
+  return look;
+}
+
+void PhiPeekPanel::StartAppearFlight() {
+  // The Mac's appear flight: the card grows out of the link the user
+  // pressed. The pointer is still on that link when the peek's browser
+  // arrives; a peek opened any other way grows from its own centre.
+  RECT card = {};
+  ::GetWindowRect(hwnd(), &card);
+  flight_anchor_ = PhiCardFlight::Anchor();
+  POINT cursor = {};
+  if (::GetCursorPos(&cursor) && ::PtInRect(&card, cursor)) {
+    flight_anchor_.has_origin = true;
+    flight_anchor_.origin = cursor;
+    flight_anchor_.start_width_px = Scaled(kFlightStartWidth);
+  }
+  if (shadow_) {
+    shadow_->SetOpacity(0.0);
+    shadow_->ShowPanel();  // The dim comes up with the flight.
+  }
+  flight_id_ = PhiCardFlight::FlyIn(
+      opener_ ? opener_->shell_hwnd() : nullptr, card, flight_anchor_,
+      FlightLook(), [this] { LandAppearFlight(); },
+      [this](double progress) {
+        if (shadow_) {
+          shadow_->SetOpacity(progress);
+        }
+      });
+  UpdateShadow();  // Without the card's shadow while it flies.
+  if (!flight_id_) {
+    LandAppearFlight();
+  }
+}
+
+void PhiPeekPanel::LandAppearFlight() {
+  flight_id_ = 0;
+  if (shadow_) {
+    shadow_->SetOpacity(1.0);
+  }
+  UpdateShadow();  // The card's own shadow, now that it is in place.
+  if (!shown_wanted_) {
+    return;  // Its opener stopped being the page on screen meanwhile.
+  }
   Show();
   if (browser_hwnd_ && ::IsWindow(browser_hwnd_)) {
     ::SetFocus(browser_hwnd_);
@@ -369,6 +484,7 @@ PhiPalette PhiPeekPanel::QueryPalette() const {
 }
 
 PhiPeekPanel::~PhiPeekPanel() {
+  PhiCardFlight::Cancel(flight_id_);
   // Out from under the card before the card goes, hidden first — never a
   // visible page at the desktop's top-left while Chromium closes it.
   PhiReleaseHostedChild(browser_hwnd_);
@@ -440,33 +556,50 @@ void PhiPeekPanel::UpdateShadow() {
   if (!shadow_ || !shadow_->alive() || !alive()) {
     return;
   }
+  if (!opener_) {
+    return;
+  }
+  // The layer lies over the opener's whole page card (both rects are in the
+  // shell's client space): the dim everywhere, the shadow round the card.
   RECT card = {};
   ::GetWindowRect(hwnd(), &card);
-  const int margin = Scaled(kShadowMargin);
-  const int width = (card.right - card.left) + margin * 2;
-  const int height = (card.bottom - card.top) + margin * 2;
+  ::MapWindowPoints(nullptr, shadow_->parent(),
+                    reinterpret_cast<POINT*>(&card), 2);
+  const RECT content = opener_->ContentRect();
+  const int width = content.right - content.left;
+  const int height = content.bottom - content.top;
   if (width <= 0 || height <= 0) {
     return;
   }
-  // The card's own top-left, in the shell's client space, then out by the
-  // margin and down by the shadow's offset.
-  POINT origin = {card.left, card.top};
-  ::ScreenToClient(shadow_->parent(), &origin);
-  const RECT bounds = {origin.x - margin,
-                       origin.y - margin + Scaled(kShadowOffsetY),
-                       origin.x - margin + width,
-                       origin.y - margin + Scaled(kShadowOffsetY) + height};
-  shadow_->SetPanelBounds(bounds);
-
+  shadow_->SetPanelBounds(content);
+  ::OffsetRect(&card, -content.left, -content.top);
   const PhiPalette colors = QueryPalette();
-  shadow_->Render(width, height, margin, Scaled(kCardRadius),
-                  std::max(1, Scaled(kShadowBlur)),
-                  colors.dark ? kShadowAlphaDark : kShadowAlphaLight);
+  // The card's own shadow waits for the flight to land: until then the
+  // flying card carries one of its own.
+  shadow_->Render(width, height, card, Scaled(kCardRadius),
+                  std::max(1, Scaled(kShadowBlur)), Scaled(kShadowOffsetY),
+                  flight_id_ ? 0.0
+                             : (colors.dark ? kShadowAlphaDark
+                                            : kShadowAlphaLight),
+                  colors.dark ? kScrimAlphaDark : kScrimAlphaLight,
+                  opener_->ContentCornerRadius());
 }
 
 void PhiPeekPanel::SetSurfaceShown(bool shown) {
   if (!alive()) {
     return;
+  }
+  shown_wanted_ = shown;
+  if (flight_id_) {
+    if (shown) {
+      return;  // The flight shows it when it lands.
+    }
+    PhiCardFlight::Cancel(flight_id_);
+    flight_id_ = 0;
+    if (shadow_) {
+      shadow_->SetOpacity(1.0);
+    }
+    UpdateShadow();
   }
   if (shown) {
     Show();  // The shadow, then the card, then the chips, in that order.
@@ -712,6 +845,32 @@ int64_t PhiPeekPanel::surface_tab_id() const {
 
 void PhiPeekPanel::NoteEndReason(const char* reason) {
   end_reason_ = reason;
+  // The Mac's close flight (prepareToClose): a peek the user closes shrinks
+  // back to where it came from. A snapshot does the flying, taken now while
+  // the page is still on screen, and the real card goes at once. A peek that
+  // becomes a tab or a split has somewhere else to go.
+  if (reason && std::string_view(reason) == "closed" && alive() &&
+      IsPanelVisible() && !flight_id_) {
+    RECT card = {};
+    ::GetWindowRect(hwnd(), &card);
+    // The page's dim lifts with the flight, which draws it: this panel and
+    // its own layers go as soon as the peek's browser does, mid-flight.
+    PhiCardFlight::Look look = FlightLook();
+    if (opener_) {
+      look.scrim = opener_->ContentRect();
+      ::MapWindowPoints(opener_->shell_hwnd(), nullptr,
+                        reinterpret_cast<POINT*>(&look.scrim), 2);
+      look.scrim_alpha =
+          QueryPalette().dark ? kScrimAlphaDark : kScrimAlphaLight;
+      look.scrim_radius_px = opener_->ContentCornerRadius();
+    }
+    PhiCardFlight::FlyOut(opener_ ? opener_->shell_hwnd() : nullptr, card,
+                          flight_anchor_, look);
+    HidePanel();
+    if (shadow_) {
+      shadow_->HidePanel();
+    }
+  }
 }
 
 void PhiPeekPanel::Dismiss() {

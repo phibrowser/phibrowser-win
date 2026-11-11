@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_bookmark_manager.h"
+#include "client/phi_pop_animation.h"
 
 #include <commctrl.h>
 #include <windowsx.h>
@@ -883,7 +884,7 @@ void PhiBookmarkManager::OnContextMenu(POINT pt) {
 
   POINT screen = pt;
   ::ClientToScreen(hwnd(), &screen);
-  const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+  const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON,
       screen.x, screen.y, 0, hwnd(), nullptr));
   ::DestroyMenu(menu);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_create_space_panel.h"
+#include "client/phi_pop_animation.h"
 
 #include <commctrl.h>  // EM_SETCUEBANNER
 #include <windowsx.h>
@@ -782,7 +783,7 @@ void PhiCreateSpacePanel::ShowProfileMenu(const Geometry& g) {
                 PhiStr("sidebar.createSpace.profilePicker.newProfileAction"));
   POINT screen = {g.pill.left, g.pill.bottom};
   ::ClientToScreen(hwnd(), &screen);
-  const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+  const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, screen.x, screen.y,
       0, hwnd(), nullptr));
   ::DestroyMenu(menu);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_sync_setup_window.h"
+#include "client/phi_pop_animation.h"
 
 #include <commctrl.h>
 #include <shellapi.h>
@@ -1024,7 +1025,7 @@ void PhiSyncSetupWindow::PickLocal(int row) {
                 register_id, PhiStr("sync.setup.profiles.registerNew"));
   POINT pt = {rows_[l].pill_rect.left, rows_[l].pill_rect.bottom};
   ::ClientToScreen(hwnd(), &pt);
-  const UINT picked = static_cast<UINT>(::TrackPopupMenu(
+  const UINT picked = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_LEFTALIGN, pt.x, pt.y, 0,
       hwnd(), nullptr));
   ::DestroyMenu(menu);
@@ -1086,7 +1087,7 @@ void PhiSyncSetupWindow::PickRemote(int row) {
       rows_[static_cast<size_t>(remote_header_index_ + 1) + r];
   POINT pt = {picker.pill_rect.left, picker.pill_rect.bottom};
   ::ClientToScreen(hwnd(), &pt);
-  const UINT picked = static_cast<UINT>(::TrackPopupMenu(
+  const UINT picked = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_LEFTALIGN, pt.x, pt.y, 0,
       hwnd(), nullptr));
   ::DestroyMenu(menu);

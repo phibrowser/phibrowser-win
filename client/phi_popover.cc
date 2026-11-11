@@ -4,6 +4,8 @@
 
 #include "client/phi_popover.h"
 
+#include "client/phi_pop_animation.h"
+
 #include <dwmapi.h>
 
 #pragma comment(lib, "dwmapi.lib")
@@ -101,6 +103,13 @@ bool PhiPopover::CreatePopover(const ClassSpec& spec,
   ::SetWindowPos(hwnd(), nullptr, target.left, target.top,
                  target.right - target.left, target.bottom - target.top,
                  SWP_NOZORDER | SWP_NOACTIVATE);
+  // Where it will grow from: the middle of what it hangs off. A popover
+  // placed at an explicit point has no such thing and takes the pointer.
+  has_pop_source_ = placement.side != PhiPopoverSide::kExplicit &&
+                    placement.anchor.right > placement.anchor.left &&
+                    placement.anchor.bottom > placement.anchor.top;
+  pop_source_ = {(placement.anchor.left + placement.anchor.right) / 2,
+                 (placement.anchor.top + placement.anchor.bottom) / 2};
   if (options_.dwm_round) {
     const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
     // Windows 10 has no rounding and refuses the attribute: the popover is
@@ -126,6 +135,14 @@ void PhiPopover::Show() {
     return;
   }
   shown_tick_ = ::GetTickCount64();
+  // A popover the user opened grows out of what opened it (its anchor) and
+  // shrinks back there when it goes (phi_pop_animation.h): one that takes
+  // the focus, is not already up, and draws itself (a per-pixel layered
+  // surface has its own way in). Hover cards, toasts and HUDs keep their
+  // own slides and fades.
+  if (options_.activate && !options_.layered && !::IsWindowVisible(hwnd())) {
+    PhiPopIn(hwnd(), has_pop_source_ ? &pop_source_ : nullptr);
+  }
   ::ShowWindow(hwnd(), options_.activate ? SW_SHOW : SW_SHOWNOACTIVATE);
   if (options_.activate && options_.foreground) {
     ::SetForegroundWindow(hwnd());
@@ -171,6 +188,9 @@ void PhiPopover::Dismiss() {
     if (owner && ::IsWindowVisible(owner) && ::IsWindowEnabled(owner)) {
       ::SetForegroundWindow(owner);
     }
+  }
+  if (alive()) {
+    PhiPopOut(hwnd());  // Its picture shrinks back to where it came from.
   }
   Destroy();
 }

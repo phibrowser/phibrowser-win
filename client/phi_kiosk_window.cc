@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_kiosk_window.h"
+#include "client/phi_pop_animation.h"
 
 #include <dwmapi.h>
 #include <windowsx.h>
@@ -934,7 +935,7 @@ void PhiKioskWindow::ShowSpaceList(const RECT& anchor) {
   }
   POINT screen = {anchor.left, anchor.bottom};
   ::ClientToScreen(hwnd(), &screen);
-  const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+  const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, screen.x, screen.y, 0,
       hwnd(), nullptr));
   ::DestroyMenu(menu);

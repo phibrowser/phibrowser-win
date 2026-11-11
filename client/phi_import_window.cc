@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_import_window.h"
+#include "client/phi_pop_animation.h"
 
 #include <shlobj.h>
 #include <shobjidl.h>
@@ -381,7 +382,7 @@ void PhiImportWindow::Pick(int row) {
   }
   POINT pt = {r.picker.left, r.picker.bottom};
   ::ClientToScreen(hwnd(), &pt);
-  const UINT picked = static_cast<UINT>(::TrackPopupMenu(
+  const UINT picked = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_LEFTALIGN, pt.x, pt.y, 0,
       hwnd(), nullptr));
   ::DestroyMenu(menu);

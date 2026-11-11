@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr_exclusion.h"
+#include "client/phi_card_flight.h"
 #include "client/phi_ids.h"
 #include "client/phi_panel.h"
 #include "client/phi_surface_registry.h"
@@ -145,6 +146,16 @@ class PhiPeekPanel : public PhiSurfacePanel, public PhiPanel {
   // hosted browser is a child of this window, so only this window's region
   // can clip it, and the fringe antialiases the curve that region cuts.
   void ApplyCardShape();
+  // The appear flight (phi_card_flight.h): the card grows out of the link
+  // the user pressed while the real card stays hidden, and LandAppearFlight
+  // shows it. `flight_anchor_` is kept for the close flight back.
+  void StartAppearFlight();
+  void LandAppearFlight();
+  PhiCardFlight::Look FlightLook() const;
+  int flight_id_ = 0;
+  PhiCardFlight::Anchor flight_anchor_;
+  // What SetSurfaceShown last asked for, honoured when the flight lands.
+  bool shown_wanted_ = true;
   // Re-renders and repositions the drop shadow under the card.
   void UpdateShadow();
 

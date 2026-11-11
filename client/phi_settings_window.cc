@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_settings_window.h"
+#include "client/phi_pop_animation.h"
 
 #include <shellapi.h>
 #include <shlwapi.h>
@@ -6343,7 +6344,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
                   PhiStr("settings.profiles.folio.sameAsGeneral"));
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6527,7 +6528,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6757,7 +6758,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6785,7 +6786,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6840,7 +6841,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6873,7 +6874,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
                   3, PhiStr("themes.appearance.darkOption"));
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6902,7 +6903,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
                   3, PhiStr("settings.spaces.pinnedTabScope.appOption"));
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);
@@ -6960,7 +6961,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
     POINT anchor = {item.bounds.left, item.bounds.bottom};
     ::ClientToScreen(hwnd(), &anchor);
-    const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
         anchor.y, 0, hwnd(), nullptr));
     ::DestroyMenu(menu);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_features.h"
+#include "client/phi_pop_animation.h"
 #include "client/phi_app_menu.h"
 
 #include "client/phi_app_model.h"
@@ -175,7 +176,7 @@ void PhiAppMenu::Show(int screen_x, int screen_y, bool right_align) {
   // coordinator defer pipe verbs for as long as the menu loop runs.
   PhiModalScope modal;
   open_ = true;
-  ::TrackPopupMenu(root_,
+  PhiTrackPopupMenu(root_,
                    (right_align ? TPM_RIGHTALIGN : TPM_LEFTALIGN) |
                        TPM_TOPALIGN | TPM_VERTICAL,
                    screen_x, screen_y, 0, shell_, nullptr);

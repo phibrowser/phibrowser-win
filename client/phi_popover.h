@@ -146,6 +146,10 @@ class PhiPopover : public PhiWindow {
   Options options_;
   bool dwm_rounded_ = false;
   ULONGLONG shown_tick_ = 0;
+  // Where the popover grows from and shrinks back to (phi_pop_animation.h):
+  // the middle of its anchor, in screen coordinates.
+  bool has_pop_source_ = false;
+  POINT pop_source_ = {};
 };
 
 }  // namespace phi_client

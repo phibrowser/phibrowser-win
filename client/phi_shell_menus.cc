@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_shell_menus.h"
+#include "client/phi_pop_animation.h"
 
 #include "client/phi_features.h"
 
@@ -1031,7 +1032,7 @@ PhiMenuAction PhiRunPopupMenu(const PhiMenuSpec& spec,
     // The nested loop: a PhiModalScope, so the coordinator parks pipe verbs
     // and the shell parks its own close until the menu is down.
     PhiModalScope modal;
-    chosen = static_cast<UINT>(::TrackPopupMenu(
+    chosen = static_cast<UINT>(PhiTrackPopupMenu(
         menu, request.align | TPM_RETURNCMD, request.x, request.y, 0,
         request.owner, nullptr));
   }

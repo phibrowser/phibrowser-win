@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "client/phi_url_rules_window.h"
+#include "client/phi_pop_animation.h"
 
 #include <commctrl.h>  // EM_SETCUEBANNER
 #include <windowsx.h>
@@ -1009,7 +1010,7 @@ void PhiUrlRulesWindow::PickMatchType(int row_index, const RECT& anchor) {
   }
   POINT at = {anchor.left, anchor.bottom};
   ::ClientToScreen(list_->hwnd(), &at);
-  const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+  const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, at.x, at.y, 0,
       hwnd(), nullptr));
   ::DestroyMenu(menu);
@@ -1059,7 +1060,7 @@ void PhiUrlRulesWindow::PickTarget(int row_index, const RECT& anchor) {
                 PhiStr("sidebar.urlRulesEditor.target.askEveryTimeOption"));
   POINT at = {anchor.left, anchor.bottom};
   ::ClientToScreen(list_->hwnd(), &at);
-  const UINT chosen = static_cast<UINT>(::TrackPopupMenu(
+  const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, at.x, at.y, 0,
       hwnd(), nullptr));
   ::DestroyMenu(menu);

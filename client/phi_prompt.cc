@@ -4,6 +4,8 @@
 
 #include "client/phi_prompt.h"
 
+#include "client/phi_pop_animation.h"
+
 #include <windowsx.h>
 
 #include <algorithm>
@@ -191,6 +193,9 @@ class Alert : public PhiSecondaryWindow {
       ::EnableWindow(owner_, FALSE);  // Modal against its owner, as NSAlert.
       scrim = CreateScrim(owner_);    // WinUI's smoke layer over the owner.
     }
+    // The dialog grows out of what asked for it: the pointer is on that
+    // button or row.
+    PhiPopIn(hwnd());
     ::ShowWindow(hwnd(), SW_SHOW);
     ::SetForegroundWindow(hwnd());
     HWND focus = control_;
@@ -230,6 +235,12 @@ class Alert : public PhiSecondaryWindow {
         }
         hardware_target_ = nullptr;
       }
+    }
+    // Its picture shrinks back to where the dialog came from; the window
+    // itself only hides, since the caller still reads its controls.
+    if (alive()) {
+      PhiPopOut(hwnd());
+      ::ShowWindow(hwnd(), SW_HIDE);
     }
     if (scrim) {
       ::DestroyWindow(scrim);
