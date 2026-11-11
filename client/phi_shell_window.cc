@@ -6568,15 +6568,7 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
   } else if (action.is("tab.copyRight")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url_b));
   } else if (action.is("tab.copyPane")) {
-    int pane = 0;
-    base::StringToInt(action.target.id, &pane);
-    const size_t extra = static_cast<size_t>(std::max(pane - 2, 0));
-    const std::string& url = pane == 0   ? row.url
-                             : pane == 1 ? row.url_b
-                             : extra < row.more_urls.size()
-                                   ? row.more_urls[extra]
-                                   : row.url;
-    CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(url));
+    CopyPaneUrl(row, action.target.id);
   } else if (action.is("tab.movePaneBack") && focused_pane > 0) {
     sidebar_->Apply(SidebarMovePane{row.key, focused_pane, focused_pane - 1});
   } else if (action.is("tab.movePaneForward") && focused_pane >= 0) {
@@ -6649,6 +6641,7 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
   const BrowserId opening_browser = active_browser_id();
   PhiPinnedMenuInputs in;
   in.split_cell = !row.url_b.empty();
+  in.pane_count = 2 + static_cast<int>(row.more_urls.size());
   const std::string current_url = ReplacementUrlForStoredRow(row);
   in.can_replace_url = !current_url.empty();
   in.horizontal = row.layout == "horizontal";
@@ -6683,6 +6676,8 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url));
   } else if (action.is("pin.copyRight")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url_b));
+  } else if (action.is("pin.copyPane")) {
+    CopyPaneUrl(row, action.target.id);
   } else if (action.is("pin.rename") && services_.sidebar) {
     std::wstring name = row.title;
     if (PhiPromptText(shell_hwnd_, PhiStr("sidebar.renamePinnedTab"),
@@ -6726,6 +6721,7 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
   PhiBookmarkMenuInputs in;
   in.folder = row.folder;
   in.split_row = !row.url_b.empty();
+  in.pane_count = 2 + static_cast<int>(row.more_urls.size());
   in.horizontal = row.layout == "horizontal";
   const std::string current_url = ReplacementUrlForStoredRow(row);
   in.can_replace_url = !current_url.empty();
@@ -6787,6 +6783,8 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
     }
   } else if (action.is("bm.copyUrl") || action.is("bm.copyLeft")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url));
+  } else if (action.is("bm.copyPane")) {
+    CopyPaneUrl(row, action.target.id);
   } else if (action.is("bm.copyRight")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url_b));
   } else if (action.is("bm.rename") && services_.sidebar) {
@@ -6857,6 +6855,9 @@ bool PhiShellWindow::ShowBookmarkBarContextMenu(POINT pt) {
     snapshot.guid = bookmark.guid;
     snapshot.url = bookmark.url;
     snapshot.url_b = bookmark.url_b;
+    for (const ShortcutRow::ExtraPane& pane : bookmark.more) {
+      snapshot.more_urls.push_back(pane.url);
+    }
     snapshot.title = bookmark.title;
     snapshot.layout = bookmark.layout;
     snapshot.icon = bookmark.icon;
@@ -7275,6 +7276,9 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
     snapshot.guid = pin.guid;
     snapshot.url = pin.url;
     snapshot.url_b = pin.url_b;
+    for (const ShortcutRow::ExtraPane& pane : pin.more) {
+      snapshot.more_urls.push_back(pane.url);
+    }
     snapshot.title = pin.title;
     snapshot.layout = pin.layout;
     snapshot.open = pin.open;
@@ -7290,6 +7294,9 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
     snapshot.guid = bookmark.guid;
     snapshot.url = bookmark.url;
     snapshot.url_b = bookmark.url_b;
+    for (const ShortcutRow::ExtraPane& pane : bookmark.more) {
+      snapshot.more_urls.push_back(pane.url);
+    }
     snapshot.title = bookmark.title;
     snapshot.layout = bookmark.layout;
     snapshot.icon = bookmark.icon;
@@ -7535,6 +7542,19 @@ void PhiShellWindow::SyncSplitChipTimer() {
       HidePaneGrip();
     }
   }
+}
+
+void PhiShellWindow::CopyPaneUrl(const MenuRow& row,
+                                 const std::string& pane_id) {
+  int pane = 0;
+  base::StringToInt(pane_id, &pane);
+  const size_t extra = static_cast<size_t>(std::max(pane - 2, 0));
+  const std::string& url = pane == 0   ? row.url
+                           : pane == 1 ? row.url_b
+                           : extra < row.more_urls.size()
+                                 ? row.more_urls[extra]
+                                 : row.url;
+  CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(url));
 }
 
 void PhiShellWindow::EditStoredSplit(const std::string& guid, bool pinned) {

@@ -2355,6 +2355,9 @@ class PhiShellWindow : public PhiHitSource,
   // The Mac's split editor for a pinned split or a split bookmark: a name
   // and an address per pane.
   void EditStoredSplit(const std::string& guid, bool pinned);
+  // A split menu's numbered "Copy Pane n URL" row: `pane_id` is the pane's
+  // index as the menu row carried it.
+  void CopyPaneUrl(const MenuRow& row, const std::string& pane_id);
   void UpdatePaneGrip(const std::vector<NativePane>& panes, POINT cursor);
   void ShowPaneGrip(int tab_id, const RECT& pane);
   void HidePaneGrip();

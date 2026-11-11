@@ -199,6 +199,9 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in);
 // A pinned cell's menu: open, duplicate, copy, rename, unpin, close.
 struct PhiPinnedMenuInputs {
   bool split_cell = false;
+  // A split cell's panes (2 to 4): three or four get a numbered copy row
+  // each, as a tab row of that width does, where a pair has Left and Right.
+  int pane_count = 2;
   bool horizontal = false;  // The cell remembers a stacked arrangement.
   bool open = false;        // A live tab is bound: "Close" is live.
   // The bound tab's page has left the saved address: "Replace Saved URL with
@@ -211,6 +214,7 @@ PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in);
 struct PhiBookmarkMenuInputs {
   bool folder = false;
   bool split_row = false;
+  int pane_count = 2;  // As PhiPinnedMenuInputs'.
   bool horizontal = false;
   bool can_replace_url = false;  // As PhiPinnedMenuInputs'.
   std::vector<PhiMenuChoice> spaces;  // Leaf rows only.

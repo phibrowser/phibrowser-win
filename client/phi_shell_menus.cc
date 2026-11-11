@@ -343,6 +343,35 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
 
 // --- Pinned cell -----------------------------------------------------------
 
+namespace {
+
+// The copy rows of a split: Left and Right for a pair, one numbered row per
+// pane for three or four (the Mac's copyPaneURLAtPosition). `prefix` is the
+// menu's own ("tab", "pin", "bm"); a numbered row carries its pane in the
+// target id.
+void AppendSplitCopyRows(const char* prefix,
+                         int pane_count,
+                         std::vector<PhiMenuItem>& items) {
+  const std::string base(prefix);
+  if (pane_count <= 2) {
+    items.push_back(PhiMenuItem::Command((base + ".copyLeft").c_str(),
+                                         PhiStr("contextMenu.copyLeftURL")));
+    items.push_back(PhiMenuItem::Command((base + ".copyRight").c_str(),
+                                         PhiStr("contextMenu.copyRightURL")));
+    return;
+  }
+  for (int pane = 0; pane < pane_count; ++pane) {
+    PhiMenuItem copy = PhiMenuItem::Command(
+        (base + ".copyPane").c_str(),
+        PhiStrF("sidebar.tabContextMenu.copyPaneURLAtPosition",
+                {std::to_wstring(pane + 1)}));
+    copy.target.id = std::to_string(pane);
+    items.push_back(std::move(copy));
+  }
+}
+
+}  // namespace
+
 PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in) {
   PhiMenuSpec spec;
   std::vector<PhiMenuItem>& items = spec.items;
@@ -350,8 +379,7 @@ PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in) {
   items.push_back(PhiMenuItem::Command(
       "pin.duplicate", in.split_cell ? PhiStr("contextMenu.duplicateSplit") : PhiStr("contextMenu.duplicate")));
   if (in.split_cell) {
-    items.push_back(PhiMenuItem::Command("pin.copyLeft", PhiStr("contextMenu.copyLeftURL")));
-    items.push_back(PhiMenuItem::Command("pin.copyRight", PhiStr("contextMenu.copyRightURL")));
+    AppendSplitCopyRows("pin", in.pane_count, items);
   } else {
     items.push_back(PhiMenuItem::Command("pin.copyUrl", PhiStr("contextMenu.copyLink")));
   }
@@ -406,8 +434,7 @@ PhiMenuSpec PhiBuildBookmarkRowMenu(const PhiBookmarkMenuInputs& in) {
     items.push_back(PhiMenuItem::Command("bm.open", PhiStr("contextMenu.openInNewTab")));
     items.push_back(PhiMenuItem::Command("bm.openSplit", PhiStr("contextMenu.openAsSplit")));
     if (in.split_row) {
-      items.push_back(PhiMenuItem::Command("bm.copyLeft", PhiStr("contextMenu.copyLeftURL")));
-      items.push_back(PhiMenuItem::Command("bm.copyRight", PhiStr("contextMenu.copyRightURL")));
+      AppendSplitCopyRows("bm", in.pane_count, items);
     } else {
       items.push_back(PhiMenuItem::Command("bm.copyUrl", PhiStr("contextMenu.copyLink")));
     }
