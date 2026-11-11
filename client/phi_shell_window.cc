@@ -174,6 +174,9 @@ constexpr UINT_PTR kFloatingTickTimer = 0x522;
 constexpr UINT_PTR kDeferredCloseTimer = 0x525;
 // The split view's hover chip poll (§4.6).
 constexpr UINT_PTR kSplitChipTimer = 0x526;
+// Polls for the row of a pane that was dragged out of its split onto the
+// tab list, to carry the drag on as that tab's.
+constexpr UINT_PTR kPaneHandoffTimer = 0x5A7;
 // The chrome tooltip's dwell (UpdateChromeTip).
 constexpr UINT_PTR kChromeTipTimer = 0x527;
 // Split with New Tab: looks for the card's tab until it is the active one.
@@ -7517,10 +7520,15 @@ void PhiShellWindow::SyncSplitChipTimer() {
     return;
   }
   if (ActiveTabIsSplit()) {
-    ::SetTimer(shell_hwnd_, kSplitChipTimer, 150, nullptr);
+    // Fast enough for the move grip to follow the pointer; the chip's own
+    // delays are measured in ticks of the clock, not of this timer.
+    ::SetTimer(shell_hwnd_, kSplitChipTimer, 60, nullptr);
   } else {
     ::KillTimer(shell_hwnd_, kSplitChipTimer);
     HideSplitChip();
+    if (!pane_drag_) {
+      HidePaneGrip();
+    }
   }
 }
 
@@ -7534,8 +7542,12 @@ const TabRow* PhiShellWindow::SplitRowForTab(int tab_id) const {
 }
 
 void PhiShellWindow::SplitChipTick() {
+  if (pane_drag_) {
+    return;  // A pane is being dragged: nothing else hovers.
+  }
   if (!shell_hwnd_ || !ActiveTabIsSplit() || floating_expanded_) {
     HideSplitChip();
+    HidePaneGrip();
     return;
   }
   const std::vector<NativePane> panes = NativePagesSplitPanes();
@@ -7544,10 +7556,12 @@ void PhiShellWindow::SplitChipTick() {
         return ::IsRectEmpty(&pane.rect) != FALSE;
       })) {
     HideSplitChip();
+    HidePaneGrip();
     return;
   }
   POINT cursor = {};
   ::GetCursorPos(&cursor);
+  UpdatePaneGrip(panes, cursor);
   // An UNFOCUSED pane: the one under the pointer, else the one the chip is
   // already up for (the pointer is on the chip or on its way out), else the
   // first. A split of three or four has several.
@@ -7668,6 +7682,11 @@ void PhiShellWindow::ShowSplitChip(int tab_id, const RECT& pane) {
   split_chip_tab_ = tab_id;
   ::SetWindowPos(split_chip_, HWND_TOP, origin.x, origin.y, w, h,
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
+  if (pane_grip_ && ::IsWindowVisible(pane_grip_)) {
+    // In a narrow pane the chip reaches the middle: the grip stays on top.
+    ::SetWindowPos(pane_grip_, HWND_TOP, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+  }
   if (changed) {
     ::InvalidateRect(split_chip_, nullptr, FALSE);
   }
@@ -7837,6 +7856,635 @@ LRESULT CALLBACK PhiShellWindow::SplitChipProc(HWND hwnd,
       if (self->split_chip_ == hwnd) {
         self->split_chip_ = nullptr;
         self->split_chip_tab_ = 0;
+      }
+      return 0;
+  }
+  return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+}
+
+// --- The split pane move grip ----------------------------------------------
+
+namespace {
+
+// The Mac's PaneMoveHandle: a 40 x 5 pill in a 72 x 18 grip, shown while the
+// pointer is in the top 44 of a pane.
+constexpr int kPaneGripBand = 44;
+constexpr int kPaneGripWidth = 72;
+constexpr int kPaneGripHeight = 18;
+constexpr int kPanePillWidth = 40;
+constexpr int kPanePillHeight = 5;
+// SplitPaneHostView's drag constants.
+constexpr int kPaneDragThreshold = 4;
+constexpr int kPanePullOutDistance = 120;
+constexpr int kPanePullOutMargin = 40;
+
+void RegisterPaneDragClasses(WNDPROC grip_proc, WNDPROC aux_proc) {
+  static bool registered = false;
+  if (registered) {
+    return;
+  }
+  registered = true;
+  WNDCLASSW grip = {};
+  grip.lpfnWndProc = grip_proc;
+  grip.hInstance = ::GetModuleHandleW(nullptr);
+  grip.hCursor = ::LoadCursorW(nullptr, IDC_SIZEALL);
+  grip.lpszClassName = L"PhiPaneGrip";
+  ::RegisterClassW(&grip);
+  WNDCLASSW aux = {};
+  aux.lpfnWndProc = aux_proc;
+  aux.hInstance = ::GetModuleHandleW(nullptr);
+  aux.hCursor = ::LoadCursorW(nullptr, IDC_SIZEALL);
+  aux.lpszClassName = L"PhiPaneDragAux";
+  ::RegisterClassW(&aux);
+}
+
+// The grip's picture: the pill, white at 90 % with a dark hairline so it
+// reads over any page, on a ground of alpha 1: invisible, but still the
+// grip's to hit, where a clear pixel would fall through to the page.
+void PaintPaneGrip(HWND hwnd, int width, int height, int pill_w, int pill_h) {
+  BITMAPINFO info = {};
+  info.bmiHeader.biSize = sizeof(info.bmiHeader);
+  info.bmiHeader.biWidth = width;
+  info.bmiHeader.biHeight = -height;
+  info.bmiHeader.biPlanes = 1;
+  info.bmiHeader.biBitCount = 32;
+  info.bmiHeader.biCompression = BI_RGB;
+  void* bits = nullptr;
+  HDC screen = ::GetDC(nullptr);
+  HDC dc = ::CreateCompatibleDC(screen);
+  HBITMAP bitmap =
+      ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+  if (!dc || !bitmap || !bits) {
+    if (bitmap) ::DeleteObject(bitmap);
+    if (dc) ::DeleteDC(dc);
+    ::ReleaseDC(nullptr, screen);
+    return;
+  }
+  auto* pixels = static_cast<uint32_t*>(bits);
+  const double radius = pill_h / 2.0;
+  const double half_run = pill_w / 2.0 - radius;
+  const double cx = width / 2.0;
+  const double cy = height / 2.0;
+  const double edge = std::max(1.0, pill_h / 10.0);
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      // Signed distance to the capsule's boundary, negative inside.
+      const double dx = std::max(std::abs(x + 0.5 - cx) - half_run, 0.0);
+      const double dy = y + 0.5 - cy;
+      const double distance = std::sqrt(dx * dx + dy * dy) - radius;
+      const double cover = std::clamp(0.5 - distance, 0.0, 1.0);
+      // The hairline: the outermost `edge` pixels of the pill.
+      const double rim = std::clamp(distance + edge + 0.5, 0.0, 1.0);
+      const double white = 0.9 * (1.0 - rim);
+      const double black = 0.3 * rim;
+      const double alpha = cover * (white + black);
+      const double grey = alpha > 0.0 ? white / (white + black) : 0.0;
+      const int a = std::max(1, static_cast<int>(alpha * 255.0 + 0.5));
+      const int c = static_cast<int>(grey * a + 0.5);  // Premultiplied.
+      pixels[y * width + x] = (static_cast<uint32_t>(a) << 24) |
+                              (static_cast<uint32_t>(c) << 16) |
+                              (static_cast<uint32_t>(c) << 8) |
+                              static_cast<uint32_t>(c);
+    }
+  }
+  HGDIOBJ previous = ::SelectObject(dc, bitmap);
+  SIZE size = {width, height};
+  POINT origin = {0, 0};
+  BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+  ::UpdateLayeredWindow(hwnd, screen, nullptr, &size, dc, &origin, 0, &blend,
+                        ULW_ALPHA);
+  ::SelectObject(dc, previous);
+  ::DeleteObject(bitmap);
+  ::DeleteDC(dc);
+  ::ReleaseDC(nullptr, screen);
+}
+
+}  // namespace
+
+bool PhiShellWindow::SplitAllowsPaneMove(
+    const std::vector<NativePane>& panes) const {
+  // The Mac's splitAllowsPaneRearrangement: not while a pinned cell or a
+  // bookmark stands for the split. A bound pane carries its cell's tag.
+  const BrowserId browser = active_browser_id();
+  if (!model_ || !browser.valid() || panes.size() < 2) {
+    return false;
+  }
+  for (const NativePane& pane : panes) {
+    const TabSnapshot* tab = model_->FindTab(browser, TabId{pane.tab_id});
+    if (!tab || !tab->tag.empty()) {
+      return false;
+    }
+  }
+  // The split's own row carries the key every pane command goes through.
+  return SplitRowForTab(panes.front().tab_id) != nullptr;
+}
+
+void PhiShellWindow::UpdatePaneGrip(const std::vector<NativePane>& panes,
+                                    POINT cursor) {
+  if (pane_drag_) {
+    return;
+  }
+  bool allowed = SplitAllowsPaneMove(panes);
+  if (allowed && services_.sidebar) {
+    // A Peek or a reader over the split would sit under the grip.
+    const std::map<int, SidebarSurface> surfaces =
+        services_.sidebar->AttachedSurfaces(active_browser_id().value);
+    for (const NativePane& pane : panes) {
+      allowed = allowed && surfaces.count(pane.tab_id) == 0;
+    }
+  }
+  if (!allowed) {
+    HidePaneGrip();
+    return;
+  }
+  if (pane_grip_ && ::IsWindowVisible(pane_grip_)) {
+    RECT grip = {};
+    ::GetWindowRect(pane_grip_, &grip);
+    if (::PtInRect(&grip, cursor)) {
+      return;  // On the grip: it stays where it is.
+    }
+  }
+  const NativePane* over = nullptr;
+  for (const NativePane& pane : panes) {
+    RECT band = pane.rect;
+    band.bottom = std::min(band.bottom, band.top + Scaled(kPaneGripBand));
+    ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&band), 2);
+    if (::PtInRect(&band, cursor)) {
+      over = &pane;
+    }
+  }
+  // Not for a pointer that came in with a button down: a selection or a
+  // drag of the page's own.
+  const bool pressed = (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+  if (!over || (pressed && pane_grip_tab_ != over->tab_id)) {
+    HidePaneGrip();
+    return;
+  }
+  // Only over this shell: not through a window that covers the pane.
+  const HWND under = ::WindowFromPoint(cursor);
+  if (under != pane_grip_ && ::GetAncestor(under, GA_ROOT) != shell_hwnd_) {
+    HidePaneGrip();
+    return;
+  }
+  ShowPaneGrip(over->tab_id, over->rect);
+}
+
+void PhiShellWindow::ShowPaneGrip(int tab_id, const RECT& pane) {
+  RegisterPaneDragClasses(&PhiShellWindow::PaneGripProc,
+                          &PhiShellWindow::PaneDragAuxProc);
+  const int w = std::min(Scaled(kPaneGripWidth),
+                         static_cast<int>(pane.right - pane.left));
+  const int h = Scaled(kPaneGripHeight);
+  POINT origin = {(pane.left + pane.right - w) / 2, pane.top};
+  ::ClientToScreen(shell_hwnd_, &origin);
+  bool created = false;
+  if (!pane_grip_) {
+    pane_grip_ = ::CreateWindowExW(
+        WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, L"PhiPaneGrip",
+        L"", WS_POPUP, origin.x, origin.y, w, h, shell_hwnd_, nullptr,
+        ::GetModuleHandleW(nullptr), nullptr);
+    if (!pane_grip_) {
+      return;
+    }
+    ::SetWindowLongPtrW(pane_grip_, GWLP_USERDATA,
+                        reinterpret_cast<LONG_PTR>(this));
+    created = true;
+  }
+  RECT now = {};
+  ::GetWindowRect(pane_grip_, &now);
+  const bool resized = now.right - now.left != w || now.bottom - now.top != h;
+  pane_grip_tab_ = tab_id;
+  ::SetWindowPos(pane_grip_, HWND_TOP, origin.x, origin.y, w, h,
+                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+  if (created || resized) {
+    PaintPaneGrip(pane_grip_, w, h, std::min(Scaled(kPanePillWidth), w),
+                  Scaled(kPanePillHeight));
+  }
+}
+
+void PhiShellWindow::HidePaneGrip() {
+  pane_grip_tab_ = 0;
+  if (pane_grip_ && ::IsWindowVisible(pane_grip_)) {
+    ::ShowWindow(pane_grip_, SW_HIDE);
+  }
+}
+
+void PhiShellWindow::BeginPaneDrag() {
+  const std::vector<NativePane> panes = NativePagesSplitPanes();
+  if (!pane_grip_tab_ || !SplitAllowsPaneMove(panes)) {
+    return;
+  }
+  PaneDrag drag;
+  drag.tab = pane_grip_tab_;
+  bool found = false;
+  for (size_t i = 0; i < panes.size(); ++i) {
+    if (panes[i].tab_id == drag.tab) {
+      drag.slot = static_cast<int>(i);
+      drag.start_pane = panes[i].rect;
+      found = true;
+    }
+  }
+  if (!found) {
+    return;
+  }
+  ::MapWindowPoints(shell_hwnd_, nullptr,
+                    reinterpret_cast<POINT*>(&drag.start_pane), 2);
+  drag.stacked = SplitIsStacked(TabId{drag.tab});
+  ::GetCursorPos(&drag.start);
+  drag.target = drag.slot;
+  pane_drag_ = drag;
+  ::SetCapture(pane_grip_);
+}
+
+void PhiShellWindow::UpdatePaneDrag(POINT screen) {
+  if (!pane_drag_) {
+    return;
+  }
+  if (::GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+    EndPaneDrag(/*commit=*/false);
+    return;
+  }
+  PaneDrag& drag = *pane_drag_;
+  if (!drag.active) {
+    const int threshold = Scaled(kPaneDragThreshold);
+    if (std::abs(screen.x - drag.start.x) < threshold &&
+        std::abs(screen.y - drag.start.y) < threshold) {
+      return;
+    }
+    drag.active = true;
+    HideSplitChip();
+  }
+  const std::vector<NativePane> panes = NativePagesSplitPanes();
+  if (!SplitAllowsPaneMove(panes) || drag.slot >= static_cast<int>(panes.size()) ||
+      panes[drag.slot].tab_id != drag.tab) {
+    EndPaneDrag(/*commit=*/false);  // The split changed under the drag.
+    return;
+  }
+  std::vector<RECT> rects;
+  RECT bounds = {};
+  for (const NativePane& pane : panes) {
+    RECT rect = pane.rect;
+    ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&rect), 2);
+    ::UnionRect(&bounds, &bounds, &rect);
+    rects.push_back(rect);
+  }
+
+  // Reaching the tab list makes the pane a normal tab, and the drag carries
+  // on as that tab's, so it can land anywhere in the list.
+  POINT client = screen;
+  ::ScreenToClient(shell_hwnd_, &client);
+  RECT shell_client = {};
+  ::GetClientRect(shell_hwnd_, &shell_client);
+  const RECT content = ContentRect();
+  const bool horizontal = layout_mode_ == PhiLayoutMode::kComfortable;
+  const bool over_tab_list =
+      ::PtInRect(&shell_client, client) && !::PtInRect(&content, client) &&
+      (horizontal ? client.y < content.top
+                  : !sidebar_collapsed_ && client.x < content.left);
+  if (over_tab_list) {
+    HandOffPaneToTabList(drag.tab);
+    return;
+  }
+
+  RECT reach = bounds;
+  ::InflateRect(&reach, Scaled(kPanePullOutMargin), Scaled(kPanePullOutMargin));
+  const int off_axis = drag.stacked ? std::abs(screen.x - drag.start.x)
+                                    : std::abs(screen.y - drag.start.y);
+  const int length = drag.stacked
+                         ? drag.start_pane.right - drag.start_pane.left
+                         : drag.start_pane.bottom - drag.start_pane.top;
+  drag.pull_out =
+      !::PtInRect(&reach, screen) ||
+      off_axis >= std::min(Scaled(kPanePullOutDistance), length / 3);
+  // The slot nearest the pointer along the split's axis.
+  int nearest = drag.slot;
+  int best = 1 << 30;
+  for (size_t i = 0; i < rects.size(); ++i) {
+    const int low = drag.stacked ? rects[i].top : rects[i].left;
+    const int high = drag.stacked ? rects[i].bottom : rects[i].right;
+    const int value = drag.stacked ? screen.y : screen.x;
+    const int distance = value < low ? low - value
+                                     : value > high ? value - high : 0;
+    if (distance < best) {
+      best = distance;
+      nearest = static_cast<int>(i);
+    }
+  }
+  drag.target = nearest;
+
+  RegisterPaneDragClasses(&PhiShellWindow::PaneGripProc,
+                          &PhiShellWindow::PaneDragAuxProc);
+  // The card that rides the pointer: the pane's favicon and host.
+  const TabRow* row = SplitRowForTab(drag.tab);
+  const int card_w = Scaled(200);
+  const int card_h = Scaled(kSplitChipHeight);
+  if (!pane_drag_card_) {
+    pane_drag_card_ = ::CreateWindowExW(
+        WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED |
+            WS_EX_TRANSPARENT,
+        L"PhiPaneDragAux", L"", WS_POPUP, 0, 0, card_w, card_h, shell_hwnd_,
+        nullptr, ::GetModuleHandleW(nullptr), nullptr);
+    if (pane_drag_card_) {
+      ::SetWindowLongPtrW(pane_drag_card_, GWLP_USERDATA,
+                          reinterpret_cast<LONG_PTR>(this));
+      ::SetLayeredWindowAttributes(pane_drag_card_, 0, 235, LWA_ALPHA);
+      const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
+      ::DwmSetWindowAttribute(pane_drag_card_, DWMWA_WINDOW_CORNER_PREFERENCE,
+                              &corner, sizeof(corner));
+    }
+  }
+  if (pane_drag_card_ && row) {
+    ::SetWindowPos(pane_drag_card_, HWND_TOP, screen.x + Scaled(12),
+                   screen.y + Scaled(14), card_w, card_h,
+                   SWP_NOACTIVATE | SWP_SHOWWINDOW);
+  }
+  // The slot a release lands in, washed with the accent. None while the pane
+  // would stay where it is or leave the split.
+  const bool moves = !drag.pull_out && drag.target != drag.slot;
+  if (moves) {
+    if (!pane_drag_slot_) {
+      pane_drag_slot_ = ::CreateWindowExW(
+          WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED |
+              WS_EX_TRANSPARENT,
+          L"PhiPaneDragAux", L"", WS_POPUP, 0, 0, 1, 1, shell_hwnd_, nullptr,
+          ::GetModuleHandleW(nullptr), nullptr);
+      if (pane_drag_slot_) {
+        ::SetWindowLongPtrW(pane_drag_slot_, GWLP_USERDATA,
+                            reinterpret_cast<LONG_PTR>(this));
+        ::SetLayeredWindowAttributes(pane_drag_slot_, 0, 72, LWA_ALPHA);
+      }
+    }
+    if (pane_drag_slot_) {
+      const RECT& slot = rects[drag.target];
+      ::SetWindowPos(pane_drag_slot_, pane_drag_card_ ? pane_drag_card_ : HWND_TOP,
+                     slot.left, slot.top, slot.right - slot.left,
+                     slot.bottom - slot.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    }
+  } else if (pane_drag_slot_ && ::IsWindowVisible(pane_drag_slot_)) {
+    ::ShowWindow(pane_drag_slot_, SW_HIDE);
+  }
+}
+
+void PhiShellWindow::HidePaneDragVisuals() {
+  if (pane_drag_card_) {
+    ::ShowWindow(pane_drag_card_, SW_HIDE);
+  }
+  if (pane_drag_slot_) {
+    ::ShowWindow(pane_drag_slot_, SW_HIDE);
+  }
+}
+
+void PhiShellWindow::TakePaneOutOfSplit(int tab_id) {
+  const TabRow* found = SplitRowForTab(tab_id);
+  const BrowserId browser = active_browser_id();
+  if (!found || !framework_ || !browser.valid()) {
+    return;
+  }
+  const TabRow row = *found;  // A snapshot: the command rebuilds the rows.
+  const int pane = row.PaneOf(TabId{tab_id});
+  const int count = row.PaneCount();
+  if (pane < 0) {
+    return;
+  }
+  // The panes left behind stay on screen, so one of them takes over from a
+  // focused pane that leaves.
+  if (count > 2 && active_tab_id().value == tab_id) {
+    const TabId neighbour = row.PaneId(pane + 1 < count ? pane + 1 : pane - 1);
+    if (neighbour.valid()) {
+      framework_->ActivateTabById(browser.value, neighbour.value);
+    }
+  }
+  if (count > 2) {
+    sidebar_->Apply(SidebarRemovePane{row.key, pane});
+  } else {
+    sidebar_->Apply(SidebarBreakSplit{row.key});  // A pair dissolves.
+  }
+}
+
+void PhiShellWindow::EndPaneDrag(bool commit) {
+  if (!pane_drag_) {
+    return;
+  }
+  const PaneDrag drag = *pane_drag_;
+  pane_drag_.reset();
+  HidePaneDragVisuals();
+  if (pane_grip_ && ::GetCapture() == pane_grip_) {
+    pane_drag_releasing_ = true;
+    ::ReleaseCapture();
+    pane_drag_releasing_ = false;
+  }
+  HidePaneGrip();
+  if (!commit || !drag.active) {
+    return;
+  }
+  if (drag.pull_out) {
+    TakePaneOutOfSplit(drag.tab);
+    return;
+  }
+  if (drag.target == drag.slot) {
+    return;
+  }
+  const TabRow* found = SplitRowForTab(drag.tab);
+  if (!found) {
+    return;
+  }
+  const TabRow row = *found;
+  const int pane = row.PaneOf(TabId{drag.tab});
+  if (pane < 0) {
+    return;
+  }
+  if (row.PaneCount() == 2) {
+    sidebar_->Apply(SidebarSwapPanes{row.key});
+  } else {
+    sidebar_->Apply(SidebarMovePane{row.key, pane, drag.target});
+  }
+}
+
+void PhiShellWindow::HandOffPaneToTabList(int tab_id) {
+  pane_drag_.reset();
+  HidePaneDragVisuals();
+  if (pane_grip_ && ::GetCapture() == pane_grip_) {
+    pane_drag_releasing_ = true;
+    ::ReleaseCapture();
+    pane_drag_releasing_ = false;
+  }
+  HidePaneGrip();
+  TakePaneOutOfSplit(tab_id);
+  // Its own row appears with the next rebuild; the drag is armed on it then.
+  pane_handoff_tab_ = tab_id;
+  pane_handoff_deadline_ = ::GetTickCount64() + 1500;
+  ::SetTimer(shell_hwnd_, kPaneHandoffTimer, 30, nullptr);
+}
+
+void PhiShellWindow::PaneHandoffTick() {
+  const int tab_id = pane_handoff_tab_;
+  const bool pressed = (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+  if (!tab_id || !pressed || ::GetTickCount64() > pane_handoff_deadline_ ||
+      sidebar_->drag_armed()) {
+    pane_handoff_tab_ = 0;
+    ::KillTimer(shell_hwnd_, kPaneHandoffTimer);
+    return;
+  }
+  for (const TabRow& row : sidebar_->tabs()) {
+    if (row.id.value != tab_id || row.PaneCount() != 1 ||
+        ::IsRectEmpty(&row.bounds)) {
+      continue;
+    }
+    pane_handoff_tab_ = 0;
+    ::KillTimer(shell_hwnd_, kPaneHandoffTimer);
+    // Pressed at the row's middle, then moved to where the pointer is: the
+    // row lifts off under the pointer like any dragged tab.
+    POINT cursor = {};
+    ::GetCursorPos(&cursor);
+    ::ScreenToClient(shell_hwnd_, &cursor);
+    const POINT press = {(row.bounds.left + row.bounds.right) / 2,
+                         (row.bounds.top + row.bounds.bottom) / 2};
+    sidebar_->ArmDrag(SidebarKey::Tab(tab_id), press);
+    sidebar_->UpdateDrag(cursor);
+    if (sidebar_->drag_armed() && !sidebar_->drag_active()) {
+      // The pointer is still within the drag threshold of the row's middle:
+      // a step away and back starts the drag, so the release that follows
+      // is the shell's to commit.
+      const POINT away = {cursor.x + 4 * ::GetSystemMetrics(SM_CXDRAG),
+                          cursor.y + 4 * ::GetSystemMetrics(SM_CYDRAG)};
+      sidebar_->UpdateDrag(away);
+      sidebar_->UpdateDrag(cursor);
+    }
+    return;
+  }
+}
+
+void PhiShellWindow::PaintPaneDragCard(HWND hwnd, HDC dc) {
+  RECT rc = {};
+  ::GetClientRect(hwnd, &rc);
+  const PhiPalette palette = CurrentPalette();
+  if (hwnd == pane_drag_slot_) {
+    HBRUSH wash = ::CreateSolidBrush(palette.accent);
+    ::FillRect(dc, &rc, wash);
+    ::DeleteObject(wash);
+    return;
+  }
+  HBRUSH ground = ::CreateSolidBrush(palette.flyout);
+  ::FillRect(dc, &rc, ground);
+  ::DeleteObject(ground);
+  const TabRow* row = pane_drag_ ? SplitRowForTab(pane_drag_->tab) : nullptr;
+  if (!row) {
+    return;
+  }
+  const int pane = std::max(0, row->PaneOf(TabId{pane_drag_->tab}));
+  int fav_w = 0;
+  int fav_h = 0;
+  const std::vector<unsigned char>& favicon =
+      row->PaneFavicon(pane, &fav_w, &fav_h);
+  const int mid = (rc.top + rc.bottom) / 2;
+  const int icon_px = Scaled(16);
+  RECT icon = {rc.left + Scaled(8), mid - icon_px / 2,
+               rc.left + Scaled(8) + icon_px, mid + icon_px / 2};
+  if (!favicon.empty()) {
+    sidebar_->DrawFavicon(dc, icon, favicon.data(), fav_w, fav_h,
+                          palette.flyout);
+  } else {
+    PhiDrawIconGlyph(dc, icon, fluent::kGlobe, icon_px, palette.label_dim);
+  }
+  ::SetBkMode(dc, TRANSPARENT);
+  HGDIOBJ previous = label_font_ ? ::SelectObject(dc, label_font_) : nullptr;
+  ::SetTextColor(dc, palette.label);
+  RECT text = {icon.right + Scaled(6), rc.top, rc.right - Scaled(8), rc.bottom};
+  const std::wstring& title = row->PaneTitle(pane);
+  const std::wstring label = title.empty() ? HostOfUrl(row->PaneUrl(pane)) : title;
+  PhiDrawTextAA(dc, label.c_str(), -1, &text,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |
+                    DT_NOPREFIX);
+  if (previous) {
+    ::SelectObject(dc, previous);
+  }
+  HPEN pen = ::CreatePen(PS_SOLID, 1, palette.border);
+  HGDIOBJ old_pen = ::SelectObject(dc, pen);
+  HGDIOBJ old_brush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
+  ::Rectangle(dc, rc.left, rc.top, rc.right, rc.bottom);
+  ::SelectObject(dc, old_brush);
+  ::SelectObject(dc, old_pen);
+  ::DeleteObject(pen);
+}
+
+// static
+LRESULT CALLBACK PhiShellWindow::PaneGripProc(HWND hwnd,
+                                              UINT msg,
+                                              WPARAM wparam,
+                                              LPARAM lparam) {
+  if (msg == WM_NCDESTROY) {
+    ::SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+    return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+  }
+  auto* self = reinterpret_cast<PhiShellWindow*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  if (!self || self->destroying_) {
+    return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+  }
+  switch (msg) {
+    case WM_MOUSEACTIVATE:
+      return MA_NOACTIVATE;
+    case WM_LBUTTONDOWN:
+      self->BeginPaneDrag();
+      return 0;
+    case WM_MOUSEMOVE:
+      if (self->pane_drag_) {
+        POINT cursor = {};
+        ::GetCursorPos(&cursor);
+        self->UpdatePaneDrag(cursor);
+      }
+      return 0;
+    case WM_LBUTTONUP:
+      self->EndPaneDrag(/*commit=*/true);
+      return 0;
+    case WM_CAPTURECHANGED:
+      if (self->pane_drag_ && !self->pane_drag_releasing_) {
+        self->EndPaneDrag(/*commit=*/false);
+      }
+      return 0;
+    case WM_DESTROY:
+      if (self->pane_grip_ == hwnd) {
+        self->pane_grip_ = nullptr;
+        self->pane_grip_tab_ = 0;
+        self->pane_drag_.reset();
+      }
+      return 0;
+  }
+  return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+}
+
+// static
+LRESULT CALLBACK PhiShellWindow::PaneDragAuxProc(HWND hwnd,
+                                                 UINT msg,
+                                                 WPARAM wparam,
+                                                 LPARAM lparam) {
+  if (msg == WM_NCDESTROY) {
+    ::SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+    return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+  }
+  auto* self = reinterpret_cast<PhiShellWindow*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  if (!self || self->destroying_) {
+    return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+  }
+  switch (msg) {
+    case WM_MOUSEACTIVATE:
+      return MA_NOACTIVATE;
+    case WM_ERASEBKGND:
+      return 1;
+    case WM_PAINT: {
+      PAINTSTRUCT ps = {};
+      HDC dc = ::BeginPaint(hwnd, &ps);
+      self->PaintPaneDragCard(hwnd, dc);
+      ::EndPaint(hwnd, &ps);
+      return 0;
+    }
+    case WM_DESTROY:
+      if (self->pane_drag_card_ == hwnd) {
+        self->pane_drag_card_ = nullptr;
+      }
+      if (self->pane_drag_slot_ == hwnd) {
+        self->pane_drag_slot_ = nullptr;
       }
       return 0;
   }
@@ -9717,6 +10365,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       }
       if (self && wparam == kSplitChipTimer) {
         self->SplitChipTick();
+        return 0;
+      }
+      if (self && wparam == kPaneHandoffTimer) {
+        self->PaneHandoffTick();
         return 0;
       }
       if (wparam == kChromeTipTimer) {

@@ -59,8 +59,21 @@ middle pane is square all round.
   which move the focused pane wherever the menu opened and are greyed when
   the focus is outside the split, Remove from Split, which dissolves the
   whole split, and Close Split. The hover chip over an unfocused pane moves
-  that pane, and its Remove from split dissolves the split too. Windows has no pane move
-  handle: the chip and the row menu stand in for the Mac's drag grip.
+  that pane, and its Remove from split dissolves the split too.
+* **The move grip** (the Mac's `PaneMoveHandle`, 2026-11-11). A pill at the
+  top of the pane under the pointer, shown while the pointer is in the top
+  44 DIP of a pane. Dragging it along the split moves the pane to the
+  nearest slot (the slot is washed with the accent, and a card with the
+  pane's icon and title rides the pointer; a pair swaps). Pulling it 120 DIP
+  off the split's axis, or 40 DIP outside the split, takes the pane out on
+  release. Reaching the tab list (the sidebar, or the strip in the
+  horizontal layout) takes the pane out at once and the drag carries on as
+  that tab's, so it lands anywhere a dragged tab can. Esc cancels. A split a
+  pinned cell or a bookmark stands for has no grip: every pane there carries
+  its cell's tag, and `SplitAllowsPaneMove` refuses a tagged pane. The page
+  panes are hosted windows, so they do not slide under the drag as the
+  Mac's do. Code: `PhiShellWindow::UpdatePaneGrip` and the `PaneDrag`
+  members in `phi_shell_window.cc`.
 * **Pinned and bookmarked.** A split of three or four pins, bookmarks and
   duplicates like a pair. The cell stays one row in the store: the first
   two panes as before, the later ones as JSON in a new optional column,

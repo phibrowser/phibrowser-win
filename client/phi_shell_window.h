@@ -2292,6 +2292,53 @@ class PhiShellWindow : public PhiHitSource,
   // panel stays idle. Its own pointer events repaint it directly.
   uint32_t chrome_paints_ = 0;
   uint32_t floating_painted_at_ = 0;
+  // --- The split pane move grip (the Mac's PaneMoveHandle) ----------------
+  // A pill at the top of the pane under the pointer, shown when the pointer
+  // nears the pane's top edge. Dragging it along the split reorders the
+  // panes, pulling it out of the split takes the pane out, and reaching the
+  // tab list turns the pane into a normal tab whose drag carries on there.
+  // Never offered on a split a pinned cell or a bookmark stands for: its
+  // panes stay as saved.
+  struct PaneDrag {
+    int tab = 0;
+    int slot = 0;        // Where the pane sat when the drag began.
+    POINT start{};       // Screen.
+    RECT start_pane{};   // Screen.
+    bool stacked = false;
+    bool active = false;  // Past the threshold.
+    int target = -1;      // The slot a release moves it to.
+    bool pull_out = false;  // A release takes it out of the split.
+  };
+  HWND pane_grip_ = nullptr;
+  int pane_grip_tab_ = 0;  // The pane's tab while shown; 0 = hidden.
+  HWND pane_drag_card_ = nullptr;
+  HWND pane_drag_slot_ = nullptr;
+  std::optional<PaneDrag> pane_drag_;
+  bool pane_drag_releasing_ = false;  // Our own ReleaseCapture is under way.
+  // A pane that left its split for the tab list, waiting for its row.
+  int pane_handoff_tab_ = 0;
+  ULONGLONG pane_handoff_deadline_ = 0;
+  bool SplitAllowsPaneMove(const std::vector<NativePane>& panes) const;
+  void UpdatePaneGrip(const std::vector<NativePane>& panes, POINT cursor);
+  void ShowPaneGrip(int tab_id, const RECT& pane);
+  void HidePaneGrip();
+  void BeginPaneDrag();
+  void UpdatePaneDrag(POINT screen);
+  void EndPaneDrag(bool commit);
+  void HidePaneDragVisuals();
+  void TakePaneOutOfSplit(int tab_id);
+  void HandOffPaneToTabList(int tab_id);
+  void PaneHandoffTick();
+  void PaintPaneDragCard(HWND hwnd, HDC dc);
+  static LRESULT CALLBACK PaneGripProc(HWND hwnd,
+                                       UINT msg,
+                                       WPARAM wparam,
+                                       LPARAM lparam);
+  static LRESULT CALLBACK PaneDragAuxProc(HWND hwnd,
+                                          UINT msg,
+                                          WPARAM wparam,
+                                          LPARAM lparam);
+
   HWND split_chip_ = nullptr;
   int split_chip_tab_ = 0;  // The pane's tab while shown; 0 = hidden.
   ULONGLONG split_chip_leave_tick_ = 0;
