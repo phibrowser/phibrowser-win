@@ -833,6 +833,11 @@ void PhiSidebarDragSession::Update(POINT pt) {
     ::SetCapture(shell_hwnd());
     BeginDragImage(pt);  // The element lifts off into its own window.
     ReserveDropZones();  // After the lift: the rows move under the zone.
+    if (key_.kind == SidebarKey::Kind::kFolder) {
+      // An open folder travels closed (VisibleBookmarkCells): rebuild the
+      // rows without its children.
+      shell_->SidebarScheduleRefresh();
+    }
   }
   // Every drag can cross bands (conversions, tear-off, a split over the
   // page): a bookmark leaves its outline for the grid (the Mac's
@@ -1091,6 +1096,7 @@ bool PhiSidebarDragSession::CommitDragImpl() {
   const int split_target = split_drop_target_;
   const TabId split_focus = focus_tab_id_;
   const TabId click_tab = click_tab_id_;
+  const std::string click_folder = click_folder_guid_;
   const int chip_pos = Index();
   const std::string pip_target = pip_target_;
   // A tab dropped on the strip lands from where it was released: the view
@@ -1108,6 +1114,11 @@ bool PhiSidebarDragSession::CommitDragImpl() {
   if (!active && kind == PhiDragKind::kTab && click_tab.valid()) {
     // A plain click on a tab row: the deferred activation.
     view_->Apply(SidebarActivate{SidebarKey::Tab(click_tab.value), 0});
+    return false;
+  }
+  if (!active && !click_folder.empty()) {
+    // A plain click on a folder row: the deferred disclosure.
+    view_->ClickFolder(click_folder);
     return false;
   }
   // The page band lands before the slot paths below: a split drop has no
@@ -1234,6 +1245,7 @@ void PhiSidebarDragSession::OnRowsRebuilt() {
 
 void PhiSidebarDragSession::CancelDrag() {
   const bool was_active = active_;
+  const bool was_folder = key_.kind == SidebarKey::Kind::kFolder;
   CancelHoverExpand();
   ReleaseDropZones();
   grid_extra_ = 0;
@@ -1248,6 +1260,7 @@ void PhiSidebarDragSession::CancelDrag() {
   bookmark_drop_folder_row_ = -1;
   focus_tab_id_ = TabId();
   click_tab_id_ = TabId();
+  click_folder_guid_.clear();
   split_drop_valid_ = false;
   split_drop_zone_ = PhiSplitDropZone::kNone;
   split_drop_replace_ = false;
@@ -1270,6 +1283,10 @@ void PhiSidebarDragSession::CancelDrag() {
     }
     if (shell_hwnd()) {
       ::InvalidateRect(shell_hwnd(), nullptr, FALSE);
+    }
+    if (was_folder) {
+      // The children folded away for the drag come back, drop or no drop.
+      shell_->SidebarScheduleRefresh();
     }
   }
 }

@@ -173,6 +173,8 @@ class PhiSidebarDragSession {
   void Commit();
   // The tab row a press armed WITHOUT activating it.
   void NoteClickTab(TabId tab_id) { click_tab_id_ = tab_id; }
+  // The folder row a press armed WITHOUT disclosing it.
+  void NoteClickFolder(const std::string& guid) { click_folder_guid_ = guid; }
 
   DragKind kind() const { return kind_; }
   DropBand band() const { return band_; }
@@ -372,6 +374,7 @@ class PhiSidebarDragSession {
   // pinned tab or bookmark it grabbed).
   TabId focus_tab_id_;
   TabId click_tab_id_;
+  std::string click_folder_guid_;
 
   // The slide legs: each eases current -> target over kSlideMs, retargeting
   // when the gap moves.

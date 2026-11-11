@@ -84,6 +84,9 @@ constexpr int kCapsuleContentsMinimum = 132;
 // this size, centered on the work area.
 constexpr int kInitialWidth = 980;
 constexpr int kInitialHeight = 680;
+// How far right of the Kiosk already open a new one lands (the Mac's
+// cascadeOffset).
+constexpr int kCascadeOffset = 28;
 
 // Segoe MDL2 glyphs, written as escapes: the literal private-use characters
 // the first Peek panel used landed in the file as EMPTY string literals.
@@ -188,6 +191,7 @@ PhiKioskWindow::PhiKioskWindow(int64_t window_id,
   // shortcut), else the pointer's.
   RECT work = {0, 0, kInitialWidth, kInitialHeight};
   int dpi = static_cast<int>(::GetDpiForSystem());
+  HMONITOR display = nullptr;
   {
     POINT cursor = {};
     ::GetCursorPos(&cursor);
@@ -202,7 +206,7 @@ PhiKioskWindow::PhiKioskWindow(int64_t window_id,
                        : ours(foreground) ? foreground
                                           : nullptr;
     MONITORINFO monitor = {sizeof(monitor)};
-    const HMONITOR display =
+    display =
         acted && !ours(under)
             ? ::MonitorFromWindow(acted, MONITOR_DEFAULTTONEAREST)
             : ::MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
@@ -220,8 +224,41 @@ PhiKioskWindow::PhiKioskWindow(int64_t window_id,
   }
   const int width = ::MulDiv(kInitialWidth, dpi, 96);
   const int height = ::MulDiv(kInitialHeight, dpi, 96);
-  const int x = work.left + ((work.right - work.left) - width) / 2;
-  const int y = work.top + ((work.bottom - work.top) - height) / 2;
+  int x = work.left + ((work.right - work.left) - width) / 2;
+  int y = work.top + ((work.bottom - work.top) - height) / 2;
+  // A Kiosk already on that display: the new one opens shifted right of it
+  // rather than exactly on top (the Mac's `ebdbb259`), and back at the left
+  // edge once the shift would pass the right one. The frontmost Kiosk is the
+  // one the user opened or used last; EnumWindows walks front to back.
+  struct Frontmost {
+    HMONITOR display;
+    HWND kiosk;
+  } frontmost = {display, nullptr};
+  ::EnumWindows(
+      [](HWND hwnd, LPARAM param) -> BOOL {
+        auto* out = reinterpret_cast<Frontmost*>(param);
+        wchar_t name[64] = {};
+        DWORD process = 0;
+        if (!::IsWindowVisible(hwnd) || ::IsIconic(hwnd) || ::IsZoomed(hwnd) ||
+            !::GetWindowThreadProcessId(hwnd, &process) ||
+            process != ::GetCurrentProcessId() ||
+            !::GetClassNameW(hwnd, name, 64) ||
+            ::wcscmp(name, kKioskClassName) != 0 ||
+            ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL) != out->display) {
+          return TRUE;
+        }
+        out->kiosk = hwnd;
+        return FALSE;
+      },
+      reinterpret_cast<LPARAM>(&frontmost));
+  RECT previous = {};
+  if (frontmost.kiosk && ::GetWindowRect(frontmost.kiosk, &previous)) {
+    x = previous.left + ::MulDiv(kCascadeOffset, dpi, 96);
+    y = previous.top;
+    if (x + width > work.right) {
+      x = work.left;
+    }
+  }
 
   ClassSpec spec;
   spec.name = kKioskClassName;

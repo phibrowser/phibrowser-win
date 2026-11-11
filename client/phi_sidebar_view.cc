@@ -579,10 +579,11 @@ bool PhiSidebarView::OnStoredRowClick(POINT pt) {
       ArmDrag(bookmark.key, pt);
       if (bookmark.folder) {
         // A folder click discloses/collapses its children (the Mac's
-        // toggleItemExpanded). The armed drag is keyed, so the rebuild
-        // cannot invalidate it.
-        ToggleExpanded(bookmark.guid);
-        shell_->SidebarScheduleRefresh();
+        // toggleItemExpanded), on the release: a press that turns into a
+        // drag moves the folder and leaves it as it was.
+        if (drag_) {
+          drag_->NoteClickFolder(bookmark.guid);
+        }
       } else if (!bookmark.url.empty()) {
         // Sidebar bookmark rows bind like pins (bookmarkGuidBacking); the
         // Bookmarks menu keeps opening plain tabs.
@@ -723,6 +724,11 @@ bool PhiSidebarView::DragContextChanged() const {
   return shell_->SidebarActiveSpace() != drag_space_ ||
          layout.horizontal_tabs != drag_horizontal_ ||
          BandHidden(layout) != drag_band_hidden_;
+}
+
+void PhiSidebarView::ClickFolder(const std::string& guid) {
+  ToggleExpanded(guid);
+  shell_->SidebarScheduleRefresh();
 }
 
 void PhiSidebarView::NoteDragClickTab(TabId tab_id) {
@@ -2181,8 +2187,19 @@ std::vector<const SidebarCell*> PhiSidebarView::VisibleBookmarkCells()
   if (space_root_.shown && !space_root_.expanded) {
     return visible;
   }
-  for (const size_t row :
-       PhiVisibleOutlineRows(sidebar_tree_.bookmarks, expanded_bookmarks_)) {
+  // A folder being dragged travels closed: its children fold away while it
+  // is lifted and come back where it lands. The folder itself stays open.
+  std::set<std::string> lifted_closed;
+  const bool lifted = drag_ && drag_->active() &&
+                      drag_->key().kind == SidebarKey::Kind::kFolder &&
+                      expanded_bookmarks_.count(drag_->key().id) > 0;
+  if (lifted) {
+    lifted_closed = expanded_bookmarks_;
+    lifted_closed.erase(drag_->key().id);
+  }
+  for (const size_t row : PhiVisibleOutlineRows(
+           sidebar_tree_.bookmarks,
+           lifted ? lifted_closed : expanded_bookmarks_)) {
     visible.push_back(&sidebar_tree_.bookmarks[row]);
   }
   return visible;

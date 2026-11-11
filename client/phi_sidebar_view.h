@@ -887,6 +887,9 @@ class PhiSidebarView {
   // The tab row a press armed WITHOUT activating it: a plain click
   // activates on release, a drag never does.
   void NoteDragClickTab(TabId tab_id);
+  // A folder row's click, delivered on the release by the drag session
+  // when the press never became a drag.
+  void ClickFolder(const std::string& guid);
   void UpdateDrag(POINT pt);
   void CommitDrag();
   // An external cancel (the capture was taken away, a panel press).

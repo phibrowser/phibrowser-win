@@ -56,7 +56,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | *DEBUG* menu | debug builds | dev-hooks verbs | — | Developer tooling, different shape by design. |
 | Check for update | Sparkle | WinSparkle + Update pill | ✅ | Update window is WinSparkle's own, not the Mac's custom sheet. |
 | Uninstall Phi | Help row, removes Phi + Sentinel data | NSIS uninstaller with delete-data checkbox | ✅ | Different entry point (Windows Apps & features), same outcome. |
-| Time Machine backups (policy snapshots + restore) | Help ▸ Time Machine Backups, `docs/time-machine.md` | none | 🔧 | Decided 2026-10-19: implement. A version-keyed snapshot of the user-data folder taken by policy before an update, with a restore entry point (Help ▸ Backups) that also reinstalls the matching build. Needs a Windows twin of `TimeMachineRollbackPolicy.json`. |
+| Time Machine backups (policy snapshots + restore) | hidden since Mac `81602df9` (2026-11-09): the Help entry is gone and launch purges the snapshots; the code is kept for re-enabling | none | ⛔ | Decided 2026-11-11: not built while the Mac keeps it off. It replaces the 2026-10-19 "implement". Windows never took a snapshot, so there is nothing to purge. Reopen if the Mac turns it back on. |
 | Export / Import User Data (zip) | Help ▸ Manage User Data | disabled placeholders | 🔧 | `user-data-parity.md` S6 lists it as missing. |
 | Import from another browser | Chrome / Safari / Arc / Dia / file | Chrome / Edge / Brave / Arc for Windows / file | ✅ | `browser-import-port.md` (2026-10-23). Safari and Dia are Mac-only; Edge and Brave are the Windows additions. Cookies are offered only for a source without an app-bound key (current Chrome and Edge seal cookies and passwords as `v20`, which no other app can read). Stays open naming the failed sources instead of closing. |
 | Migrate from Another Browser (Arc / Dia / Zen Spaces wizard) | wizard rebuilds profiles + Spaces | none | 🔧 | Decided 2026-10-19: implement for the sources that exist on Windows (Zen; Arc only if a Windows install is found). Dia is Mac-only. Re-adds `browser_migration_finished` to `analytics.md`. |
@@ -159,7 +159,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Developer: Allow agents (CDP), per-agent Allowed / Blocked lists, "Allow all agents" | yes | one switch | ⛔ | No code-signature peer identity on the Windows pipe (`phi_settings_window.cc`, `phi_control_server.cc`). Revisit if the pipe gains a caller identity. |
 | Developer: Allow agents to operate Spaces, operated-page rendering, profiles agents can use, install skill | yes | yes (no "exact rendering" toggle) | ◐ | The operated-page mask toggle has no Windows row. Ported 2026-11-04 (Mac `c3149697`, §9): the switch now also gates shadow windows, and turning it off closes them. Still different from the Mac on purpose: it is off by default, credential verbs come with admission, and the description says so. |
 | Developer: Agent Password Manager (Bitwarden sign in / unlock / timeout), Agent Credential Approvals (standing grants, revoke) | yes, `docs/bitwarden-password-manager.md` | helper process + `credentials.*` verbs + Allow once / 10 min prompt; no Settings rows | ◐ | `PhiBitwardenHelper.exe` and the broker are in; the sign-in sheet, session settings, approvals list and "Always" grants are not. `analytics.md` records `approval_type: always` and `kind: run` as not ported. |
-| About page | About window | About page + notice | ✅ | |
+| About page | About window, with a conch to drag since Mac `094e85c8` (2026-11-06) | About page + notice | ✅ | The conch is left out (decided 2026-11-11): it plays 8.5 MB of frame images, and Windows dropped its conch frames on 2026-11-02 for the membership card. |
 
 ## 5. Onboarding, account, data
 
@@ -206,15 +206,15 @@ Two standing decisions cover many rows and are not repeated in full:
 |---|---|
 | ✅ ported | 62 |
 | ◐ partial | 27 |
-| 🔧 to implement | 24 |
-| ⛔ deliberately left | 20 |
+| 🔧 to implement | 23 |
+| ⛔ deliberately left | 21 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
 
 **The 🔧 list, roughly by user impact:** Mini Player / media controls ·
 content blocking switches · multi-selection ·
 Bitwarden Settings rows and standing grants ·
-Time Machine-style snapshots + restore · crash feedback prompt · image
+crash feedback prompt · image
 preview · Arc/Zen migration wizard · Share · Capture Full Page ·
 Export/Import user data · account export + deletion · invitation code
 (backend) · full screen · client-side
@@ -326,8 +326,15 @@ several days with box time.
 10. `422c08c0` **sidebar gradient through a Space switch.** S, check first.
 11. Small fixes: `01dafe08`, `1e890904`, `fd7357d1`, `a910dca8`, `d2497fae`, `0ad6c4ae`.
 
-**Decisions wanted:** the Time Machine row (the Mac hid the feature, `81602df9`), the
-Kiosk launch omnibox (`ebdbb259`), and the About conch (`094e85c8`).
+**Decided 2026-11-11:**
+
+* Time Machine (`81602df9`): not built while the Mac keeps it off (§1, ⛔).
+* Kiosk launch omnibox (`ebdbb259`): not ported. It asks for a URL for the global
+  Kiosk shortcut and the New Kiosk menu command; Windows has neither (§1). One piece of
+  the same commit does apply and is ported: a new Kiosk opens 28 units right of the
+  frontmost Kiosk on that display, and back at the left edge once it would pass the
+  right one. Windows stacked them exactly. Run on nuc with eight Kiosks.
+* About conch (`094e85c8`): left out (§4 About row).
 
 **Results, 2026-11-10.** Ports 1 to 9 and the small fixes are in the tree; where a line
 says "nuc" it was run there by real input or over the control pipe.
@@ -358,9 +365,10 @@ says "nuc" it was run there by real input or over the control pipe.
 * `d2497fae`: nothing to port. Checked on nuc 2026-11-11: with the floating sidebar up,
   the address field's suggestions and Tab Search both draw above the panel.
 * `0ad6c4ae`: nothing to port. Checked on nuc 2026-11-11: a top-level folder dragged
-  beside a collapsed sibling opens the gap and the drop lands. Seen on the way: pressing
-  a folder row to drag it also toggles the folder (`PhiSidebarView`, the toggle is on the
-  press), and while it is dragged its children stay drawn where they were.
+  beside a collapsed sibling opens the gap and the drop lands. Seen on the way and fixed
+  the same day: pressing a folder row to drag it also toggled the folder. The toggle now
+  comes on the release of a plain click, and an open folder's children fold away while
+  it is dragged and come back where it lands. Run on nuc.
 
 | Mac commit | Subject | Verdict | Windows action / reason |
 |---|---|---|---|
@@ -395,15 +403,15 @@ says "nuc" it was run there by real input or over the control pipe.
 | `d12d4bbd`, `7bfc1239`, `4c7f766e`, `e123af5e`, `3c405222` | custom Telegram bots | skip | Phi Link, ⛔ AI suite. |
 | `cde2a6a1` | feat: add a setting to let the Tab Switcher include all Spaces | port | M. New §2 row. |
 | `c8c96bca` | fix: keep all-Spaces Tab Switcher recency across Space switches, limit it to matching Spaces, and support empty Spaces | port | With `cde2a6a1`. |
-| `094e85c8` | Add interactive conch logo to About Phi | watch | Needs a decision: Windows dropped the conch frame sets (12.5 MB) on 2026-11-02. |
+| `094e85c8` | Add interactive conch logo to About Phi | skip | Decided 2026-11-11: left out, 8.5 MB of frames for an About decoration (§4). |
 | `22fbb87d` | fix: stop the system beep when typing with focus outside web content | skip | AppKit responder chain. |
-| `81602df9` | feat: hide Time Machine backups and purge existing snapshots on launch | watch | The Mac turned the feature off. The §1 Time Machine row is 🔧 by the 2026-10-19 decision and needs a new one. |
+| `81602df9` | feat: hide Time Machine backups and purge existing snapshots on launch | skip | Decided 2026-11-11: the §1 row is ⛔ while the Mac keeps the feature off. |
 | `8655ec6b`, `0246e720` | feat: mark the session discard on sign-out, consume it on sign-in | port | M. New §5 row. |
 | `b3a379e3` | feat: support splits of up to four tabs, including pinned tabs and bookmarks | port | L. New §3 row. |
 | `1e890904` | fix: install the Grok Bot skill link into the common agents folder | port | S. `phi_skill_installer.cc` links Grok Bot to `.grok\skills`; it should be `.agents\skills`. Update the comment and the skill's `install.md`. |
 | `776f80d3` | fix: vendor a Bitwarden helper that doesn't embed the builder's home directory | skip | The Mac's vendored binary. Not checked: whether `PhiBitwardenHelper.exe` embeds a build path. |
 | `0d8342c4` | feat: replace saved pin and bookmark URLs with current URL | port | S. New §2 row. |
-| `ebdbb259` | Kiosk: ask for the URL in a Spotlight-style omnibox, and polish window placement and focus | watch | The launch omnibox serves the global Kiosk shortcut, which is ⛔ on Windows (§1), and the Mac's New Kiosk menu item. Windows has no New Kiosk row. Needs a decision. |
+| `ebdbb259` | Kiosk: ask for the URL in a Spotlight-style omnibox, and polish window placement and focus | done | Decided 2026-11-11: the launch omnibox is skipped (no global shortcut, no New Kiosk command on Windows). The shift of a new Kiosk right of the one already there is ported (`phi_kiosk_window.cc`), nuc. |
 | `3ffc5d1b` | fix: keep the sidebar toggle button visible after pinning or unpinning the sidebar | skip | Performance layout header and traffic lights. |
 | `8d5b0c8c` | fix: show the Update button beside the sidebar button in Performance layout | skip | Performance layout, removed on Windows. |
 | `28df0d0d` | i18n: four-pane split hints and pane menu items, Tab Switcher scope setting, saved URL replace, About conch labels | watch | Regenerate the catalog when those ports land. |
