@@ -44,6 +44,10 @@ struct PendingCreation {
   // kSpace: answered by a parked window rebuilt rather than a fresh one, so it
   // holds the user's tabs (windowOpened says false).
   bool materialized_ghost = false;
+  // kSpace, a parked window materialized into a slot: the blank startup
+  // browser the slot shows the Space with, which this one takes over from
+  // and which then closes (PhiCoordinator::TryAdoptParkedWindow).
+  BrowserId replaces;
   std::string task_id;     // kAgent / kShadow: the skill's taskId.
   std::string agent_name;  // kAgent: the driver's name for the watch pill.
   bool persistent = false;  // kAgent

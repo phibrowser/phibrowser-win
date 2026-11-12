@@ -375,6 +375,9 @@ LRESULT CALLBACK PhiCoordinator::MsgWndProc(HWND hwnd,
       case kWindowlessRestoreTimer:
         self->ReleaseOpensWaitingForRestore("timer");
         return 0;
+      case kAdoptParkedTimer:
+        self->TryAdoptParkedWindow();
+        return 0;
       default:
         return 0;
     }
@@ -6182,6 +6185,98 @@ void PhiCoordinator::AdoptCreatedWindow(
                     : SpaceForUserBrowser(creation.profile_id
                                               ? creation.profile_id
                                               : ""));
+  if (!pending && !creation.incognito) {
+    // Chromium's own window (a launch whose replay parked every window of
+    // this profile): when the Space it landed on still has its window from
+    // the last run parked, that window takes the Space over.
+    ScheduleAdoptParkedWindow(browser);
+  }
+}
+
+void PhiCoordinator::ScheduleAdoptParkedWindow(BrowserId blank) {
+  if (!msg_hwnd_ || !blank.valid()) {
+    return;
+  }
+  adopt_parked_for_ = blank;
+  adopt_parked_tries_ = 0;
+  ::SetTimer(msg_hwnd_, kAdoptParkedTimer, kAdoptParkedDelayMs, nullptr);
+}
+
+void PhiCoordinator::TryAdoptParkedWindow() {
+  // PHI-2006: hosted as it was, the blank window stood beside the parked one
+  // and the Space's tabs stayed parked. The session then remembered both
+  // (the blank one as a second row, release review B6), and the next launch
+  // rebuilt the blank one as a second shell. Materialized into the slot
+  // instead, the parked window shows the Space and the blank one closes.
+  if (msg_hwnd_) {
+    ::KillTimer(msg_hwnd_, kAdoptParkedTimer);
+  }
+  const BrowserId blank = adopt_parked_for_;
+  adopt_parked_for_ = BrowserId();
+  PhiShellWindow* shell =
+      blank.valid() ? registry_.ControllerForBrowser(blank) : nullptr;
+  if (!shell || shell->is_incognito() || shell->is_agent() || !framework_ ||
+      phase_ >= AppPhase::kClosing) {
+    return;
+  }
+  const std::string space_id = shell->SpaceForBrowser(blank);
+  const Space* space = space_manager_->Find(space_id);
+  const PhiGhostSpaces::Remembered* ghost =
+      space ? session_restore_->Parked(space_id) : nullptr;
+  if (!ghost || ghost->profile != space->profile_id) {
+    return;
+  }
+  // Only a blank window: one Chromium opened for a link keeps its page.
+  const PhiWindowModel::Snapshot* snapshot = window_model_.Get(blank);
+  if (!snapshot) {
+    return;
+  }
+  for (const PhiWindowModel::Tab& tab : snapshot->tabs) {
+    if (!tab.url.empty() && tab.url != "about:blank" &&
+        !PhiNewTabPage::IsNewTabUrl(tab.url)) {
+      LOG(INFO) << "[PhiClient] startup window " << blank.value
+                << " has a page open; Space " << space_id
+                << " keeps its parked window";
+      return;
+    }
+  }
+  const std::string profile = ghost->profile;
+  const BrowserId window_id = ghost->window_id;
+  PendingCreation creation;
+  creation.kind = phi_framework::WindowKind::kSpace;
+  creation.slot = shell->slot();
+  creation.space_id = space_id;
+  creation.profile_id = profile;
+  creation.materialized_ghost = true;
+  creation.replaces = blank;
+  creation.deadline_tick = ::GetTickCount64() + kCreateTimeoutMs;
+  // Filed before the call, which may announce inside it.
+  registry_.AddPendingGhost(window_id, creation);
+  UpdateSweepTimer();
+  const int outcome = framework_->MaterializeGhostWindow(
+      profile.c_str(), static_cast<int>(window_id.value));
+  LOG(INFO) << "[PhiClient] startup window " << blank.value << " on Space "
+            << space_id << ": parked window " << window_id.value
+            << " takes over, outcome=" << outcome;
+  switch (outcome) {
+    case 0:  // Arrives via AttachRestoredGhost, which retires the blank one.
+      session_restore_->ClearParked(space_id);
+      return;
+    case 2:  // No such ghost: the blank window stays the Space's.
+      registry_.TakePendingGhost(window_id);
+      session_restore_->ClearParked(space_id);
+      UpdateSweepTimer();
+      return;
+    default:  // Refused for now: a replay of the profile is running.
+      registry_.TakePendingGhost(window_id);
+      UpdateSweepTimer();
+      if (++adopt_parked_tries_ < kAdoptParkedTries) {
+        adopt_parked_for_ = blank;
+        ::SetTimer(msg_hwnd_, kAdoptParkedTimer, kAdoptParkedDelayMs,
+                   nullptr);
+      }
+      return;
+  }
 }
 
 void PhiCoordinator::HostLateSpaceBrowser(
@@ -6633,6 +6728,14 @@ bool PhiCoordinator::AttachRestoredGhost(BrowserId browser,
   // then keep the old row).
   session_restore_->ClearParked(space_id);
   session_restore_->NoteLiveWindow(space_id, space->profile_id, browser);
+  if (target && pending->replaces.valid() &&
+      target->BrowserIdForSpace(space_id) == pending->replaces) {
+    // Taking the Space over from the blank startup browser: that one stays
+    // on screen, retired, until this attaches, then closes (the slot's
+    // deferred close), and its restore row goes with it.
+    session_restore_->ForgetSecondaryWindow(space_id, pending->replaces);
+    target->RetireAndUnmapSpaceBrowser(space_id);
+  }
   if (!target || target->HasSpace(space_id)) {
     // Asked for with no slot to join (OpenUserSpaceWindow), or the slot
     // that asked closed (or got the Space another way) meanwhile: the

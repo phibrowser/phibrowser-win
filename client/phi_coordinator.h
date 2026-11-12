@@ -931,6 +931,12 @@ class PhiCoordinator : public SidebarHost,
   // beside the Space they open).
   bool windowless_restore_in_flight_ = false;
   bool awaiting_restore_fallback_ = false;
+  // The blank startup browser waiting for its Space's parked window
+  // (kAdoptParkedTimer); invalid when none.
+  BrowserId adopt_parked_for_;
+  int adopt_parked_tries_ = 0;
+  void ScheduleAdoptParkedWindow(BrowserId blank);
+  void TryAdoptParkedWindow();
   std::vector<std::function<void()>> opens_waiting_for_restore_;
   void ReleaseOpensWaitingForRestore(const char* exit);
   // The part of OpenUserSpaceWindow that runs once any restore is over.
@@ -1310,6 +1316,13 @@ class PhiCoordinator : public SidebarHost,
   // to have its say, re-armed shorter once the park list has landed.
   static constexpr UINT_PTR kColdStartFallbackTimer = 6;
   static constexpr UINT_PTR kWindowlessRestoreTimer = 7;
+  // Chromium's own blank window, hosted on a Space whose window from the
+  // last run is still parked: that window is materialized into the slot in
+  // its place (TryAdoptParkedWindow). Tried a beat after hosting, and again
+  // while the framework refuses for now (a replay of that profile running).
+  static constexpr UINT_PTR kAdoptParkedTimer = 8;
+  static constexpr UINT kAdoptParkedDelayMs = 250;
+  static constexpr int kAdoptParkedTries = 20;
   // How long opens wait for a windowless session restore before they go ahead
   // on their ordinary path.
   static constexpr unsigned kWindowlessRestoreWatchdogMs = 15 * 1000;
