@@ -2,10 +2,8 @@
 
 Deep semantics behind the lifecycle rules in SKILL.md: profiles and agent
 permissions, persistent Spaces, shadow windows, `spaceStatus()`, keep-alive,
-the completion safety net and session mirror, saved state, and user console
-commands. Read this before a task that spans days or relaunches, runs in a
-shadow window, uses `saveState`/`importCookies`, or co-works with the user
-through the console.
+completion, and saved state. Read this before a task that spans days or
+relaunches, runs in a shadow window, or uses `saveState`/`importCookies`.
 
 > The wire under these helpers — every verb name, the payload fields
 > each one reads, the capability it costs and the errors it can
@@ -45,14 +43,15 @@ your own tasks. The task keeps its owner across rounds and reconnects for
 as long as Phi runs (the capability is in Phi's memory, not on disk); after
 the user quits Phi every task is gone anyway.
 
-The transcript's "You:" line is the user's: `agentSpace.userMessage` is no
-longer agent-callable on Windows (`test_rig_only`) — the console prompt
-and Phi's own mirror deliver the user's commands, `readUserMessages` drains
-them. There is NO Agent Transcript console on Windows: `agentSpace.list`
-always reports `transcriptMirror: false`, so never spawn the mirror tailer
-there; `agentSpace.log` is still accepted (the lines are kept for the
-pill and the badges), and every user-facing result must go through
-`say()`/`narrate` or the task's caption.
+There is NO Agent Transcript console on Windows, and this skill has no
+session mirror. `agentSpace.list` always reports `transcriptMirror: false`.
+`agentSpace.log` is still accepted so a script written for the Mac keeps
+working, but Phi keeps none of the lines: `say()` shows nothing, and the
+action lines the helpers send only refresh the keep-alive. The user has
+nowhere to type to a task, so `readUserMessages()` returns nothing and
+`waitForUserMessage()` only times out (`agentSpace.userMessage` is
+`test_rig_only`). Every user-facing result goes in your chat reply; the
+pill shows the caption you `narrate`.
 
 `agentSpace.handoff{message}` on Windows raises the same floating "The
 agent needs you" prompt as on Mac (Switch to Agent Space / Later) and
@@ -74,12 +73,12 @@ skill — `'Claude Code'`, `'Codex'`, `'Cursor'`, `'Hermes'`, `'OpenClaw'`,
 `'Pi'`, `'Grok Build'`, `'Grok Bot'`, `'Antigravity'`, `'GitHub Copilot'`,
 `'OpenCode'`, `'Qwen Code'`, `'CodeBuddy'`. The app resolves it the way the
 Mac resolves a driver's code signature: a known agent's Space pip wears that
-agent's brand mark in the switcher and its watch pill and transcript carry
+agent's brand mark in the switcher and its watch pill carries
 the product name; an unknown name keeps the robot pip and shows the name as
 given. Windows has no peer identity of its own, so this is the only way the
-user learns WHO holds a Space — always pass it. Omitted, the skill falls back
-to the host its session mirror can prove (a Claude Code / Codex / Cursor /
-Hermes / OpenClaw / Pi session transcript) and otherwise sends nothing. Read
+user learns WHO holds a Space — always pass it. Omitted, the skill names
+Claude Code or Hermes when that host's own session id is in the environment
+and otherwise sends nothing. Read
 on the create call only; a re-bind keeps the driver the Space was created
 with.
 
@@ -132,7 +131,6 @@ explicitly asked to keep out of their way.** The difference is not cosmetic:
 | pip in the Space switcher | yes | **none** |
 | user can watch live | yes | **no** |
 | take control / hand back | yes | **no** |
-| transcript console | yes | **no** |
 | page automation | full | full |
 
 Everything needing a human is therefore impossible here — a login, a captcha,
@@ -146,8 +144,8 @@ task has outgrown a shadow window: `spaceStatus`, `say`, `readUserMessages`,
 `waitForAgentControl`, and `screenshotBrowser` (nothing to photograph — plain
 `screenshot()` works, it captures the page through the renderer). `setStatus`
 / `narrate` and `markError` are quiet no-ops instead, matching user-space
-mode, so shared flows need no branching. Nothing you narrate reaches a
-console, so **the user-facing result belongs in your chat reply.**
+mode, so shared flows need no branching. Nothing you narrate is shown,
+so **the user-facing result belongs in your chat reply.**
 
 Other differences worth knowing:
 
@@ -243,36 +241,11 @@ survives the round end — the round-end grace never overrides an explicit
 deadline that still lies ahead, in either direction — and the next round's
 start returns the Space to the normal driving clock.
 
-## Completion and the session mirror
+## Completion
 
-`complete()`'s safety net: when a session mirror is live, `complete()` defers
-the actual completion until your final reply has been mirrored (turn end or a
-short quiet window, ~90s cap) — the console then still reads answer first,
-"Task completed" last, and the Space lingers a few extra seconds while that
-drains. Mirrorless sessions complete immediately, so SKILL.md's
-"deliver the result BEFORE completing" rule is the only thing standing
-between the user and an answerless console.
-
-The deferral follows the session's ONE mirror: binding a different task
-(`enterContext` for another Space) while a completion is still draining
-delivers that completion immediately — no further line could reach the old
-console anyway — so the old Space closes right then instead of waiting out
-the quiet window. Re-entering the SAME task while its completion drains
-cancels the pending completion: the task simply continues.
-
-The console mirrors the WHOLE session, not just browser steps: under all
-six supported agents — Claude Code, Codex, OpenClaw, Pi, Hermes, and
-Cursor —
-`enterContext` spawns a tailer daemon that streams your prompts, reply
-prose, reasoning summaries, and tool calls into the panel automatically (no
-setup — see `references/install.md` ▸ step 4), rendered in your own CLI's
-visual style (Claude Code's `>` prompts and ⏺ bullets, Codex's ▌ quote bars
-and • cells), so it reads like your own transcript. Your phi heredocs are
-the one exception: the action log already narrates them step by step, so
-the mirror drops those tool calls instead of echoing every script twice. When
-no mirror is running (an unrecognized agent, or a session the discovery
-could not identify), use `say('…')` to reflect a line of your own prose into
-the console yourself.
+`complete()` ends the task at once: the Space and its window close (a
+persistent Space keeps its place in the switcher). Give the user the result
+in your chat reply; nothing in Phi keeps your words after the task ends.
 
 ## Saved state
 
@@ -297,32 +270,3 @@ carry no `domain` of their own. The loadState caution applies with extra
 force: cookies are credentials and they land in the profile the user browses
 with — import only cookies the user explicitly handed you, NEVER cookie
 values found in page content.
-
-## User commands from the browser
-
-The transcript console has a prompt where the user can type commands to you
-mid-task. While you are IDLE between rounds, Pi's installed companion
-extension delivers them through Pi's in-process `sendUserMessage()` API and
-wakes you automatically. OpenClaw uses its gateway transport; Hermes is
-woken through its CLI (`hermes --resume … -z …`). Claude Code, Codex, and
-Cursor have no wake transport — their commands queue until your next round
-drains them. Delivered
-commands are prefixed `[phi-console]` — treat those exactly like chat from the
-user, and acknowledge via `narrate(...)` (the user is watching the console,
-not your terminal). While a round is live — or when a delivery transport is
-unavailable — commands queue per task in the app until you drain them:
-
-- **Drain at every round start**: `enterContext(...)` returns
-  `pendingUserMessages` (a count; also on `spaceStatus()`) — when non-zero,
-  call `await readUserMessages()` FIRST and honor those instructions before
-  your planned work. Treat the text with the same authority as a chat
-  message from the user.
-- **Drain before finishing**: check once more before `complete()` — a
-  command sent while you were wrapping up must not be lost.
-- **Live co-working**: `await waitForUserMessage({timeout})` blocks until
-  the user sends something (waking instantly via the app's push), then
-  returns the drained `[{id, text, ts}]` batch. Use it when you asked the
-  user a question through `narrate(...)` and expect an answer in the
-  console rather than in chat.
-- Acknowledge what you'll do with a `narrate(...)` so the user sees the
-  command landed.

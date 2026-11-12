@@ -49,7 +49,7 @@ enum PhiCapability : uint32_t {
   // App-wide settings, theme, layout, menus, feedback — developer mode.
   kAppSettings = 16,
   // The box's own hooks: HWNDs, PNGs on disk, analytics, fake accounts,
-  // lazy-restore probes, forging the transcript's "You:" line, and seeing
+  // lazy-restore probes, queueing a message as the user, and seeing
   // or driving EVERY task. Test rig only, never a shipped agent.
   kHost = 32,
   // credentials.autofill / credentials.get + getTotp (their own prompts

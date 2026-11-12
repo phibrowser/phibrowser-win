@@ -22,7 +22,7 @@ class PhiWindow;
 // theme-change path" — no WM_SETTINGCHANGE / ImmersiveColorSet handler
 // exists anywhere in the tree today, so a live Windows dark/light switch
 // only reaches the chrome when something else happens to call ApplyTheme,
-// and an open Feedback or Transcript window keeps its stale
+// and an open Feedback window keeps its stale
 // PhiPopupColors forever).
 //
 // The bus owns its OWN message-only window. It deliberately does not
@@ -56,8 +56,8 @@ class PhiWindow;
 //     shells, the sidebar and Settings, and it replaces the registry probe
 //     hidden inside PhiResolvePalette (phi_theme.cc:106-131) as the only
 //     time the client notices the OS moved.
-//   * The five secondary windows (prompt, feedback, transcript, settings,
-//     kiosk) snapshot PhiPopupColorsNow() at construction today
+//   * The four secondary windows (prompt, feedback, settings, kiosk)
+//     snapshot PhiPopupColorsNow() at construction today
 //     (phi_prompt.cc:83, phi_feedback_window.cc:302) and never refresh.
 //     Once they derive from PhiSecondaryWindow : PhiWindow they are
 //     registered automatically and only need to override QueryPalette();

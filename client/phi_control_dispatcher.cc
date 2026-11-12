@@ -42,7 +42,6 @@
 #include "client/phi_tab_store.h"
 #include "client/phi_telemetry.h"
 #include "client/phi_theme.h"
-#include "client/phi_transcript_panel.h"
 #include "client/phi_window_capture.h"
 #include "client/phi_shell_window.h"
 #include "client/phi_window_registry.h"

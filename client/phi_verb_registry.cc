@@ -538,12 +538,12 @@ constexpr PhiParamField kAgentComplete[] = {
     {"keep", kParamBool, kOptional, "",
      "Keep a persistent Space's window (default true)."},
     {"message", kParamString, kOptional, "",
-     "A closing line for the transcript (a failure's reason)."},
+     "A failure's reason, shown on the pill."},
 };
 constexpr PhiParamField kAgentHandoff[] = {
     {"taskId", kParamString, kRequired, "", "The task."},
     {"message", kParamString, kOptional, "",
-     "Why the user is needed; shown in the prompt and the transcript."},
+     "Why the user is needed; shown in the prompt."},
 };
 constexpr PhiParamField kAgentSetState[] = {
     {"taskId", kParamString, kRequired, "", "The task."},
@@ -552,19 +552,16 @@ constexpr PhiParamField kAgentSetState[] = {
 };
 constexpr PhiParamField kAgentLog[] = {
     {"taskId", kParamString, kRequired, "", "The task."},
-    {"text", kParamString, kOptional, "", "One transcript line."},
+    {"text", kParamString, kOptional, "", "One line."},
     {"entries", kParamList, kOptional, "",
-     "Many lines, oldest first (max 200), each {text, kind?, detail?, "
-     "agent?, ts?, sourceId?, toolState?}. kind: action | narration | "
-     "error | user | assistant | thinking | tool (status and round are "
-     "the app's own and downgrade to action); kind \"activity\" is a "
-     "driver's live tail row (codex: activity working|waiting; claude: "
-     "phase working|idle), never history."},
+     "Many lines (max 200), each {text, kind?, detail?, agent?}, in the "
+     "Mac's shape. Windows has no Agent Transcript console: the lines are "
+     "checked and dropped."},
     {"kind", kParamString, kOptional, "", "The single line's kind."},
     {"detail", kParamString, kOptional, "", "The single line's detail."},
     {"agent", kParamString, kOptional, "", "The single line's agent."},
     {"touch", kParamBool, kOptional, "",
-     "Refresh the keep-alive too (default true); a mirror passes false."},
+     "Refresh the keep-alive too (default true)."},
 };
 constexpr PhiParamField kAgentMarkError[] = {
     {"taskId", kParamString, kRequired, "", "The task."},
@@ -1114,8 +1111,8 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        "coalescing."},
       {"agentSpace.list", "", kScopeNone, kAgentSpace, kVerbPlain, {}, false,
        false, &Call<&PhiControlDispatcher::VerbList>, "",
-       "The caller's tasks, the open window slots, and whether the Agent "
-       "Transcript console is watching."},
+       "The caller's tasks and the open window slots. transcriptMirror is "
+       "always false: Windows has no Agent Transcript console."},
       {"agentSpace.capabilities", "", kScopeNone, kAgentSpace, kVerbPlain, {},
        false, false, &Call<&PhiControlDispatcher::VerbCapabilities>, "",
        "What this connection may do: its capability bits, its tasks, the "
@@ -1150,23 +1147,23 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
       {"agentSpace.log", "", kTask, kAgentSpace, kVerbPlain, kAgentLog, false,
        false, &Call<&PhiControlDispatcher::VerbAgentLog>,
        "invalid_payload unknown_task not_owner",
-       "Appends transcript lines and (unless touch:false) refreshes the "
-       "keep-alive."},
+       "Accepts the Mac's transcript lines without keeping them and "
+       "(unless touch:false) refreshes the keep-alive."},
       {"agentSpace.markError", "", kTask, kAgentSpace, kVerbPlain,
        kAgentMarkError, false, false,
        &Call<&PhiControlDispatcher::VerbAgentMarkError>,
        "invalid_payload unknown_task not_owner",
-       "Marks a task failed and logs why."},
+       "Marks a task failed with a message."},
       {"agentSpace.readUserMessages", "", kTask, kAgentSpace, kVerbPlain,
        kTaskOnly, false, false,
        &Call<&PhiControlDispatcher::VerbAgentReadUserMessages>,
        "invalid_payload unknown_task not_owner",
-       "Drains the console lines the user typed at this task."},
+       "Drains the messages the user sent to this task."},
       {"agentSpace.userMessage", "", kScopeNone, kHost, kVerbPlain,
        kAgentUserMessage, false, false,
        &Call<&PhiControlDispatcher::VerbAgentUserMessage>,
        "invalid_payload unknown_task test_rig_only",
-       "Forges the transcript's \"You:\" line — the test rig only."},
+       "Queues a message from the user — the test rig only."},
       {"agentSpace.openTab", "", kTask, kAgentSpace, kVerbPlain, kAgentOpenTab,
        false, false, &Call<&PhiControlDispatcher::VerbAgentOpenTab>,
        "invalid_payload unknown_task not_owner",

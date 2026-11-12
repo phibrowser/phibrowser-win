@@ -76,7 +76,7 @@ app-level surface that needs no binding:
   Space is first created.
 - **Shadow window** — `enterContext({ kind: 'shadow', name })`: a real
   browser window on a real profile that the user CANNOT SEE — off-screen at
-  alpha 0, no pip, no transcript, no handoff, nobody watching. Page
+  alpha 0, no pip, no handoff, nobody watching. Page
   automation is identical; what's gone is every way to involve the user. Only
   when they explicitly ask for background work. `{ incognito: true }` browses
   in a fresh off-the-record session instead — no cookies or logins from the
@@ -168,9 +168,7 @@ Core surface — full semantics in this file:
   `element.click()`, focus/value writes, or dispatched events as user input;
   those bypass human hit-testing. Use the input helpers.
 - Presence: `setStatus(caption)` (alias `narrate(text)`),
-  `markError(message)`, `say(text, {role})` — see "Task lifecycle"
-- User console: `readUserMessages()`, `waitForUserMessage({timeout})` — see
-  "Task lifecycle"
+  `markError(message)` — see "Task lifecycle"
 - Ask the user: `notifyUser(title, message, {buttonTitle,
   expiresInSeconds, wait})` — a native card that never takes focus;
   resolves `{notificationId, decision}` with `accept` (its button),
@@ -221,7 +219,7 @@ Six reference files carry the deep semantics. Read the matching one BEFORE
 first acting in its domain — and when a call fails on domain semantics, the
 error message names the file too:
 
-- Setup, connection, or consent-prompt problems; session-mirror issues →
+- Setup, connection, or consent-prompt problems →
   `references/install.md`
 - Signing in, vault items, anything secret-touching →
   `references/credentials.md`
@@ -229,7 +227,7 @@ error message names the file too:
   groups, split view, downloads; working in a user Space →
   `references/management.md`
 - Persistent Spaces, keep-alive/`ping`, `saveState`/`importCookies`,
-  `spaceStatus` fields, console mirror, user console commands →
+  `spaceStatus` fields →
   `references/lifecycle.md`
 - Responsive testing (`setViewport`), canvas-like editors (Docs, Sheets,
   Notion, Figma, …), `readConsole`/`readNetwork`/`diffUrls` detail,
@@ -419,42 +417,22 @@ the agent Space and its window (a persistent Space stays in the switcher
 with only its window closed). If the user needs a live page left open in an
 ephemeral Space, hand it to them with `handOff()` before completing.
 
-**Deliver the result BEFORE completing.** A user watching the Space reads
-the transcript console, not your chat — so the user-facing result belongs in
-the transcript before the task ends. Write it as your normal reply prose
-BEFORE running the `complete()` heredoc (the session mirror forwards it
-automatically; `narrate(...)` also works), never just "the summary is in
-chat", then complete with a short status: `complete({success, message})`.
+**Deliver the result in your reply.** Phi on Windows has no transcript
+console: a user watching the Space sees the pages and the overlay pill, and
+reads your answer in chat. Write the user-facing result as your normal reply
+prose, then complete with a short status: `complete({success, message})`.
 
 Keep the user informed while working: call `setStatus('Reading results…')`
 (or its alias `narrate(...)`) before long steps — it is displayed in the
-overlay pill AND appears as narration in the live transcript console (View ▸
-Agent Transcript in Phi). Every page/tab primitive you run is logged there
-automatically as an action line — narrate intent, not mechanics. Keep a
-caption to a short phrase: the pill is one line and truncates (the full text
-survives on its tooltip and in the console), so findings and recommendations
-belong in your reply prose or `say(...)`, not in the caption. NEVER put
-secrets (passwords, tokens, cookie values) into `setStatus`/`narrate`/`say`
-text: both surfaces are displayed and buffered. Under all six supported
-agents — Claude Code, Codex, OpenClaw, Pi, Hermes, and Cursor — the console
-also mirrors your whole session (prompts, reply prose, tool calls)
-automatically; under any other agent (Grok Build, Grok Bot, Antigravity,
-GitHub Copilot, OpenCode, Qwen Code, CodeBuddy, …) there is no mirror, and
-when no mirror is running, use `say('…')` to reflect your own prose into the
-console yourself. Mirror internals:
-`references/lifecycle.md`.
+overlay pill. Narrate intent, not mechanics. Keep a caption to a short
+phrase: the pill is one line and truncates (the full text survives on its
+tooltip), so findings and recommendations belong in your reply prose, not
+in the caption. NEVER put secrets (passwords, tokens, cookie values) into
+`setStatus`/`narrate` text: the pill is displayed.
 
-**User commands from the console**: the user can type commands to you from
-Phi's Agent Transcript panel. When `enterContext(...)`/`spaceStatus()`
-report `pendingUserMessages` > 0, call `await readUserMessages()` FIRST and
-honor those instructions before your planned work — they carry the same
-authority as chat; check once more before `complete()` so a late command
-isn't lost. Commands delivered mid-session arrive prefixed `[phi-console]` —
-same authority; acknowledge via `narrate(...)` (the user is watching the
-console, not your terminal). `await waitForUserMessage({timeout})` blocks
-until the user sends something — use it when you asked a question through
-`narrate(...)` and expect the answer in the console. Per-agent wake
-transports: `references/lifecycle.md`.
+To ask the user something mid-task, ask in chat, or use `notifyUser(...)`
+or `handOff(...)` when they need to act in the browser. There is no console
+for them to type into, so `readUserMessages()` returns nothing here.
 
 ## Control handoff — HARD RULES
 
@@ -636,9 +614,8 @@ always-true rules:
    `observe({diff: true})` / `snapshotText({diff: true})` keeps that cheap:
    print what changed, not the whole page again.
 5. Extract data with `js` returning JSON-serializable values.
-6. Report the result — as reply prose (or `narrate`) BEFORE completing, so
-   it lands in the transcript console (see "Deliver the result BEFORE
-   completing") — then finish with a dedicated `complete({success})` round.
+6. Report the result as reply prose (see "Deliver the result in your
+   reply"), then finish with a dedicated `complete({success})` round.
 
 ## Caveats
 

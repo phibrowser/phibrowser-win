@@ -5744,19 +5744,6 @@ void PhiCoordinator::SweepAgentSpaces() {
   UpdateSweepTimer();
 }
 
-void PhiCoordinator::RequestShowTranscript(const std::string& task_id) {
-  if (!kPhiTranscriptEnabled || !agent_manager_.spaces().Find(task_id)) {
-    return;
-  }
-  // Own the panel from the first USER window's shell — the panel floats, so
-  // any live shell serves as its owner.
-  if (PhiShellWindow* controller = FirstUserController()) {
-    PhiTranscriptPanel::Toggle(controller->shell_hwnd(),
-                               PaletteForSlot(controller->slot().value),
-                               task_id, &agent_manager_);
-  }
-}
-
 void PhiCoordinator::RequestNewWindow(int64_t slot) {
   // Same request the agentSpace.newWindow verb makes: a kUser window whose
   // source is the LIVE browser the slot shows.

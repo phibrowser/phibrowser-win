@@ -35,25 +35,22 @@ constexpr wchar_t kLinkName[] = L"phi-browser";
 // convention (Deep Code, Kimi Code, Cline, DeepSeek Harness, …).
 const std::vector<PhiSkillTarget>& Targets() {
   static const base::NoDestructor<std::vector<PhiSkillTarget>> targets({
-      {"claude", L"Claude Code", "claude", L".claude\\skills", nullptr},
-      {"codex", L"Codex", "openai", L".codex\\skills", nullptr},
-      {"cursor", L"Cursor", "cursor", L".cursor\\skills", nullptr},
-      {"hermes", L"Hermes", "hermes", L".hermes\\skills", nullptr},
-      {"openclaw", L"OpenClaw", "openclaw", L".openclaw\\skills", nullptr},
-      {"pi", L"Pi", "pi", L".pi\\agent\\skills", L".pi\\agent\\extensions"},
-      {"grok", L"Grok Build", "grok", L".grok\\skills", nullptr},
-      {"grokbot", L"Grok Bot", "grokbot", L".agents\\skills", nullptr},
+      {"claude", L"Claude Code", "claude", L".claude\\skills"},
+      {"codex", L"Codex", "openai", L".codex\\skills"},
+      {"cursor", L"Cursor", "cursor", L".cursor\\skills"},
+      {"hermes", L"Hermes", "hermes", L".hermes\\skills"},
+      {"openclaw", L"OpenClaw", "openclaw", L".openclaw\\skills"},
+      {"pi", L"Pi", "pi", L".pi\\agent\\skills"},
+      {"grok", L"Grok Build", "grok", L".grok\\skills"},
+      {"grokbot", L"Grok Bot", "grokbot", L".agents\\skills"},
       // Antigravity's "shared" folder, which Gemini CLI reads too.
-      {"antigravity", L"Antigravity", "antigravity", L".gemini\\skills",
-       nullptr},
-      {"copilot", L"GitHub Copilot", "copilot", L".copilot\\skills", nullptr},
-      {"opencode", L"OpenCode", "opencode", L".config\\opencode\\skills",
-       nullptr},
-      {"qwen", L"Qwen Code", "qwen", L".qwen\\skills", nullptr},
-      {"codebuddy", L"CodeBuddy", "codebuddy", L".codebuddy\\skills",
-       nullptr},
+      {"antigravity", L"Antigravity", "antigravity", L".gemini\\skills"},
+      {"copilot", L"GitHub Copilot", "copilot", L".copilot\\skills"},
+      {"opencode", L"OpenCode", "opencode", L".config\\opencode\\skills"},
+      {"qwen", L"Qwen Code", "qwen", L".qwen\\skills"},
+      {"codebuddy", L"CodeBuddy", "codebuddy", L".codebuddy\\skills"},
       // No single brand owns the cross-agent folder: the generic terminal.
-      {"agents", L"Common agents", "generic", L".agents\\skills", nullptr},
+      {"agents", L"Common agents", "generic", L".agents\\skills"},
   });
   return *targets;
 }
@@ -93,12 +90,10 @@ std::wstring Parent(const std::wstring& path) {
   return slash == std::wstring::npos ? std::wstring() : path.substr(0, slash);
 }
 
-std::wstring CompanionLinkPath(const PhiSkillTarget& target) {
-  return Join(Join(HomeDir(), target.extensions_subdir), kLinkName);
-}
-
-std::wstring BundledCompanionDir() {
-  return PhiBundledSkillDir() + L"\\extensions\\pi";
+// Where earlier builds linked Pi's companion extension. Phi no longer ships
+// one, so a link left there points at nothing.
+std::wstring OldPiCompanionLinkPath() {
+  return Join(Join(HomeDir(), L".pi\\agent\\extensions"), kLinkName);
 }
 
 bool IsDirectory(const std::wstring& path) {
@@ -306,10 +301,6 @@ std::set<std::string> PhiInstalledSkillTargetIds() {
     if (!IsLinked(PhiSkillLinkPath(target), bundled)) {
       continue;
     }
-    if (target.extensions_subdir &&
-        !IsLinked(CompanionLinkPath(target), BundledCompanionDir())) {
-      continue;
-    }
     installed.insert(target.id);
   }
   return installed;
@@ -330,15 +321,6 @@ PhiSkillInstallResult PhiInstallSkill(
     std::wstring source;
   };
   std::vector<Link> links = {{PhiSkillLinkPath(target), bundled}};
-  if (target.extensions_subdir) {
-    const std::wstring companion = BundledCompanionDir();
-    if (!IsDirectory(companion)) {
-      result.error =
-          PhiStr("settings.developer.skillInstall.missingCompanionError");
-      return result;
-    }
-    links.push_back({CompanionLinkPath(target), companion});
-  }
 
   // Ask about every real thing in the way before changing anything.
   for (const Link& entry : links) {
@@ -367,6 +349,17 @@ PhiSkillInstallResult PhiInstallSkill(
       result.error = PhiStrF("settings.developer.skillInstall.linkError",
                              {entry.link, SystemMessage(error)});
       return result;
+    }
+  }
+  // An earlier build's companion link for Pi: only ever a link we made,
+  // never a real folder, and it no longer has anything to point at.
+  if (std::string(target.id) == "pi") {
+    const std::wstring old_link = OldPiCompanionLinkPath();
+    const DWORD attrs = ::GetFileAttributesW(old_link.c_str());
+    if (attrs != INVALID_FILE_ATTRIBUTES &&
+        (attrs & FILE_ATTRIBUTE_REPARSE_POINT)) {
+      DWORD ignored = ERROR_SUCCESS;
+      RemoveExisting(old_link, &ignored);
     }
   }
   result.outcome = PhiSkillInstallOutcome::kSuccess;

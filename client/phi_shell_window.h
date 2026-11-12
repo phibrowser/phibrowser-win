@@ -575,9 +575,6 @@ class AgentHost {
   virtual void RequestAgentTakeControl(const std::string& task_id) = 0;
   virtual void RequestAgentHandBack(const std::string& task_id) = 0;
   virtual void RequestAgentFinish(const std::string& task_id) = 0;
-  // Opens the task's transcript console (the agent pip context menu's
-  // "Show Transcript", the Mac showTranscriptAction).
-  virtual void RequestShowTranscript(const std::string& task_id) = 0;
   // --- Agent operating mask (the user's own Spaces) -----------------------
   // True while an agent holds `tab_id`; the row wears the mask badge.
   virtual bool IsTabAgentDriven(int tab_id) const = 0;

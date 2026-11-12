@@ -73,7 +73,6 @@ void PhiAgentSpaceManager::NoteAgentWindow(bool agent,
     space.agent_name = agent_name;
     space.unseen_error = false;
     space.error_message.clear();
-    transcript_.NoteTaskLive(task_id, space.number, EpochMsNow());
     host_.InvalidateUserSlots();  // A new agent pip appears in the switcher.
     host_.AgentRunStateChanged();
     reply->Set("spaceId", space.space_id);
@@ -106,12 +105,8 @@ bool PhiAgentSpaceManager::RetireHiddenWindow(BrowserId browser) {
       EndWatch(/*park_agent=*/false);  // Closing: the watcher comes back.
     }
     // The window went under the task (the user closed it, or it died):
-    // the Mac's spaceWasDeleted line, then the record goes so a stateless
-    // driver stops finding a dead task.
-    AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
-                     "Space closed by the user — task ended");
+    // the record goes so a stateless driver stops finding a dead task.
     spaces_.Remove(task_id);
-    transcript_.NoteTaskEnded(task_id, EpochMsNow());
     host_.DismissAgentHandoffPrompt(task_id);
     host_.AgentRunStateChanged();
     return true;
@@ -455,8 +450,6 @@ void PhiAgentSpaceManager::RequestTakeControl(const std::string& task_id) {
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kUser,
                        static_cast<uint64_t>(::GetTickCount64()));
   NoteAgentDriving(task_id);
-  AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
-                   "You took control");
   PushOwnershipChanged(task_id);  // The driver must learn it lost control.
   host_.DismissAgentHandoffPrompt(task_id);
   RefreshOverlay();
@@ -470,13 +463,10 @@ void PhiAgentSpaceManager::RequestHandBack(const std::string& task_id) {
   }
   // The clock restarts with the inter-round grace (SetOwnership); the
   // agent may take a while to notice — an idle Codex only at its next
-  // turn, which the Mac's terminalNudgeHint says on the line.
+  // turn.
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kAgent,
                        static_cast<uint64_t>(::GetTickCount64()));
   NoteAgentDriving(task_id);
-  AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
-                   "You handed control back to the agent",
-                   TerminalNudgeHint(*space));
   PushOwnershipChanged(task_id);
   host_.DismissAgentHandoffPrompt(task_id);
   RefreshOverlay();
@@ -497,10 +487,6 @@ void PhiAgentSpaceManager::CompleteTask(const std::string& task_id,
   if (!space) {
     return;
   }
-  AppendTranscript(task_id,
-                   success ? PhiTranscriptEntry::Kind::kStatus
-                           : PhiTranscriptEntry::Kind::kError,
-                   success ? "Task completed" : "Task failed", message);
   host_.DismissAgentHandoffPrompt(task_id);
   if (space->persistent && keep) {
     // Marked, not torn down: the hidden window stays for the next
@@ -518,7 +504,6 @@ void PhiAgentSpaceManager::CompleteTask(const std::string& task_id,
     if (framework_) {
       framework_->SetAgentMode(space->window_id.value, false);
     }
-    transcript_.NoteTaskEnded(task_id, EpochMsNow());
     PhiAgentOverlay::Hide();
     host_.InvalidateUserSlots();
     host_.AgentRunStateChanged();
@@ -535,8 +520,6 @@ void PhiAgentSpaceManager::HandoffToUser(const std::string& task_id,
   spaces_.SetOwnership(task_id, PhiAgentSpaces::Ownership::kUser,
                        static_cast<uint64_t>(::GetTickCount64()));
   NoteAgentDriving(task_id);
-  AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
-                   "Agent handed control to you", message);
   PushOwnershipChanged(task_id);
   RefreshOverlay();
   host_.InvalidateUserSlots();
@@ -553,96 +536,14 @@ void PhiAgentSpaceManager::ResumeAgentControl(const std::string& task_id) {
   NoteAgentDriving(task_id);
   // Explicit: the resume starts a driving round, not a banked wait.
   spaces_.ResetTtl(task_id, PhiAgentSpaces::kDefaultTtlSeconds, now);
-  AppendTranscript(task_id, PhiTranscriptEntry::Kind::kStatus,
-                   "Agent resumed control");
   PushOwnershipChanged(task_id);
   host_.DismissAgentHandoffPrompt(task_id);
   RefreshOverlay();
   host_.InvalidateUserSlots();
 }
 
-void PhiAgentSpaceManager::AppendTranscript(const std::string& task_id,
-                                            PhiTranscriptEntry::Kind kind,
-                                            const std::string& text,
-                                            const std::string& detail,
-                                            const std::string& agent) {
-  PhiTranscriptEntry entry;
-  entry.kind = kind;
-  entry.text = text;
-  entry.detail = detail;
-  entry.agent = agent;
-  entry.ts_ms = EpochMsNow();
-  if (PhiAgentSpaces::Space* space = spaces_.Find(task_id)) {
-    entry.task_number = space->number;
-  }
-  if (transcript_.Append(task_id, std::move(entry))) {
-    PhiTranscriptPanel::RefreshOpen();
-  }
-}
-
-void PhiAgentSpaceManager::ReapTranscripts(const std::string& keep) {
-  transcript_.Reap(EpochMsNow(), keep);
-}
-
-// static
-std::string PhiAgentSpaceManager::TerminalNudgeHint(
-    const PhiAgentSpaces::Space& space) {
-  // Codex only reads its queue at its next turn; an idle one has to be
-  // woken from its own terminal. Nil for every other driver, as on Mac.
-  const std::string name = PhiLower(space.agent_name);
-  if (name.find("codex") == std::string::npos || space.status == "running") {
-    return std::string();
-  }
-  return "Codex only sees this at its next turn — go to its terminal and "
-         "type \"continue\" to wake it now.";
-}
-
-std::vector<PhiTranscriptEntry> PhiAgentSpaceManager::TranscriptEntries(
-    const std::string& task_id) {
-  if (!task_id.empty()) {
-    return transcript_.Entries(task_id);
-  }
-  // Every task, interleaved in append order.
-  std::vector<PhiTranscriptEntry> all;
-  for (const PhiTranscriptTaskInfo& info : transcript_.Tasks()) {
-    std::vector<PhiTranscriptEntry> one = transcript_.Entries(info.task_id);
-    all.insert(all.end(), one.begin(), one.end());
-  }
-  std::stable_sort(all.begin(), all.end(),
-                   [](const PhiTranscriptEntry& a,
-                      const PhiTranscriptEntry& b) { return a.seq < b.seq; });
-  return all;
-}
-
-std::string PhiAgentSpaceManager::TranscriptActivity(
-    const std::string& task_id) {
-  return transcript_.Activity(task_id);
-}
-
-std::vector<PhiTranscriptTaskInfo> PhiAgentSpaceManager::TranscriptTasks() {
-  return transcript_.Tasks();
-}
-
-std::string PhiAgentSpaceManager::TranscriptAgentName(
-    const std::string& task_id) {
-  PhiAgentSpaces::Space* space = spaces_.Find(task_id);
-  return PhiAgentDriverBadgeFor(space ? space->agent_name : std::string())
-      .label;
-}
-
-bool PhiAgentSpaceManager::TranscriptTaskLive(const std::string& task_id,
-                                              bool* running) {
-  PhiAgentSpaces::Space* space = spaces_.Find(task_id);
-  if (!space) {
-    *running = false;
-    return false;
-  }
-  *running = space->status == "running";
-  return true;
-}
-
-bool PhiAgentSpaceManager::PushTranscriptMessage(const std::string& task_id,
-                                                 const std::string& text) {
+bool PhiAgentSpaceManager::PushUserMessage(const std::string& task_id,
+                                           const std::string& text) {
   PhiAgentSpaces::Space* space = spaces_.Find(task_id);
   if (!space) {
     return false;
@@ -652,11 +553,8 @@ bool PhiAgentSpaceManager::PushTranscriptMessage(const std::string& task_id,
   if (id.empty()) {
     return false;
   }
-  // The console shows the user's line inline (the Mac's .user echo), and
-  // the driver is woken by the advisory event — the drain queue stays
+  // The driver is woken by the advisory event — the drain queue stays
   // authoritative.
-  AppendTranscript(task_id, PhiTranscriptEntry::Kind::kUser, text,
-                   TerminalNudgeHint(*space));
   base::DictValue payload;
   payload.Set("taskId", task_id);
   payload.Set("id", id);
@@ -665,14 +563,6 @@ bool PhiAgentSpaceManager::PushTranscriptMessage(const std::string& task_id,
   base::JSONWriter::Write(payload, &payload_json);
   host_.BroadcastControlEvent("agentSpace.userMessage", payload_json);
   return true;
-}
-
-void PhiAgentSpaceManager::ClearTranscript(const std::string& task_id) {
-  transcript_.Clear(task_id);
-}
-
-void PhiAgentSpaceManager::TranscriptConsoleClosed() {
-  ReapTranscripts(std::string());
 }
 
 void PhiAgentSpaceManager::CloseAgentSpace(const std::string& task_id) {
@@ -685,9 +575,7 @@ void PhiAgentSpaceManager::CloseAgentSpace(const std::string& task_id) {
     EndWatch(/*park_agent=*/false);  // Closing: the watcher comes back.
   }
   spaces_.Remove(task_id);
-  transcript_.NoteTaskEnded(task_id, EpochMsNow());
   host_.DismissAgentHandoffPrompt(task_id);
-  PhiTranscriptPanel::RefreshOpen();  // "taskId · ended" in the console.
   if (PhiShellWindow* shell = host_.ControllerForAgentWindow(window_id)) {
     shell->RequestClose();  // Fires OnBrowserWindowClosing → cleanup.
   } else if (framework_ && window_id.valid()) {

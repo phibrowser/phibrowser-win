@@ -125,7 +125,7 @@ Liveness probe: the app phase and how many saves are still coalescing.
 
 #### `agentSpace.list`
 
-The caller's tasks, the open window slots, and whether the Agent Transcript console is watching.
+The caller's tasks and the open window slots. transcriptMirror is always false: Windows has no Agent Transcript console.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: app-wide.
@@ -170,7 +170,7 @@ Ends a task: an ephemeral Space is torn down, a persistent one is marked complet
 | `taskId` | string | yes | — | The task to complete. |
 | `status` | string | no | — | "success" (default) or anything else for a failure. |
 | `keep` | boolean | no | — | Keep a persistent Space's window (default true). |
-| `message` | string | no | — | A closing line for the transcript (a failure's reason). |
+| `message` | string | no | — | A failure's reason, shown on the pill. |
 
 #### `agentSpace.getOwnership`
 
@@ -194,7 +194,7 @@ Hands a task's Space to the user.
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
 | `taskId` | string | yes | — | The task. |
-| `message` | string | no | — | Why the user is needed; shown in the prompt and the transcript. |
+| `message` | string | no | — | Why the user is needed; shown in the prompt. |
 
 #### `agentSpace.takeover`
 
@@ -224,7 +224,7 @@ Sets the watch-mode pill's caption and the task's state.
 
 #### `agentSpace.log`
 
-Appends transcript lines and (unless touch:false) refreshes the keep-alive.
+Accepts the Mac's transcript lines without keeping them and (unless touch:false) refreshes the keep-alive.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
@@ -233,16 +233,16 @@ Appends transcript lines and (unless touch:false) refreshes the keep-alive.
 | field | type | required | also accepts | meaning |
 | --- | --- | --- | --- | --- |
 | `taskId` | string | yes | — | The task. |
-| `text` | string | no | — | One transcript line. |
-| `entries` | list | no | — | Many lines, oldest first (max 200), each {text, kind?, detail?, agent?, ts?, sourceId?, toolState?}. kind: action \| narration \| error \| user \| assistant \| thinking \| tool (status and round are the app's own and downgrade to action); kind "activity" is a driver's live tail row (codex: activity working\|waiting; claude: phase working\|idle), never history. |
+| `text` | string | no | — | One line. |
+| `entries` | list | no | — | Many lines (max 200), each {text, kind?, detail?, agent?}, in the Mac's shape. Windows has no Agent Transcript console: the lines are checked and dropped. |
 | `kind` | string | no | — | The single line's kind. |
 | `detail` | string | no | — | The single line's detail. |
 | `agent` | string | no | — | The single line's agent. |
-| `touch` | boolean | no | — | Refresh the keep-alive too (default true); a mirror passes false. |
+| `touch` | boolean | no | — | Refresh the keep-alive too (default true). |
 
 #### `agentSpace.markError`
 
-Marks a task failed and logs why.
+Marks a task failed with a message.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
@@ -255,7 +255,7 @@ Marks a task failed and logs why.
 
 #### `agentSpace.readUserMessages`
 
-Drains the console lines the user typed at this task.
+Drains the messages the user sent to this task.
 
 - **Capabilities**: `agentSpace`
 - **Scope**: agent, shadow — aimed with `taskId`, `windowId` or `spaceId`. A verb aimed at an agent or shadow window of the caller's OWN task needs only `agentSpace`.
@@ -267,7 +267,7 @@ Drains the console lines the user typed at this task.
 
 #### `agentSpace.userMessage`
 
-Forges the transcript's "You:" line — the test rig only.
+Queues a message from the user — the test rig only.
 
 - **Capabilities**: `host`
 - **Scope**: app-wide.

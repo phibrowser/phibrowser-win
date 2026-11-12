@@ -148,7 +148,7 @@ capabilities, and each verb is checked against them BEFORE it runs:
   upgrade response as `X-Phi-Agent-Capability`; `cdp.mjs` remembers it for
   the process and presents it on every later connection, so the
   browser-target WebSocket and the `/phi-agent` channel act as ONE
-  principal, and a delegated helper (the mirror tailer) joins it. The
+  principal. The
   record lives in Phi's memory until Phi quits. Because Windows has no
   identity for a pipe client, that principal is shared by every local
   agent connected to the same Phi, not just this process.
@@ -201,7 +201,7 @@ Semantics and differences from a task Space:
   window. Expect their clicks and yours to interleave; act in small steps,
   re-observe often, and stop when the page state says the user intervened.
 - No task lifecycle: no keep-alive, no `complete()` (just stop driving),
-  no overlay pill or transcript console — `setStatus`/`narrate`/`markError`
+  no overlay pill — `setStatus`/`narrate`/`markError`
   are quiet no-ops; report progress in chat instead.
 - No viewport emulation: the window is visible and sized for real, so
   layout is exactly what the user sees. `setViewport` and `diffUrls` refuse

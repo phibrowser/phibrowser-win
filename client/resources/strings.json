@@ -309,28 +309,6 @@
    "zh-Hans": "接管",
    "zh-Hant": "接手控制"
   },
-  "agentTranscript.messageTheAgent": {
-   "de": "Nachricht an den Agenten…",
-   "en": "Message the agent…",
-   "es": "Enviar un mensaje al agente…",
-   "fr": "Envoyer un message à l'agent…",
-   "ja": "エージェントにメッセージを送信…",
-   "ko": "에이전트에게 메시지 보내기…",
-   "nl": "Stuur de agent een bericht…",
-   "zh-Hans": "向智能体发送消息…",
-   "zh-Hant": "傳訊息給 AI 代理…"
-  },
-  "agentTranscript.transcript": {
-   "de": "Transkript – ",
-   "en": "Transcript — ",
-   "es": "Transcripción — ",
-   "fr": "Transcription — ",
-   "ja": "トランスクリプト — ",
-   "ko": "트랜스크립트 — ",
-   "nl": "Transcript — ",
-   "zh-Hans": "会话记录 — ",
-   "zh-Hant": "逐字稿 — "
-  },
   "app.activeSpaceContextMenu.deleteSpaceAction": {
    "de": "Space löschen…",
    "en": "Delete Space...",
@@ -3927,17 +3905,6 @@
    "nl": "Deelvensters omwisselen",
    "zh-Hans": "交换窗格",
    "zh-Hant": "交換窗格"
-  },
-  "contextMenu.showTranscript": {
-   "de": "Protokoll anzeigen",
-   "en": "Show transcript",
-   "es": "Mostrar transcripción",
-   "fr": "Afficher la transcription",
-   "ja": "トランスクリプトを表示",
-   "ko": "기록 보기",
-   "nl": "Transcript tonen",
-   "zh-Hans": "显示记录",
-   "zh-Hant": "顯示逐字稿"
   },
   "contextMenu.splitWithCurrent": {
    "de": "Mit aktuellem Tab teilen",
@@ -8530,15 +8497,15 @@
    "zh-Hant": "所有 AI 代理"
   },
   "settings.developer.skillInstall.description": {
-   "de": "Verknüpft den in dieser App enthaltenen Skill mit dem Skills-Ordner eines KI-Coding-Agenten, damit dieser Phi über das DevTools-Protokoll steuern kann. Pi erhält außerdem eine Begleiterweiterung, die inaktive Sitzungen über Agent-Transcript-Befehle aufweckt. Erfordert Node 22+.",
-   "en": "Links the skill bundled in this app into an AI coding agent’s skills folder so it can drive Phi over the DevTools Protocol. Pi also gets a companion extension that wakes idle sessions from Agent Transcript commands. Requires Node 22+.",
-   "es": "Vincula la habilidad incluida en esta app a la carpeta de habilidades de un agente de programación con IA para que pueda controlar Phi mediante el protocolo DevTools. Pi también recibe una extensión complementaria que reactiva las sesiones inactivas con comandos de Transcripción del agente. Requiere Node 22 o posterior.",
-   "fr": "Ajoute le Skill intégré à cette app au dossier de Skills d'un agent de codage IA pour qu'il puisse piloter Phi via le protocole DevTools. Phi reçoit aussi une extension compagnon qui réveille les sessions inactives depuis les commandes Agent Transcript. Nécessite Node 22+.",
-   "ja": "このアプリに同梱されているスキルをAIコーディングエージェントのスキルフォルダにリンクし、DevTools ProtocolでPhiを操作できるようにします。あわせて、アイドル状態のセッションをAgent Transcriptのコマンドから復帰させるコンパニオン拡張機能もPhiに追加されます。Node 22以降が必要です。",
-   "ko": "이 앱에 포함된 스킬을 AI 코딩 에이전트의 스킬 폴더에 연결해 DevTools 프로토콜로 Phi를 제어할 수 있게 해요. Pi에는 Agent Transcript 명령으로 유휴 세션을 깨우는 컴패니언 확장 프로그램도 함께 제공돼요. Node 22 이상이 필요해요.",
-   "nl": "Koppelt de skill die met deze app wordt meegeleverd aan de skills-map van een AI-coding-agent, zodat die Phi via het DevTools Protocol kan aansturen. Pi krijgt ook een bijbehorende extensie die inactieve sessies wekt via Agent Transcript-opdrachten. Vereist Node 22+.",
-   "zh-Hans": "将此应用内置的 Skill 链接到 AI 编程智能体的 skills 文件夹中，使其能够通过 DevTools 协议驱动 Phi。Pi 还会获得一个配套扩展程序，可通过智能体转录命令唤醒空闲会话。需要 Node 22+。",
-   "zh-Hant": "將此 App 內建的 Skill 連結到 AI 程式開發代理的 Skill 資料夾，讓它能透過 DevTools Protocol 操控 Phi。同時也會安裝一個附屬擴充功能，能從 AI 代理逐字稿的指令喚醒閒置的工作階段。需要 Node 22 或更新版本。"
+   "de": "Verknüpft den in dieser App enthaltenen Skill mit dem Skills-Ordner eines KI-Coding-Agenten, damit dieser Phi über das DevTools-Protokoll steuern kann. Erfordert Node 22+.",
+   "en": "Links the skill bundled in this app into an AI coding agent’s skills folder so it can drive Phi over the DevTools Protocol. Requires Node 22+.",
+   "es": "Vincula la habilidad incluida en esta app a la carpeta de habilidades de un agente de programación con IA para que pueda controlar Phi mediante el protocolo DevTools. Requiere Node 22 o posterior.",
+   "fr": "Ajoute le Skill intégré à cette app au dossier de Skills d'un agent de codage IA pour qu'il puisse piloter Phi via le protocole DevTools. Nécessite Node 22+.",
+   "ja": "このアプリに同梱されているスキルをAIコーディングエージェントのスキルフォルダにリンクし、DevTools ProtocolでPhiを操作できるようにします。Node 22以降が必要です。",
+   "ko": "이 앱에 포함된 스킬을 AI 코딩 에이전트의 스킬 폴더에 연결해 DevTools 프로토콜로 Phi를 제어할 수 있게 해요. Node 22 이상이 필요해요.",
+   "nl": "Koppelt de skill die met deze app wordt meegeleverd aan de skills-map van een AI-coding-agent, zodat die Phi via het DevTools Protocol kan aansturen. Vereist Node 22+.",
+   "zh-Hans": "将此应用内置的 Skill 链接到 AI 编程智能体的 skills 文件夹中，使其能够通过 DevTools 协议驱动 Phi。需要 Node 22+。",
+   "zh-Hant": "將此 App 內建的 Skill 連結到 AI 程式開發代理的 Skill 資料夾，讓它能透過 DevTools Protocol 操控 Phi。需要 Node 22 或更新版本。"
   },
   "settings.developer.skillInstall.linkError": {
    "de": "{0} konnte nicht verknüpft werden: {1}",
@@ -8550,17 +8517,6 @@
    "nl": "Kan {0} niet koppelen: {1}",
    "zh-Hans": "无法链接 {0}：{1}",
    "zh-Hant": "無法連結 {0}：{1}"
-  },
-  "settings.developer.skillInstall.missingCompanionError": {
-   "de": "Dieser Build enthält die Pi-Begleiterweiterung nicht. Erstelle Phi Browser neu und versuche es erneut.",
-   "en": "This build doesn’t include the Pi companion extension. Rebuild Phi Browser and try again.",
-   "es": "Esta compilación no incluye la extensión complementaria de Pi. Vuelve a compilar Phi Browser e inténtalo de nuevo.",
-   "fr": "Cette version ne contient pas l'extension compagnon Pi. Recompilez Phi Browser et réessayez.",
-   "ja": "このビルドにはPiコンパニオン拡張機能が含まれていません。Phi Browserを再ビルドして、もう一度お試しください。",
-   "ko": "이 빌드에는 Pi 컴패니언 확장 프로그램이 없어요. Phi Browser를 다시 빌드하고 다시 시도해 주세요.",
-   "nl": "Deze build bevat de Pi-companionextensie niet. Bouw Phi Browser opnieuw en probeer het opnieuw.",
-   "zh-Hans": "此版本不包含 Pi 配套扩展程序。请重新构建 Phi Browser 后重试。",
-   "zh-Hant": "此版本未包含 Pi 隨附擴充功能。請重新建置 Phi Browser 後再試一次。"
   },
   "settings.developer.skillInstall.missingResourcesError": {
    "de": "Dieser Build enthält die Ressourcen des phi-browser-Skills nicht. Erstelle Phi Browser neu und versuche es erneut.",
@@ -11564,17 +11520,6 @@
    "nl": "Adres:",
    "zh-Hans": "地址：",
    "zh-Hant": "位址："
-  },
-  "sidebar.agentContextMenu.showTranscriptAction": {
-   "de": "Transkript anzeigen",
-   "en": "Show Transcript",
-   "es": "Mostrar la transcripción",
-   "fr": "Afficher la transcription",
-   "ja": "トランスクリプトを表示",
-   "ko": "트랜스크립트 보기",
-   "nl": "Toon transcript",
-   "zh-Hans": "显示会话记录",
-   "zh-Hant": "顯示逐字稿"
   },
   "sidebar.bookmarkContextMenu.changeIconAction": {
    "de": "Symbol ändern...",

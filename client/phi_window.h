@@ -298,7 +298,7 @@ struct PhiFontDesc {
 // The fonts one window owns, keyed by (face, size, weight, flags) at ONE
 // dpi. WM_DPICHANGED calls Rebuild(), which drops every HFONT; a Get()
 // after that re-creates at the new dpi. This is what fixes the stale-font
-// drift in the transcript, feedback and preview surfaces (lane 3 §3.5).
+// drift in the feedback and preview surfaces (lane 3 §3.5).
 class PhiFontSet {
  public:
   explicit PhiFontSet(UINT dpi);

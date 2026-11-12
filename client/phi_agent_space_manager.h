@@ -16,9 +16,7 @@
 #include "client/phi_agent_drive_registry.h"
 #include "client/phi_agent_space_route.h"
 #include "client/phi_agent_spaces.h"
-#include "client/phi_agent_transcript.h"
 #include "client/phi_ids.h"
-#include "client/phi_transcript_panel.h"
 #include "client/phi_shell_window.h"
 
 namespace phi_framework {
@@ -29,7 +27,7 @@ namespace phi_client {
 
 // The phi-browser skill's hidden windows (docs/architecture-review.md §3.4,
 // lane 1 §1.2 clusters 12 and 18): agent Spaces (a hidden browser with a
-// presence — a pip, a watch mode, a transcript and an ownership state),
+// presence — a pip, a watch mode and an ownership state),
 // shadow windows (the same hidden surface WITHOUT a presence), the keep-alive
 // sweep, and the operating mask over the user's OWN tabs.
 //
@@ -39,10 +37,10 @@ namespace phi_client {
 // a takeover); and a task whose record is already gone is deliberately not
 // announced, because drivers learn of an ended task from its absence in
 // agentSpace.list.
-class PhiAgentSpaceManager : public PhiTranscriptHost {
+class PhiAgentSpaceManager {
  public:
   // A shadow window is an agent-style off-screen window WITHOUT a presence:
-  // no pip, no watch, no transcript, no ownership — the Mac's
+  // no pip, no watch, no ownership — the Mac's
   // AgentSpaceManager+Shadow registry, keyed by the skill's taskId. Kept out
   // of the agent Spaces so nothing that draws or surfaces agent Spaces sees
   // it; the window itself is adopted exactly like an agent Space's (hidden
@@ -77,9 +75,6 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
     // model pushes must reach THAT shell: rebinds the browser to `slot`
     // (0: back to its own agent slot, or unbound if that shell is gone).
     virtual void RebindAgentBrowser(BrowserId browser, int64_t slot) = 0;
-    // The first USER window's shell, for the floating transcript panel, with
-    // its palette. Null when no user window is up.
-    virtual PhiShellWindow* FirstUserController() = 0;
     // The agent pips live in the user windows' switchers.
     virtual void InvalidateUserSlots() = 0;
     // The operating mask changed: every window repaints its rows.
@@ -104,7 +99,7 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
   };
 
   explicit PhiAgentSpaceManager(Host& host);
-  ~PhiAgentSpaceManager() override;
+  ~PhiAgentSpaceManager();
 
   PhiAgentSpaceManager(const PhiAgentSpaceManager&) = delete;
   PhiAgentSpaceManager& operator=(const PhiAgentSpaceManager&) = delete;
@@ -118,15 +113,6 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
   // both registries directly (the same documented exception
   // PhiSpaceManager::mutable_model() is).
   PhiAgentSpaces& spaces() { return spaces_; }
-  PhiAgentTranscript& transcript() { return transcript_; }
-  // Appends one entry to the task's transcript and refreshes an open
-  // console. The status/round kinds are the app's own (a driver's line of
-  // those kinds is downgraded to an action by the verb).
-  void AppendTranscript(const std::string& task_id,
-                        PhiTranscriptEntry::Kind kind,
-                        const std::string& text,
-                        const std::string& detail = std::string(),
-                        const std::string& agent = std::string());
   std::map<std::string, ShadowWindow>& shadows() { return shadows_; }
   // Which of the user's own tabs an agent currently holds.
   PhiAgentDriveRegistry& drives() { return drives_; }
@@ -217,9 +203,6 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
   // with an explicit round TTL (a plain touch could not shorten a banked
   // inter-round window). No-op when the agent already holds it.
   void ResumeAgentControl(const std::string& task_id);
-  // Sweeps ended transcript buffers past their continuity window; `keep`
-  // is the task the console shows.
-  void ReapTranscripts(const std::string& keep);
   // Pushes agentSpace.ownershipChanged to connected drivers — the Mac's
   // broadcastToTaskDriver. Called after every ownership transition.
   void PushOwnershipChanged(const std::string& task_id);
@@ -239,18 +222,10 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
   // runs this, then expires the creations in flight.
   void Sweep(uint64_t now_ms);
 
-  // PhiTranscriptHost:
-  std::vector<PhiTranscriptEntry> TranscriptEntries(
-      const std::string& task_id) override;
-  std::string TranscriptActivity(const std::string& task_id) override;
-  std::vector<PhiTranscriptTaskInfo> TranscriptTasks() override;
-  std::string TranscriptAgentName(const std::string& task_id) override;
-  bool TranscriptTaskLive(const std::string& task_id,
-                          bool* running) override;
-  bool PushTranscriptMessage(const std::string& task_id,
-                             const std::string& text) override;
-  void ClearTranscript(const std::string& task_id) override;
-  void TranscriptConsoleClosed() override;
+  // Queues a message from the user for the task's driver (it drains the
+  // queue on its next poll) and wakes the driver. False when the task is
+  // gone.
+  bool PushUserMessage(const std::string& task_id, const std::string& text);
 
  private:
   // The controller of the agent Space `task_id`'s window, or null.
@@ -263,14 +238,11 @@ class PhiAgentSpaceManager : public PhiTranscriptHost {
   // RouteFor said kSurfaceInHost: bring the window the Space is on screen
   // in to the front.
   void SurfaceInHost(const std::string& task_id);
-  // The Mac's terminalNudgeHint: a detail line for an idle Codex.
-  static std::string TerminalNudgeHint(const PhiAgentSpaces::Space& space);
 
   RAW_PTR_EXCLUSION Host& host_;
   // Non-owning, across a module boundary, so not a raw_ptr. Null until Init.
   RAW_PTR_EXCLUSION phi_framework::PhiFramework* framework_ = nullptr;
   PhiAgentSpaces spaces_;
-  PhiAgentTranscript transcript_;
   // The agent Space whose window is currently surfaced for the user to watch
   // (empty = none). At most one is watched at a time.
   std::string watched_task_;

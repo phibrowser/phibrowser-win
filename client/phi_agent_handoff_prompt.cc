@@ -11,7 +11,6 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/strings/utf_string_conversions.h"
-#include "client/phi_agent_transcript.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_i18n.h"
 #include "client/phi_popup_chrome.h"
@@ -21,6 +20,47 @@
 namespace phi_client {
 
 namespace {
+
+// The longest message the prompt shows.
+constexpr size_t kMaxMessageChars = 500;
+
+// Cleans an agent's words for display: control characters go, runs of
+// newlines collapse to one, the ends are trimmed, and the text is cut to
+// `cap` bytes at a UTF-8 boundary with an ellipsis.
+std::string SanitizeMessage(const std::string& in, size_t cap) {
+  std::string out;
+  out.reserve(std::min(in.size(), cap));
+  for (const char c : in) {
+    const unsigned char u = static_cast<unsigned char>(c);
+    if (u == '\n' || u == '\r') {
+      if (out.empty() || out.back() != '\n') {
+        out.push_back('\n');
+      }
+      continue;
+    }
+    if (u < 0x20 && u != '\t') {
+      continue;
+    }
+    out.push_back(c);
+  }
+  while (!out.empty() && (out.back() == ' ' || out.back() == '\n')) {
+    out.pop_back();
+  }
+  size_t start = 0;
+  while (start < out.size() && (out[start] == ' ' || out[start] == '\n')) {
+    ++start;
+  }
+  out.erase(0, start);
+  if (out.size() > cap) {
+    size_t cut = cap;
+    while (cut > 0 && (static_cast<unsigned char>(out[cut]) & 0xC0) == 0x80) {
+      --cut;
+    }
+    out.resize(cut);
+    out += "…";
+  }
+  return out;
+}
 
 // The Mac panel: 320pt wide, content-driven height, 20pt gutters.
 constexpr int kWidth = 320;
@@ -39,14 +79,12 @@ class Prompt : public PhiSecondaryWindow {
          int64_t slot,
          AgentHost* host)
       : task_id_(task_id),
-        // The agent's words, cleaned and capped the way the transcript
-        // shows them: this window is TOPMOST and sized to its text.
+        // The agent's words, cleaned and capped: this window is TOPMOST
+        // and sized to its text.
         message_(base::UTF8ToWide(
             message.empty()
                 ? base::WideToUTF8(PhiStr("agent.handoffPrompt.message"))
-                : PhiAgentTranscript::SanitizeText(
-                      message, /*keep_newlines=*/true,
-                      PhiAgentTranscript::kMaxDetailChars))),
+                : SanitizeMessage(message, kMaxMessageChars))),
         slot_(slot),
         host_(host) {}
 

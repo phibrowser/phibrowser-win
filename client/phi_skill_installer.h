@@ -33,10 +33,6 @@ struct PhiSkillTarget {
   // The brand mark leading the agent's menu row (phi_agent_icons.h id).
   const char* icon;
   const wchar_t* skills_subdir;
-  // Pi alone exposes a supported in-process message API; its companion
-  // extension (bundled at extensions\pi) wakes idle sessions from Agent
-  // Transcript commands and links into this folder as phi-browser too.
-  const wchar_t* extensions_subdir;
 };
 
 const std::vector<PhiSkillTarget>& PhiSkillTargets();
@@ -51,7 +47,7 @@ std::wstring PhiBundledSkillDir();
 
 // Ids of the targets whose skills folder already links to THIS exe's
 // bundle (a link left by another build reads as not installed, so picking
-// the agent again refreshes it). Pi counts only with its companion linked.
+// the agent again refreshes it).
 std::set<std::string> PhiInstalledSkillTargetIds();
 
 enum class PhiSkillInstallOutcome {
@@ -64,7 +60,7 @@ struct PhiSkillInstallResult {
   std::wstring error;  // kFailure: the localized reason.
 };
 
-// Links the bundled skill (and Pi's companion) into `target`'s folders.
+// Links the bundled skill into `target`'s skills folder.
 // A real directory or file already at a link path is never clobbered
 // unasked: `confirm_overwrite` is called with that path and a false answer
 // cancels the whole install before anything changed — so declining the

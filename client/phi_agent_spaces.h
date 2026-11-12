@@ -20,8 +20,7 @@ namespace phi_client {
 // twin of the Mac AgentSpaceManager's bookkeeping. An agent Space is a hidden
 // browser window (hosted off-screen by a PhiShellWindow) keyed by the
 // skill's `taskId`, with an ownership state (agent vs the user who took
-// control), a keep-alive deadline, a transcript log, and a queue of user
-// console messages.
+// control), a keep-alive deadline, and a queue of messages from the user.
 //
 // This class is PURE STATE + TIME MATH — it owns no windows and calls no
 // framework. The coordinator creates/tears down the backing window and passes
@@ -55,7 +54,7 @@ class PhiAgentSpaces {
     std::string task_id;
     std::string space_id;
     // The Mac's task number: the lowest unused ordinal (1, 2, 3…), reused
-    // once a Space closes — the pip's "R1" and the transcript's label.
+    // once a Space closes — the pip's "R1".
     int number = 0;
     // The hidden browser; its value is what CDP's Browser.getWindowForTarget
     // reports, so the skill correlates tabs to it unchanged.

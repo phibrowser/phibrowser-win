@@ -76,11 +76,6 @@ if (!source.trim()) {
   process.exit(2)
 }
 
-// Stash the script for session-mirror discovery: some agents (Cursor) record
-// the spawning shell command — this very heredoc — in their transcript, and
-// that text is the one exact evidence tying a transcript to this round.
-surface.__setHeredocSource?.(source)
-
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 const names = Object.keys(surface)
 const values = names.map((n) => surface[n])

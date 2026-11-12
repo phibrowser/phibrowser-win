@@ -42,7 +42,6 @@
 #include "client/phi_feedback_window.h"
 #include "client/phi_folio.h"
 #include "client/phi_settings_window.h"
-#include "client/phi_transcript_panel.h"
 #include "client/phi_url_router.h"
 #include "client/phi_app_model.h"
 #include "client/phi_session_restore.h"
@@ -274,7 +273,6 @@ class PhiCoordinator : public SidebarHost,
   void RequestAgentTakeControl(const std::string& task_id) override;
   void RequestAgentHandBack(const std::string& task_id) override;
   void RequestAgentFinish(const std::string& task_id) override;
-  void RequestShowTranscript(const std::string& task_id) override;
 
   void RequestCreateSpace(int64_t slot, bool new_profile) override;
   void RequestNewIncognitoSpace(int64_t slot) override;
@@ -1490,7 +1488,7 @@ class PhiCoordinator : public SidebarHost,
   // surface the lowest-numbered running, agent-owned task. Runs on the
   // posted turn after every run-state edge, never inside one.
   void AutoViewReevaluate();
-  PhiShellWindow* FirstUserController() override;
+  PhiShellWindow* FirstUserController();
   void InvalidateUserSlots() override;
   void InvalidateAll() override;
   void BroadcastControlEvent(const std::string& type,

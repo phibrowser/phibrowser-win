@@ -7012,17 +7012,15 @@ void PhiShellWindow::ShowTabAreaMenu(POINT pt,
 }
 
 void PhiShellWindow::ShowAgentChipMenu(POINT pt, std::string task) {
-  // The agent pip's own menu (the Mac agentContextMenu): the transcript
-  // console and finishing the task. The Space menu below would misapply
-  // rename/theme/delete to a task id.
+  // The agent pip's own menu (the Mac agentContextMenu): finishing the
+  // task. The Space menu below would misapply rename/theme/delete to a
+  // task id.
   const PhiMenuAction action = PhiRunPopupMenu(
       PhiBuildAgentChipMenu(), PopupAt(pt, TPM_LEFTALIGN | TPM_TOPALIGN));
   if (!services_.agent) {
     return;
   }
-  if (action.is("agent.transcript")) {
-    services_.agent->RequestShowTranscript(task);
-  } else if (action.is("agent.finish")) {
+  if (action.is("agent.finish")) {
     services_.agent->RequestAgentFinish(task);
     ScheduleRefresh();  // The pip leaves the strip with the task.
   }

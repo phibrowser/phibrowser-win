@@ -625,11 +625,6 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
 
 PhiMenuSpec PhiBuildAgentChipMenu() {
   PhiMenuSpec spec;
-  if (kPhiTranscriptEnabled) {
-    spec.items.push_back(
-        PhiMenuItem::Command("agent.transcript", PhiStr("contextMenu.showTranscript")));
-    spec.items.push_back(PhiMenuItem::Separator());
-  }
   spec.items.push_back(PhiMenuItem::Command("agent.finish", PhiStr("contextMenu.finishTask")));
   return spec;
 }

@@ -19,8 +19,8 @@
 
 // The SECONDARY-WINDOW family (docs/architecture-review.md §3.6, appendix
 // lane3-ui-substrate.md §6.2). A secondary window is a top-level window
-// that is NOT the shell: the prompt, the Feedback form, the agent
-// transcript console, Settings and the Kiosk. What they share, and what
+// that is NOT the shell: the prompt, the Feedback form, Settings and the
+// Kiosk. What they share, and what
 // this family owns for them:
 //
 //  1. ONE CAPTION FRAME. Lane 3 §2 found the custom frame implemented
@@ -35,13 +35,13 @@
 //  2. COLOURS FROM THE THEME BUS. The five windows snapshotted
 //     PhiPopupColorsNow() at construction and never refreshed (lane 3
 //     ranked finding 7): an OS dark/light switch left an open Feedback
-//     or Transcript window on the old ladder forever. PhiWindow
+//     window on the old ladder forever. PhiWindow
 //     registers every window with PhiThemeBus, so a broadcast lands in
 //     OnThemeChanged(); this family re-reads QueryColors(), re-applies
 //     the DWM attributes and repaints.
-//  3. DPI. The base owns dpi() and the PhiFontSet; the transcript and
-//     the feedback form kept their pre-move fonts after WM_DPICHANGED
-//     (lane 3 ranked finding 10) purely because each built its fonts
+//  3. DPI. The base owns dpi() and the PhiFontSet; the feedback form
+//     kept its pre-move fonts after WM_DPICHANGED
+//     (lane 3 ranked finding 10) purely because it built its fonts
 //     once. Any font taken from fonts() is rebuilt for them.
 //  4. DIALOG KEYS WITHOUT A NESTED LOOP. A window with native child
 //     controls needs IsDialogMessage for Tab (and optionally Escape /
@@ -253,7 +253,7 @@ class PhiSecondaryWindow : public PhiWindow {
 
  protected:
   // Where this window's popup colours come from. The default is the
-  // app-wide answer; Settings, the transcript and the Kiosk read a live
+  // app-wide answer; Settings and the Kiosk read a live
   // palette instead.
   virtual PhiPopupColors QueryColors() const;
   // colors() moved (a theme bus broadcast, or a palette push). The base

@@ -15,7 +15,7 @@
 namespace phi_client {
 
 // The look every secondary window shares — the Mac's secondary windows
-// (Feedback, PhiAlert, the transcript, Settings) stand on the FIXED window
+// (Feedback, PhiAlert, Settings) stand on the FIXED window
 // ground, `DefaultColors.windowBackground` (#EAEAEA light / #252525 dark),
 // never on the per-Space tint. Cards and fields are the Mac's
 // controlBackgroundColor over it with an 8% border; text is the

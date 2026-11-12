@@ -26,7 +26,6 @@
 #include "client/phi_coordinator.h"
 #include "client/phi_features.h"
 #include "client/phi_telemetry.h"
-#include "client/phi_transcript_panel.h"
 #include "client/phi_util.h"
 #include "client/phi_window_capture.h"
 #include "client/phi_shell_window.h"
@@ -135,12 +134,10 @@ PhiVerbResult PhiControlDispatcher::VerbList(const PhiVerbContext& ctx) {
     tasks = std::move(mine);
   }
   out.Set("tasks", std::move(tasks));
-  // Whether the Agent Transcript console is open (the Mac's View ▸ Agent
-  // Transcript). The skill lists tasks at every round bind and runs its
-  // session-mirror daemon only while this reads true — with the console
-  // closed nobody is watching a mirror, and completion is immediate.
-  out.Set("transcriptMirror",
-          kPhiTranscriptEnabled && PhiTranscriptPanel::IsOpen());
+  // Windows has no Agent Transcript console (the Mac's View ▸ Agent
+  // Transcript). A skill written for the Mac runs its session-mirror daemon
+  // unless this reads false, so the field stays on the wire.
+  out.Set("transcriptMirror", false);
   return PhiVerbResult::Ok(std::move(out));
 }
 
@@ -321,7 +318,7 @@ PhiVerbResult PhiControlDispatcher::VerbAgentComplete(
     return PhiVerbResult::Fail("unknown_task");
   }
   // The Mac's taskDidComplete: `status` "success" (default) or a failure,
-  // `message` the closing transcript line, `keep` (default true) whether a
+  // `message` a failure's reason, `keep` (default true) whether a
   // persistent Space survives — see PhiAgentSpaceManager::CompleteTask.
   const bool success = ctx.params.String("status", "success") == "success";
   // Captured BEFORE CompleteTask, which may free the record. Only this
@@ -369,9 +366,9 @@ PhiVerbResult PhiControlDispatcher::SetTaskOwnership(const PhiVerbContext& ctx,
 
 PhiVerbResult PhiControlDispatcher::VerbAgentHandoff(
     const PhiVerbContext& ctx) {
-  // The agent hands control to the user and asks for them: the transcript
-  // line carries its message, and the floating "The agent needs you"
-  // prompt offers to switch to the Space.
+  // The agent hands control to the user and asks for them: the floating
+  // "The agent needs you" prompt carries its message and offers to switch
+  // to the Space.
   const std::string task_id = ctx.params.String("taskId");
   if (!coordinator_->agent_spaces().Find(task_id)) {
     return PhiVerbResult::Fail("unknown_task");
@@ -419,79 +416,33 @@ PhiVerbResult PhiControlDispatcher::VerbAgentLog(const PhiVerbContext& ctx) {
   if (!coordinator_->agent_spaces().Find(task_id)) {
     return PhiVerbResult::Fail("unknown_task");
   }
-  // A single line (top-level `text` + kind/detail/agent) or an `entries`
-  // array, oldest first, capped at 200 — the Mac's agentSpace.log. Rules
-  // (AgentSpaceRouter.log): the status/round kinds are the app's own, a
-  // driver's line of those kinds is downgraded to an action (a driver
-  // cannot forge "You took control"); kind "activity" is the driver's
-  // live tail row, control-only for codex/claude and dropped otherwise;
-  // `ts` (epoch ms) is clamped to now-24h … now+120s.
-  const int64_t now_ms = base::Time::Now().InMillisecondsSinceUnixEpoch();
-  PhiAgentSpaceManager& manager = coordinator_->agent_manager();
+  // The Mac's agentSpace.log feeds its Agent Transcript console. Windows
+  // has no console, so the lines are checked and dropped: a skill written
+  // for the Mac keeps working and the call still refreshes the keep-alive.
+  // Accepted, as on the Mac: a single line (top-level `text`), or an
+  // `entries` array of up to 200 lines; a line counts when it has text, or
+  // is a codex / claude "activity" row.
   bool any = false;
-  const auto append = [&](const base::DictValue& d) {
+  const auto has_ink = [](const std::string& text) {
+    return text.find_first_not_of(" \t\r\n") != std::string::npos;
+  };
+  const auto check = [&](const base::DictValue& d) {
     const std::string* kind = d.FindString("kind");
-    const std::string* agent = d.FindString("agent");
-    const std::string agent_key = agent ? PhiLower(*agent) : std::string();
     if (kind && *kind == "activity") {
-      if (agent_key == "codex") {
-        const std::string* activity = d.FindString("activity");
-        manager.transcript().SetActivity(
-            task_id, activity && *activity == "waiting"
-                         ? "Codex is waiting for input…"
-                         : activity && *activity == "working"
-                               ? "Codex is working…"
-                               : std::string());
-        any = true;
-      } else if (agent_key == "claude") {
-        const std::string* phase = d.FindString("phase");
-        manager.transcript().SetActivity(
-            task_id, phase && *phase == "working" ? "Claude is working…"
-                                                  : std::string());
-        any = true;
-      }
+      const std::string* agent = d.FindString("agent");
+      const std::string agent_key = agent ? PhiLower(*agent) : std::string();
+      any = any || agent_key == "codex" || agent_key == "claude";
       return;
     }
     const std::string* text = d.FindString("text");
-    if (!text) {
-      return;
-    }
-    PhiTranscriptEntry entry;
-    using Kind = PhiTranscriptEntry::Kind;
-    const std::string k = kind ? *kind : "action";
-    entry.kind = k == "narration"   ? Kind::kNarration
-                 : k == "error"     ? Kind::kError
-                 : k == "user"      ? Kind::kUser
-                 : k == "assistant" ? Kind::kAssistant
-                 : k == "thinking"  ? Kind::kThinking
-                 : k == "tool"      ? Kind::kTool
-                                    : Kind::kAction;  // + status/round
-    entry.text = *text;
-    if (const std::string* detail = d.FindString("detail")) {
-      entry.detail = *detail;
-    }
-    entry.agent = agent_key;
-    if (const std::string* source = d.FindString("sourceId")) {
-      entry.source_id = *source;
-    }
-    if (const std::string* state = d.FindString("toolState")) {
-      entry.tool_state = *state;
-    } else if (entry.kind == Kind::kTool) {
-      entry.tool_state = "pending";
-    }
-    const std::optional<double> ts = d.FindDouble("ts");
-    entry.ts_ms = ts ? static_cast<int64_t>(*ts) : now_ms;
-    entry.ts_ms = std::max(now_ms - 24 * 3600 * 1000LL,
-                           std::min(entry.ts_ms, now_ms + 120 * 1000LL));
-    if (manager.transcript().Append(task_id, std::move(entry))) {
-      any = true;
-    }
+    const std::string* detail = d.FindString("detail");
+    any = any || (text && (has_ink(*text) || (detail && has_ink(*detail))));
   };
   if (const base::ListValue* entries = ctx.params.FindList("entries")) {
     size_t count = 0;
     for (const base::Value& v : *entries) {
       if (const base::DictValue* d = v.GetIfDict()) {
-        append(*d);
+        check(*d);
       }
       if (++count >= 200) {
         break;
@@ -499,23 +450,20 @@ PhiVerbResult PhiControlDispatcher::VerbAgentLog(const PhiVerbContext& ctx) {
     }
   } else if (ctx.params.FindString("text")) {
     base::DictValue one;
-    for (const char* key : {"text", "kind", "detail", "agent", "sourceId",
-                            "toolState"}) {
+    for (const char* key : {"text", "kind", "detail", "agent"}) {
       if (const std::string* value = ctx.params.FindString(key)) {
         one.Set(key, *value);
       }
     }
-    append(one);
+    check(one);
   }
   if (!any) {
     return PhiVerbResult::Fail(PhiErrorCode::kInvalidPayload);
   }
-  // Refresh keep-alive unless touch:false (mirror prose proves the
-  // SESSION is alive, not that anyone is driving).
+  // Refresh keep-alive unless touch:false.
   if (ctx.params.Bool("touch", true)) {
     coordinator_->agent_spaces().Ping(task_id, 0, ctx.now_ms);
   }
-  PhiTranscriptPanel::RefreshOpen();
   return PhiVerbResult::Ok();
 }
 
@@ -532,8 +480,6 @@ PhiVerbResult PhiControlDispatcher::VerbAgentMarkError(
   space->status = "failed";
   space->error_message = message;
   space->unseen_error = true;
-  coordinator_->agent_manager().AppendTranscript(
-      task_id, PhiTranscriptEntry::Kind::kError, message);
   coordinator_->RefreshAgentOverlay();
   coordinator_->InvalidateAgentPips();
   coordinator_->NoteAgentRunStateChanged();
@@ -553,14 +499,12 @@ PhiVerbResult PhiControlDispatcher::VerbAgentReadUserMessages(
 
 PhiVerbResult PhiControlDispatcher::VerbAgentUserMessage(
     const PhiVerbContext& ctx) {
-  // Inbound console message injection (used by the mirror / tests); the Mac
-  // wire has this as an event, but accepting it as a request lets the
-  // console flow work without a push channel.
+  // Injects a message from the user (tests only); the Mac wire has this as
+  // an event from its console.
   const std::string task_id = ctx.params.String("taskId");
   const std::string text = ctx.params.String("text");
-  // Queues, echoes the user's line and wakes the driver, exactly as the
-  // console's own Send does.
-  if (!coordinator_->agent_manager().PushTranscriptMessage(task_id, text)) {
+  // Queues the line and wakes the driver.
+  if (!coordinator_->agent_manager().PushUserMessage(task_id, text)) {
     return PhiVerbResult::Fail("unknown_task");
   }
   return PhiVerbResult::Ok();

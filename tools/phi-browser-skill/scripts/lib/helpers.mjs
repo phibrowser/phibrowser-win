@@ -13,18 +13,8 @@ import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { tmpdir, homedir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { connectBrowser, isEndpointTimeout } from './cdp.mjs'
-import {
-  readDaemonControl, writeDaemonControl, clearDaemonControl,
-  requestDeferredComplete, pidAlive, agentRootPid, ancestorPids,
-} from './mirror-core.mjs'
-import { discoverClaudeTranscript } from './mirror-claude.mjs'
-import { discoverCodexTranscript } from './mirror-codex.mjs'
-import { discoverPiTranscript } from './mirror-pi.mjs'
-import { discoverHermesTranscript } from './mirror-hermes.mjs'
-import { discoverOpenclawTranscript } from './mirror-openclaw.mjs'
-import { discoverCursorTranscript } from './mirror-cursor.mjs'
+import { agentRootPid, ancestorPids } from './agent-process.mjs'
 
 // Default viewport for the hidden agent window: both dimensions follow the
 // Agent Space's own PAGE AREA — its window minus Sidebar, Content Header and
@@ -89,10 +79,6 @@ const state = {
   explicitTtl: null,         // {taskId, deadline} bought by ping(ttlSeconds) —
                              // honored over the default round-end grace while
                              // the deadline lies ahead (see releaseTtlSeconds)
-  transcriptMirror: null,    // whether the Agent Transcript console is open
-                             // in the app (View ▸ Agent Transcript), stashed
-                             // from agentSpace.list; null on an app too old
-                             // to report it (mirror stays on)
 }
 
 // The app auto-closes an agent Space when its driver goes silent (~120s while
@@ -315,7 +301,7 @@ async function ensureSessionAttached() {
  *
  *  A SHADOW context is a task like an agent Space — same taskId namespace,
  *  keep-alive and complete() — so it rides `state.task` rather than a slot of
- *  its own. Only its window differs: invisible, hence no pip, transcript or
+ *  its own. Only its window differs: invisible, hence no pip or
  *  ownership. */
 export function contextKind() {
   if (state.task) return state.task.shadow ? 'shadow' : 'agent'
@@ -399,11 +385,7 @@ async function guardAgentControl() {
 // Agent spaces
 
 export async function listAgentSpaces() {
-  const { tasks, transcriptMirror } = await phiSend('agentSpace.list', {})
-  // Rides along on every list: whether the Agent Transcript console is open
-  // in the app — the gate for the session mirror (see spawnSessionMirror).
-  // Absent on older apps — leave the stash null and keep mirroring.
-  if (transcriptMirror !== undefined) state.transcriptMirror = !!transcriptMirror
+  const { tasks } = await phiSend('agentSpace.list', {})
   return tasks
 }
 
@@ -428,7 +410,7 @@ export async function listProfiles() {
  *       keep-alive, complete()). See references/lifecycle.md.
  *
  *   enterContext({ kind: 'shadow', name, profile?, incognito? })
- *     — an INVISIBLE background window: no pip, no transcript, no handoff,
+ *     — an INVISIBLE background window: no pip, no handoff,
  *       nobody watching. Only when the user explicitly asks for background
  *       work; anything that might need a human belongs in an agent Space.
  *       `incognito: true` browses in a fresh off-the-record session (no
@@ -498,8 +480,8 @@ export function ensureUserSpace(space, opts = {}) {
  * ignored (the Space keeps its own profile). {agent} — WHO is driving: the
  * product name of the agent running this skill ('Claude Code', 'Codex',
  * 'Cursor', 'Pi', …); the Space's pip wears that agent's mark and the watch
- * pill names it. Omitted, the host the session mirror can prove stands in;
- * an unknown driver keeps the robot pip.
+ * pill names it. Omitted, a host that exports its own session id (Claude
+ * Code, Hermes) is named for you; any other driver keeps the robot pip.
  */
 async function enterAgentContext(name,
                                  { profile = '', persistent = false,
@@ -518,7 +500,7 @@ async function enterAgentContext(name,
   let task = tasks.find((t) => t.taskId === name)
   const rebound = !!task
   if (!task) {
-    const agentName = String(agent || '').trim() || detectedAgentName(name)
+    const agentName = String(agent || '').trim() || detectedAgentName()
     const created = await phiSend('agentSpace.create', {
       taskId: name,
       profileId: profile,
@@ -542,11 +524,6 @@ async function enterAgentContext(name,
   await releaseBoundTask({ shadow: false, taskId: name })
   state.task = task
   state.userSpace = null  // task binding supersedes any user-space binding
-  // Start (or re-target) the session mirror: the driving session's prompts
-  // and prose flow into this Space's console, and console commands flow
-  // back into the session (see scripts/mirror-tailer.mjs). Awaited: it also
-  // delivers any deferred completion the re-target would orphan.
-  await spawnSessionMirror(task.taskId)
   // `task.ownership` here is authoritative (fresh from list, or echoed on the
   // create reply), so seed the staleness clock and avoid a redundant
   // getOwnership on the first guarded action.
@@ -645,7 +622,7 @@ async function enterAgentContext(name,
  * the Windows menu, and omitted from session restore.
  *
  * What that costs, and why the kind is explicit at the entry point: there is
- * no pip, no transcript, no handoff and no takeover, so nothing here can ask
+ * no pip, no handoff and no takeover, so nothing here can ask
  * the user anything. A login, a captcha, a payment, any consequential choice
  * is unreachable — those belong in an agent Space, which can hand off.
  *
@@ -745,7 +722,7 @@ function refuseInShadow(name) {
   if (contextKind() !== 'shadow') return
   throw new Error(
     `${name}() needs an agent Space — this round is bound to a shadow window, ` +
-    'which has no pip, transcript, or user handoff. Use ' +
+    'which has no pip or user handoff. Use ' +
     "enterContext({kind:'agent', name}) for anything the user must see or take over.")
 }
 
@@ -1184,50 +1161,13 @@ function writeStoredPointer(key, windowId, point) {
   })
 }
 
-// The tailer daemon (scripts/mirror-tailer.mjs): the session mirror. When
-// the driving session's transcript can be located — exactly under Claude
-// Code and Hermes (exported session ids), by thread id or the rollout
-// heuristic under Codex, by the recorded-toolCall evidence heuristics
-// under OpenClaw and Pi, and by the recorded heredoc source under Cursor
-// (see the discover* in lib/mirror-*.mjs) — the heredoc writes the daemon
-// control file and spawns a detached tailer; the binding is exact because
-// we TELL the daemon its transcript, format, task, and agent process. A
-// live daemon is re-targeted through the control file instead of
-// respawned; complete() deletes the file, which is also the daemon's exit
-// signal. PHI_NO_SESSION_MIRROR=1 opts out entirely.
-
-// The script text of the round being executed, stashed by runner.mjs: the
-// discovery evidence for agents that record the spawning shell COMMAND but
-// not its output (Cursor). Empty under embedding callers that aren't the
-// heredoc runner.
-let heredocSource = ''
-export function __setHeredocSource(text) { heredocSource = String(text || '') }
-
-// Exact env-exported session ids first, evidence heuristics after.
-// The driving agent's product name when the agent did not say — the same
-// positive evidence the session mirror is gated on (a known host's own
-// transcript), so it never guesses. Empty for an unknown host.
-function detectedAgentName(taskId) {
-  const names = {
-    claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor',
-    hermes: 'Hermes', openclaw: 'OpenClaw', pi: 'Pi',
-  }
-  try {
-    const agentPid = agentRootPid() ?? appProvidedAgentPid()
-    const transcript = discoverSessionTranscript(taskId, agentPid)
-    return (transcript && names[transcript.format]) || ''
-  } catch {
-    return ''
-  }
-}
-
-function discoverSessionTranscript(taskId, agentPid) {
-  return discoverClaudeTranscript()
-    || discoverHermesTranscript()
-    || discoverCodexTranscript(taskId, agentPid)
-    || discoverOpenclawTranscript(taskId)
-    || discoverPiTranscript(taskId, agentPid)
-    || discoverCursorTranscript(heredocSource)
+// The driving agent's product name when the agent did not say: only from a
+// session id the host itself exports into its tool shells, so it never
+// guesses. Empty for any other host.
+function detectedAgentName() {
+  if (process.env.CLAUDE_CODE_SESSION_ID) return 'Claude Code'
+  if (process.env.HERMES_SESSION_ID) return 'Hermes'
+  return ''
 }
 
 // The pid of the agent session this round acts for, claimed on every
@@ -1237,19 +1177,10 @@ function discoverSessionTranscript(taskId, agentPid) {
 // the app-issued capability instead. Also the reference value for the
 // orphaned-round check (roundLostAgentSession): a mismatch against what the
 // app actually resolved marks this round as severed from its agent session.
-// Normally the live ancestry walk finds the agent directly; a sandboxed
-// round (Codex's seatbelt denies the sysctls `ps` needs) inherits the pid a
-// fully-parented round of the SAME session recorded in the mirror control
-// file. Null when neither source knows the agent.
+// The live ancestry walk finds the agent; null when it cannot (no `ps`, as
+// on Windows, or a sandbox that denies it).
 function claimAgentPid() {
-  const live = agentRootPid()
-  if (live) return live
-  try {
-    const transcript = discoverSessionTranscript(null, null)
-    const prev = transcript && readDaemonControl(transcript.sessionKey)
-    if (prev && prev.agentPid && pidAlive(prev.agentPid)) return prev.agentPid
-  } catch {}
-  return null
+  return agentRootPid()
 }
 
 // The agent pid the APP resolved for this round's /phi-agent connection
@@ -1302,95 +1233,6 @@ const ORPHANED_ROUND_MESSAGE =
   'Run watchers with a background mode that keeps them parented to the ' +
   'agent session (e.g. Claude Code\'s run_in_background), or use the ' +
   'blocking handOffAndWait() — see SKILL.md "Hand-back watcher".'
-
-async function spawnSessionMirror(taskId) {
-  if (process.env.PHI_NO_SESSION_MIRROR) return
-  try {
-    const agentPid = agentRootPid() ?? appProvidedAgentPid()
-    const transcript = discoverSessionTranscript(taskId, agentPid)
-    if (!transcript) return  // unknown driver: say() remains
-    // The Agent Transcript console is closed (View ▸ Agent Transcript;
-    // stashed from agentSpace.list, which every agent bind runs first), so
-    // the user isn't watching a mirror. Spawn nothing, and drop this
-    // session's control file so a daemon from an earlier open-console round
-    // exits instead of running out its TTL — after delivering a deferred
-    // completion still pending for a DIFFERENT task, exactly as the
-    // re-target below would (re-entering the completing task itself keeps
-    // cancelling that completion, cleared file or not).
-    if (state.transcriptMirror === false) {
-      const prev = readDaemonControl(transcript.sessionKey)
-      if (prev && prev.completing && prev.taskId && prev.taskId !== taskId) {
-        await phiSend('agentSpace.complete', {
-          taskId: prev.taskId,
-          status: prev.completing.status === 'failure' ? 'failure' : 'success',
-          ...(prev.completing.message
-            ? { message: String(prev.completing.message) } : {}),
-        }).catch(() => {})
-        writeStoredViewport(prev.taskId, null)
-      }
-      clearDaemonControl(transcript.sessionKey)
-      return
-    }
-    const prev = readDaemonControl(transcript.sessionKey)
-    // Re-targeting the control file to a NEW task silently drops a deferred
-    // completion still pending for the previous one — and once the file
-    // points elsewhere, the daemon (which serves only ctl.taskId) can never
-    // finish that task: its Space lingers as a stuck "running" pip until
-    // TTL expiry instead of closing (the multi-Space leak). No further
-    // mirror line can reach the old console after the re-target anyway, so
-    // deliver the completion NOW, best-effort. Same-task re-binds fall
-    // through: re-entering a completing task deliberately cancels its
-    // pending completion.
-    if (prev && prev.completing && prev.taskId && prev.taskId !== taskId) {
-      await phiSend('agentSpace.complete', {
-        taskId: prev.taskId,
-        status: prev.completing.status === 'failure' ? 'failure' : 'success',
-        ...(prev.completing.message
-          ? { message: String(prev.completing.message) } : {}),
-      }).catch(() => {})  // already gone settles it just as well
-      writeStoredViewport(prev.taskId, null)
-    }
-    const livePid = prev && prev.pid && pidAlive(prev.pid) ? prev.pid : null
-    const agentCapability = appProvidedAgentCapability()
-    writeDaemonControl(transcript.sessionKey, {
-      taskId, transcriptPath: transcript.path, format: transcript.format,
-      ts: Date.now(),
-      // The driving agent process: the daemon uses it to notice the session
-      // closing, and names it on the app channel so consent identity stays
-      // on the agent. An orphaned round (backgrounded watcher) resolves null
-      // here — keep the pid a parented round recorded rather than clobbering
-      // the daemon's claim and its agent-death exit signal.
-      agentPid: agentPid
-        ?? (prev && prev.agentPid && pidAlive(prev.agentPid) ? prev.agentPid : null),
-      ...(livePid ? { pid: livePid } : {}),
-    })
-    if (livePid) return  // the live tailer follows the control-file update
-    const tailer = fileURLToPath(new URL('../mirror-tailer.mjs', import.meta.url))
-    // Delegate through an inherited one-shot pipe, never argv/env/a shared
-    // temp file. The detached daemon keeps the capability only in memory.
-    const child = spawn(process.execPath, [tailer, transcript.sessionKey], {
-      detached: true,
-      stdio: ['pipe', 'ignore', 'ignore'],
-    })
-    // A tailer that dies before reading (or a failed spawn) EPIPEs the pipe;
-    // without a listener that surfaces as an UNCAUGHT stream error in this
-    // round — the enclosing try/catch never sees async stream errors.
-    child.stdin.on('error', () => {})
-    child.stdin.end(agentCapability || '')
-    child.stdin.unref?.()
-    child.unref()
-  } catch {}
-}
-
-// Re-derives the session key (heredoc state does not survive rounds) and
-// deletes the control file — the daemon's exit signal. Best-effort: an
-// undiscoverable session just lets the daemon exit via unknown_task or TTL.
-function stopSessionMirror(taskId) {
-  try {
-    const transcript = discoverSessionTranscript(taskId, agentRootPid())
-    if (transcript) clearDaemonControl(transcript.sessionKey)
-  } catch {}
-}
 
 // Serializes the attach sequence. Concurrent work in one round is legitimate
 // (Promise.all(openTab × N)), but interleaved attachTab bodies race: the
@@ -4545,15 +4387,14 @@ function mirrorEffect(kind, props = {}) {
   phiSend('agentSpace.effect', { taskId: task.taskId, kind, ...props }).catch(() => {})
 }
 
-// Fire-and-forget transcript line for the live session console (View ▸ Agent
-// Transcript in Phi). Cosmetic like the input mirrors: never block or fail a
-// primitive because logging failed; drop silently before a task exists or
-// when the channel is down. Narration, rounds, and errors need no calls here
-// — the app folds setStatus/run-state/markError into the console itself.
+// Fire-and-forget action line (the Mac shows these in its Agent Transcript
+// console; Phi on Windows keeps none and only refreshes the task's
+// keep-alive). Never block or fail a primitive because it failed; drop
+// silently before a task exists or when the channel is down.
 function logAction(text, detail) {
   const task = state.task
   if (!task) return
-  if (contextKind() === 'shadow') return  // no transcript console
+  if (contextKind() === 'shadow') return
   phiSend('agentSpace.log', {
     taskId: task.taskId,
     kind: 'action',
@@ -5959,29 +5800,24 @@ export async function dismissDialog(targetId, accept = false, promptText = undef
 // Presence / ownership / lifecycle
 
 export async function setStatus(caption) {
-  // Neither user-space mode nor a shadow window has an overlay pill or
-  // transcript console — narration belongs in chat there. Quiet no-op (not a
+  // Neither user-space mode nor a shadow window has an overlay pill —
+  // narration belongs in chat there. Quiet no-op (not a
   // refusal) so shared flows need no branching, matching markError below.
   if (contextKind() === 'user' || contextKind() === 'shadow') return
   const task = requireTask()
   await phiSend('agentSpace.setState', { taskId: task.taskId, caption: String(caption) })
 }
 
-/** Alias of setStatus, named for the console: the caption shows on the
- *  overlay pill AND lands in the live transcript as narration — one wire
- *  message, so the two can never disagree. Narrate what you are about to do,
- *  never secrets (both surfaces are displayed and buffered). Keep it to a
+/** Alias of setStatus: the caption shows on the overlay pill. Narrate what
+ *  you are about to do, never secrets (the pill is displayed). Keep it to a
  *  short phrase — the pill is a single truncating line; put a long result in
- *  your reply prose or say(...) instead. */
+ *  your reply prose instead. */
 export const narrate = setStatus
 
 /**
- * Mirrors a line of your own conversation into the transcript console —
- * `role: 'assistant'` (default) for your reply text, `role: 'user'` to echo
- * something the user said. Use this to reflect your session into the browser
- * when the Claude Code hook forwarder isn't installed (or under Codex); with
- * hooks installed this is redundant. Unlike `narrate`, it does NOT touch the
- * overlay pill — it is pure transcript. Never mirror secrets. */
+ * Kept for scripts written for the Mac, where it adds a line to the Agent
+ * Transcript console. Phi on Windows has no console and shows nothing: put
+ * what the user should read in your chat reply. */
 export async function say(text, { role = 'assistant' } = {}) {
   refuseInShadow('say')
   const task = requireTask()
@@ -5993,8 +5829,8 @@ export async function say(text, { role = 'assistant' } = {}) {
 }
 
 /**
- * Drains the commands the user typed into Phi's Agent Transcript console
- * since the last drain. Returns [{id, text, ts}] (oldest first; empty when
+ * Drains the messages the user sent to this task since the last drain. Phi
+ * on Windows gives the user no place to type one, so this is empty there. Returns [{id, text, ts}] (oldest first; empty when
  * none). Call at every round start and before complete() — treat the text as
  * user instructions with the same authority as chat, and acknowledge via
  * narrate(...).
@@ -6007,7 +5843,7 @@ export async function readUserMessages() {
 }
 
 /**
- * Blocks until the user types a command into the console (or `timeout`
+ * Blocks until the user sends the task a message (or `timeout`
  * seconds pass — then it throws). Resolves with the drained [{id, text, ts}]
  * batch. Wakes instantly on the app's push broadcast; the poll underneath is
  * the delivery guarantee (a message queued between rounds is caught on the
@@ -6283,31 +6119,17 @@ export async function handOffAndWait(message, { timeout = 100 } = {}) {
  * ensureAgentSpace(name, {persistent: true}) re-binds to it. If the user
  * needs a live page left open in an ephemeral Space, hand it to them with
  * handOff() BEFORE completing. Run in its own dedicated final heredoc — and
- * deliver the user-facing result INTO the transcript first (reply prose
- * before this heredoc, or narrate).
- *
- * When a session mirror is live, completion is DEFERRED to it: the final
- * reply an agent writes after this call would otherwise never reach the
- * console, so the tailer keeps mirroring until that reply has landed (the
- * session's turn end, or a short quiet window) and only then finishes the
- * task — the transcript reads result first, "Task completed" last. Without
- * a mirror (unrecognized driver), completion is immediate.
+ * give the user the result first (reply prose before this heredoc, or
+ * narrate). Completion is immediate; `immediate` is accepted for scripts
+ * written for the Mac and changes nothing.
  */
 export async function complete({ success = true, message = undefined,
                                  immediate = false } = {}) {
   const task = requireTask()
   clearChallengeGate(state.targetId)
   const status = success ? 'success' : 'failure'
-  let deferred = false
-  // Deferral hands the completion to the mirror daemon so it can flush the
-  // result and a final "Task completed" line before the Space closes — right
-  // for a heredoc round whose driving session ends soon after. A caller that
-  // IS its own session boundary (the phibrowser CLI: the driving agent
-  // outlives the invocation, so "defer until the session ends" would strand
-  // the task for the whole grace window) passes {immediate: true} to close now.
-  // A shadow window has no transcript to land a closing line in and no pip to
-  // leave behind, so there is nothing to defer for: close it now. Reporting
-  // the result is the driving session's job, in chat.
+  // A shadow window has no pip to leave behind: close it. Reporting the
+  // result is the driving session's job, in chat.
   if (contextKind() === 'shadow') {
     await phiSend('agentSpace.shadow.close', { taskId: task.taskId })
     state.task = null
@@ -6315,36 +6137,18 @@ export async function complete({ success = true, message = undefined,
     state.targetId = null
     return { done: true }
   }
-  if (!immediate) try {
-    const transcript = discoverSessionTranscript(task.taskId, agentRootPid())
-    if (transcript) {
-      deferred = requestDeferredComplete(transcript.sessionKey, task.taskId,
-                                         { status, message })
-    }
-  } catch {}
-  if (deferred) {
-    // Keep the task alive through the grace window — the round that kept
-    // refreshing its keep-alive is about to exit.
-    await phiSend('agentSpace.ping', {
-      taskId: task.taskId, ttlSeconds: 300,
-    }).catch(() => {})
-  } else {
-    await phiSend('agentSpace.complete', {
-      taskId: task.taskId,
-      status,
-      ...(message ? { message } : {}),
-    })
-    // The task is over: stop the session mirror — deleting the daemon
-    // control file is the tailer's exit signal.
-    stopSessionMirror(task.taskId)
-  }
+  await phiSend('agentSpace.complete', {
+    taskId: task.taskId,
+    status,
+    ...(message ? { message } : {}),
+  })
   // Drop any persisted viewport so a later session reusing this name starts
   // at the page area (the task record itself is ephemeral).
-  if (!deferred) writeStoredViewport(task.taskId, null)
+  writeStoredViewport(task.taskId, null)
   state.task = null
   state.sessionId = null
   state.targetId = null
-  return { done: true, ...(deferred ? { deferred: true } : {}) }
+  return { done: true }
 }
 
 // ---------------------------------------------------------------------------
@@ -7414,7 +7218,7 @@ export async function activateSpace(space) {
  * X and …"). What user-space mode does NOT have: no ownership guard or
  * handoff (the user is inherently in control of their own window — every
  * action lands in their live view), no keep-alive or complete(), no
- * overlay/status/transcript surface (setStatus/narrate are no-ops — report
+ * overlay/status surface (setStatus/narrate are no-ops — report
  * in chat), and no emulated viewport (the window is visible and sized for
  * real).
  *

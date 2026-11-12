@@ -198,34 +198,6 @@
     "zh-Hant": "接手控制"
    }
   },
-  "agentTranscript.messageTheAgent": {
-   "comment": "agentTranscript — used at phi_transcript_panel.cc:184",
-   "en": "Message the agent…",
-   "translations": {
-    "de": "Nachricht an den Agenten…",
-    "es": "Enviar un mensaje al agente…",
-    "fr": "Envoyer un message à l'agent…",
-    "ja": "エージェントにメッセージを送信…",
-    "ko": "에이전트에게 메시지 보내기…",
-    "nl": "Stuur de agent een bericht…",
-    "zh-Hans": "向智能体发送消息…",
-    "zh-Hant": "傳訊息給 AI 代理…"
-   }
-  },
-  "agentTranscript.transcript": {
-   "comment": "agentTranscript — used at phi_transcript_panel.cc:63",
-   "en": "Transcript — ",
-   "translations": {
-    "de": "Transkript – ",
-    "es": "Transcripción — ",
-    "fr": "Transcription — ",
-    "ja": "トランスクリプト — ",
-    "ko": "트랜스크립트 — ",
-    "nl": "Transcript — ",
-    "zh-Hans": "会话记录 — ",
-    "zh-Hant": "逐字稿 — "
-   }
-  },
   "app.activeSpaceContextMenu.deleteSpaceAction": {
    "comment": "menuBar — used at phi_menu_bar.cc:614",
    "en": "Delete Space..."
@@ -3166,20 +3138,6 @@
     "zh-Hant": "交換窗格"
    }
   },
-  "contextMenu.showTranscript": {
-   "comment": "contextMenu — the sidebar/strip/omnibox context menus (docs/windows-native-ui.md §3.5), phi_shell_menus.cc. Translations authored for Windows (impl log D14).",
-   "en": "Show transcript",
-   "translations": {
-    "de": "Protokoll anzeigen",
-    "es": "Mostrar transcripción",
-    "fr": "Afficher la transcription",
-    "ja": "トランスクリプトを表示",
-    "ko": "기록 보기",
-    "nl": "Transcript tonen",
-    "zh-Hans": "显示记录",
-    "zh-Hant": "顯示逐字稿"
-   }
-  },
   "contextMenu.splitWithCurrent": {
    "comment": "contextMenu — the sidebar/strip/omnibox context menus (docs/windows-native-ui.md §3.5), phi_shell_menus.cc. Translations authored for Windows (impl log D14).",
    "en": "Split with current",
@@ -4173,7 +4131,7 @@
    "en": "Privacy Policy"
   },
   "feedback.form.sendButton": {
-   "comment": "agentTranscript — used at phi_transcript_panel.cc:172",
+   "comment": "feedback — used at phi_feedback_window.cc",
    "en": "Send"
   },
   "feedback.form.sending": {
@@ -6855,7 +6813,17 @@
   },
   "settings.developer.skillInstall.description": {
    "comment": "settings — Developer ▸ phi-browser skill installer; used at phi_settings_window.cc",
-   "en": "Links the skill bundled in this app into an AI coding agent’s skills folder so it can drive Phi over the DevTools Protocol. Pi also gets a companion extension that wakes idle sessions from Agent Transcript commands. Requires Node 22+."
+   "en": "Links the skill bundled in this app into an AI coding agent’s skills folder so it can drive Phi over the DevTools Protocol. Requires Node 22+.",
+   "translations": {
+    "de": "Verknüpft den in dieser App enthaltenen Skill mit dem Skills-Ordner eines KI-Coding-Agenten, damit dieser Phi über das DevTools-Protokoll steuern kann. Erfordert Node 22+.",
+    "es": "Vincula la habilidad incluida en esta app a la carpeta de habilidades de un agente de programación con IA para que pueda controlar Phi mediante el protocolo DevTools. Requiere Node 22 o posterior.",
+    "fr": "Ajoute le Skill intégré à cette app au dossier de Skills d'un agent de codage IA pour qu'il puisse piloter Phi via le protocole DevTools. Nécessite Node 22+.",
+    "ja": "このアプリに同梱されているスキルをAIコーディングエージェントのスキルフォルダにリンクし、DevTools ProtocolでPhiを操作できるようにします。Node 22以降が必要です。",
+    "ko": "이 앱에 포함된 스킬을 AI 코딩 에이전트의 스킬 폴더에 연결해 DevTools 프로토콜로 Phi를 제어할 수 있게 해요. Node 22 이상이 필요해요.",
+    "nl": "Koppelt de skill die met deze app wordt meegeleverd aan de skills-map van een AI-coding-agent, zodat die Phi via het DevTools Protocol kan aansturen. Vereist Node 22+.",
+    "zh-Hans": "将此应用内置的 Skill 链接到 AI 编程智能体的 skills 文件夹中，使其能够通过 DevTools 协议驱动 Phi。需要 Node 22+。",
+    "zh-Hant": "將此 App 內建的 Skill 連結到 AI 程式開發代理的 Skill 資料夾，讓它能透過 DevTools Protocol 操控 Phi。需要 Node 22 或更新版本。"
+   }
   },
   "settings.developer.skillInstall.linkError": {
    "comment": "settings — WINDOWS-ONLY: the junction could not be made; {0} is the path, {1} the system’s reason; used at phi_skill_installer.cc",
@@ -6870,10 +6838,6 @@
     "zh-Hans": "无法链接 {0}：{1}",
     "zh-Hant": "無法連結 {0}：{1}"
    }
-  },
-  "settings.developer.skillInstall.missingCompanionError": {
-   "comment": "settings — Developer ▸ phi-browser skill installer; used at phi_settings_window.cc",
-   "en": "This build doesn’t include the Pi companion extension. Rebuild Phi Browser and try again."
   },
   "settings.developer.skillInstall.missingResourcesError": {
    "comment": "settings — Developer ▸ phi-browser skill installer; used at phi_settings_window.cc",
@@ -8826,10 +8790,6 @@
     "zh-Hans": "地址：",
     "zh-Hant": "位址："
    }
-  },
-  "sidebar.agentContextMenu.showTranscriptAction": {
-   "comment": "sidebar — used at phi_shell_window.cc:6295",
-   "en": "Show Transcript"
   },
   "sidebar.bookmarkContextMenu.changeIconAction": {
    "comment": "sidebar — used at phi_shell_window.cc:6354",

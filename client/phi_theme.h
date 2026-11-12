@@ -88,7 +88,7 @@ struct PhiPalette {
   PhiColor ink;
   // The FIXED window ground — #EAEAEA / #252525, the Mac's
   // DefaultColors.windowBackground. Secondary windows (Settings, Feedback,
-  // PhiAlert, the transcript) stand on this and never on the per-Space tint,
+  // PhiAlert) stand on this and never on the per-Space tint,
   // which is why phi_settings_window.cc:2441 defines a parallel palette
   // today and phi_popup_chrome.h:26 a second struct.
   PhiColor ground_fixed;
