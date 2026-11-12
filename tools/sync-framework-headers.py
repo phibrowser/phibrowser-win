@@ -26,6 +26,20 @@ COPIED = (
     "ui/base/win/phi_hosted_window.h",
 )
 COMMAND_IDS = "chrome/app/chrome_command_ids.h"
+# The private framework tree keeps its own notice; the copies published here
+# carry this repository's.
+FRAMEWORK_NOTICE = re.compile(
+    r"\A// Copyright 2026 The Fyde Innovations Limited\. All rights reserved\.\n"
+    r"// Use of this source code is governed by a BSD-style license that can be\n"
+    r"// found in the LICENSE file\.\n")
+CLIENT_NOTICE = ("// Copyright 2026 Phinomenon Inc.\n"
+                 "// Licensed under the Apache License, Version 2.0; see the "
+                 "LICENSE file.\n")
+
+
+def copied(src, path):
+    text = open(os.path.join(src, path), encoding="utf-8").read()
+    return FRAMEWORK_NOTICE.sub(CLIENT_NOTICE, text, count=1)
 
 
 def command_ids(src):
@@ -54,8 +68,7 @@ def main():
     parser.add_argument("--src", required=True)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    wanted = {path: open(os.path.join(args.src, path), encoding="utf-8").read()
-              for path in COPIED}
+    wanted = {path: copied(args.src, path) for path in COPIED}
     wanted[COMMAND_IDS] = command_ids(args.src)
     drift = []
     for path, text in wanted.items():

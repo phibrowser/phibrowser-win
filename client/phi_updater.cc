@@ -1,6 +1,5 @@
-// Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2026 Phinomenon Inc.
+// Licensed under the Apache License, Version 2.0; see the LICENSE file.
 
 #include "client/phi_updater.h"
 
@@ -237,6 +236,9 @@ void PhiUpdater::Init(HWND quit_hwnd, UINT quit_msg, UINT state_msg) {
   }
   const std::string url = AppcastUrl();
   g_sparkle.set_appcast_url(url.c_str());
+  // Not a copyright notice: WinSparkle keeps its settings under
+  // HKCU\Software\<company>\<app>, so renaming it would orphan existing
+  // installs' update settings (the uninstaller deletes this key).
   g_sparkle.set_app_details(L"Fyde Innovations", L"Phi Browser",
                             PHI_WIN_VERSION_FULL_WIDE);
   if (g_sparkle.set_automatic_check) {

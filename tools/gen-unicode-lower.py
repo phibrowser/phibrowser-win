@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
+# Copyright 2026 Phinomenon Inc.
+# Licensed under the Apache License, Version 2.0; see the LICENSE file.
 """Generates client/phi_unicode_lower.inc: the full Unicode lowercase mapping
 of every scalar whose lowercase differs from itself, one scalar at a time
 (no context, so no final-sigma rule) -- what Swift's String.lowercased()

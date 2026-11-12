@@ -1,6 +1,5 @@
-// Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2026 Phinomenon Inc.
+// Licensed under the Apache License, Version 2.0; see the LICENSE file.
 
 #include "client/phi_file_io.h"
 

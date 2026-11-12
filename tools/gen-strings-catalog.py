@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
+# Copyright 2026 Phinomenon Inc.
+# Licensed under the Apache License, Version 2.0; see the LICENSE file.
 """Builds the Windows client's string catalog (resources/strings.json).
 
 Translations are NOT authored here. The product's single source of

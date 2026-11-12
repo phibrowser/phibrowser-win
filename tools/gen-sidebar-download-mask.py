@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
+# Copyright 2026 Phinomenon Inc.
+# Licensed under the Apache License, Version 2.0; see the LICENSE file.
 """Rasterizes the sidebar's Download icon (Figma node 9044:27222) into the
 48x48 alpha mask phi_mac_icons.cc embeds as kDownloadAlpha.
 

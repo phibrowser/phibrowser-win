@@ -1476,7 +1476,7 @@ the brand mark (§2.2b), Fluent controls, no wizard chrome at all.
   "Phi Browser Setup" (the uninstaller: "Uninstall Phi Browser"), Minimize
   and Close. No Back / Next row, no branding text, no header bitmap.
 * **Header**: the mark at 48 (10 dip radius) + the product name at 28 / 600
-  Display + a 12 dip dim line "Version 0.1.0 · x64 · Fyde Innovations".
+  Display + a 12 dip dim line "Version 0.1.0 · x64 · Phinomenon Inc.".
   The version line is also where an update shows "Update 0.1.0 → 0.2.0".
 * **Body** on a 32 dip left margin: one 14 dip lead sentence, then ONE
   expander card (§7's card: white / `#2B2B2B`, 1 dip stroke, 4 dip radius,

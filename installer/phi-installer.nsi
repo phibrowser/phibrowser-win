@@ -1,6 +1,5 @@
-; Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-; Use of this source code is governed by a BSD-style license that can be
-; found in the LICENSE file.
+; Copyright 2026 Phinomenon Inc.
+; Licensed under the Apache License, Version 2.0; see the LICENSE file.
 ;
 ; The Phi Browser installer - WinSparkle's payload and the manual
 ; first-install, one script. Design (the Mac parity notes in
@@ -171,8 +170,8 @@ LoadLanguageFile "${NSISDIR}\Contrib\Language files\English.nlf"
 VIProductVersion "${PHI_FULL_VERSION}"
 VIAddVersionKey "ProductName" "Phi Browser"
 VIAddVersionKey "FileDescription" "Phi Browser Setup (${PHI_ARCH})"
-VIAddVersionKey "CompanyName" "Fyde Innovations"
-VIAddVersionKey "LegalCopyright" "Copyright 2026 The Fyde Innovations Limited"
+VIAddVersionKey "CompanyName" "Phinomenon Inc."
+VIAddVersionKey "LegalCopyright" "Copyright 2026 Phinomenon Inc."
 VIAddVersionKey "FileVersion" "${PHI_FULL_VERSION}"
 VIAddVersionKey "ProductVersion" "${PHI_FULL_VERSION}"
 
@@ -393,7 +392,7 @@ Function .onInit
     ${EndIf}
   ${EndIf}
   ${If} $PrevVersion == ""
-    StrCpy $SubLine "Version ${PHI_FULL_VERSION} · ${PHI_ARCH} · Fyde Innovations"
+    StrCpy $SubLine "Version ${PHI_FULL_VERSION} · ${PHI_ARCH} · Phinomenon Inc."
     StrCpy $Verb "Install"
     StrCpy $VerbIng "Installing…"
   ${ElseIf} $PrevVersion == "${PHI_FULL_VERSION}"
@@ -1228,7 +1227,7 @@ Section "Install"
   SetRegView 64
   WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "Phi Browser"
   WriteRegStr HKLM "${UNINST_KEY}" "DisplayVersion" "${PHI_FULL_VERSION}"
-  WriteRegStr HKLM "${UNINST_KEY}" "Publisher" "Fyde Innovations"
+  WriteRegStr HKLM "${UNINST_KEY}" "Publisher" "Phinomenon Inc."
   WriteRegStr HKLM "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\Phi.exe"
   WriteRegStr HKLM "${UNINST_KEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'

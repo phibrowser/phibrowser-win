@@ -1,6 +1,5 @@
-// Copyright 2026 The Fyde Innovations Limited. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2026 Phinomenon Inc.
+// Licensed under the Apache License, Version 2.0; see the LICENSE file.
 
 #include <windows.h>
 
@@ -37,11 +36,11 @@ BEGIN
     // 0409 = en-US, 04B0 = Unicode.
     BLOCK "040904B0"
     BEGIN
-      VALUE "CompanyName", "Fyde Innovations Limited"
+      VALUE "CompanyName", "Phinomenon Inc."
       VALUE "FileDescription", "Phi Browser"
       VALUE "FileVersion", PHI_RC_VERSION_DOTTED
       VALUE "InternalName", "Phi"
-      VALUE "LegalCopyright", "Copyright 2026 Fyde Innovations Limited. All rights reserved."
+      VALUE "LegalCopyright", "Copyright 2026 Phinomenon Inc."
       VALUE "OriginalFilename", "Phi.exe"
       VALUE "ProductName", "Phi Browser"
       VALUE "ProductVersion", PHI_RC_VERSION_DOTTED
