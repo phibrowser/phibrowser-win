@@ -69,8 +69,9 @@ class PhiCaptionShell {
   // The pointer entered the band: nothing the sidebar was washing is under
   // it any more.
   virtual void CaptionClearShellHover() = 0;
-  // Fullscreen claims every pixel as client, borders included.
-  virtual bool CaptionContentFullscreen() const = 0;
+  // The shell covers its monitor (SetShellFullscreen): every pixel is
+  // client, borders included.
+  virtual bool CaptionShellFullscreen() const = 0;
 
  protected:
   // The shell owns the band, never the reverse.

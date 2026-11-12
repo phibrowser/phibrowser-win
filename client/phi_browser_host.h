@@ -371,6 +371,7 @@ class PhiBrowserHost {
                           bool fullscreen,
                           const RECT& target);
   bool content_fullscreen() const { return content_fullscreen_; }
+  bool shell_fullscreen() const { return shell_fullscreen_; }
 
   // --- The content area's geometry and overlays ----------------------------
   // Positions the content child, then (after the shell has repositioned

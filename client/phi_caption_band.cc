@@ -114,7 +114,11 @@ bool PhiCaptionBand::OnNcCalcSize(HWND hwnd,
   // FALSE (a bare RECT), and skipping it leaves the OS caption alive — its
   // buttons then sit doubled above the band's.
   *result = 0;
-  if (shell_->CaptionContentFullscreen()) {
+  // Keyed to the shell's own fullscreen, which flips BEFORE its frame is
+  // recalculated. The page's flag arrives later with no recalculation, so
+  // the client kept (or lost) its resize borders while the content child was
+  // laid out against the other size (GitHub issue 11).
+  if (shell_->CaptionShellFullscreen()) {
     return true;  // Fullscreen: every pixel is client, no borders.
   }
   RECT* rect = wparam == TRUE

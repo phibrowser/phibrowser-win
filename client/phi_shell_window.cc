@@ -1625,8 +1625,8 @@ void PhiShellWindow::CaptionClearShellHover() {
   ClearHover();
 }
 
-bool PhiShellWindow::CaptionContentFullscreen() const {
-  return browsers_->content_fullscreen();
+bool PhiShellWindow::CaptionShellFullscreen() const {
+  return browsers_->shell_fullscreen();
 }
 
 // --- PhiAppMenuShell: what the app menu asks of its shell -----------------

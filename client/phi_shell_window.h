@@ -1923,7 +1923,7 @@ class PhiShellWindow : public PhiHitSource,
   PhiCaptionRects CaptionRects() override;
   bool CaptionStripTakesPoint(POINT client_pt) override;
   void CaptionClearShellHover() override;
-  bool CaptionContentFullscreen() const override;
+  bool CaptionShellFullscreen() const override;
 
   // --- PhiAppMenuShell: what the app menu asks of its shell ----------------
   // This interface RETIRED `friend class PhiMenuBar` and the six const
