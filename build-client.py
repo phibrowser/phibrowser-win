@@ -379,9 +379,12 @@ def main():
             "/OUT:" + os.path.join(out_dir, "phi_client.dll"),
             "/PDB:" + os.path.join(out_dir, "phi_client.dll.pdb"),
             "/DEBUG:FULL", "/OPT:REF", "/OPT:ICF", "/INCREMENTAL:NO",
-            "/guard:cf", "/DYNAMICBASE", "/NXCOMPAT", "/CETCOMPAT",
+            "/guard:cf", "/DYNAMICBASE", "/NXCOMPAT",
             "/SUBSYSTEM:WINDOWS,10.0", "/MANIFEST:NO",
             "/MACHINE:" + args.arch.upper(), "@" + rsp_path, *LIBS]
+    # Shadow stacks are an x86 feature: MSVC's link refuses the flag for ARM64.
+    if args.arch == "x64":
+        link.append("/CETCOMPAT")
     if args.winsysroot:
         link.append("/winsysroot:" + os.path.abspath(args.winsysroot))
     print("linking phi_client.dll...")
