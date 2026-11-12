@@ -1220,6 +1220,10 @@ Section "Install"
   DeleteRegValue HKLM "${REG_PRODUCT}" "usagestats"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
+  ; Older clients kept the updater's state (last check time, skipped version)
+  ; under the old company name; the client now uses Software\Phinomenon Inc.
+  DeleteRegKey HKCU "Software\Fyde Innovations\Phi Browser"
+  DeleteRegKey /ifempty HKCU "Software\Fyde Innovations"
   ; Apps & Features: the 64-bit view, where a 64-bit program's entry
   ; belongs (this stub is 32-bit, so the default view would be WOW6432Node).
   ; Software\Phi above stays in the 32-bit view - that is where
@@ -1458,8 +1462,12 @@ Section "Uninstall"
   DeleteRegKey HKLM "${UNINST_KEY}"
   DeleteRegKey HKLM "${REG_PRODUCT}"
   DeleteRegKey HKCU "${REG_PRODUCT}"
-  ; The updater's own state (last check time, skipped version).
-  DeleteRegKey HKCU "Software\Fyde Innovations\Phi Browser\WinSparkle"
+  ; The updater's own state (last check time, skipped version), under the
+  ; current company name and the one older clients used.
+  DeleteRegKey HKCU "Software\Phinomenon Inc.\Phi Browser"
+  DeleteRegKey /ifempty HKCU "Software\Phinomenon Inc."
+  DeleteRegKey HKCU "Software\Fyde Innovations\Phi Browser"
+  DeleteRegKey /ifempty HKCU "Software\Fyde Innovations"
   ; The window closes by itself once the files are gone; there is no
   ; "Completed" state to click through (AutoCloseWindow does not carry
   ; the uninstaller past its last page, so this is explicit).

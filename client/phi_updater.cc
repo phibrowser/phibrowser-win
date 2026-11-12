@@ -236,10 +236,9 @@ void PhiUpdater::Init(HWND quit_hwnd, UINT quit_msg, UINT state_msg) {
   }
   const std::string url = AppcastUrl();
   g_sparkle.set_appcast_url(url.c_str());
-  // Not a copyright notice: WinSparkle keeps its settings under
-  // HKCU\Software\<company>\<app>, so renaming it would orphan existing
-  // installs' update settings (the uninstaller deletes this key).
-  g_sparkle.set_app_details(L"Fyde Innovations", L"Phi Browser",
+  // WinSparkle keeps its state under HKCU\Software\<company>\<app>; the
+  // installer drops the key of the old company name.
+  g_sparkle.set_app_details(L"Phinomenon Inc.", L"Phi Browser",
                             PHI_WIN_VERSION_FULL_WIDE);
   if (g_sparkle.set_automatic_check) {
     g_sparkle.set_automatic_check(1);  // Default daily background checks.
