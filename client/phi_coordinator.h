@@ -398,6 +398,7 @@ class PhiCoordinator : public SidebarHost,
   bool SetStoredSplitPanes(const std::string& guid,
                            const std::vector<StoredPane>& panes) override;
   void NoteStoredPaneClosing(int64_t browser_id, int tab_id) override;
+  bool CloseStoredSplitOfTab(int64_t browser_id, int tab_id) override;
   void NoteStoredPaneReplaced(int64_t browser_id,
                               int evicted_tab,
                               int incoming_tab) override;

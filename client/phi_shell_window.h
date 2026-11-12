@@ -278,8 +278,9 @@ class SidebarHost {
   // What a stored split does when the user takes ONE pane out of its live
   // split or replaces one. Both are called BEFORE the framework call that
   // does it, and do nothing for a tab no cell is bound to.
-  //  * Closing: the user is closing just the pane `tab_id` (Ctrl+W, the
-  //    chip's Close pane). The cell is NOT changed: it keeps every pane it
+  //  * Closing: the user is closing just the pane `tab_id` (the chip's
+  //    Close pane; Ctrl+W closes the whole split, see
+  //    CloseStoredSplitOfTab). The cell is NOT changed: it keeps every pane it
   //    saved. The panes that stay are let go of instead, so what is left of
   //    the split moves to the ordinary tab list and the cell reads as not
   //    open (decided 2026-11-11; the Mac's `6e786436` drops the pane from
@@ -290,6 +291,13 @@ class SidebarHost {
   //    holds. The cell saves the incoming page there and binds its tab; the
   //    evicted tab goes free.
   virtual void NoteStoredPaneClosing(int64_t browser_id, int tab_id) = 0;
+  // Ctrl+W on a pane of a live split that a pinned cell or a bookmark is
+  // bound to: closes every pane of that split at once (inactive panes
+  // first) and returns true, so the cell reads as not open and keeps what
+  // it saved. False, and nothing closed, for any other tab; the caller then
+  // closes just that tab. The chip's Close pane still closes one pane.
+  // Decided 2026-11-12; the Mac's Cmd+W closes only the focused pane.
+  virtual bool CloseStoredSplitOfTab(int64_t browser_id, int tab_id) = 0;
   virtual void NoteStoredPaneReplaced(int64_t browser_id,
                                       int evicted_tab,
                                       int incoming_tab) = 0;

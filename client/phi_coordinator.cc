@@ -2143,6 +2143,34 @@ void PhiCoordinator::NoteStoredPaneClosing(int64_t browser_id, int tab_id) {
   }
 }
 
+bool PhiCoordinator::CloseStoredSplitOfTab(int64_t browser_id, int tab_id) {
+  const BrowserId browser{browser_id};
+  const phi_framework::TabSnapshot* closing =
+      window_model_.FindTab(browser, TabId{tab_id});
+  SidebarTag tag;
+  if (!framework_ || !closing || !ParseTag(closing->tag, &tag)) {
+    return false;
+  }
+  const phi_framework::SplitSnapshot* split =
+      window_model_.SplitOfTab(browser, TabId{tab_id});
+  if (!split) {
+    return false;  // A single stored tab: Ctrl+W closes just it.
+  }
+  // Copied: each close can change the model the split lives in.
+  const std::vector<TabId> panes = PhiSplitPanes(*split);
+  bool closed = false;
+  for (const TabId pane : panes) {
+    if (pane.value != tab_id) {
+      closed = framework_->CloseTabById(browser_id, pane.value) || closed;
+    }
+  }
+  // The focused pane last, so the strip does not activate a sibling pane
+  // that is about to close (the Mac's split Close does the same).
+  closed = framework_->CloseTabById(browser_id, tab_id) || closed;
+  registry_.InvalidateAll();
+  return closed;
+}
+
 void PhiCoordinator::NoteStoredPaneReplaced(int64_t browser_id,
                                             int evicted_tab,
                                             int incoming_tab) {
