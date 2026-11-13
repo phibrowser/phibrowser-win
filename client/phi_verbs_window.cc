@@ -1092,6 +1092,7 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
           coordinator_->settings().bottom_bar_feedback);
   out.Set("sidebarTransparency",
           coordinator_->settings().sidebar_transparency);
+  out.Set("translucentFrame", coordinator_->settings().translucent_frame);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
   out.Set("analyticsEnabled", coordinator_->settings().analytics_enabled);
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
@@ -1178,6 +1179,10 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
     coordinator_->SetSidebarTransparency(*transparency);
     ok = true;
   }
+  if (std::optional<bool> frame = ctx.params.FindBool("translucentFrame")) {
+    coordinator_->SetTranslucentFrame(*frame);
+    ok = true;
+  }
   if (std::optional<bool> restore =
           ctx.params.FindBool("restoreLastSession")) {
     coordinator_->SetRestoreLastSession(*restore);
@@ -1253,6 +1258,7 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
           coordinator_->settings().bottom_bar_feedback);
   out.Set("sidebarTransparency",
           coordinator_->settings().sidebar_transparency);
+  out.Set("translucentFrame", coordinator_->settings().translucent_frame);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
   out.Set("autoPeekViewEnabled",

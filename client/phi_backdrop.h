@@ -49,6 +49,29 @@ inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
 // The tint is `pixel` read as one colour at g_phi_backdrop_tint_alpha over
 // `ground`, as the Mac lays its overlay colour over the material; only a
 // pixel too far from `ground` for that alpha takes more.
+// PhiBackdropPixel with the tint's alpha raised by `opacity` (0-255) of the
+// way to opaque: a page-coloured address row is opaque, a plain one shows
+// the backdrop, and the page colour's fade passes between the two.
+inline uint32_t PhiBackdropPixelRaised(uint32_t pixel,
+                                       uint32_t ground,
+                                       int opacity) {
+  const int floor = g_phi_backdrop_tint_alpha +
+                    ((255 - g_phi_backdrop_tint_alpha) *
+                         std::clamp(opacity, 0, 255) +
+                     127) /
+                        255;
+  const int alpha = std::max(floor, PhiBackdropCoverage(pixel, ground));
+  uint32_t result = static_cast<uint32_t>(alpha) << 24;
+  for (int shift : {0, 8, 16}) {
+    const int c = (pixel >> shift) & 255;
+    const int g = (ground >> shift) & 255;
+    const int premultiplied = c - (g * (255 - alpha) + 127) / 255;
+    result |= static_cast<uint32_t>(std::clamp(premultiplied, 0, alpha))
+              << shift;
+  }
+  return result;
+}
+
 inline uint32_t PhiBackdropPixel(uint32_t pixel, uint32_t ground) {
   const int alpha =
       std::max(g_phi_backdrop_tint_alpha, PhiBackdropCoverage(pixel, ground));
@@ -100,6 +123,21 @@ inline uint32_t PhiBackdropPixelOver(uint32_t pixel,
     const int channel = c - (g * remaining + 127) / 255 +
                         (b * remaining + 127) / 255;
     result |= static_cast<uint32_t>(std::clamp(channel, 0, alpha)) << shift;
+  }
+  return result;
+}
+
+// `a` over `b` by `weight` (0-255) of `a`, both premultiplied ARGB: an
+// antialiased edge between two backdrop surfaces.
+inline uint32_t PhiBackdropMix(uint32_t a, uint32_t b, int weight) {
+  weight = std::clamp(weight, 0, 255);
+  uint32_t result = 0;
+  for (int shift : {0, 8, 16, 24}) {
+    const int ca = (a >> shift) & 255;
+    const int cb = (b >> shift) & 255;
+    result |= static_cast<uint32_t>((ca * weight + cb * (255 - weight) + 127) /
+                                    255)
+              << shift;
   }
   return result;
 }

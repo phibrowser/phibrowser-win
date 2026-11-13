@@ -452,6 +452,7 @@ class PhiCoordinator : public SidebarHost,
   void SetBookmarkRootCollapsed(const std::string& space_id,
                                 bool collapsed) override;
   int SidebarTransparency() const override;
+  bool TranslucentFrame() const override;
   void NoteSlotActiveSpace(const std::string& space_id) override;
   void NoteSpaceWindow(const std::string& space_id,
                        int64_t browser_window_id) override;
@@ -485,6 +486,7 @@ class PhiCoordinator : public SidebarHost,
   void SetTabSwitcherIncludesAllSpaces(bool enabled) override;
   void SetDirectionalTabClosing(bool enabled) override;
   void SetSidebarTransparency(int percent) override;
+  void SetTranslucentFrame(bool enabled) override;
   std::string LanguagePreference() const;
   void SetLanguagePreference(const std::string& tag) override;
   bool RestoreLastSession() const;

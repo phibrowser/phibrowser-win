@@ -499,6 +499,9 @@ class ChromePrefsHost {
   // Appearance ▸ "Sidebar transparency", 0-100 %: how much of the Desktop
   // Acrylic backdrop shows through the theme tint; 0 paints it opaque.
   virtual int SidebarTransparency() const = 0;
+  // Appearance ▸ "Transparent toolbars": the backdrop reaches the address
+  // row, the bookmark bar and comfortable's tab strip too.
+  virtual bool TranslucentFrame() const = 0;
   // Developer ▸ "Allow agents to control Phi": gates the View menu's agent
   // items, as the Mac's cdpAgentAccessEnabled does.
   virtual bool AllowAgentControl() const = 0;
@@ -1612,6 +1615,21 @@ class PhiShellWindow : public PhiHitSource,
   SIZE back_buffer_size_{};
   bool sidebar_backdrop_ = false;
   bool backdrop_split_ = false;
+  // Appearance ▸ "Transparent toolbars" in effect (GitHub
+  // phibrowser/phibrowser-win#10): the backdrop is on and reaches the
+  // address row, the bookmark bar and comfortable's strip as well.
+  bool frame_glass_ = false;
+  // The backdrop is Windows 10's acrylic accent (phi_legacy_acrylic.h), not
+  // DWMWA_SYSTEMBACKDROP_TYPE; it is switched off the same way.
+  bool legacy_acrylic_ = false;
+  // WS_SYSMENU is off the shell (see UpdateSidebarBackdrop).
+  bool dwm_caption_hidden_ = false;
+  // What PaintChrome painted the address row and the bookmark bar with this
+  // frame, and how far the row is toward its page colour (0 none, 1 all):
+  // the glass pass keys on exactly these, not on a second clock read.
+  std::optional<PhiColor> painted_page_color_;
+  std::optional<PhiColor> painted_bookmark_page_;
+  double painted_page_weight_ = 0;
   // Where PaintChrome last drew the account picture and its ring (empty: the
   // glyph or no button). The backdrop regrade keeps this disc opaque: a
   // photo is not ink over the ground, and reading it as one tints and washes
@@ -1619,6 +1637,9 @@ class PhiShellWindow : public PhiHitSource,
   RECT avatar_disc_ = {};
   void UpdateSidebarBackdrop();
   void PrepareBackdropPixels(const PhiPalette& palette);
+  // PrepareBackdropPixels under frame_glass_; `content_opaque` while a
+  // slide composes page snapshots into the content rect.
+  void PrepareFrameGlass(const PhiPalette& palette, bool content_opaque);
   // The slot palette's window ground — what uncovered backbuffer pixels show.
   COLORREF BackgroundFill() const;
 
@@ -2171,8 +2192,13 @@ class PhiShellWindow : public PhiHitSource,
   void NoteTabSeen(TabId tab);
   TabId page_color_tab_;
   PhiColor page_fade_from_ = 0;
+  // How much page colour the fade starts from (0 = the plain surface).
+  double page_fade_from_weight_ = 0;
   ULONGLONG page_fade_start_ = 0;  // 0 = no fade running.
-  void StartPageColorFade(PhiColor from);
+  void StartPageColorFade(PhiColor from, double from_weight);
+  // 1 while the address row shows a page colour, 0 while it shows none,
+  // between the two along a running fade.
+  double PageColorWeight() const;
   void PageColorFadeTick();
   // The Downloads button's watch (GitHub phibrowser/phibrowser-win#13): the
   // framework sends no download event, so the shell reads the active

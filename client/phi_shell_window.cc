@@ -43,6 +43,7 @@
 #include "client/phi_library.h"
 #include "client/phi_extensions_popover.h"
 #include "client/phi_group_overview.h"
+#include "client/phi_legacy_acrylic.h"
 #include "client/phi_library.h"
 #include "client/phi_search_tabs_panel.h"
 #include "client/phi_space_theme_panel.h"
@@ -4830,8 +4831,21 @@ std::optional<PhiColor> PhiShellWindow::ActivePageColor() const {
                 mix(GetBValue(page_fade_from_), GetBValue(to)));
 }
 
-void PhiShellWindow::StartPageColorFade(PhiColor from) {
+double PhiShellWindow::PageColorWeight() const {
+  const double settled = page_color_ ? 1.0 : 0.0;
+  if (page_fade_start_ == 0) {
+    return settled;
+  }
+  const double t = std::clamp(
+      static_cast<double>(::GetTickCount64() - page_fade_start_) /
+          kPageColorFadeMs,
+      0.0, 1.0);
+  return page_fade_from_weight_ + (settled - page_fade_from_weight_) * t;
+}
+
+void PhiShellWindow::StartPageColorFade(PhiColor from, double from_weight) {
   page_fade_from_ = from;
+  page_fade_from_weight_ = from_weight;
   page_fade_start_ = ::GetTickCount64();
   ::SetTimer(shell_hwnd_, kPageColorFadeTimer, USER_TIMER_MINIMUM, nullptr);
 }
@@ -4899,23 +4913,64 @@ void PhiShellWindow::UpdateSidebarBackdrop() {
       !browsers_->content_fullscreen() &&
       !(contrast.dwFlags & HCF_HIGHCONTRASTON) && transparency > 0;
   const BOOL dark = SettledDark();
+  const bool was_dark = backdrop_dark_;
   backdrop_dark_ = dark != FALSE;
   ::DwmSetWindowAttribute(shell_hwnd_, DWMWA_USE_IMMERSIVE_DARK_MODE,
                           &dark, sizeof(dark));
   // Desktop Acrylic exposes the wallpaper/windows behind the sidebar.
-  // Unsupported Windows versions retain the existing opaque palette.
+  // Where DWM has no system backdrop (Windows 10, Windows 11 before 22H2)
+  // the acrylic accent stands in (GitHub phibrowser/phibrowser-win#10);
+  // where neither exists the palette stays opaque.
   const DWM_SYSTEMBACKDROP_TYPE type =
       enabled ? DWMSBT_TRANSIENTWINDOW : DWMSBT_NONE;
-  sidebar_backdrop_ = SUCCEEDED(::DwmSetWindowAttribute(
-      shell_hwnd_, DWMWA_SYSTEMBACKDROP_TYPE, &type, sizeof(type))) && enabled;
+  const bool system_backdrop =
+      !PhiForceLegacyAcrylic() &&
+      SUCCEEDED(::DwmSetWindowAttribute(shell_hwnd_,
+                                        DWMWA_SYSTEMBACKDROP_TYPE, &type,
+                                        sizeof(type)));
+  if (system_backdrop) {
+    if (legacy_acrylic_) {
+      PhiSetLegacyAcrylic(shell_hwnd_, false, dark != FALSE);
+      legacy_acrylic_ = false;
+    }
+    sidebar_backdrop_ = enabled;
+  } else if (enabled && legacy_acrylic_ && was_dark == backdrop_dark_) {
+    sidebar_backdrop_ = true;  // Every relayout lands here: leave DWM be.
+  } else if (enabled || legacy_acrylic_) {
+    const bool set = PhiSetLegacyAcrylic(shell_hwnd_, enabled, dark != FALSE);
+    legacy_acrylic_ = enabled && set;
+    sidebar_backdrop_ = legacy_acrylic_;
+  } else {
+    sidebar_backdrop_ = false;
+  }
   MARGINS margins = {};
-  if (sidebar_backdrop_) {
+  if (sidebar_backdrop_ && !legacy_acrylic_) {
     // Normal page corners and the rounded address row need the backdrop
-    // just as split gutters do, including with the sidebar hidden.
+    // just as split gutters do, including with the sidebar hidden. The
+    // acrylic accent needs no sheet: the extended frame would paint over
+    // its blur (black on Windows 11), and DWM already honours the shell's
+    // per-pixel alpha above an accent.
     margins = {-1, -1, -1, -1};
   }
   if (FAILED(::DwmExtendFrameIntoClientArea(shell_hwnd_, &margins))) {
     sidebar_backdrop_ = false;
+  }
+  frame_glass_ = sidebar_backdrop_ && services_.prefs &&
+                 services_.prefs->TranslucentFrame();
+  if (frame_glass_ != dwm_caption_hidden_) {
+    // DWM draws its own minimize / maximize / close in the frame it extends
+    // under the client area, a few pixels above ours; an opaque address row
+    // hid them, a glass one shows both sets. DWM draws them only for a
+    // window with a system menu, so it goes while the row is glass (the
+    // caption band's buttons and hit tests are the shell's own).
+    LONG_PTR style = ::GetWindowLongPtrW(shell_hwnd_, GWL_STYLE);
+    style = frame_glass_ ? (style & ~static_cast<LONG_PTR>(WS_SYSMENU))
+                         : (style | WS_SYSMENU);
+    ::SetWindowLongPtrW(shell_hwnd_, GWL_STYLE, style);
+    ::SetWindowPos(shell_hwnd_, nullptr, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE |
+                       SWP_FRAMECHANGED);
+    dwm_caption_hidden_ = frame_glass_;
   }
 }
 
@@ -4928,14 +4983,22 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
   }
   // GDI can batch writes to a DIB; finish them before accessing its bits.
   ::GdiFlush();
-  if (content_slide_->running()) {
+  const bool sliding = content_slide_->running();
+  if (sliding) {
     if (!sidebar_backdrop_) {
       return;
     }
     // During a full-content slide the shell owns the page pixels too:
     // they are already-composited snapshots, not holes for a browser HWND.
     // GDI copies can drop their alpha; clearing the content rectangle below
-    // would instead expose the desktop for an animation frame.
+    // would instead expose the desktop for an animation frame. Transparent
+    // toolbars keep their glass through the slide (the pass below makes
+    // only the content opaque): an opaque strip for the slide's quarter
+    // second would blink.
+    if (frame_glass_) {
+      PrepareFrameGlass(palette, /*content_opaque=*/true);
+      return;
+    }
     auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
         static_cast<uint32_t*>(back_buffer_bits_),
         static_cast<size_t>(back_buffer_size_.cx) * back_buffer_size_.cy));
@@ -4976,6 +5039,10 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
     }
     return;
   }
+  if (frame_glass_) {
+    PrepareFrameGlass(palette, /*content_opaque=*/false);
+    return;
+  }
   const uint32_t flat_tint =
       PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF);
   const int radius = Scaled(kContentRadius);
@@ -5012,6 +5079,120 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
                                       static_cast<int>(coverage * 255 + 0.5));
       } else {
         row[x] |= 0xFF000000;
+      }
+    }
+  }
+}
+
+void PhiShellWindow::PrepareFrameGlass(const PhiPalette& palette,
+                                       bool content_opaque) {
+  // Appearance ▸ "Transparent toolbars" (GitHub phibrowser/phibrowser-win#10).
+  // The sidebar as PrepareBackdropPixels does it; then every other chrome
+  // pixel the same way over the ground it was painted on: the address row
+  // on the card (or the page's colour, opaque in step with its fade, so
+  // the row's ink keeps the contrast it was picked for), the bookmark bar
+  // on the page colour or the tint, comfortable's strip and anything else
+  // on the tint. The address field stays opaque: its EDIT child is (see
+  // phi_opaque_edit.h), and a glass pill around an opaque box shows seams.
+  const int width = back_buffer_size_.cx;
+  const int height = back_buffer_size_.cy;
+  const Layout layout = ComputeWindowLayout();
+  const int sidebar = std::clamp<int>(layout.content.left, 0, width);
+  const bool gradient = palette.ground_stop_count > 1;
+  const uint32_t neutral = palette.dark ? 0 : 0xFFFFFF;
+  const uint32_t rgb = PhiPackedRgb(palette.ground_top);
+  const std::vector<uint32_t> grounds =
+      gradient ? PhiBackdropRowGrounds(palette, 0, height, height,
+                                       /*glass=*/true)
+               : std::vector<uint32_t>();
+  const uint32_t flat_tint = PhiBackdropPixel(rgb, neutral);
+  // The card (address row, comfortable's active tab) is a third of the way
+  // more solid than the tint around it: at the same alpha a light palette's
+  // tint and card are nearly one colour, and the active tab vanished into
+  // the strip. A page colour takes it the rest of the way, to opaque.
+  constexpr int kCardLift = 85;
+  const int opacity = std::max(
+      kCardLift, static_cast<int>(std::lround(painted_page_weight_ * 255)));
+  const uint32_t card = PhiPackedRgb(
+      (painted_page_color_ ? PhiPageBarPalette(palette, *painted_page_color_)
+                           : palette)
+          .window_bg);
+  const uint32_t card_glass = PhiBackdropPixelRaised(card, neutral, opacity);
+  const uint32_t marks = painted_bookmark_page_
+                             ? PhiPackedRgb(*painted_bookmark_page_)
+                             : rgb;
+  const uint32_t marks_glass =
+      painted_bookmark_page_ ? PhiBackdropPixelRaised(marks, neutral, opacity)
+                             : flat_tint;
+  const RECT& band = layout.top_bar;
+  const RECT& field = layout.url_field;
+  const int radius = Scaled(kContentRadius);
+  const double field_radius = Scaled(kOmniboxRadius);
+  const bool field_here = field.right > field.left && field.left >= sidebar;
+  const auto in = [](const RECT& r, int x, int y) {
+    return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+  };
+  // A rounded rectangle's coverage of pixel (x, y), 0-255.
+  const auto field_coverage = [&](int x, int y) {
+    if (!field_here || !in(field, x, y)) {
+      return 0;
+    }
+    const double px = x + 0.5;
+    const double py = y + 0.5;
+    const double cx = std::clamp(px, field.left + field_radius,
+                                 field.right - field_radius);
+    const double cy = std::clamp(py, field.top + field_radius,
+                                 field.bottom - field_radius);
+    const double edge =
+        field_radius + 0.5 - std::hypot(px - cx, py - cy);
+    return static_cast<int>(std::clamp(edge, 0.0, 1.0) * 255 + 0.5);
+  };
+  const auto over = [](uint32_t pixel, uint32_t ground, uint32_t glass,
+                       int minimum) {
+    return (pixel & 0xFFFFFF) == ground && minimum == 0
+               ? glass
+               : PhiBackdropPixelOver(pixel, ground, glass, minimum);
+  };
+  // SAFETY: AcquireBackBuffer allocated width * height 32-bit pixels in a
+  // top-down DIB; 32bpp rows require no additional stride padding.
+  auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
+      static_cast<uint32_t*>(back_buffer_bits_),
+      static_cast<size_t>(width) * height));
+  for (int y = 0; y < height; ++y) {
+    auto row = pixels.subspan(static_cast<size_t>(y) * width,
+                              static_cast<size_t>(width));
+    const uint32_t tint =
+        gradient ? grounds[static_cast<size_t>(y)] : flat_tint;
+    for (int x = 0; x < sidebar; ++x) {
+      row[x] = over(row[x], rgb, tint, DiscCoverage(avatar_disc_, x, y));
+    }
+    for (int x = sidebar; x < width; ++x) {
+      uint32_t& pixel = row[x];
+      if (in(layout.content, x, y)) {
+        // Chromium paints the page (opaque) and its corners' ground.
+        pixel = content_opaque ? (pixel | 0xFF000000u) : 0;
+      } else if (in(band, x, y)) {
+        const bool corner = band.left > 0 && !layout.horizontal_tabs &&
+                            x < band.left + radius && y < band.top + radius;
+        if (corner) {
+          // The row's rounded top-left corner, card inside, tint outside.
+          const double cx = band.left + radius;
+          const double cy = band.top + radius;
+          const double coverage = std::clamp(
+              radius + 0.5 - std::hypot(x + 0.5 - cx, y + 0.5 - cy), 0.0,
+              1.0);
+          pixel = PhiBackdropMix(card_glass, tint,
+                                 static_cast<int>(coverage * 255 + 0.5));
+        } else {
+          pixel = over(pixel, card, card_glass, field_coverage(x, y));
+        }
+      } else if (in(layout.bookmark_bar, x, y)) {
+        pixel = over(pixel, marks, marks_glass, 0);
+      } else if (layout.horizontal_tabs && (pixel & 0xFFFFFF) == card &&
+                 in(layout.title_bar, x, y)) {
+        pixel = card_glass;  // Comfortable's active tab joins the row.
+      } else {
+        pixel = over(pixel, rgb, tint, 0);
       }
     }
   }
@@ -5555,9 +5736,10 @@ void PhiShellWindow::RebuildTabs() {
                         shell_hwnd_ && ::IsWindowVisible(shell_hwnd_) &&
                         (showing || settled);
       const PhiColor from = showing ? *showing : CurrentPalette().window_bg;
+      const double from_weight = PageColorWeight();
       page_color_ = settled;
       if (fade) {
-        StartPageColorFade(from);
+        StartPageColorFade(from, from_weight);
       } else if (page_fade_start_ != 0) {
         page_fade_start_ = 0;
         ::KillTimer(shell_hwnd_, kPageColorFadeTimer);
@@ -9203,6 +9385,7 @@ void PhiShellWindow::PaintBookmarkBar(HDC dc,
   // The bar follows the address row's page colour (the Mac's BookmarkBar
   // setPageColorPresentation); otherwise it stands on the tint as before.
   const std::optional<PhiColor> page = ActivePageColor();
+  painted_bookmark_page_ = page;  // For PrepareBackdropPixels' glass pass.
   const PhiPalette palette =
       page ? PhiPageBarPalette(chrome_palette, *page) : chrome_palette;
   if (page) {
@@ -9315,6 +9498,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
   // tint.
   const std::optional<PhiColor> page = ActivePageColor();
   const PhiPalette bar = page ? PhiPageBarPalette(palette, *page) : palette;
+  painted_page_color_ = page;  // For PrepareBackdropPixels' glass pass.
+  painted_page_weight_ = page ? PageColorWeight() : 0.0;
   const auto row_palette = [&](const RECT& r) -> const PhiPalette& {
     return r.left >= layout.top_bar.left && r.right <= layout.top_bar.right &&
                    r.top >= layout.top_bar.top && r.bottom <= layout.top_bar.bottom &&

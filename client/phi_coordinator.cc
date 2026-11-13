@@ -3944,6 +3944,14 @@ void PhiCoordinator::SetSidebarTransparency(int percent) {
   preferences_.SetSidebarTransparency(percent);
 }
 
+bool PhiCoordinator::TranslucentFrame() const {
+  return preferences_.TranslucentFrame();
+}
+
+void PhiCoordinator::SetTranslucentFrame(bool enabled) {
+  preferences_.SetTranslucentFrame(enabled);
+}
+
 bool PhiCoordinator::PeekViewEnabled() const {
   return preferences_.PeekViewEnabled();
 }

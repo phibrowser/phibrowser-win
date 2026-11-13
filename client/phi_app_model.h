@@ -236,6 +236,11 @@ struct PhiSettings {
   // Acrylic backdrop shows through the sidebar's theme tint. 0 paints the
   // palette opaque; 20 is the Mac's 80 % overlay. Windows only.
   int sidebar_transparency = 50;
+  // Appearance ▸ "Transparent toolbars" (GitHub phibrowser/phibrowser-win#10):
+  // the address row, the bookmark bar and comfortable's tab strip show the
+  // same backdrop as the sidebar, at its transparency. Pages stay opaque.
+  // Windows only; off by default.
+  bool translucent_frame = false;
   bool peek_view_enabled = true;
   bool auto_peek_view_enabled = true;
   // The Mac's GeneralSettings.openKioskOnCommandOptionClick: a link clicked

@@ -1653,6 +1653,16 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
       items_.push_back(std::move(readout));
     }
   }
+  AddDividerRow(y);
+  // Transparent toolbars (GitHub phibrowser/phibrowser-win#10): the same
+  // backdrop through the address row, the bookmark bar and comfortable's
+  // tab strip. Greyed while the slider holds the sidebar opaque.
+  AddToggleRow(y, PhiStr("settings.appearance.translucentFrame.toggle"),
+               prefs_->TranslucentFrame(),
+               /*enabled=*/prefs_->SidebarTransparency() > 0,
+               "translucentframe",
+               PhiStr("settings.appearance.translucentFrame.hint"),
+               kChipIndent, 0xE737);
   // The Mac's "Apply theme to text selection on web pages" is not drawn:
   // Windows has no web-selection tint for it to switch.
   EndSection(y);
@@ -6567,6 +6577,8 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetShowTabPreviews(!item.on);
   } else if (item.action == "openindicators") {
     host_->SetShowOpenTabIndicators(!item.on);
+  } else if (item.action == "translucentframe") {
+    host_->SetTranslucentFrame(!item.on);
   } else if (item.action == "dimunloaded") {
     host_->SetDimUnloadedTabIcons(!item.on);
   } else if (item.action == "tabswitcherscope") {

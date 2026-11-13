@@ -1991,6 +1991,7 @@ Changes app settings. developerMode / allowAgentUserSpaces / testRig / analytics
 | `sidebarBottomBarShowsDownloads` | boolean | no | — | The bottom bar's Downloads button. |
 | `sidebarBottomBarShowsFeedback` | boolean | no | — | The bottom bar's Feedback button. |
 | `sidebarTransparency` | integer | no | — | Acrylic through the sidebar, 0-100 %. |
+| `translucentFrame` | boolean | no | — | The backdrop through the toolbars too. |
 | `restoreLastSession` | boolean | no | — | Session restore. |
 | `peekViewEnabled` | boolean | no | — | Peek's master switch. |
 | `autoPeekViewEnabled` | boolean | no | — | Automatic peek. |

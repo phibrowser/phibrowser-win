@@ -129,6 +129,7 @@ class PhiPreferences : public ChromePrefsHost {
   void SetBookmarkRootCollapsed(const std::string& space_id,
                                 bool collapsed) override;
   int SidebarTransparency() const override;
+  bool TranslucentFrame() const override;
   bool NewTabOpensOmnibox() const override;
   int SidebarWidth() const override;
   void RequestSidebarWidth(int dip) override;
@@ -187,6 +188,7 @@ class PhiPreferences : public ChromePrefsHost {
   void SetTabSwitcherIncludesAllSpaces(bool enabled);
   void SetDirectionalTabClosing(bool enabled);
   void SetSidebarTransparency(int percent);
+  void SetTranslucentFrame(bool enabled);
   bool PeekViewEnabled() const { return settings_.peek_view_enabled; }
   void SetPeekViewEnabled(bool enabled);
   bool AutoPeekViewEnabled() const { return settings_.auto_peek_view_enabled; }

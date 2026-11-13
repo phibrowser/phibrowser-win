@@ -986,6 +986,8 @@ constexpr PhiParamField kSettingsSet[] = {
      "The bottom bar's Feedback button."},
     {"sidebarTransparency", kParamInt, kOptional, "",
      "Acrylic through the sidebar, 0-100 %."},
+    {"translucentFrame", kParamBool, kOptional, "",
+     "The backdrop through the toolbars too."},
     {"restoreLastSession", kParamBool, kOptional, "", "Session restore."},
     {"peekViewEnabled", kParamBool, kOptional, "", "Peek's master switch."},
     {"autoPeekViewEnabled", kParamBool, kOptional, "", "Automatic peek."},

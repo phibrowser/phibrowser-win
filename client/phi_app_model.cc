@@ -138,6 +138,8 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
   out->sidebar_transparency = std::clamp(
       dict.FindInt("sidebarTransparency").value_or(out->sidebar_transparency),
       0, 100);
+  out->translucent_frame =
+      dict.FindBool("translucentFrame").value_or(out->translucent_frame);
   out->agent_auto_view =
       dict.FindBool("PhiAgentSpaceAutoView").value_or(out->agent_auto_view);
   out->peek_view_enabled =
@@ -345,6 +347,7 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   }
   root.Set("SidebarCollapsedBookmarkRootSpaceIds", std::move(collapsed_roots));
   root.Set("sidebarTransparency", value.sidebar_transparency);
+  root.Set("translucentFrame", value.translucent_frame);
   root.Set("PhiAgentSpaceAutoView", value.agent_auto_view);
   root.Set("peekViewEnabled", value.peek_view_enabled);
   root.Set("autoPeekViewEnabled", value.auto_peek_view_enabled);

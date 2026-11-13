@@ -165,6 +165,8 @@ class PhiSettingsHost {
   // Appearance ▸ "Sidebar transparency", 0-100 % (Windows only; 50 by
   // default).
   virtual void SetSidebarTransparency(int percent) = 0;
+  // Appearance ▸ "Transparent toolbars" (Windows only; off by default).
+  virtual void SetTranslucentFrame(bool enabled) = 0;
   // The UI language. An EMPTY tag means "follow the operating system", which
   // is the default and the only value that tracks a later OS change.
   virtual void SetLanguagePreference(const std::string& tag) = 0;

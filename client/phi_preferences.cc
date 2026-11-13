@@ -337,6 +337,10 @@ int PhiPreferences::SidebarTransparency() const {
   return settings_.sidebar_transparency;
 }
 
+bool PhiPreferences::TranslucentFrame() const {
+  return settings_.translucent_frame;
+}
+
 bool PhiPreferences::NewTabOpensOmnibox() const {
   return settings_.new_tab_behavior == model::NewTabBehavior::kOmnibox;
 }
@@ -590,6 +594,16 @@ void PhiPreferences::SetSidebarTransparency(int percent) {
   }
   settings_.sidebar_transparency = percent;
   MarkDirty();
+  Notify(PreferenceChange::kSidebarTransparency);
+}
+
+void PhiPreferences::SetTranslucentFrame(bool enabled) {
+  if (enabled == settings_.translucent_frame) {
+    return;
+  }
+  settings_.translucent_frame = enabled;
+  MarkDirty();
+  // The same re-apply as the slider: every window resets its backdrop.
   Notify(PreferenceChange::kSidebarTransparency);
 }
 

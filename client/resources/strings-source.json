@@ -6581,6 +6581,34 @@
     "zh-Hant": "側邊欄透明度"
    }
   },
+  "settings.appearance.translucentFrame.toggle": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color switch under the sidebar-transparency slider (Windows only, GitHub #10)",
+   "en": "Transparent toolbars",
+   "translations": {
+    "de": "Transparente Symbolleisten",
+    "es": "Barras de herramientas transparentes",
+    "fr": "Barres d’outils transparentes",
+    "ja": "ツールバーを透明にする",
+    "ko": "투명한 도구 모음",
+    "nl": "Transparante werkbalken",
+    "zh-Hans": "透明工具栏",
+    "zh-Hant": "透明工具列"
+   }
+  },
+  "settings.appearance.translucentFrame.hint": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, hint under the transparent-toolbars switch",
+   "en": "The address bar, bookmarks bar and tab strip show the desktop through as well. Pages stay opaque.",
+   "translations": {
+    "de": "Auch Adressleiste, Lesezeichenleiste und Tableiste lassen den Desktop durchscheinen. Seiten bleiben deckend.",
+    "es": "La barra de direcciones, la barra de marcadores y la de pestañas también dejan ver el escritorio. Las páginas siguen siendo opacas.",
+    "fr": "La barre d’adresse, la barre de favoris et la barre d’onglets laissent aussi transparaître le bureau. Les pages restent opaques.",
+    "ja": "アドレスバー、ブックマークバー、タブバーからもデスクトップが透けて見えます。ページは不透明のままです。",
+    "ko": "주소 표시줄, 북마크 바, 탭 표시줄도 데스크톱이 비쳐 보입니다. 페이지는 불투명하게 유지됩니다.",
+    "nl": "Ook de adresbalk, bladwijzerbalk en tabbalk laten het bureaublad doorschijnen. Pagina’s blijven ondoorzichtig.",
+    "zh-Hans": "地址栏、书签栏和标签栏也透出桌面。网页保持不透明。",
+    "zh-Hant": "網址列、書籤列和分頁列也透出桌面。網頁保持不透明。"
+   }
+  },
   "settings.approvedAgents": {
    "comment": "settings — used at phi_settings_window.cc:2175",
    "en": "Approved agents",
