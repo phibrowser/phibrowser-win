@@ -2036,6 +2036,45 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     }
     row->attached_surface = cell.attached_surface;
   };
+  // A cell bound to an open tab shows that tab's favicon as it is now, not
+  // the one stored with the row (PHI-2009: a pinned Gmail kept the unread
+  // count it had when it was pinned). The stored or history icon stays for a
+  // closed cell, and for a pane whose tab has none yet.
+  const BrowserId live_browser = shell_->SidebarActiveBrowser();
+  const auto live_favicon = [&](TabId tab, std::vector<unsigned char>* bgra,
+                                int* width, int* height) {
+    if (!framework_ || !live_browser.valid() || !tab.valid() ||
+        !PhiFindTabIn(snapshot, tab)) {
+      return;
+    }
+    int w = 0, h = 0;
+    const unsigned char* pixels =
+        framework_->TabFaviconBgraById(live_browser.value, tab.value, &w, &h);
+    if (!pixels || w <= 0 || h <= 0) {
+      return;
+    }
+    const size_t bytes = static_cast<size_t>(w) * static_cast<size_t>(h) * 4;
+    // SAFETY: TabFaviconBgraById reports the dimensions of the buffer it
+    // just returned (scratch, valid until its next call: copied here).
+    const auto copy =
+        UNSAFE_BUFFERS(base::span<const unsigned char>(pixels, bytes));
+    bgra->assign(copy.begin(), copy.end());
+    *width = w;
+    *height = h;
+  };
+  const auto live_favicons = [&](ShortcutRow* row) {
+    if (!row->open || row->folder) {
+      return;
+    }
+    live_favicon(row->tab_id, &row->favicon, &row->favicon_width,
+                 &row->favicon_height);
+    live_favicon(row->tab_id_b, &row->favicon_b, &row->favicon_b_width,
+                 &row->favicon_b_height);
+    for (ShortcutRow::ExtraPane& pane : row->more) {
+      live_favicon(pane.tab_id, &pane.favicon, &pane.favicon_width,
+                   &pane.favicon_height);
+    }
+  };
   std::map<std::string, PhiStoredRowView> pin_views;
   for (PhiStoredRowView& view : sidebar_host_->PinnedRows(slot_.value)) {
     pin_views.emplace(view.guid, std::move(view));
@@ -2048,6 +2087,7 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     ShortcutRow row = consume(std::move(view->second));
     row.key = cell.key;
     bind(cell, &row);
+    live_favicons(&row);
     pinned_.push_back(std::move(row));
   }
   // The outline (the Mac's NSOutlineView): the tree's depth-first order,
@@ -2076,6 +2116,9 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
       row.navigated_away =
           live && !live->url.empty() && !row.url.empty() &&
           !SameForOriginNavigation(live->url, row.url);
+    }
+    if (!row.navigated_away) {
+      live_favicons(&row);  // Gone to another site: the bookmark's own icon.
     }
     bookmarks_.push_back(std::move(row));
   }
