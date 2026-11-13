@@ -7,6 +7,7 @@
 #include <map>
 
 #include "client/phi_card_flight.h"
+#include "client/phi_modal_scope.h"
 
 namespace phi_client {
 
@@ -288,6 +289,9 @@ BOOL PhiTrackPopupMenu(HMENU menu,
                        int reserved,
                        HWND owner,
                        const RECT* rect) {
+  // The menu's loop is a nested one: pipe verbs wait, Chromium's tasks run
+  // (PHIBROWSER-WIN-7). A caller's own scope around this one just nests.
+  PhiModalScope modal(owner);
   const bool animate = PhiPopAnimationsEnabled();
   if (animate && g_menu_depth++ == 0) {
     g_menu_hook = ::SetWindowsHookExW(WH_CALLWNDPROC, &MenuHook, nullptr,

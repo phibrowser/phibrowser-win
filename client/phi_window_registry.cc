@@ -26,17 +26,22 @@ PhiShellWindow* PhiWindowRegistry::AddOwned(
 }
 
 bool PhiWindowRegistry::Remove(SlotId slot) {
+  return Take(slot).has_value();  // The taken controller is destroyed here.
+}
+
+std::optional<PhiWindowRegistry::Slot> PhiWindowRegistry::Take(SlotId slot) {
   auto it = slots_.find(slot);
   if (it == slots_.end()) {
-    return false;
+    return std::nullopt;
   }
   // Bindings first: nothing may resolve a browser to a controller that is
   // being destroyed.
   for (auto bound = slot_of_browser_.begin(); bound != slot_of_browser_.end();) {
     bound = bound->second == slot ? slot_of_browser_.erase(bound) : ++bound;
   }
+  std::optional<Slot> taken(std::move(it->second));
   slots_.erase(it);
-  return true;
+  return taken;
 }
 
 PhiShellWindow* PhiWindowRegistry::Get(SlotId slot) const {
@@ -172,6 +177,16 @@ PhiKioskWindow* PhiWindowRegistry::AddKioskOwned(BrowserId browser,
 
 bool PhiWindowRegistry::RemoveKiosk(BrowserId browser) {
   return kiosks_.erase(browser) > 0;
+}
+
+PhiWindowRegistry::KioskPtr PhiWindowRegistry::TakeKiosk(BrowserId browser) {
+  auto it = kiosks_.find(browser);
+  if (it == kiosks_.end()) {
+    return KioskPtr(nullptr, nullptr);
+  }
+  KioskPtr taken = std::move(it->second);
+  kiosks_.erase(it);
+  return taken;
 }
 
 PhiKioskWindow* PhiWindowRegistry::Kiosk(BrowserId browser) const {

@@ -39,6 +39,7 @@
 #include "client/phi_dwrite.h"
 #include "client/phi_fluent.h"
 #include "client/phi_folio.h"
+#include "client/phi_modal_scope.h"
 #include "client/phi_sync_key_service.h"
 #include "client/phi_version.h"
 #include "client/phi_updater.h"
@@ -403,7 +404,13 @@ std::wstring PickFolder(HWND owner, const wchar_t* title) {
   dialog->GetOptions(&options);
   dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
   dialog->SetTitle(title);
-  if (FAILED(dialog->Show(owner))) {
+  HRESULT shown = E_FAIL;
+  {
+    // Show pumps a nested loop: Chromium's tasks keep running in it.
+    PhiModalScope modal(owner);
+    shown = dialog->Show(owner);
+  }
+  if (FAILED(shown)) {
     return std::wstring();  // Cancelled.
   }
   Microsoft::WRL::ComPtr<IShellItem> item;

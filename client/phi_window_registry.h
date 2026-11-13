@@ -127,6 +127,10 @@ class PhiWindowRegistry {
   // Destroys the slot's controller and drops every browser bound to it.
   // False when no such slot.
   bool Remove(SlotId slot);
+  // Remove without the destroy: the slot and its bindings go, and the caller
+  // gets the controller to free later (PhiCoordinator::RemoveSlot parks one
+  // whose own nested loop is still on the stack). Nullopt when no such slot.
+  std::optional<Slot> Take(SlotId slot);
   PhiShellWindow* Get(SlotId slot) const;
   const Slot* Find(SlotId slot) const;
   bool Has(SlotId slot) const { return slots_.count(slot) > 0; }
@@ -182,6 +186,8 @@ class PhiWindowRegistry {
         }));
   }
   bool RemoveKiosk(BrowserId browser);
+  // RemoveKiosk without the destroy (see Take); null when no such kiosk.
+  KioskPtr TakeKiosk(BrowserId browser);
   PhiKioskWindow* Kiosk(BrowserId browser) const;
   // Every kiosk window, in browser-id order.
   std::vector<PhiKioskWindow*> Kiosks() const;

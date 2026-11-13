@@ -1742,6 +1742,18 @@ class PhiFramework {
   virtual bool SetTabKeepLoaded(int64_t window_id,
                                 int tab_id,
                                 bool keep_loaded) = 0;
+
+  // Brackets a native nested message loop the client runs on the UI thread:
+  // TrackPopupMenu, a GetMessage modal loop, IFileDialog::Show. Inside one,
+  // Chromium's UI-thread tasks run only between these calls: without them the
+  // pump signals an event the native loop never waits on, so every task,
+  // navigation and IPC reply waits until the loop ends and HangWatcher reports
+  // the UI thread hung (Sentry PHIBROWSER-WIN-7). The same as
+  // base::CurrentThread::ScopedAllowApplicationTasksInNativeNestedLoop, which
+  // Chromium wraps around its own system menu. Calls nest; every Begin pairs
+  // with one End, innermost first. UI thread only.
+  virtual void BeginNativeNestedLoop() = 0;
+  virtual void EndNativeNestedLoop() = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -1812,7 +1824,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 4;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 5;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

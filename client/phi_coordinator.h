@@ -937,6 +937,19 @@ class PhiCoordinator : public SidebarHost,
   int adopt_parked_tries_ = 0;
   void ScheduleAdoptParkedWindow(BrowserId blank);
   void TryAdoptParkedWindow();
+  // registry_.Remove, except that a controller whose own menu, prompt or
+  // picker loop is on the stack (PhiModalDepthFor its window > 0) is not
+  // destroyed under it: since the loops run Chromium's tasks
+  // (PhiModalScope), a page's window.close() can retire its browser from
+  // inside the shell's ⋯ menu. The slot and its bindings go at once; the
+  // controller is parked and freed once the loop has unwound.
+  void RemoveSlot(SlotId slot);
+  // The same for a Kiosk window (its own menus run loops too). False when
+  // `browser` hosts no Kiosk.
+  bool RemoveKioskSafely(BrowserId browser);
+  void ReleaseParkedControllers();
+  std::vector<PhiWindowRegistry::Slot> parked_controllers_;
+  std::vector<PhiWindowRegistry::KioskPtr> parked_kiosks_;
   std::vector<std::function<void()>> opens_waiting_for_restore_;
   void ReleaseOpensWaitingForRestore(const char* exit);
   // The part of OpenUserSpaceWindow that runs once any restore is over.
@@ -1321,6 +1334,9 @@ class PhiCoordinator : public SidebarHost,
   // its place (TryAdoptParkedWindow). Tried a beat after hosting, and again
   // while the framework refuses for now (a replay of that profile running).
   static constexpr UINT_PTR kAdoptParkedTimer = 8;
+  // Frees controllers RemoveSlot parked once their nested loops are gone.
+  static constexpr UINT_PTR kParkedControllersTimer = 9;
+  static constexpr UINT kParkedControllersRetryMs = 50;
   static constexpr UINT kAdoptParkedDelayMs = 250;
   static constexpr int kAdoptParkedTries = 20;
   // How long opens wait for a windowless session restore before they go ahead

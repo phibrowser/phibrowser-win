@@ -25,6 +25,7 @@
 #include "client/phi_i18n.h"
 #include "client/phi_icons.h"
 #include "client/phi_menu_paint.h"
+#include "client/phi_modal_scope.h"
 #include "client/phi_prompt.h"
 #include "client/phi_shell_menus.h"
 #include "client/phi_text_wrap.h"
@@ -1669,7 +1670,13 @@ void PhiFeedbackWindow::ChooseFiles() {
   dialog->SetOptions(options | FOS_ALLOWMULTISELECT | FOS_FORCEFILESYSTEM |
                      FOS_FILEMUSTEXIST);
   dialog->SetTitle(PhiStr("feedback.form.attachments.add"));
-  if (FAILED(dialog->Show(hwnd()))) {
+  HRESULT shown = E_FAIL;
+  {
+    // Show pumps a nested loop: Chromium's tasks keep running in it.
+    PhiModalScope modal(hwnd());
+    shown = dialog->Show(hwnd());
+  }
+  if (FAILED(shown)) {
     return;  // Cancelled.
   }
   ComPtr<IShellItemArray> items;

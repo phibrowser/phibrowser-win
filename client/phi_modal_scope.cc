@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/no_destructor.h"
+#include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 
 namespace phi_client {
 
@@ -16,6 +17,11 @@ namespace {
 std::vector<HWND>& ScopeRoots() {
   static base::NoDestructor<std::vector<HWND>> roots;  // UI thread only.
   return *roots;
+}
+
+phi_framework::PhiFramework*& FrameworkRef() {
+  static phi_framework::PhiFramework* framework = nullptr;  // UI thread only.
+  return framework;
 }
 
 HWND RootOf(HWND window) {
@@ -45,13 +51,25 @@ PhiModalScope::PhiModalScope() : PhiModalScope(::GetActiveWindow()) {}
 PhiModalScope::PhiModalScope(HWND owner) {
   ++PhiModalDepthRef();
   ScopeRoots().push_back(RootOf(owner));
+  if (phi_framework::PhiFramework* framework = FrameworkRef()) {
+    framework->BeginNativeNestedLoop();
+    began_ = framework;
+  }
 }
 
 PhiModalScope::~PhiModalScope() {
+  if (began_) {
+    began_->EndNativeNestedLoop();
+  }
   --PhiModalDepthRef();
   if (!ScopeRoots().empty()) {
     ScopeRoots().pop_back();
   }
+}
+
+// static
+void PhiModalScope::SetFramework(phi_framework::PhiFramework* framework) {
+  FrameworkRef() = framework;
 }
 
 }  // namespace phi_client

@@ -21,6 +21,7 @@
 #include "client/phi_fluent.h"
 #include "client/phi_i18n.h"
 #include "client/phi_menu_paint.h"
+#include "client/phi_modal_scope.h"
 #include "client/phi_popup_chrome.h"
 
 namespace phi_client {
@@ -425,7 +426,13 @@ void PhiImportWindow::ChooseFile() {
   };
   dialog->SetFileTypes(static_cast<UINT>(std::size(types)), types);
   dialog->SetTitle(PhiStr("oobe.importBrowserData.importButton"));
-  if (FAILED(dialog->Show(hwnd()))) {
+  HRESULT shown = E_FAIL;
+  {
+    // Show pumps a nested loop: Chromium's tasks keep running in it.
+    PhiModalScope modal(hwnd());
+    shown = dialog->Show(hwnd());
+  }
+  if (FAILED(shown)) {
     return;  // Cancelled.
   }
   ComPtr<IShellItem> item;

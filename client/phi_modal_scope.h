@@ -6,6 +6,10 @@
 
 #include <windows.h>
 
+namespace phi_framework {
+class PhiFramework;
+}  // namespace phi_framework
+
 namespace phi_client {
 
 // UI-thread nesting counter for every nested message loop the client runs:
@@ -34,6 +38,14 @@ int PhiModalDepth();
 // The open scopes that belong to `window`'s root owner (plus the unowned).
 int PhiModalDepthFor(HWND window);
 
+// Every scope also lets Chromium run its UI-thread tasks inside the loop it
+// wraps (PhiFramework::BeginNativeNestedLoop): without that the pump never
+// wakes inside a native loop, so navigations, IPC replies and timers wait for
+// the loop to end and HangWatcher reports the UI thread hung (Sentry
+// PHIBROWSER-WIN-7). Framework callbacks can therefore arrive while a scope
+// is open; what they may not do to the window that owns it is covered where
+// they land (PhiCoordinator::RemoveSlot parks a controller whose loop is on
+// the stack). A scope opened before the framework is ready only counts.
 class PhiModalScope {
  public:
   PhiModalScope();
@@ -41,6 +53,14 @@ class PhiModalScope {
   ~PhiModalScope();
   PhiModalScope(const PhiModalScope&) = delete;
   PhiModalScope& operator=(const PhiModalScope&) = delete;
+
+  // The framework the scopes bracket their loops with; set once it is ready
+  // (PhiCoordinator::OnFrameworkReady). UI thread only.
+  static void SetFramework(phi_framework::PhiFramework* framework);
+
+ private:
+  // The framework this scope called Begin on, so End pairs with it.
+  phi_framework::PhiFramework* began_ = nullptr;
 };
 
 }  // namespace phi_client

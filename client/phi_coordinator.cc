@@ -163,6 +163,9 @@ constexpr UINT WM_PHI_SURFACE_TURN = WM_APP + 16;
 void PhiCoordinator::OnFrameworkReady(phi_framework::PhiFramework* framework,
                                      const char* user_data_dir_utf8) {
   framework_ = framework;
+  // Every nested loop the client runs lets Chromium's tasks run in it from
+  // now on (PHIBROWSER-WIN-7).
+  PhiModalScope::SetFramework(framework);
 
   // Start the outbound telemetry pipeline. It reads phi_telemetry.json from
   // this directory and stays entirely inert — spooling nothing, sending
@@ -377,6 +380,9 @@ LRESULT CALLBACK PhiCoordinator::MsgWndProc(HWND hwnd,
         return 0;
       case kAdoptParkedTimer:
         self->TryAdoptParkedWindow();
+        return 0;
+      case kParkedControllersTimer:
+        self->ReleaseParkedControllers();
         return 0;
       default:
         return 0;
@@ -7124,8 +7130,56 @@ void PhiCoordinator::MaybeEnterClosing() {
   FlushForShutdown();
 }
 
+void PhiCoordinator::RemoveSlot(SlotId slot) {
+  std::optional<PhiWindowRegistry::Slot> taken = registry_.Take(slot);
+  if (!taken || !taken->controller) {
+    return;
+  }
+  const HWND window = taken->controller->shell_hwnd();
+  if (!window || PhiModalDepthFor(window) == 0) {
+    return;  // `taken` destroys the controller here, as Remove did.
+  }
+  parked_controllers_.push_back(std::move(*taken));
+  if (msg_hwnd_) {
+    ::SetTimer(msg_hwnd_, kParkedControllersTimer, kParkedControllersRetryMs,
+               nullptr);
+  }
+}
+
+bool PhiCoordinator::RemoveKioskSafely(BrowserId browser) {
+  PhiWindowRegistry::KioskPtr taken = registry_.TakeKiosk(browser);
+  if (!taken) {
+    return false;
+  }
+  const HWND window = taken->hwnd();
+  if (window && PhiModalDepthFor(window) > 0) {
+    parked_kiosks_.push_back(std::move(taken));
+    if (msg_hwnd_) {
+      ::SetTimer(msg_hwnd_, kParkedControllersTimer, kParkedControllersRetryMs,
+                 nullptr);
+    }
+  }
+  return true;  // Not parked: `taken` destroys the kiosk here.
+}
+
+void PhiCoordinator::ReleaseParkedControllers() {
+  // The timer also fires inside the loop that parked a controller (a menu
+  // dispatches WM_TIMER): only controllers whose loops are gone are freed.
+  std::erase_if(parked_controllers_, [](const PhiWindowRegistry::Slot& slot) {
+    const HWND window = slot.controller ? slot.controller->shell_hwnd() : nullptr;
+    return !window || PhiModalDepthFor(window) == 0;
+  });
+  std::erase_if(parked_kiosks_, [](const PhiWindowRegistry::KioskPtr& kiosk) {
+    const HWND window = kiosk ? kiosk->hwnd() : nullptr;
+    return !window || PhiModalDepthFor(window) == 0;
+  });
+  if (parked_controllers_.empty() && parked_kiosks_.empty() && msg_hwnd_) {
+    ::KillTimer(msg_hwnd_, kParkedControllersTimer);
+  }
+}
+
 void PhiCoordinator::RetireClosingBrowser(BrowserId browser) {
-  if (registry_.RemoveKiosk(browser)) {
+  if (RemoveKioskSafely(browser)) {
     return;  // A Kiosk owns nothing else — no slot, no Space, no bookkeeping.
   }
   // A surface's own browser closing (its close chip, Esc, the reader's
@@ -7191,7 +7245,7 @@ void PhiCoordinator::RetireClosingBrowser(BrowserId browser) {
     if (PhiShellWindow* shell = registry_.Get(agent_slot)) {
       agent_manager_.HideOverlayBoundTo(shell);
     }
-    registry_.Remove(agent_slot);  // Drops the browser's binding with it.
+    RemoveSlot(agent_slot);  // Drops the browser's binding with it.
     UpdateSweepTimer();
     registry_.InvalidateUserSlots();
     return;
@@ -7228,7 +7282,7 @@ void PhiCoordinator::RetireClosingBrowser(BrowserId browser) {
   }
   // The slot survives while any Space browser remains.
   if (!shell->ForgetBrowser(browser)) {
-    registry_.Remove(*slot);
+    RemoveSlot(*slot);
   }
   // An Incognito Space whose last browser went another way than its own
   // close (a script's window.close(), Chromium closing it) goes with it —
