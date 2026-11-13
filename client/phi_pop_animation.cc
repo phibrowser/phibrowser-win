@@ -190,6 +190,48 @@ void CALLBACK OnFrame(HWND, UINT, UINT_PTR, DWORD) {
   }
 }
 
+// Whether Windows is about to animate this menu window itself: a submenu
+// the pointer opened (it rests on the parent menu's row) gets the system's
+// menu fade when that is on, since only the root menu takes TPM_NOANIMATION.
+// That fade ends by clearing WS_EX_LAYERED in win32k, with no message to
+// see: a layer our pop-in had set to alpha 0 went with it, the window was
+// never repainted and stayed see-through with only its shadow on screen
+// (GitHub phibrowser/phibrowser-win#9 regression). Such a submenu is left
+// to Windows; one opened from the keyboard has no system fade and keeps
+// the pop-in.
+bool SystemAnimatesSubmenu(HWND menu) {
+  BOOL animation = FALSE;
+  if (!::SystemParametersInfoW(SPI_GETMENUANIMATION, 0, &animation, 0) ||
+      !animation) {
+    return false;
+  }
+  struct Search {
+    HWND self;
+    POINT pointer;
+    bool over_parent = false;
+  } search{menu, {}};
+  if (!::GetCursorPos(&search.pointer)) {
+    return false;
+  }
+  ::EnumThreadWindows(
+      ::GetCurrentThreadId(),
+      [](HWND hwnd, LPARAM lparam) -> BOOL {
+        auto* s = reinterpret_cast<Search*>(lparam);
+        wchar_t cls[16] = {};
+        RECT rect = {};
+        if (hwnd != s->self && ::IsWindowVisible(hwnd) &&
+            ::GetClassNameW(hwnd, cls, 16) > 0 &&
+            ::lstrcmpW(cls, kMenuWindowClass) == 0 &&
+            ::GetWindowRect(hwnd, &rect) && ::PtInRect(&rect, s->pointer)) {
+          s->over_parent = true;
+          return FALSE;
+        }
+        return TRUE;
+      },
+      reinterpret_cast<LPARAM>(&search));
+  return search.over_parent;
+}
+
 // Sees every message SENT on this thread while a menu is up: a menu window
 // about to be shown is armed before its first frame, and one about to be
 // hidden leaves its picture behind.
@@ -204,7 +246,9 @@ LRESULT CALLBACK MenuHook(int code, WPARAM wparam, LPARAM lparam) {
           ::lstrcmpW(cls, kMenuWindowClass) == 0) {
         const bool visible = ::IsWindowVisible(message->hwnd) != FALSE;
         if ((pos->flags & SWP_SHOWWINDOW) && !visible) {
-          PhiPopIn(message->hwnd);
+          if (!SystemAnimatesSubmenu(message->hwnd)) {
+            PhiPopIn(message->hwnd);
+          }
         } else if ((pos->flags & SWP_HIDEWINDOW) && visible) {
           PhiPopOut(message->hwnd);
         }
