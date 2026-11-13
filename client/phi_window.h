@@ -457,6 +457,12 @@ class PhiWindow : public PhiHitSource {
   void Invalidate();
   void Invalidate(const RECT& rect);
   void InvalidateHit(int index);
+  // Moves what is already painted in `area` (client px) by `dy`, in the back
+  // buffer and on screen, and invalidates only the band it uncovers — a
+  // scroll repaints a strip instead of the whole window. False (nothing
+  // moved; invalidate as usual) without a back buffer or when no row of the
+  // area would survive the move.
+  bool ScrollPainted(const RECT& area, int dy);
   void Destroy();
   // Self-owned windows: `delete this` once the HWND is fully gone — AFTER
   // WM_NCDESTROY, not inside WM_DESTROY where five popovers do it today

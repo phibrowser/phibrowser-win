@@ -324,6 +324,10 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   // in another session cannot enumerate our windows to find it.
   static HWND Handle();
   static std::string CurrentSection();
+  // The page scroll for agentSpace.settings.get: offset, its end, the wheel
+  // glide's target and the rebuild count (a wheel that does not move the
+  // page must not rebuild it). Empty when the window is closed.
+  static std::string ScrollStateJson();
   static bool ShowSection(const std::string& name);
   // Lands on Spaces with `space_id` selected — the detail column IS the icon
   // picker, so this is the "Change Icon…" destination. Needs an open window
@@ -449,6 +453,9 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   // ask for a repaint. Everything that used to InvalidateRect(TRUE) and
   // let WM_PAINT rebuild calls this instead.
   void ScheduleRebuild();
+  // ScheduleRebuild's tail: re-run the hover through the wndproc after a
+  // rebuild dropped it (see the definition for when it does not).
+  void RelightHover();
   void BuildAccount(int* y);
   void BuildGeneral(int* y);
   void BuildAppearance(int* y);
@@ -650,8 +657,19 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   void ArrowFocus(int delta);
   // True (and the page rebuilt) when the scroll had to move.
   bool ScrollItemIntoView(int item);
+  // Moves the page to `scroll` at once (keys, focus, search), ending a wheel
+  // glide; ApplyScroll is the move itself, which rebuilds only when the
+  // clamped offset changes.
   void ScrollTo(int scroll);
+  void ApplyScroll(int scroll);
+  // The scrollbar thumb's 14 dip lane slot at `scroll` (what Paint draws and
+  // thumb_rect_ holds), or empty when the page fits.
+  RECT ThumbRectAt(int scroll) const;
   int MaxScroll() const;
+  // The wheel's page scroll: a notch glides there over kWheelGlideMs, a
+  // high-resolution wheel's or a touchpad's small deltas move at once.
+  void ScrollByWheel(int delta);
+  void StopWheelGlide();
   // Space / Enter on the focused item: what a click on it does.
   void ActivateFocus();
   // A slider's keyboard step, in the slider's own 0..100 units.
@@ -739,6 +757,31 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   int grid_count_ = 0;
   RECT grid_rect_{};
   int wheel_accum_ = 0;
+  // The page's wheel: delta x px still owed under one whole px (a
+  // high-resolution wheel or a touchpad sends deltas far below
+  // WHEEL_DELTA), and the glide a notch starts — its animator handle, where
+  // it started and is going, the offset it last wrote (anything else moving
+  // the page ends it) and the page it belongs to.
+  int wheel_page_rest_ = 0;
+  int glide_animation_ = 0;
+  int glide_from_ = 0;
+  int glide_target_ = 0;
+  int glide_written_ = 0;
+  // QueryPerformanceCounter at the glide's start: it runs on the clock, so a
+  // slow frame skips ahead instead of stretching the glide.
+  int64_t glide_start_qpc_ = 0;
+  // Fine wheel input (deltas under a notch) lands once per frame: the
+  // target the queued messages added up to, and the one-frame animation
+  // that applies it. WM_TIMER comes only once the queue is empty, so a
+  // touchpad's burst costs one rebuild per frame, not one per message.
+  int fine_target_ = 0;
+  int fine_animation_ = 0;
+  std::string glide_section_;
+  // Rebuild() calls, and the last rebuild's and paint's cost in
+  // microseconds, for the harness (ScrollStateJson).
+  int rebuild_count_ = 0;
+  int64_t last_rebuild_us_ = 0;
+  int64_t last_paint_us_ = 0;
   // The grip's drag: the Space being moved, the list order as it is
   // dragged (the Mac's orderedIds) and where it started.
   bool reorder_drag_ = false;

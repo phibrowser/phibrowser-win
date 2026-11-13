@@ -32,6 +32,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "client/phi_account_feedback.h"
 #include "client/phi_account_profile.h"
+#include "client/phi_animator.h"
 #include "client/phi_agent_icons.h"
 #include "client/phi_client_analytics.h"
 #include "client/phi_emoji.h"
@@ -272,6 +273,11 @@ constexpr int kUrlRowPad = 16;
 constexpr int kUrlRowIcon = 20;
 // One wheel notch (120) scrolls the list or the grid three rows.
 constexpr int kWheelPerRow = 40;
+// The page: 16 dip per wheel line, so the system's default three lines
+// make a notch 48 dip, the Feedback and Onboarding windows' step; a notch
+// glides there in 160 ms (ease-out), as Chromium's own smooth scroll does.
+constexpr int kWheelLineDip = 16;
+constexpr int kWheelGlideMs = 160;
 
 // The Mac's panes(), in order (AppController+Settings.panes(): Account,
 // General, Profiles, Spaces, Navigation, Phi & AI, Shortcuts, Developer —
@@ -686,6 +692,10 @@ void PhiSettingsWindow::ScheduleRebuild() {
   }
   Rebuild();
   Invalidate();
+  RelightHover();
+}
+
+void PhiSettingsWindow::RelightHover() {
   // ClearHits() drops the base's hover index, so a rebuild fired by a click
   // would leave the control still under the pointer un-lit until the mouse
   // moved. Re-run the hover through THE path — the wndproc — rather than a
@@ -710,6 +720,25 @@ void PhiSettingsWindow::ScheduleRebuild() {
 // static
 std::string PhiSettingsWindow::CurrentSection() {
   return g_instance ? g_instance->section_ : std::string();
+}
+
+// static
+std::string PhiSettingsWindow::ScrollStateJson() {
+  if (!g_instance || !g_instance->alive()) {
+    return std::string();
+  }
+  const PhiSettingsWindow& w = *g_instance;
+  const bool gliding =
+      w.glide_animation_ &&
+      PhiAnimator::ForThread().IsRunning(w.glide_animation_);
+  return "{\"scroll\":" + base::NumberToString(w.scroll_) +
+         ",\"maxScroll\":" + base::NumberToString(w.MaxScroll()) +
+         ",\"gliding\":" + (gliding ? "true" : "false") +
+         ",\"glideTarget\":" +
+         base::NumberToString(gliding ? w.glide_target_ : w.scroll_) +
+         ",\"rebuilds\":" + base::NumberToString(w.rebuild_count_) +
+         ",\"rebuildUs\":" + base::NumberToString(w.last_rebuild_us_) +
+         ",\"paintUs\":" + base::NumberToString(w.last_paint_us_) + "}";
 }
 
 // static
@@ -3646,7 +3675,31 @@ void PhiSettingsWindow::BuildDeveloper(int* y) {
   EndSection(y);
 }
 
+namespace {
+// Writes the scope's wall time in microseconds to `*out` on the way out.
+class ScopedMicros {
+ public:
+  explicit ScopedMicros(int64_t* out) : out_(out) {
+    ::QueryPerformanceCounter(&start_);
+  }
+  ~ScopedMicros() {
+    LARGE_INTEGER end = {};
+    LARGE_INTEGER freq = {};
+    ::QueryPerformanceCounter(&end);
+    ::QueryPerformanceFrequency(&freq);
+    *out_ = (end.QuadPart - start_.QuadPart) * 1000000 /
+            std::max<LONGLONG>(1, freq.QuadPart);
+  }
+
+ private:
+  int64_t* out_;
+  LARGE_INTEGER start_ = {};
+};
+}  // namespace
+
 void PhiSettingsWindow::Rebuild() {
+  ++rebuild_count_;
+  ScopedMicros timing(&last_rebuild_us_);
   items_.clear();
   open_card_ = 0;
   // The Spaces card's inner scrollers exist only while a build lays it out.
@@ -4335,11 +4388,192 @@ int PhiSettingsWindow::MaxScroll() const {
 }
 
 void PhiSettingsWindow::ScrollTo(int scroll) {
+  StopWheelGlide();
+  ApplyScroll(scroll);
+}
+
+void PhiSettingsWindow::ApplyScroll(int scroll) {
   const int next = std::max(0, std::min(MaxScroll(), scroll));
-  if (next != scroll_) {
-    scroll_ = next;
-    ScheduleRebuild();
+  if (next == scroll_ || !alive()) {
+    return;
   }
+  // A scroll only moves the page column, so what is painted there moves
+  // with it and only the uncovered band and the scrollbar lane repaint: a
+  // full repaint of a 300 % Settings window is about 110 ms on an i5-8260U,
+  // which made every wheel step (and every glide frame) a visible stall.
+  const int before = scroll_;
+  const int height_before = content_height_;
+  const size_t count_before = items_.size();
+  const RECT thumb_before = thumb_rect_;
+  const int hot = ItemOfHit(hovered());
+  RECT stale_hover = hot >= 0 ? items_[static_cast<size_t>(hot)].bounds
+                              : RECT{};
+  scroll_ = next;
+  Rebuild();
+  const int dy = before - scroll_;
+  RECT client = {};
+  ::GetClientRect(hwnd(), &client);
+  const int lane = Scaled(14);
+  const RECT page = {rail_w_, Scaled(kChromeTop), client.right - lane,
+                     client.bottom};
+  // Anything but a pure move (the page changed height or items under the
+  // scroll, or the rebuild clamped) repaints whole, as before.
+  if (content_height_ != height_before || items_.size() != count_before ||
+      !ScrollPainted(page, dy)) {
+    Invalidate();
+  } else {
+    // Windows paints the bounding box of what is invalid, so the uncovered
+    // band goes first on its own, then the thumb's old and new slots (a
+    // full-height lane with the band would box the whole page again).
+    ::UpdateWindow(hwnd());
+    RECT thumbs = {};
+    const RECT thumb_now = ThumbRectAt(scroll_);
+    ::UnionRect(&thumbs, &thumb_before, &thumb_now);
+    if (thumbs.bottom > thumbs.top) {
+      Invalidate(thumbs);
+      ::UpdateWindow(hwnd());
+    }
+    if (stale_hover.right > stale_hover.left) {
+      // The rebuild dropped the hover; its wash moved with the pixels.
+      ::OffsetRect(&stale_hover, 0, dy);
+      ::InflateRect(&stale_hover, Scaled(4), Scaled(4));
+      Invalidate(stale_hover);
+    }
+  }
+  RelightHover();
+}
+
+RECT PhiSettingsWindow::ThumbRectAt(int scroll) const {
+  RECT client = {};
+  ::GetClientRect(hwnd(), &client);
+  const int visible = client.bottom - Scaled(kChromeTop);
+  if (content_height_ <= visible || visible <= 0) {
+    return RECT{};
+  }
+  const int track_top = Scaled(kChromeTop) + Scaled(6);
+  const int track_height = visible - Scaled(12);
+  const int thumb_height =
+      std::max(Scaled(28),
+               static_cast<int>(static_cast<int64_t>(track_height) *
+                                visible / content_height_));
+  const int span = std::max(1, content_height_ - visible);
+  const int at = track_top + (track_height - thumb_height) *
+                                 std::min(scroll, span) / span;
+  return RECT{client.right - Scaled(14), at, client.right, at + thumb_height};
+}
+
+void PhiSettingsWindow::StopWheelGlide() {
+  if (glide_animation_) {
+    PhiAnimator::ForThread().Cancel(glide_animation_);
+    glide_animation_ = 0;
+  }
+  if (fine_animation_) {
+    PhiAnimator::ForThread().Cancel(fine_animation_);
+    fine_animation_ = 0;
+  }
+}
+
+void PhiSettingsWindow::ScrollByWheel(int delta) {
+  // The user's lines per notch (Mouse settings), or a page for "one screen
+  // at a time".
+  UINT lines = 3;
+  ::SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &lines, 0);
+  RECT client = {};
+  ::GetClientRect(hwnd(), &client);
+  const int page = std::max(1, static_cast<int>(client.bottom) -
+                                   Scaled(kChromeTop) - Scaled(40));
+  const int per_notch =
+      lines == WHEEL_PAGESCROLL
+          ? page
+          : Scaled(kWheelLineDip) * static_cast<int>(std::min(lines, 20u));
+  // The remainder carries over, so a high-resolution wheel's or a
+  // touchpad's small deltas add up to the same distance a notch moves
+  // (120 events of 1 used to move nothing and rebuild 120 times).
+  wheel_page_rest_ += delta * per_notch;
+  const int px = wheel_page_rest_ / WHEEL_DELTA;
+  wheel_page_rest_ -= px * WHEEL_DELTA;
+  if (px == 0) {
+    return;
+  }
+  PhiAnimator& animator = PhiAnimator::ForThread();
+  const bool gliding =
+      glide_animation_ && animator.IsRunning(glide_animation_);
+  const bool fine_pending =
+      fine_animation_ && animator.IsRunning(fine_animation_);
+  const int base =
+      gliding ? glide_target_ : (fine_pending ? fine_target_ : scroll_);
+  const int target = std::max(0, std::min(MaxScroll(), base - px));
+  if (target == base) {
+    wheel_page_rest_ = 0;  // At an end: nothing banked against the stop.
+    return;
+  }
+  if (std::abs(delta) < WHEEL_DELTA) {
+    // Fine input already arrives a frame at a time; a glide would only
+    // trail it. A glide under way takes the new target instead.
+    if (gliding) {
+      glide_target_ = target;
+      return;
+    }
+    fine_target_ = target;
+    if (!fine_pending) {
+      const std::string section = section_;
+      fine_animation_ = animator.Animate(
+          hwnd(), 1, PhiEasing::kLinear,
+          [this, section](double, RECT*) {
+            if (section_ == section && !scroll_drag_) {
+              ApplyScroll(fine_target_);
+            }
+          },
+          [this] { fine_animation_ = 0; });
+    }
+    return;
+  }
+  // A notch glides; another notch on the way retargets from where the page
+  // is now, so a spun wheel keeps moving instead of stepping.
+  StopWheelGlide();
+  glide_from_ = scroll_;
+  glide_target_ = target;
+  glide_written_ = scroll_;
+  glide_section_ = section_;
+  LARGE_INTEGER now = {};
+  ::QueryPerformanceCounter(&now);
+  glide_start_qpc_ = now.QuadPart;
+  // The animator is only the frame clock (four times the glide, as a cap):
+  // each frame reads the real time, so the glide ends on time however long
+  // a frame takes.
+  glide_animation_ = PhiAnimator::ForThread().Animate(
+      hwnd(), kWheelGlideMs * 4, PhiEasing::kLinear,
+      [this](double, RECT*) {
+        if (scroll_ != glide_written_ || section_ != glide_section_ ||
+            scroll_drag_) {
+          // The page moved some other way (another pane, a filter, the
+          // thumb): the glide is over.
+          StopWheelGlide();
+          return;
+        }
+        LARGE_INTEGER at = {};
+        LARGE_INTEGER freq = {};
+        ::QueryPerformanceCounter(&at);
+        ::QueryPerformanceFrequency(&freq);
+        const double t = static_cast<double>(at.QuadPart - glide_start_qpc_) *
+                         1000.0 /
+                         static_cast<double>(std::max<LONGLONG>(1, freq.QuadPart)) /
+                         kWheelGlideMs;
+        ApplyScroll(PhiLerpInt(glide_from_, glide_target_,
+                               PhiEase(PhiEasing::kEaseOut, t)));
+        glide_written_ = scroll_;
+        if (t >= 1.0) {
+          StopWheelGlide();
+        }
+      },
+      [this] {
+        glide_animation_ = 0;
+        // The cap ran out before the clock did (frames far too slow): land.
+        if (scroll_ == glide_written_ && section_ == glide_section_ &&
+            !scroll_drag_) {
+          ApplyScroll(glide_target_);
+        }
+      });
 }
 
 bool PhiSettingsWindow::ScrollItemIntoView(int item) {
@@ -4672,10 +4906,11 @@ bool PhiSettingsWindow::HandleKey(WPARAM virtual_key, LPARAM lparam,
   return false;
 }
 
-void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
+void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
   if (!host_) {
     return;
   }
+  ScopedMicros timing(&last_paint_us_);
   // The Mac's fixedWindowBackground: flat, theme-INdependent — #EAEAEA
   // light / #252525 dark. Only the appearance choice matters here.
   const bool dark = prefs_->Palette().dark;
@@ -4736,8 +4971,18 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
 
   RECT client = {};
   ::GetClientRect(hwnd(), &client);
+  // Only the dirty rectangle is drawn: a scroll moves what is painted and
+  // asks for the uncovered band alone (ApplyScroll), and a full paint of
+  // this window costs about 110 ms at 300 % on an i5-8260U. Everything is
+  // clipped to it, and items wholly outside it are skipped.
+  RECT dirty = {};
+  if (!::IntersectRect(&dirty, &dirty_rect, &client)) {
+    dirty = client;
+  }
+  HRGN dirty_clip = ::CreateRectRgnIndirect(&dirty);
+  ::SelectClipRgn(dc, dirty_clip);
   HBRUSH page = ::CreateSolidBrush(bg);
-  ::FillRect(dc, &client, page);
+  ::FillRect(dc, &dirty, page);
   ::DeleteObject(page);
   // The toolbar band shares the ground; a separator closes it.
   (void)separator;
@@ -4745,7 +4990,9 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
   // The caption strip: Phi mark leading, the pane title CENTERED, the
   // close button trailing (Win11's metric, red when hot) — the shared
   // frame's band, at the same metrics the strip used to draw by hand.
-  PaintBand(dc);
+  if (dirty.top < Scaled(kChromeTop)) {
+    PaintBand(dc);
+  }
 
   ::SetBkMode(dc, TRANSPARENT);
   HGDIOBJ previous_font = font_ ? ::SelectObject(dc, font_) : nullptr;
@@ -4761,6 +5008,16 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
       ::IntersectClipRect(dc, rail_w_, Scaled(kChromeTop), client.right,
                           client.bottom);
       clipped = true;
+    }
+    {
+      // Skipped when nothing of it (or of a ring, wash or shadow just
+      // outside it) reaches the dirty rectangle.
+      RECT reach = item.bounds;
+      ::InflateRect(&reach, Scaled(16), Scaled(16));
+      RECT meet = {};
+      if (!::IntersectRect(&meet, &reach, &dirty)) {
+        continue;
+      }
     }
     RECT bounds = item.bounds;
     const bool hot =
@@ -6074,7 +6331,7 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
       !IsTextInput(items_[static_cast<size_t>(focus_)])) {
     const Item& item = items_[static_cast<size_t>(focus_)];
     const int save = ::SaveDC(dc);
-    ::SelectClipRgn(dc, nullptr);
+    ::SelectClipRgn(dc, dirty_clip);
     if (InRail(item)) {
       ::IntersectClipRect(dc, 0, Scaled(kChromeTop), rail_w_, client.bottom);
     } else {
@@ -6179,30 +6436,19 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT&) {
   // Panes taller than the window (General, Developer, Shortcuts) scrolled
   // under the wheel with nothing on screen saying so, and no way to tell
   // how far down the content already was.
-  const int visible = client.bottom - Scaled(kChromeTop);
-  if (content_height_ > visible && visible > 0) {
-    const int track_top = Scaled(kChromeTop) + Scaled(6);
-    const int track_height = visible - Scaled(12);
-    const int thumb_height =
-        std::max(Scaled(28),
-                 static_cast<int>(static_cast<int64_t>(track_height) *
-                                  visible / content_height_));
-    const int span = std::max(1, content_height_ - visible);
-    const int at = track_top + (track_height - thumb_height) *
-                                   std::min(scroll_, span) / span;
+  // The drag target is generous: the 14 dip lane the thumb rides in.
+  thumb_rect_ = ThumbRectAt(scroll_);
+  if (thumb_rect_.bottom > thumb_rect_.top) {
     // A Fluent scrollbar: 2 dip at rest, 6 while dragged.
     const int thick = scroll_drag_ ? Scaled(6) : Scaled(2);
-    RECT thumb = {client.right - Scaled(4) - thick, at, client.right - Scaled(4),
-                  at + thumb_height};
+    RECT thumb = {client.right - Scaled(4) - thick, thumb_rect_.top,
+                  client.right - Scaled(4), thumb_rect_.bottom};
     FillRounded(dc, thumb, Blend(ink, bg, scroll_drag_ ? 90 : 46),
                 thick / 2);
-    // The drag target is generous: the 14 dip lane the thumb rides in.
-    thumb_rect_ = {client.right - Scaled(14), at, client.right, at + thumb_height};
-  } else {
-    thumb_rect_ = {};
   }
 
   ::SelectClipRgn(dc, nullptr);
+  ::DeleteObject(dirty_clip);
   if (previous_font) {
     ::SelectObject(dc, previous_font);
   }
@@ -7177,12 +7423,7 @@ void PhiSettingsWindow::OnWheel(int delta, POINT client_pt) {
     return;
   }
   wheel_accum_ = 0;
-  RECT client = {};
-  ::GetClientRect(hwnd(), &client);
-  const int visible = client.bottom - Scaled(kChromeTop);
-  const int max_scroll = std::max(0, content_height_ - visible);
-  scroll_ = std::max(0, std::min(max_scroll, scroll_ - delta / 2));
-  ScheduleRebuild();
+  ScrollByWheel(delta);
 }
 
 void PhiSettingsWindow::OnEscape() {
@@ -7270,6 +7511,7 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
       }
       const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
       if (thumb_rect_.right > thumb_rect_.left && ::PtInRect(&thumb_rect_, pt)) {
+        StopWheelGlide();
         scroll_drag_ = true;
         scroll_drag_grab_ = pt.y - thumb_rect_.top;
         ::SetCapture(hwnd());
@@ -7303,8 +7545,8 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
         const int span = std::max(1, track_height - thumb_height);
         const int max_scroll = std::max(0, content_height_ - visible);
         const int y = GET_Y_LPARAM(lparam) - scroll_drag_grab_ - track_top;
-        scroll_ = std::max(0, std::min(max_scroll, max_scroll * y / span));
-        ScheduleRebuild();
+        // Only a move that changes the offset rebuilds.
+        ApplyScroll(max_scroll * y / span);
         *handled = true;
         return 0;
       }

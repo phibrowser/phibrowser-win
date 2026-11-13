@@ -1027,6 +1027,11 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
   // Everything the settings window shows, in one read.
   base::DictValue out;
   out.Set("section", PhiSettingsWindow::CurrentSection());
+  // The open window's page scroll (offset, end, wheel glide, rebuilds).
+  if (std::optional<base::Value> scroll = base::JSONReader::Read(
+          PhiSettingsWindow::ScrollStateJson(), base::JSON_PARSE_RFC)) {
+    out.Set("scroll", std::move(*scroll));
+  }
   base::ListValue sections;
   // The Mac's panes(), in its order; Developer only in developer mode.
   // (There is no Phi Link pane on Mac — IMChannels exists in its source

@@ -4,6 +4,7 @@
 #include "client/phi_window.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace phi_client {
 
@@ -967,6 +968,26 @@ bool PhiWindow::EnsureBackBuffer(int width, int height) {
   buffer_previous_ = ::SelectObject(buffer_dc_, buffer_bitmap_);
   buffer_width_ = width;
   buffer_height_ = height;
+  return true;
+}
+
+bool PhiWindow::ScrollPainted(const RECT& area, int dy) {
+  if (!hwnd_ || !buffer_dc_ || dy == 0 || area.right <= area.left ||
+      std::abs(dy) >= area.bottom - area.top) {
+    return false;
+  }
+  RECT client = {};
+  ::GetClientRect(hwnd_, &client);
+  if (buffer_width_ < client.right || buffer_height_ < client.bottom) {
+    return false;
+  }
+  // The buffer first: PaintNow paints the uncovered band into it and
+  // presents only that band, so the rest must already sit where the screen
+  // will have it. ScrollWindowEx then moves the screen's pixels (and any
+  // update region still pending inside the area) the same way.
+  ::ScrollDC(buffer_dc_, 0, dy, &area, &area, nullptr, nullptr);
+  ::ScrollWindowEx(hwnd_, 0, dy, &area, &area, nullptr, nullptr,
+                   SW_INVALIDATE);
   return true;
 }
 
