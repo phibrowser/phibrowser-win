@@ -26,10 +26,22 @@ class PhiRevealVeil : public PhiWindow {
   PhiRevealVeil();
   ~PhiRevealVeil() override;
 
+  // Where the veil's picture is read from.
+  enum class Source {
+    // The desktop composition (CAPTUREBLT): what the user sees, browser
+    // children's DirectComposition layers and layered children included.
+    // ~80 ms for a 5 MP card at 300 % on a slow box.
+    kScreen,
+    // The owner's own GDI surface: ~20 ms, and the same pixels where
+    // nothing but GDI shows — a native page covering the whole card with
+    // no layered child over it. Anything else reads as what is under it.
+    kOwnerSurface,
+  };
   // Covers `screen_rect` with what the screen shows there now, directly
   // above `owner`, for kHoldMs. A second cover while up re-reads the
   // screen (the veil included) and restarts the hold.
-  void Cover(HWND owner, const RECT& screen_rect);
+  void Cover(HWND owner, const RECT& screen_rect,
+             Source source = Source::kScreen);
   void Lift();
 
   // A few desktop frames: the entering child's commit, with margin.
@@ -45,8 +57,20 @@ class PhiRevealVeil : public PhiWindow {
   void OnTimerFired(UINT_PTR id) override;
 
  private:
+  // The hold also runs on a thread-pool timer that POSTS the lift: a
+  // WM_TIMER is only delivered once no paint is pending, and the Space
+  // switch's theme ramp repaints the shell back to back for 600 ms, so the
+  // veil (and the page under it) stayed up ~150 ms instead of 48
+  // (GitHub phibrowser/phibrowser-win#13). hold_ stays as the fallback.
+  void ArmLift();
+  void DisarmLift();
+  static void CALLBACK PostLift(PVOID hwnd, BOOLEAN);
+  static UINT LiftMessage();
+
   HWND owner_ = nullptr;
   PhiWindow::Timer hold_;
+  HANDLE lift_timer_ = nullptr;
+  ULONGLONG covered_at_ = 0;
 };
 
 }  // namespace phi_client

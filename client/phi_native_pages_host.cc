@@ -41,6 +41,25 @@ bool PhiNativePagesHost::ntp_mounted() const {
   return false;
 }
 
+HWND PhiNativePagesHost::PageCovering(const RECT& screen_rect) const {
+  const auto covers = [&screen_rect](HWND page) {
+    RECT rect = {};
+    return page && ::IsWindowVisible(page) && ::GetWindowRect(page, &rect) &&
+           rect.left <= screen_rect.left && rect.top <= screen_rect.top &&
+           rect.right >= screen_rect.right &&
+           rect.bottom >= screen_rect.bottom;
+  };
+  if (bookmark_page_mounted() && covers(bookmark_manager_->hwnd())) {
+    return bookmark_manager_->hwnd();
+  }
+  for (int slot = 0; slot < kSlots; ++slot) {
+    if (PageMounted(slot) && covers(pages_[slot]->hwnd())) {
+      return pages_[slot]->hwnd();
+    }
+  }
+  return nullptr;
+}
+
 PhiNewTabPage* PhiNativePagesHost::ActivePage() const {
   const int active = shell_->NativePagesActiveTabId();
   for (int slot = 0; slot < kSlots; ++slot) {

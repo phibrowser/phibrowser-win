@@ -305,6 +305,60 @@ std::vector<uint8_t> WithAvatarRing(const std::vector<uint8_t>& circle,
   return out;
 }
 
+// Whether the screen shows only `page`'s GDI over `screen_rect`, which the
+// page covers: nothing but plain GDI windows sits above it there. A layered
+// window (a corner cap, the agent fog, a GPU surface) or a browser child is
+// composed by DWM on its own and is not in the shell's surface. Windows
+// BELOW the page (the browser child it covers, with its GPU surfaces) are
+// hidden by it and do not count.
+bool OnlyGdiOver(HWND shell, HWND page, const RECT& screen_rect) {
+  HWND top_level_child = page;
+  while (top_level_child && ::GetParent(top_level_child) != shell) {
+    top_level_child = ::GetParent(top_level_child);
+  }
+  if (!top_level_child) {
+    return false;
+  }
+  const auto composed = [&screen_rect](HWND window) {
+    RECT rect = {};
+    RECT overlap = {};
+    if (!::IsWindowVisible(window) || !::GetWindowRect(window, &rect) ||
+        !::IntersectRect(&overlap, &rect, &screen_rect)) {
+      return false;
+    }
+    wchar_t name[32] = {};
+    ::GetClassNameW(window, name, 32);
+    return (::GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_LAYERED) ||
+           ::wcsncmp(name, L"Chrome_", 7) == 0 ||
+           ::wcsncmp(name, L"Intermediate D3D", 16) == 0;
+  };
+  struct Query {
+    decltype(composed)* test;
+    bool found;
+  } query = {&composed, false};
+  const WNDENUMPROC any_composed = [](HWND child, LPARAM param) -> BOOL {
+    auto* q = reinterpret_cast<Query*>(param);
+    q->found = (*q->test)(child);
+    return !q->found;
+  };
+  // The shell's children above the page (GW_CHILD is the top of the
+  // z-order), with everything inside them, then the page's own children.
+  for (HWND above = ::GetWindow(shell, GW_CHILD);
+       above && above != top_level_child;
+       above = ::GetWindow(above, GW_HWNDNEXT)) {
+    if (composed(above)) {
+      return false;
+    }
+    ::EnumChildWindows(above, any_composed, reinterpret_cast<LPARAM>(&query));
+    if (query.found) {
+      return false;
+    }
+  }
+  ::EnumChildWindows(top_level_child, any_composed,
+                     reinterpret_cast<LPARAM>(&query));
+  return !query.found;
+}
+
 }  // namespace
 
 // The Phi app icon, shipped beside the exe (resources\phi.ico — the Mac's
@@ -5337,7 +5391,15 @@ void PhiShellWindow::RevealSwappedContent() {
     if (!reveal_veil_) {
       reveal_veil_ = std::make_unique<PhiRevealVeil>();
     }
-    reveal_veil_->Cover(shell_hwnd_, card);
+    // A native page covering the whole card, with nothing but GDI over it
+    // (no corner cap of the opaque frame, no agent fog), is what the screen
+    // shows: the shell's own surface holds it, at a quarter of the screen
+    // read's cost. A split's browser pane or a cap needs the screen.
+    const HWND page = native_pages_->PageCovering(card);
+    const bool gdi_only = page && OnlyGdiOver(shell_hwnd_, page, card);
+    reveal_veil_->Cover(shell_hwnd_, card,
+                        gdi_only ? PhiRevealVeil::Source::kOwnerSurface
+                                 : PhiRevealVeil::Source::kScreen);
   }
   if (had_reveal) {
     // Deferred past the slide, like the content itself — and up BEFORE the

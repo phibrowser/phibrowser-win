@@ -132,6 +132,11 @@ class PhiNativePagesHost {
   bool bookmark_page_mounted() const;
   // Any new-tab page is up (the card's, or a pane's).
   bool ntp_mounted() const;
+  // The mounted page that alone covers `screen_rect` (all of it), or null:
+  // what the screen shows there is that page's GDI unless something sits
+  // above it, so the Space switch's veil can read it off the shell's own
+  // surface instead of the desktop composition.
+  HWND PageCovering(const RECT& screen_rect) const;
   // Back above the browser child — every mounted page.
   void RaiseNtp();
   // The omnibox EDIT the session is (or should be) in: the field that has

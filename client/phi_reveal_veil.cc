@@ -18,10 +18,40 @@ constexpr wchar_t kVeilClass[] = L"PhiRevealVeil";
 PhiRevealVeil::PhiRevealVeil() = default;
 
 PhiRevealVeil::~PhiRevealVeil() {
+  DisarmLift();
   Destroy();
 }
 
-void PhiRevealVeil::Cover(HWND owner, const RECT& screen_rect) {
+UINT PhiRevealVeil::LiftMessage() {
+  // Registered, so a stale post that reaches a recycled HWND means nothing
+  // to the window that now owns it.
+  static const UINT message = ::RegisterWindowMessageW(L"PhiRevealVeilLift");
+  return message;
+}
+
+void CALLBACK PhiRevealVeil::PostLift(PVOID hwnd, BOOLEAN) {
+  ::PostMessageW(static_cast<HWND>(hwnd), LiftMessage(), 0, 0);
+}
+
+void PhiRevealVeil::ArmLift() {
+  DisarmLift();
+  if (!::CreateTimerQueueTimer(&lift_timer_, nullptr, &PhiRevealVeil::PostLift,
+                               hwnd(), kHoldMs, 0,
+                               WT_EXECUTEONLYONCE | WT_EXECUTEINTIMERTHREAD)) {
+    lift_timer_ = nullptr;  // hold_ still lifts it, late.
+  }
+}
+
+void PhiRevealVeil::DisarmLift() {
+  if (lift_timer_) {
+    // No completion wait: a callback already running only posts a message,
+    // which the lift handler checks against the current cover.
+    ::DeleteTimerQueueTimer(nullptr, lift_timer_, nullptr);
+    lift_timer_ = nullptr;
+  }
+}
+
+void PhiRevealVeil::Cover(HWND owner, const RECT& screen_rect, Source source) {
   const int width = screen_rect.right - screen_rect.left;
   const int height = screen_rect.bottom - screen_rect.top;
   if (!owner || !::IsWindowVisible(owner) || ::IsIconic(owner) ||
@@ -51,15 +81,26 @@ void PhiRevealVeil::Cover(HWND owner, const RECT& screen_rect) {
   if (!layer.valid()) {
     return;
   }
-  // What the user sees now: the desktop composition, the browser child's
-  // DirectComposition layer and the layered corner caps included.
-  HDC screen = ::GetDC(nullptr);
-  const bool read = screen &&
-                    ::BitBlt(layer.dc(), 0, 0, width, height, screen,
-                             screen_rect.left, screen_rect.top,
-                             SRCCOPY | CAPTUREBLT) != FALSE;
-  if (screen) {
-    ::ReleaseDC(nullptr, screen);
+  // What the user sees now (see Source): read off the desktop composition,
+  // or off the owner's surface where that holds the same pixels.
+  bool read = false;
+  if (source == Source::kOwnerSurface) {
+    POINT at = {screen_rect.left, screen_rect.top};
+    ::ScreenToClient(owner, &at);
+    HDC surface = ::GetDC(owner);
+    read = surface && ::BitBlt(layer.dc(), 0, 0, width, height, surface,
+                               at.x, at.y, SRCCOPY) != FALSE;
+    if (surface) {
+      ::ReleaseDC(owner, surface);
+    }
+  } else {
+    HDC screen = ::GetDC(nullptr);
+    read = screen && ::BitBlt(layer.dc(), 0, 0, width, height, screen,
+                              screen_rect.left, screen_rect.top,
+                              SRCCOPY | CAPTUREBLT) != FALSE;
+    if (screen) {
+      ::ReleaseDC(nullptr, screen);
+    }
   }
   if (!read) {
     return;
@@ -85,10 +126,13 @@ void PhiRevealVeil::Cover(HWND owner, const RECT& screen_rect) {
                            SWP_SHOWWINDOW);
   hold_.Stop();
   hold_.Start(kHoldMs);
+  covered_at_ = ::GetTickCount64();
+  ArmLift();
 }
 
 void PhiRevealVeil::Lift() {
   hold_.Stop();
+  DisarmLift();
   if (alive()) {
     ::ShowWindow(hwnd(), SW_HIDE);
   }
@@ -105,6 +149,15 @@ LRESULT PhiRevealVeil::OnMessage(UINT message,
   if (message == WM_MOUSEACTIVATE) {
     *handled = true;
     return MA_NOACTIVATE;
+  }
+  if (const UINT lift = LiftMessage(); lift && message == lift) {
+    *handled = true;
+    // A post from an earlier cover's timer lands early for a newer one
+    // (GetTickCount64 steps by ~16 ms, hence the slack).
+    if (::GetTickCount64() - covered_at_ + 16 >= kHoldMs) {
+      Lift();
+    }
+    return 0;
   }
   return PhiWindow::OnMessage(message, wparam, lparam, handled);
 }
