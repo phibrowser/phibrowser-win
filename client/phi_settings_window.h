@@ -713,6 +713,11 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   RECT thumb_rect_{};
   bool scroll_drag_ = false;
   int scroll_drag_grab_ = 0;  // Pointer y − thumb top at the press.
+  // Set while ScheduleRebuild re-runs the hover with a sent WM_MOUSEMOVE:
+  // that move only updates the hover, and a rebuild it causes does not send
+  // another one (PHIBROWSER-WIN-9: a thumb drag recursed until the stack ran
+  // out).
+  bool relighting_hover_ = false;
   // Master-list selections (the Mac remembers per pane).
   std::string selected_space_;
   std::string selected_profile_;

@@ -682,15 +682,21 @@ void PhiSettingsWindow::ScheduleRebuild() {
   // ClearHits() drops the base's hover index, so a rebuild fired by a click
   // would leave the control still under the pointer un-lit until the mouse
   // moved. Re-run the hover through THE path — the wndproc — rather than a
-  // copy of it. Never during a slider drag: that move handler rebuilds, and
-  // feeding it its own message would not terminate.
+  // copy of it. Not during a drag (slider, reorder, scrollbar thumb): the
+  // pointer is captured and the hover does not show. Never from inside the
+  // re-run itself: every drag's move handler rebuilds, so a sent move that
+  // reached one came straight back here and recursed until the stack ran out
+  // (PHIBROWSER-WIN-9); OnWindowMessage also keeps the sent move out of the
+  // drag handlers.
   POINT pt = {};
-  if (!dragging_ && !reorder_drag_ && ::GetCursorPos(&pt) &&
-      ::WindowFromPoint(pt) == hwnd()) {
+  if (!relighting_hover_ && !dragging_ && !reorder_drag_ && !scroll_drag_ &&
+      ::GetCursorPos(&pt) && ::WindowFromPoint(pt) == hwnd()) {
     ::ScreenToClient(hwnd(), &pt);
+    relighting_hover_ = true;
     ::SendMessageW(hwnd(), WM_MOUSEMOVE, 0,
                    MAKELPARAM(static_cast<WORD>(pt.x),
                               static_cast<WORD>(pt.y)));
+    relighting_hover_ = false;
   }
 }
 
@@ -7278,7 +7284,9 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
       }
       break;
     case WM_MOUSEMOVE:
-      if (scroll_drag_) {
+      // ScheduleRebuild's hover re-run (relighting_hover_) never reaches the
+      // drag handlers below: each of them rebuilds.
+      if (scroll_drag_ && !relighting_hover_) {
         RECT client = {};
         ::GetClientRect(hwnd(), &client);
         const int visible = client.bottom - Scaled(kChromeTop);
@@ -7297,7 +7305,7 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
       // the base, which updates the hover the paint pass reads. The drag
       // replays the item CAPTURED on the press, not whatever happens to
       // sit under the pointer now.
-      if (reorder_drag_ && (wparam & MK_LBUTTON)) {
+      if (reorder_drag_ && (wparam & MK_LBUTTON) && !relighting_hover_) {
         const int target = ReorderIndexAt(GET_Y_LPARAM(lparam));
         const auto it = std::find(reorder_order_.begin(),
                                   reorder_order_.end(), reorder_id_);
@@ -7315,7 +7323,7 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
         *handled = true;
         return 0;
       }
-      if (dragging_ && (wparam & MK_LBUTTON)) {
+      if (dragging_ && (wparam & MK_LBUTTON) && !relighting_hover_) {
         Apply(drag_item_, GET_X_LPARAM(lparam));
         ScheduleRebuild();
         *handled = true;
