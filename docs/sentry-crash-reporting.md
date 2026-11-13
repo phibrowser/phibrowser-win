@@ -106,6 +106,14 @@ passes it by default, rendering the file with the sibling
    still wins. The installer writes NO consent; it deletes the HKLM value
    older installers wrote.
 
-Still open: a compiled-in default for builds that ship without the file;
-Crashpad `prod` (empty, Phi.exe has no product name in its version
-resource) and a release tag, so Sentry cannot group by build yet.
+Version and release (2026-11-13): Crashpad's `prod` / `ver` come from
+Phi.exe's version resource (`install_static::GetExecutableVersionDetails`):
+`ProductShortName` "Phi", `ProductVersion`, and "Official Build" "1" on a
+pipeline-stamped build (build number != 0), without which upstream appends
+"-devel". The fork's `ChromeCrashReporterClient::GetExtraProcessAnnotations`
+adds `sentry[release]` = `ver` as a handler annotation; Crashpad posts it as
+a form field for every process's dump and Sentry's minidump endpoint sets
+the event's release from it, matching the release `ci/release.sh` creates
+("0.5.0.16"). A local build reports "X.Y.Z.0-devel".
+
+Still open: a compiled-in default for builds that ship without the file.

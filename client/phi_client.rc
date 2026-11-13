@@ -44,6 +44,14 @@ BEGIN
       VALUE "OriginalFilename", "Phi.exe"
       VALUE "ProductName", "Phi Browser"
       VALUE "ProductVersion", PHI_RC_VERSION_DOTTED
+      // Crashpad's prod/ver annotations (install_static::
+      // GetExecutableVersionDetails) read these two. A build the release
+      // pipeline stamped (a nonzero build number) is a shipped one; an
+      // unstamped local build keeps upstream's "-devel" suffix on ver.
+      VALUE "ProductShortName", "Phi"
+#if PHI_WIN_VERSION_BUILD != 0
+      VALUE "Official Build", "1"
+#endif
     END
   END
   BLOCK "VarFileInfo"
