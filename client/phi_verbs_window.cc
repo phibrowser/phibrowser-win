@@ -177,6 +177,11 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   // The sidebar bottom bar's profile (avatar) button; empty with the
   // sidebar hidden or in comfortable.
   out.Set("profile", RectDict(shell->profile_rect()));
+  out.Set("downloads", RectDict(shell->downloads_button_rect()));
+  if (std::optional<base::Value> indicator = base::JSONReader::Read(
+          shell->DownloadIndicatorJson(), base::JSON_PARSE_RFC)) {
+    out.Set("downloadsIndicator", std::move(*indicator));
+  }
   // The Update reminder pill; empty unless an update is on offer.
   out.Set("update", RectDict(shell->update_rect()));
   // The in-field Copy link / site-menu pair (laid out always, painted only

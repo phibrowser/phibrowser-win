@@ -37,6 +37,8 @@
 #include "base/values.h"
 #include "client/phi_agent_overlay.h"
 #include "client/phi_agent_spaces.h"
+#include "client/phi_animator.h"
+#include "client/phi_downloads_model.h"
 #include "client/phi_downloads_popover.h"
 #include "client/phi_library.h"
 #include "client/phi_extensions_popover.h"
@@ -186,6 +188,12 @@ constexpr UINT_PTR kPairSplitTimer = 0x528;
 constexpr UINT_PTR kFloatingSlideTimer = 0x529;
 // The page colour crossfade's clock (PageColorFadeTick).
 constexpr UINT_PTR kPageColorFadeTimer = 0x52A;
+// The Downloads button's list poll (DownloadWatchTick).
+constexpr UINT_PTR kDownloadWatchTimer = 0x52B;
+// After a page change the watch polls this often for this long, so a link
+// that becomes a download shows its cue at once (the idle poll is 500 ms).
+constexpr UINT kDownloadQuickPollMs = 150;
+constexpr ULONGLONG kDownloadQuickWatchMs = 1500;
 constexpr double kPageColorFadeMs = 250.0;
 constexpr double kFloatingSlideMs = 150.0;
 
@@ -1350,6 +1358,9 @@ PhiShellWindow::PhiShellWindow(SlotId slot,
   } else if (agent_) {
     ::ShowWindow(shell_hwnd_, SW_SHOWNOACTIVATE);
   }
+  if (!agent_) {
+    ArmDownloadWatch(PhiDownloadIndicator::kIdlePollMs);
+  }
   LOG(INFO) << "[PhiClient] " << (agent_ ? "agent " : "") << "shell window "
             << slot_.value << " browser=" << browser.value
             << " shell_hwnd=" << shell_hwnd_ << " browser_hwnd="
@@ -1361,6 +1372,8 @@ PhiShellWindow::~PhiShellWindow() {
   // delivers WM_ACTIVATE / WM_SIZE / WM_CAPTURECHANGED) find a controller
   // that must do nothing but die.
   destroying_ = true;
+  PhiAnimator::ForThread().Cancel(download_cue_animation_);
+  PhiAnimator::ForThread().Cancel(download_fade_animation_);
   DropFloatingCache();  // The panel's WM_DESTROY no longer reaches us.
   EndSidebarResize();
   // A hosted agent Space goes back to its own shell first, whole: the
@@ -4605,6 +4618,12 @@ void PhiShellWindow::ScheduleRefresh() {
     rebuild_posted_ =
         ::PostMessageW(shell_hwnd_, kMsgPhiRebuildRows, 0, 0) != 0;
   }
+  // A page change is when a download starts (a link that turns into one):
+  // the Downloads watch looks quickly for a while (DownloadWatchTick).
+  if (download_watch_period_) {
+    download_quick_until_ = ::GetTickCount64() + kDownloadQuickWatchMs;
+    ArmDownloadWatch(kDownloadQuickPollMs);
+  }
 }
 
 void PhiShellWindow::FlushPendingRebuild() {
@@ -6151,6 +6170,78 @@ void PhiShellWindow::InvalidateBottomBar() {
   }
   if (const HWND panel = SpacesFloatingPanel(nullptr)) {
     ::InvalidateRect(panel, nullptr, FALSE);
+  }
+}
+
+RECT PhiShellWindow::downloads_button_rect() {
+  return ComputeLayout().sidebar_downloads;
+}
+
+void PhiShellWindow::ArmDownloadWatch(UINT period_ms) {
+  if (!shell_hwnd_ || period_ms == download_watch_period_) {
+    return;
+  }
+  download_watch_period_ = period_ms;
+  // Coalescable: an idle poll may ride with the system's other timers.
+  ::SetCoalescableTimer(shell_hwnd_, kDownloadWatchTimer, period_ms, nullptr,
+                        period_ms / 10);
+}
+
+void PhiShellWindow::InvalidateDownloadsButton() {
+  const RECT button = ComputeLayout().sidebar_downloads;
+  if (shell_hwnd_ && button.right > button.left) {
+    ::InvalidateRect(shell_hwnd_, &button, FALSE);
+  }
+  if (const HWND panel = SpacesFloatingPanel(nullptr)) {
+    ::InvalidateRect(panel, nullptr, FALSE);
+  }
+}
+
+void PhiShellWindow::DownloadWatchTick() {
+  const BrowserId browser = active_browser_id();
+  if (destroying_ || !framework_ || !browser.valid() || !shell_hwnd_ ||
+      ::IsIconic(shell_hwnd_) || !::IsWindowVisible(shell_hwnd_)) {
+    return;  // A minimized window catches up on its next look.
+  }
+  const char* json = framework_->ListDownloadsJson(browser.value);
+  const PhiDownloadIndicator::Change change = download_indicator_.Update(
+      browser.value, PhiParseDownloadsJson(json ? json : "[]"));
+  ArmDownloadWatch(download_indicator_.active()
+                       ? PhiDownloadIndicator::kActivePollMs
+                   : ::GetTickCount64() < download_quick_until_
+                       ? kDownloadQuickPollMs
+                       : PhiDownloadIndicator::kIdlePollMs);
+  PhiAnimator& animator = PhiAnimator::ForThread();
+  if (change.started) {
+    // DownloadButtonView.triggerAnimation: once per new download, from the
+    // start if one is still playing.
+    animator.Cancel(download_cue_animation_);
+    download_cue_animation_ = animator.Animate(
+        shell_hwnd_, PhiDownloadIndicator::kCueMs, PhiEasing::kLinear,
+        [this](double t, RECT*) {
+          download_indicator_.set_cue(t < 1 ? t : -1);
+          InvalidateDownloadsButton();
+        },
+        [this] {
+          download_cue_animation_ = 0;
+          download_indicator_.set_cue(-1);
+        });
+  }
+  if (change.active_changed) {
+    // The bar's .opacity animation, easeInOut 0.2 s, from where it is.
+    animator.Cancel(download_fade_animation_);
+    const double from = download_indicator_.bar_opacity();
+    const double to = download_indicator_.active() ? 1.0 : 0.0;
+    download_fade_animation_ = animator.Animate(
+        shell_hwnd_, PhiDownloadIndicator::kFadeMs, PhiEasing::kEaseInOut,
+        [this, from, to](double t, RECT*) {
+          download_indicator_.set_bar_opacity(from + (to - from) * t);
+          InvalidateDownloadsButton();
+        },
+        [this] { download_fade_animation_ = 0; });
+  }
+  if (change.repaint) {
+    InvalidateDownloadsButton();
   }
 }
 
@@ -9724,9 +9815,11 @@ void PhiShellWindow::PaintChrome(HDC dc,
       const int left = (b.left + b.right - art) / 2;
       const int top = (b.top + b.bottom - art) / 2;
       const RECT art_rc = {left, top, left + art, top + art};
-      const std::vector<unsigned char> download_bgra = PhiTintedIconBgra(
-          PhiDownloadIcon(), PhiButtonInk(state, palette, kLabel), art);
-      PhiBlendBgra(dc, art_rc, download_bgra.data(), art, art);
+      // The arrow's start cue and the progress bar (#13) paint with it.
+      download_indicator_.Paint(
+          dc, art_rc, PhiButtonInk(state, palette, kLabel), palette.accent,
+          state == PhiButtonState::kHover ? palette.hover : kTintTop,
+          static_cast<int>(dpi()), USER_DEFAULT_SCREEN_DPI);
     }
     if (layout.memory.right > layout.memory.left) {
       if (bottom_hot(1)) {
@@ -10467,6 +10560,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       }
       if (self && wparam == kPageColorFadeTimer) {
         self->PageColorFadeTick();
+        return 0;
+      }
+      if (self && wparam == kDownloadWatchTimer) {
+        self->DownloadWatchTick();
         return 0;
       }
       if (self && self->tab_preview_ && self->tab_preview_->OnTimer(wparam)) {

@@ -21,6 +21,7 @@
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_download_indicator.h"
 #include "client/phi_drag_image.h"
 #include "client/phi_extension_action.h"
 #include "client/phi_feedback_window.h"
@@ -1217,6 +1218,12 @@ class PhiShellWindow : public PhiHitSource,
   RECT profile_rect();
   // The Update reminder pill (empty without an update), for the layout verb.
   RECT update_rect();
+  // The bottom bar's Downloads button and its live state (cue, progress)
+  // for agentSpace.window.layout.
+  RECT downloads_button_rect();
+  std::string DownloadIndicatorJson() const {
+    return download_indicator_.StateJson();
+  }
   // The in-field Copy link and site-menu slots, for the layout verb.
   RECT copy_link_rect();
   // The address field (a Win32 EDIT), for the test rig's readout.
@@ -2167,6 +2174,18 @@ class PhiShellWindow : public PhiHitSource,
   ULONGLONG page_fade_start_ = 0;  // 0 = no fade running.
   void StartPageColorFade(PhiColor from);
   void PageColorFadeTick();
+  // The Downloads button's watch (GitHub phibrowser/phibrowser-win#13): the
+  // framework sends no download event, so the shell reads the active
+  // browser's list every kIdlePollMs (kActivePollMs while one runs), plays
+  // the start cue and keeps the progress bar current.
+  void DownloadWatchTick();
+  void ArmDownloadWatch(UINT period_ms);
+  void InvalidateDownloadsButton();
+  PhiDownloadIndicator download_indicator_;
+  UINT download_watch_period_ = 0;
+  ULONGLONG download_quick_until_ = 0;  // GetTickCount64; see ScheduleRefresh.
+  int download_cue_animation_ = 0;
+  int download_fade_animation_ = 0;
   // The site menu is tracking (its button stays lit and shown).
   bool site_menu_open_ = false;
   std::string last_regular_space_;  // See last_regular_space().
