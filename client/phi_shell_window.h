@@ -723,6 +723,10 @@ enum : UINT {
   // focus round address field -> sidebar -> page. WPARAM is the direction
   // (kPhiFocusNext / kPhiFocusPrevious) or kPhiFocusPage.
   kMsgPhiCycleFocus,
+  // The band slide's last frame was painted: the page flips on this posted
+  // turn, after that paint has gone to the screen (PhiSpacesStrip::
+  // NoteSlideLanded).
+  kMsgPhiSwapLanded,
 };
 enum : WPARAM { kPhiFocusNext = 0, kPhiFocusPrevious = 1, kPhiFocusPage = 2 };
 

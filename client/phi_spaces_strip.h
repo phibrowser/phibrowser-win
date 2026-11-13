@@ -273,10 +273,16 @@ class PhiSpacesStrip {
   const PhiPalette& swap_source_palette() const {
     return swap_source_palette_;
   }
-  // The slide reached its end: the shell drops the retained rows and the
-  // page flips. Called from the band paint, which is where the last frame
-  // of the slide is known to have been drawn.
+  // The slide reached its end: the shell drops the retained rows, and the
+  // page flips on a posted turn (RunLandedReveal). Called from the band
+  // paint, which is where the last frame of the slide is known to have been
+  // drawn — but not yet shown: flipping the page inside that paint put the
+  // page on screen a frame before the band's rest frame (GitHub
+  // phibrowser/phibrowser-win#13). The page stays parked until then
+  // (reveal_pending).
   void NoteSlideLanded();
+  void RunLandedReveal();
+  bool reveal_pending() const { return reveal_pending_; }
   // `target` blended toward from the frozen source palette while the ramp
   // runs, or replaced outright by the create form's live preview. THE one
   // place a palette is overridden.
@@ -398,6 +404,7 @@ class PhiSpacesStrip {
   // usually moved (or scrolled out) by the time the first frame is drawn.
   ULONGLONG swap_start_ = 0;
   ULONGLONG ramp_start_ = 0;
+  bool reveal_pending_ = false;
   // The slide's own clock in precise milliseconds (GetTickCount64 steps by
   // ~16 ms), and the frame lead SwapProgress adds: when this swap's last
   // frame read the clock, and how long the frame before took.

@@ -929,10 +929,24 @@ void PhiSpacesStrip::NoteSlideLanded() {
   swap_from_space_.clear();
   PhiAnimator::ForThread().Cancel(swap_anim_);
   swap_anim_ = 0;
-  shell_->SpacesRevealSwappedContent();  // The page flips only now.
+  // The page flips only now, the Mac's order — once this paint is out.
+  reveal_pending_ = true;
+  const HWND shell = shell_->SpacesShellWindow();
+  if (!shell || !::PostMessageW(shell, kMsgPhiSwapLanded, 0, 0)) {
+    RunLandedReveal();
+  }
+}
+
+void PhiSpacesStrip::RunLandedReveal() {
+  if (!reveal_pending_) {
+    return;
+  }
+  reveal_pending_ = false;
+  shell_->SpacesRevealSwappedContent();
 }
 
 void PhiSpacesStrip::CancelSwap() {
+  reveal_pending_ = false;
   shell_->SpacesRevealSwappedContent();  // Aborted switches settle instantly.
   shell_->SpacesDropLeavingBand();
   swap_from_space_.clear();

@@ -2294,6 +2294,9 @@ void PhiShellWindow::BrowserHostScheduleRefresh() {
 
 void PhiShellWindow::BrowserHostBeginSpaceSwap(
     const std::string& space_id, BrowserId entering) {
+  // A switch whose band landed but whose page has not flipped yet settles
+  // first, as an in-flight one does (CancelSwap).
+  spaces_->RunLandedReveal();
   if (layout_mode_ == PhiLayoutMode::kComfortable) {
     // No band to push in: the whole client area slides (phi_content_slide.h).
     // The content host defers the page exactly as for the band slide
@@ -2306,7 +2309,8 @@ void PhiShellWindow::BrowserHostBeginSpaceSwap(
 }
 
 bool PhiShellWindow::BrowserHostSwapRunning() const {
-  return spaces_->swap_running() || content_slide_->running();
+  return spaces_->swap_running() || spaces_->reveal_pending() ||
+         content_slide_->running();
 }
 
 void PhiShellWindow::BrowserHostNoteSwapChildren(HWND reveal,
@@ -10574,6 +10578,11 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
     case kMsgPhiSlideCapture:
       if (self) {
         self->StartSlideCapture();
+      }
+      return 0;
+    case kMsgPhiSwapLanded:
+      if (self) {
+        self->spaces_->RunLandedReveal();
       }
       return 0;
     case kMsgPhiRebuildRows:
