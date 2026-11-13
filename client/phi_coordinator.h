@@ -435,6 +435,7 @@ class PhiCoordinator : public SidebarHost,
       const std::string& sub,
       const std::map<std::string, std::string>& style) override;
   void SetAutoPictureInPictureMode(const std::string& mode) override;
+  void SetMiniPlayer(bool enabled, const std::string& mode) override;
   bool AlwaysShowFullUrl() const override;
   void SetAlwaysShowFullUrl(bool enabled) override;
   bool SuppressCloseIncognitoSpaceWarning() const override;
@@ -518,6 +519,11 @@ class PhiCoordinator : public SidebarHost,
   // Pushes the Ctrl+Alt-click Kiosk switch the same way: the framework's
   // Browser::OpenURLFromTab is where the click is remapped.
   void PushKioskPreferences();
+  // The Mini Player: the framework watches media sessions only while it is
+  // on, and every shell's card follows the switch and the mode.
+  void PushMiniPlayerPreference();
+  // The framework's OnMediaSessionsChanged: every shell re-reads.
+  void OnMediaSessionsChanged();
   // Pushes the "New tab behavior" switch the same way: the framework's
   // Browser::TabStripEmpty (refill tab or placeholder) and RequestBrowser
   // (blank tab or an empty window in placeholder mode) read it there.

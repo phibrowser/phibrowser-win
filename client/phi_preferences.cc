@@ -275,6 +275,20 @@ void PhiPreferences::SetAutoPictureInPictureMode(const std::string& mode) {
   Notify(PreferenceChange::kSyncedMisc);
 }
 
+void PhiPreferences::SetMiniPlayer(bool enabled, const std::string& mode) {
+  if (mode != "dynamic" && mode != "alwaysExpanded" && mode != "alwaysCompact") {
+    return;
+  }
+  if (settings_.mini_player_enabled == enabled &&
+      settings_.mini_player_mode == mode) {
+    return;
+  }
+  settings_.mini_player_enabled = enabled;
+  settings_.mini_player_mode = mode;
+  MarkDirty();
+  Notify(PreferenceChange::kMiniPlayer);
+}
+
 void PhiPreferences::SetSelectionTintEnabled(bool enabled) {
   if (settings_.selection_tint_enabled == enabled) {
     return;

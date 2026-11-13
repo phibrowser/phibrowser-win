@@ -1793,6 +1793,22 @@ void PhiSettingsWindow::BuildAdvanced(int* y) {
     AddPopupRow(y, PhiStr("settings.advanced.pictureInPicture.title"),
                 PhiStr(label), "autopip", PhiStr(hint), kChipIndent, 0xE8A7);
   }
+  {
+    // The Mac's Mini Player menu: Off, or the presentation mode (which is
+    // kept while the player is off).
+    const std::string& mode = prefs_->MiniPlayerMode();
+    const char* label =
+        !prefs_->MiniPlayerEnabled() ? "settings.advanced.miniPlayer.offOption"
+        : mode == "alwaysExpanded"
+            ? "settings.general.sidebarMedia.alwaysExpandedOption"
+        : mode == "alwaysCompact"
+            ? "settings.general.sidebarMedia.alwaysCompactOption"
+            : "settings.general.sidebarMedia.dynamicOption";
+    AddPopupRow(y, PhiStr("settings.advanced.miniPlayer.title"),
+                PhiStr(label), "miniplayer",
+                PhiStr("settings.advanced.sidebarMedia.hint"), kChipIndent,
+                0xE8D6);
+  }
   EndSection(y);
 
   BeginSection(y, nullptr);
@@ -7034,6 +7050,38 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     ::DestroyMenu(menu);
     if (chosen >= 1 && chosen <= 3) {
       host_->SetAutoPictureInPictureMode(modes[chosen - 1]);
+      ScheduleRebuild();
+    }
+  } else if (item.action == "miniplayer") {
+    HMENU menu = ::CreatePopupMenu();
+    if (!menu) {
+      return;
+    }
+    // Off first, then the Mac's order: Auto, Always expanded, Always compact.
+    constexpr std::array<const char*, 4> modes = {
+        "", "dynamic", "alwaysExpanded", "alwaysCompact"};
+    constexpr std::array<const char*, 4> labels = {
+        "settings.advanced.miniPlayer.offOption",
+        "settings.general.sidebarMedia.dynamicOption",
+        "settings.general.sidebarMedia.alwaysExpandedOption",
+        "settings.general.sidebarMedia.alwaysCompactOption"};
+    const bool enabled = prefs_->MiniPlayerEnabled();
+    const std::string current = enabled ? prefs_->MiniPlayerMode() : "";
+    for (UINT i = 0; i < 4; ++i) {
+      ::AppendMenuW(menu, MF_STRING | (current == modes[i] ? MF_CHECKED : 0),
+                    i + 1, PhiStr(labels[i]));
+    }
+    POINT anchor = {item.bounds.left, item.bounds.bottom};
+    ::ClientToScreen(hwnd(), &anchor);
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
+        menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
+        anchor.y, 0, hwnd(), nullptr));
+    ::DestroyMenu(menu);
+    if (chosen == 1) {
+      host_->SetMiniPlayer(false, prefs_->MiniPlayerMode());
+      ScheduleRebuild();
+    } else if (chosen >= 2 && chosen <= 4) {
+      host_->SetMiniPlayer(true, modes[chosen - 1]);
       ScheduleRebuild();
     }
   } else if (item.action == "language") {

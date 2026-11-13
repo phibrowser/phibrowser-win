@@ -144,6 +144,9 @@ class PhiSettingsHost {
       const std::string& sub,
       const std::map<std::string, std::string>& style) = 0;
   virtual void SetAutoPictureInPictureMode(const std::string& mode) = 0;
+  // The Mini Player: off, or on in "dynamic" / "alwaysExpanded" /
+  // "alwaysCompact".
+  virtual void SetMiniPlayer(bool enabled, const std::string& mode) = 0;
   virtual void SetAlwaysShowFullUrl(bool enabled) = 0;
   // GeneralSettings.showTabPreviews — the hover cards on tab, pin and
   // bookmark rows. On by default, as on Mac.

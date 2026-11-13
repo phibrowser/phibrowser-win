@@ -10380,6 +10380,78 @@
   "common.pinnedTabEditor.editMultiPaneSplitSubtitle": {
    "comment": "Mac key (translations by key); prompt — the editor of a split bookmark or pinned split (PhiPromptPanes)",
    "en": "Edit the name and address for each pane of this pinned split."
+  },
+  "settings.advanced.miniPlayer.title": {
+   "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc) (Advanced ▸ Media). Menu for turning Mini Player off or choosing its display mode",
+   "en": "Mini Player"
+  },
+  "settings.advanced.sidebarMedia.hint": {
+   "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc) (Advanced ▸ Media). Description of the Mini Player",
+   "en": "Control media playing in background tabs from the sidebar."
+  },
+  "settings.advanced.miniPlayer.offOption": {
+   "comment": "Mac key (translations by key); settings — Mini Player display option: hide the player while media continues playing",
+   "en": "Off"
+  },
+  "settings.general.sidebarMedia.dynamicOption": {
+   "comment": "Mac key (translations by key); settings — Mini Player display option: expand after a brief pointer hover",
+   "en": "Auto"
+  },
+  "settings.general.sidebarMedia.alwaysExpandedOption": {
+   "comment": "Mac key (translations by key); settings — Mini Player display option: show the full player whenever background media is available",
+   "en": "Always expanded"
+  },
+  "settings.general.sidebarMedia.alwaysCompactOption": {
+   "comment": "Mac key (translations by key); settings — Mini Player display option: keep transport controls compact",
+   "en": "Always compact"
+  },
+  "sidebar.media.untitled": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Fallback title when the page and media session have no title",
+   "en": "Media"
+  },
+  "sidebar.media.openTab": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Switch to the tab that owns the media",
+   "en": "Show playing tab"
+  },
+  "sidebar.media.previousTrack": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Play the previous track in the page queue",
+   "en": "Previous track"
+  },
+  "sidebar.media.nextTrack": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Play the next track in the page queue",
+   "en": "Next track"
+  },
+  "sidebar.media.play": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Resume the current page media",
+   "en": "Play"
+  },
+  "sidebar.media.pause": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Pause the current page media",
+   "en": "Pause"
+  },
+  "sidebar.media.dismiss": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Hide this media source without changing playback",
+   "en": "Dismiss media player"
+  },
+  "sidebar.media.enterPictureInPicture": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Pop the playing video into a floating picture-in-picture window",
+   "en": "Open picture in picture"
+  },
+  "sidebar.media.exitPictureInPicture": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Return a picture-in-picture video to its page",
+   "en": "Close picture in picture"
+  },
+  "sidebar.media.volumeSlider": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Adjust the tab playback volume from zero to one hundred percent",
+   "en": "Playback volume"
+  },
+  "sidebar.media.progress": {
+   "comment": "Mac key (translations by key); sidebar — Mini Player (phi_mini_player.cc). Tooltip of the seek timeline",
+   "en": "Playback position"
+  },
+  "sidebar.media.volumeButtonAlt": {
+   "comment": "Windows-only; sidebar — Mini Player (phi_mini_player.cc). Open the volume slider; Alt-click toggles the player's mute (the Mac's sidebar.media.volumeButton says Option)",
+   "en": "Volume (Alt-click to toggle mute)"
   }
  }
 }

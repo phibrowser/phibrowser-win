@@ -654,6 +654,12 @@ class PhiFrameworkDelegate {
                                   bool shift,
                                   bool alt,
                                   bool* handled) {}
+
+  // A media session PhiFramework::SetMediaControlsEnabled watches changed:
+  // one came or went, or its playback, metadata, actions, position, mute or
+  // volume moved. One posted task for any number of tabs; read
+  // MediaSessionsJson for the state. Never sent while observation is off.
+  virtual void OnMediaSessionsChanged() {}
 };
 
 // Client → framework. Implemented by the framework and handed to the client
@@ -1754,6 +1760,56 @@ class PhiFramework {
   // with one End, innermost first. UI thread only.
   virtual void BeginNativeNestedLoop() = 0;
   virtual void EndNativeNestedLoop() = 0;
+
+  // --- Native media controls (the sidebar Mini Player) --------------------
+  // The Mac bridge's PhiMediaControls for every tab at once: Chromium's own
+  // MediaSession, no injected script, no DevTools. Observation is off until
+  // the client turns it on; on, every tab (and every tab opened later) is
+  // watched and OnMediaSessionsChanged reports changes. Off drops every
+  // watch and invalidates every token; neither pauses playback nor closes
+  // picture-in-picture.
+  virtual void SetMediaControlsEnabled(bool enabled) = 0;
+  // A JSON array, one object per watched tab with a controllable session:
+  // windowId, tabId, token, sourceToken, title, artist, playing, muted (the
+  // sole player's element mute), sourceSilent, canSetMute, tabMuted,
+  // canSetVolume, volume (only after ReadMediaSessionVolume), volumePending,
+  // canPlay, canPause, canSeek, currentTime (extrapolated to now),
+  // playbackRate, duration (finite only), canPreviousTrack, canNextTrack,
+  // canEnterPictureInPicture, canExitPictureInPicture, isPictureInPicture.
+  // `token` names the observed state, `sourceToken` the source (title, artist
+  // and album in one document): a command carries the token it was drawn
+  // from and is refused once the state moved on. "[]" while off.
+  virtual const char* MediaSessionsJson() = 0;
+  enum class MediaAction : uint8_t {
+    kPlay,
+    kPause,
+    kSeekTo,  // `seconds`, clamped to the duration.
+    kEnterPictureInPicture,
+    kExitPictureInPicture,  // Only for the tab that owns the PiP window.
+    kPreviousTrack,
+    kNextTrack,
+  };
+  // True means dispatched, not that the page accepted or completed it.
+  // Unsupported actions and stale tokens return false.
+  virtual bool MediaSessionAction(int tab_id,
+                                  MediaAction action,
+                                  const char* expected_token,
+                                  double seconds) = 0;
+  // Reads the sole player's element volume once; it arrives as "volume"
+  // through OnMediaSessionsChanged ("volumePending" meanwhile). Snapshots
+  // never query the renderer themselves.
+  virtual bool ReadMediaSessionVolume(int tab_id,
+                                      const char* expected_token) = 0;
+  // Sets the element volume (clamped to [0, 1]); the applied value comes
+  // back the same way. Needs canSetVolume (a volume read first).
+  virtual bool SetMediaSessionVolume(int tab_id,
+                                     double volume,
+                                     const char* expected_token) = 0;
+  // Mutes the session's single player without touching tab mute or the
+  // element volume. Needs canSetMute.
+  virtual bool SetMediaSessionMuted(int tab_id,
+                                    bool muted,
+                                    const char* expected_token) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -1824,7 +1880,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 5;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 6;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

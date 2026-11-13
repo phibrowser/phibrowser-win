@@ -254,6 +254,15 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
       out->auto_picture_in_picture_mode = *mode;
     }
   }
+  out->mini_player_enabled = dict.FindBool("sidebarMediaPlayerEnabled")
+                                 .value_or(out->mini_player_enabled);
+  if (const std::string* mode =
+          dict.FindString("sidebarMediaPresentationMode")) {
+    if (*mode == "dynamic" || *mode == "alwaysExpanded" ||
+        *mode == "alwaysCompact") {
+      out->mini_player_mode = *mode;
+    }
+  }
   out->selection_tint_enabled = dict.FindBool("PhiSelectionTintEnabled")
                                     .value_or(out->selection_tint_enabled);
 }
@@ -395,6 +404,8 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("suppressCloseIncognitoSpaceWarning",
            value.suppress_close_incognito_space_warning);
   root.Set("autoPictureInPictureMode", value.auto_picture_in_picture_mode);
+  root.Set("sidebarMediaPlayerEnabled", value.mini_player_enabled);
+  root.Set("sidebarMediaPresentationMode", value.mini_player_mode);
   root.Set("PhiSelectionTintEnabled", value.selection_tint_enabled);
   return root;
 }

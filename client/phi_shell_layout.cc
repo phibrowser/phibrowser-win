@@ -317,6 +317,11 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // room between the header and it.
   const int bar_h = scaled(kBottomBarHeight);
   const int bar_top = h - scaled(kBottomSpacer) - bar_h;
+  // The Mini Player's card sits on the bottom bar (the Mac's media player
+  // container above SidebarBottomBar); everything above it measures to its
+  // top. Its height animates, so the input carries the current one.
+  const int media_top =
+      hide_sidebar ? bar_top : bar_top - scaled(std::max(0, in.media_card_dip));
   int y = sidebar_header_bottom;
   const int pinned_rows = in.pinned_row_count;
   const int pinned_height =
@@ -354,7 +359,7 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // room. The rects above stay natural; the view scrolls them.
   out.stored_band = SidebarRect{};
   if (y > sidebar_header_bottom) {
-    const int room = bar_top - scaled(kFavoritesSpacer) - sidebar_header_bottom;
+    const int room = media_top - scaled(kFavoritesSpacer) - sidebar_header_bottom;
     const int list_floor = gap + (in.owned_tabs_label ? label_h : 0) +
                            scaled(kNewTabRowHeight) +
                            kMinTabListRows * scaled(kTabRowHeight + kTabRowGap);
@@ -380,6 +385,9 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // The bottom bar: the profile button, downloads (and the memory chip
   // while the AI suite is on) leading, the Feedback pill trailing.
   out.bottom_bar = {0, bar_top, sidebar, bar_top + bar_h};
+  out.media_card = media_top < bar_top
+                       ? SidebarRect{0, media_top, sidebar, bar_top}
+                       : SidebarRect{};
   const int bar_mid = bar_top + bar_h / 2;
   int bx = inset;
   // The profile (avatar) button leads, as the Mac's SidebarBottomBar does
@@ -415,7 +423,7 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   }
 
   out.tabs_left = inset;
-  out.tabs_limit = out.bottom_bar.top - scaled(kFavoritesSpacer);
+  out.tabs_limit = media_top - scaled(kFavoritesSpacer);
   if (hide_sidebar) {
     const SidebarRect zero = {};
     out.favorites = zero;
@@ -427,6 +435,7 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     out.tabs_label = zero;
     out.new_tab_row = zero;
     out.bottom_bar = zero;
+    out.media_card = zero;
     out.sidebar_profile = zero;
     out.sidebar_downloads = zero;
     out.memory = zero;

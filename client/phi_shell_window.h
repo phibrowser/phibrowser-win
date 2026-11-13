@@ -25,6 +25,7 @@
 #include "client/phi_drag_image.h"
 #include "client/phi_extension_action.h"
 #include "client/phi_feedback_window.h"
+#include "client/phi_mini_player.h"
 #include "client/phi_browser_host.h"
 #include "client/phi_caption_band.h"
 #include "client/phi_content_slide.h"
@@ -741,7 +742,8 @@ class PhiShellWindow : public PhiHitSource,
                             private PhiNativePagesShell,
                             private PhiSidebarShell,
                             private PhiSpacesStripShell,
-                            private PhiContentSlideShell {
+                            private PhiContentSlideShell,
+                            private PhiMiniPlayerHost {
  public:
   // `agent` hosts the window as a HIDDEN agent Space: the shell is created
   // off-screen and off the taskbar (WS_EX_TOOLWINDOW), shown without
@@ -1221,6 +1223,11 @@ class PhiShellWindow : public PhiHitSource,
   RECT profile_rect();
   // The Update reminder pill (empty without an update), for the layout verb.
   RECT update_rect();
+  // The Mini Player: the preference, the framework's change notice, and its
+  // state for agentSpace.window.layout.
+  void ApplyMiniPlayerPreference(bool enabled, const std::string& mode);
+  void OnMediaSessionsChanged();
+  std::string MiniPlayerJson();
   // The bottom bar's Downloads button and its live state (cue, progress)
   // for agentSpace.window.layout.
   RECT downloads_button_rect();
@@ -1373,6 +1380,7 @@ class PhiShellWindow : public PhiHitSource,
     RECT bookmark_separator{};
     RECT new_tab_row{};    // The sidebar's "+ New Tab" row.
     RECT bottom_bar{};
+    RECT media_card{};     // The Mini Player's band (phi_mini_player.h).
     // Bottom-bar buttons, the Mac's order: the profile (avatar) button,
     // downloads and memory leading, the Feedback and Chat capsules
     // trailing. Settings has NO bottom-bar button — it is a row of the
@@ -1424,6 +1432,17 @@ class PhiShellWindow : public PhiHitSource,
   Layout ComputeLayout(bool include_floating = true);
   // Physical shell/page bounds never use the floating panel's row geometry.
   Layout ComputeWindowLayout();
+  // PhiMiniPlayerHost:
+  phi_framework::PhiFramework* MiniPlayerFramework() const override;
+  std::vector<BrowserId> MiniPlayerBrowsers() const override;
+  std::vector<int> MiniPlayerVisibleTabs() const override;
+  std::wstring MiniPlayerTabTitle(BrowserId browser,
+                                  int tab_id) const override;
+  UINT MiniPlayerDpi() const override;
+  void MiniPlayerHeightChanged() override;
+  void MiniPlayerInvalidate() override;
+  void MiniPlayerShowTab(BrowserId browser, int tab_id) override;
+  void MiniPlayerCapture(bool capture) override;
   // The cache behind ComputeLayout: the inputs the last layout was derived
   // from and that layout. Re-derived whenever the inputs differ — a resize,
   // a DPI move, a mode/pref change, a count from the rebuild, the floating
@@ -2287,6 +2306,9 @@ class PhiShellWindow : public PhiHitSource,
   // in, the hover cursor they share with the rest of the chrome, and the
   // resize band that sets the width.
   std::unique_ptr<PhiSidebarView> sidebar_;
+  // The sidebar Mini Player (phi_mini_player.h): its card sits on the
+  // bottom bar of the docked sidebar and of the floating panel.
+  std::unique_ptr<PhiMiniPlayer> mini_player_;
   PhiLayoutMode layout_mode_ = PhiLayoutMode::kPerformance;
 
   // The split view's chrome, pushed per hosted browser (the Mac's

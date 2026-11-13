@@ -312,6 +312,11 @@ struct PhiSettings {
   // value set on a Mac is kept, not reset (docs/user-data-parity.md §4.4).
   bool suppress_close_incognito_space_warning = false;
   std::string auto_picture_in_picture_mode = "normal";  // off|normal|parked
+  // The sidebar Mini Player (the Mac's sidebarMediaPlayerEnabled and
+  // sidebarMediaPresentationMode, same keys; not synced on the Mac either).
+  // The mode is kept while the player is off.
+  bool mini_player_enabled = true;
+  std::string mini_player_mode = "dynamic";  // dynamic|alwaysExpanded|alwaysCompact
   bool selection_tint_enabled = true;
   // Test rig: never gate the browser and never show onboarding (the Mac's
   // -skip-onboarding). Never agent-settable.

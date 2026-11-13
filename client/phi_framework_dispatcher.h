@@ -129,6 +129,7 @@ class PhiFrameworkDispatcher : public phi_framework::PhiFrameworkDelegate {
                               bool* armed) override;
   void OnColdStartParkedWindows(const char* parked_json,
                                 const char* reporting_profile) override;
+  void OnMediaSessionsChanged() override;
 
  private:
   // The composition root that owns this. Non-owning back-pointer.

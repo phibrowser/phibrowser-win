@@ -325,4 +325,8 @@ void PhiFrameworkDispatcher::OnAnalyticsEventCaptured(
   coordinator_.RecordAnalyticsEvent(module, event_name, properties_json);
 }
 
+void PhiFrameworkDispatcher::OnMediaSessionsChanged() {
+  coordinator_.OnMediaSessionsChanged();
+}
+
 }  // namespace phi_client

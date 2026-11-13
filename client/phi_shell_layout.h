@@ -191,6 +191,9 @@ struct ShellLayoutInputs {
   // The Update reminder's measured width in dip (label + padding, at least
   // kUpdatePillMinWidth); 0 = no update on offer, no pill.
   int update_dip = 0;
+  // The Mini Player's reserved band above the bottom bar in dip, gaps
+  // included (phi_mini_player.h); 0 = no card. Vertical layouts only.
+  int media_card_dip = 0;
 
   friend bool operator==(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -215,7 +218,8 @@ struct ShellLayoutInputs {
            a.owned_tabs_label == b.owned_tabs_label &&
            a.space_chip_dip == b.space_chip_dip &&
            a.agent_chip_dip == b.agent_chip_dip &&
-           a.update_dip == b.update_dip;
+           a.update_dip == b.update_dip &&
+           a.media_card_dip == b.media_card_dip;
   }
   friend bool operator!=(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -269,6 +273,8 @@ struct ShellLayout {
   SidebarRect bookmark_separator;
   SidebarRect new_tab_row;  // The sidebar's "+ New Tab" row.
   SidebarRect bottom_bar;
+  // The Mini Player's band, on top of the bottom bar. Empty without a card.
+  SidebarRect media_card;
   // Bottom-bar buttons (§4.2): the profile (avatar) button, Downloads and
   // the memory chip leading, the Feedback pill (and the Chat capsule while
   // the AI suite is on) trailing. The address row has no Downloads button

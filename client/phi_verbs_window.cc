@@ -231,6 +231,12 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   }
   out.Set("rows", shell->LayoutRowsJson());
   out.Set("drag", shell->DragStateJson());
+  // The sidebar Mini Player: its source, playback and part rects (shell
+  // client coordinates, the docked sidebar's).
+  if (std::optional<base::Value> player = base::JSONReader::Read(
+          shell->MiniPlayerJson(), base::JSON_PARSE_RFC)) {
+    out.Set("miniPlayer", std::move(*player));
+  }
   // The surface registry's view of this window: origin tab -> kind.
   base::DictValue surfaces;
   for (const auto& [tab, kind] :
@@ -1054,6 +1060,10 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
   sections.Append("about");
   out.Set("sections", std::move(sections));
   out.Set("developerMode", coordinator_->settings().developer_mode);
+  out.Set("sidebarMediaPlayerEnabled",
+          coordinator_->settings().mini_player_enabled);
+  out.Set("sidebarMediaPresentationMode",
+          coordinator_->settings().mini_player_mode);
   out.Set("allowAgentControl", coordinator_->settings().allow_agent_control);
   out.Set("allowAgentUserSpaces",
           coordinator_->settings().allow_agent_user_spaces);
@@ -1167,6 +1177,19 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   for (const auto& entry : kBottomButtons) {
     if (std::optional<bool> shown = ctx.params.FindBool(entry.key)) {
       coordinator_->SetBottomBarShows(entry.button, *shown);
+      ok = true;
+    }
+  }
+  // The Mini Player (the Mac's keys): either may come alone.
+  {
+    const std::optional<bool> on =
+        ctx.params.FindBool("sidebarMediaPlayerEnabled");
+    const std::string* mode =
+        ctx.params.FindString("sidebarMediaPresentationMode");
+    if (on || mode) {
+      coordinator_->SetMiniPlayer(
+          on.value_or(coordinator_->settings().mini_player_enabled),
+          mode ? *mode : coordinator_->settings().mini_player_mode);
       ok = true;
     }
   }

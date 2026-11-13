@@ -578,6 +578,7 @@ PhiShellWindow::Layout PhiShellWindow::ToLayout(
   out.bookmark_separator = PhiToRect(shell.bookmark_separator);
   out.new_tab_row = PhiToRect(shell.new_tab_row);
   out.bottom_bar = PhiToRect(shell.bottom_bar);
+  out.media_card = PhiToRect(shell.media_card);
   out.sidebar_profile = PhiToRect(shell.sidebar_profile);
   out.sidebar_downloads = PhiToRect(shell.sidebar_downloads);
   out.memory = PhiToRect(shell.memory);
@@ -640,6 +641,7 @@ ShellLayoutInputs PhiShellWindow::CurrentLayoutInputs(bool include_floating) con
   in.space_chip_dip = space_chip_dip_;
   in.agent_chip_dip = agent_chip_dip_;
   in.update_dip = update_dip_;
+  in.media_card_dip = mini_player_ ? mini_player_->ReservedDip() : 0;
   if (floating && floating_panel_h_ > 0) {
     // The panel's own height: its bands (the bottom bar) fit the panel.
     in.client_height = floating_panel_h_;
@@ -1124,6 +1126,8 @@ PhiShellWindow::PhiShellWindow(SlotId slot,
           incognito)),
       agent_(agent),
       incognito_(incognito) {
+  mini_player_ = std::make_unique<PhiMiniPlayer>(
+      static_cast<PhiMiniPlayerHost*>(this));
   if (!browser_hwnd || !::IsWindow(browser_hwnd)) {
     LOG(ERROR) << "[PhiClient] adopt: invalid browser HWND for browser "
                << browser.value << " (slot " << slot_.value << ")";
@@ -1373,6 +1377,7 @@ PhiShellWindow::~PhiShellWindow() {
   // delivers WM_ACTIVATE / WM_SIZE / WM_CAPTURECHANGED) find a controller
   // that must do nothing but die.
   destroying_ = true;
+  mini_player_.reset();  // Its timers call back into this shell.
   PhiAnimator::ForThread().Cancel(download_cue_animation_);
   PhiAnimator::ForThread().Cancel(download_fade_animation_);
   DropFloatingCache();  // The panel's WM_DESTROY no longer reaches us.
@@ -3838,6 +3843,15 @@ void PhiShellWindow::SetHover(HoverKind kind, int index) {
 }
 
 void PhiShellWindow::OnChromeMouseMove(POINT client_pt) {
+  if (mini_player_) {
+    // A seek, volume or swipe drag owns the pointer; otherwise the card
+    // only tracks its own hover (nothing else lives in its band).
+    const bool dragging = mini_player_->dragging();
+    mini_player_->OnMouseMove(ComputeLayout().media_card, client_pt);
+    if (dragging) {
+      return;
+    }
+  }
   HoverKind kind = HoverKind::kNone;
   int index = -1;
   // The band's chips and rows are hit-tested as they are — and while the
@@ -3972,6 +3986,9 @@ bool PhiShellWindow::BandOnShell() const {
 }
 
 void PhiShellWindow::ClearHover() {
+  if (mini_player_) {
+    mini_player_->OnMouseLeave();
+  }
   surface_tile_hot_ = false;
   spaces_->DismissHoverCard(std::string());
   spaces_->SetRowHovered(false);
@@ -3994,6 +4011,12 @@ std::wstring PhiShellWindow::ChromeTipAt(POINT pt) {
     }
   }
   const Layout layout = ComputeLayout();
+  if (mini_player_) {
+    std::wstring tip = mini_player_->TipAt(layout.media_card, pt);
+    if (!tip.empty()) {
+      return tip;
+    }
+  }
   // A menu row's label, its "\t<chord>" dropped.
   const auto label = [](const char* key) {
     const std::wstring text = PhiStr(key);
@@ -5695,6 +5718,11 @@ void PhiShellWindow::RebuildChips() {
 // Nothing here paints, and nothing else writes a row.
 void PhiShellWindow::RebuildTabs() {
   SyncSplitChipTimer();  // The split state may have changed with the rows.
+  if (mini_player_) {
+    // The visible tabs may have moved (a switch, a Space, a split): the
+    // card re-selects its background source.
+    mini_player_->Refresh();
+  }
   // The floating panel shows the EXPANDED sidebar of a collapsed shell.
   // While it is up the rows are built in that geometry — the docked,
   // collapsed shell shows no rows of its own — so the panel paints them as
@@ -5967,6 +5995,11 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   }
   const Layout layout = ComputeLayout();
   POINT pt = {x, y};
+  if (mini_player_ &&
+      mini_player_->OnButtonDown(layout.media_card, pt,
+                                 ::GetKeyState(VK_MENU) < 0)) {
+    return;
+  }
   if (framework_ && ::PtInRect(&layout.back, pt)) {
     // Back while the reader covers this tab reads as "leave the reader" —
     // the Mac's closeReaderOverlayForBackForwardNavigation, and what the
@@ -9264,6 +9297,15 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       }
       break;
     case WM_LBUTTONUP:
+      if (self && self->mini_player_ && self->mini_player_->dragging()) {
+        forward([&] {
+          self->mini_player_->OnButtonUp(
+              self->ComputeLayout().media_card,
+              {GET_X_LPARAM(lparam),
+               GET_Y_LPARAM(lparam) + self->floating_offset_y_});
+        });
+        return 0;
+      }
       if (self && self->floating_drag_) {
         forward([&] {
           const bool dragged = self->sidebar_->drag_active();
@@ -9277,6 +9319,9 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       }
       break;
     case WM_CAPTURECHANGED:
+      if (self && self->mini_player_) {
+        self->mini_player_->OnCaptureLost();
+      }
       if (self && self->floating_drag_) {
         forward([&] { self->sidebar_->AbortDrag(); });
         return 0;
@@ -9946,6 +9991,9 @@ void PhiShellWindow::PaintChrome(HDC dc,
   const auto bottom_hot = [&](int ordinal) {
     return hover_kind_ == HoverKind::kNav && hover_index_ == 6 + ordinal;
   };
+  if (mini_player_) {
+    mini_player_->Paint(dc, layout.media_card, palette);
+  }
   avatar_disc_ = {};
   {
     const auto tool = [&](const RECT& rect, const wchar_t* glyph, bool hot) {
@@ -10610,6 +10658,12 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       return ::DefWindowProcW(hwnd, msg, wparam, lparam);
     case WM_LBUTTONUP:
       if (self) {
+        if (self->mini_player_ && self->mini_player_->dragging() &&
+            self->mini_player_->OnButtonUp(
+                self->ComputeLayout().media_card,
+                {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)})) {
+          return 0;
+        }
         // A caption button's press holds the capture until this release.
         if (self->caption_band_ &&
             self->caption_band_->OnLButtonUp(
@@ -10634,6 +10688,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       return ::DefWindowProcW(hwnd, msg, wparam, lparam);
     case WM_CAPTURECHANGED:
       if (self) {
+        if (self->mini_player_) {
+          self->mini_player_->OnCaptureLost();
+        }
         if (self->caption_band_) {
           self->caption_band_->OnCaptureLost();
         }
@@ -10989,6 +11046,120 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       return 0;
   }
   return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+}
+
+// --- The Mini Player (phi_mini_player.h) ----------------------------------
+
+void PhiShellWindow::ApplyMiniPlayerPreference(bool enabled,
+                                               const std::string& mode) {
+  if (mini_player_) {
+    // Agent Spaces have no one listening: their sidebar never carries it.
+    mini_player_->SetPreference(enabled && !agent_,
+                                PhiMiniPlayer::ModeFromName(mode));
+  }
+}
+
+void PhiShellWindow::OnMediaSessionsChanged() {
+  if (mini_player_) {
+    mini_player_->Refresh();
+  }
+}
+
+std::string PhiShellWindow::MiniPlayerJson() {
+  return mini_player_ ? mini_player_->StateJson(ComputeWindowLayout().media_card)
+                      : std::string("{}");
+}
+
+phi_framework::PhiFramework* PhiShellWindow::MiniPlayerFramework() const {
+  return framework_;
+}
+
+std::vector<BrowserId> PhiShellWindow::MiniPlayerBrowsers() const {
+  std::vector<BrowserId> out;
+  for (const auto& [space, browser] : browsers_->spaces().all()) {
+    out.push_back(browser);
+  }
+  return out;
+}
+
+std::vector<int> PhiShellWindow::MiniPlayerVisibleTabs() const {
+  std::vector<int> out;
+  const BrowserId browser = active_browser_id();
+  if (!browser.valid() || shell_hidden_ || !model_) {
+    return out;
+  }
+  const TabSnapshot* active = model_->ActiveTab(browser);
+  if (!active) {
+    return out;
+  }
+  out.push_back(active->id.value);
+  if (const auto* split = model_->SplitOfTab(browser, active->id)) {
+    for (phi_framework::TabId pane : split->tabs) {
+      if (pane != active->id) {
+        out.push_back(pane.value);
+      }
+    }
+  }
+  return out;
+}
+
+std::wstring PhiShellWindow::MiniPlayerTabTitle(BrowserId browser,
+                                                int tab_id) const {
+  const TabSnapshot* tab =
+      model_ ? model_->FindTab(browser, phi_framework::TabId(tab_id)) : nullptr;
+  return tab ? base::UTF8ToWide(tab->title) : std::wstring();
+}
+
+UINT PhiShellWindow::MiniPlayerDpi() const {
+  return dpi_;
+}
+
+void PhiShellWindow::MiniPlayerHeightChanged() {
+  if (!shell_hwnd_ || destroying_) {
+    return;
+  }
+  // Only the sidebar's bands move: the rows re-fit above the card.
+  ScheduleRefresh();
+  const Layout layout = ComputeWindowLayout();
+  ::InvalidateRect(shell_hwnd_, &layout.sidebar, FALSE);
+  if (floating_sidebar_) {
+    ::InvalidateRect(floating_sidebar_, nullptr, FALSE);
+  }
+}
+
+void PhiShellWindow::MiniPlayerInvalidate() {
+  if (!shell_hwnd_ || destroying_) {
+    return;
+  }
+  const Layout layout = ComputeWindowLayout();
+  // The second card peeks a few dip above the band: take the gap with it.
+  RECT band = layout.media_card;
+  if (band.bottom > band.top) {
+    band.top -= Scaled(6);
+    ::InvalidateRect(shell_hwnd_, &band, FALSE);
+  }
+  if (floating_sidebar_) {
+    ::InvalidateRect(floating_sidebar_, nullptr, FALSE);
+  }
+}
+
+void PhiShellWindow::MiniPlayerShowTab(BrowserId browser, int tab_id) {
+  // The tab search's path: the framework activates the tab across Spaces
+  // and windows, and the client surfaces the shell that hosts it.
+  if (framework_ && framework_->ActivateSearchTab(tab_id) && services_.window) {
+    services_.window->FocusWindowForBrowser(browser.value);
+  }
+}
+
+void PhiShellWindow::MiniPlayerCapture(bool capture) {
+  HWND target = floating_layout_ && floating_sidebar_ ? floating_sidebar_
+                                                      : shell_hwnd_;
+  if (capture) {
+    ::SetCapture(target);
+  } else if (::GetCapture() == shell_hwnd_ ||
+             (floating_sidebar_ && ::GetCapture() == floating_sidebar_)) {
+    ::ReleaseCapture();
+  }
 }
 
 }  // namespace phi_client

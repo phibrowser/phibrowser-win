@@ -7836,6 +7836,28 @@
    "zh-Hans": "保持固定标签页处于加载状态",
    "zh-Hant": "讓釘選分頁保持載入"
   },
+  "settings.advanced.miniPlayer.offOption": {
+   "de": "Aus",
+   "en": "Off",
+   "es": "Desactivado",
+   "fr": "Désactivé",
+   "ja": "オフ",
+   "ko": "끔",
+   "nl": "Uit",
+   "zh-Hans": "关闭",
+   "zh-Hant": "關閉"
+  },
+  "settings.advanced.miniPlayer.title": {
+   "de": "MiniPlayer",
+   "en": "Mini Player",
+   "es": "Minirreproductor",
+   "fr": "Mini-lecteur",
+   "ja": "ミニプレーヤー",
+   "ko": "미니 플레이어",
+   "nl": "Minispeler",
+   "zh-Hans": "迷你播放程序",
+   "zh-Hant": "迷你播放器"
+  },
   "settings.advanced.openTabIndicators.showToggle": {
    "de": "Indikatoren für offene Tabs anzeigen",
    "en": "Show open tab indicators",
@@ -7934,6 +7956,17 @@
    "nl": "Phi start met een nieuw venster. Als je een venster sluit, word je bij sommige sites mogelijk uitgelogd.",
    "zh-Hans": "Phi 启动时打开新窗口。关闭窗口可能会让你在部分网站上退出登录。",
    "zh-Hant": "Phi 會以新視窗啟動。關閉視窗可能會讓你從某些網站登出。"
+  },
+  "settings.advanced.sidebarMedia.hint": {
+   "de": "Steuere Medien, die in Hintergrund-Tabs wiedergegeben werden, über die Seitenleiste.",
+   "en": "Control media playing in background tabs from the sidebar.",
+   "es": "Controla desde la barra lateral el contenido multimedia que se reproduce en las pestañas en segundo plano.",
+   "fr": "Permet de contrôler les médias en cours de lecture dans les onglets en arrière-plan depuis la barre latérale.",
+   "ja": "バックグラウンドのタブで再生中のメディアをサイドバーから操作します。",
+   "ko": "백그라운드 탭에서 재생 중인 미디어를 사이드바에서 제어해요.",
+   "nl": "Bedien media die in achtergrondtabbladen wordt afgespeeld vanuit de zijbalk.",
+   "zh-Hans": "在侧边栏中控制后台标签页正在播放的媒体。",
+   "zh-Hant": "從側邊欄控制背景分頁中播放的媒體。"
   },
   "settings.advanced.tabPreview.showToggle": {
    "de": "Vorschaukarte anzeigen, wenn du den Mauszeiger über einen Tab bewegst",
@@ -9111,6 +9144,39 @@
    "nl": "Laatste sessie herstellen",
    "zh-Hans": "恢复上次会话",
    "zh-Hant": "還原上次的工作階段"
+  },
+  "settings.general.sidebarMedia.alwaysCompactOption": {
+   "de": "Immer kompakt",
+   "en": "Always compact",
+   "es": "Siempre compacto",
+   "fr": "Toujours compact",
+   "ja": "常にコンパクト",
+   "ko": "항상 축소",
+   "nl": "Altijd compact",
+   "zh-Hans": "始终紧凑",
+   "zh-Hant": "一律精簡"
+  },
+  "settings.general.sidebarMedia.alwaysExpandedOption": {
+   "de": "Immer erweitert",
+   "en": "Always expanded",
+   "es": "Siempre expandido",
+   "fr": "Toujours développé",
+   "ja": "常に展開",
+   "ko": "항상 확장",
+   "nl": "Altijd uitgeklapt",
+   "zh-Hans": "始终展开",
+   "zh-Hant": "一律展開"
+  },
+  "settings.general.sidebarMedia.dynamicOption": {
+   "de": "Automatisch",
+   "en": "Auto",
+   "es": "Automático",
+   "fr": "Auto",
+   "ja": "自動",
+   "ko": "자동",
+   "nl": "Automatisch",
+   "zh-Hans": "自动",
+   "zh-Hant": "自動"
   },
   "settings.general.theme.colorTitle": {
    "de": "Farbe",
@@ -11861,6 +11927,130 @@
    "nl": "Zijbalk verbergen\tCtrl+S",
    "zh-Hans": "隐藏侧边栏\tCtrl+S",
    "zh-Hant": "隱藏側邊欄\tCtrl+S"
+  },
+  "sidebar.media.dismiss": {
+   "de": "Medienplayer ausblenden",
+   "en": "Dismiss media player",
+   "es": "Ocultar reproductor multimedia",
+   "fr": "Masquer le lecteur multimédia",
+   "ja": "メディアプレーヤーを非表示",
+   "ko": "미디어 플레이어 숨기기",
+   "nl": "Verberg mediaspeler",
+   "zh-Hans": "隐藏媒体播放器",
+   "zh-Hant": "隱藏媒體播放器"
+  },
+  "sidebar.media.enterPictureInPicture": {
+   "de": "Bild-in-Bild starten",
+   "en": "Open picture in picture",
+   "es": "Abrir imagen dentro de imagen",
+   "fr": "Activer le mode Image dans l'image",
+   "ja": "ピクチャインピクチャにする",
+   "ko": "화면 속 화면 열기",
+   "nl": "Open beeld in beeld",
+   "zh-Hans": "进入画中画",
+   "zh-Hant": "開啟子母畫面"
+  },
+  "sidebar.media.exitPictureInPicture": {
+   "de": "Bild-in-Bild beenden",
+   "en": "Close picture in picture",
+   "es": "Cerrar imagen dentro de imagen",
+   "fr": "Quitter le mode Image dans l'image",
+   "ja": "ピクチャインピクチャを閉じる",
+   "ko": "화면 속 화면 닫기",
+   "nl": "Sluit beeld in beeld",
+   "zh-Hans": "关闭画中画",
+   "zh-Hant": "關閉子母畫面"
+  },
+  "sidebar.media.nextTrack": {
+   "de": "Nächster Titel",
+   "en": "Next track",
+   "es": "Pista siguiente",
+   "fr": "Piste suivante",
+   "ja": "次のトラック",
+   "ko": "다음 트랙",
+   "nl": "Volgend nummer",
+   "zh-Hans": "下一曲",
+   "zh-Hant": "下一首"
+  },
+  "sidebar.media.openTab": {
+   "de": "Tab mit Wiedergabe anzeigen",
+   "en": "Show playing tab",
+   "es": "Mostrar la pestaña en reproducción",
+   "fr": "Afficher l'onglet en cours de lecture",
+   "ja": "再生中のタブを表示",
+   "ko": "재생 중인 탭 보기",
+   "nl": "Toon afspelend tabblad",
+   "zh-Hans": "显示正在播放的标签页",
+   "zh-Hant": "顯示播放中的分頁"
+  },
+  "sidebar.media.pause": {
+   "de": "Pause",
+   "en": "Pause",
+   "es": "Pausa",
+   "fr": "Pause",
+   "ja": "一時停止",
+   "ko": "일시 정지",
+   "nl": "Pauzeer",
+   "zh-Hans": "暂停",
+   "zh-Hant": "暫停"
+  },
+  "sidebar.media.play": {
+   "de": "Wiedergeben",
+   "en": "Play",
+   "es": "Reproducir",
+   "fr": "Lecture",
+   "ja": "再生",
+   "ko": "재생",
+   "nl": "Speel af",
+   "zh-Hans": "播放",
+   "zh-Hant": "播放"
+  },
+  "sidebar.media.previousTrack": {
+   "de": "Vorheriger Titel",
+   "en": "Previous track",
+   "es": "Pista anterior",
+   "fr": "Piste précédente",
+   "ja": "前のトラック",
+   "ko": "이전 트랙",
+   "nl": "Vorig nummer",
+   "zh-Hans": "上一曲",
+   "zh-Hant": "上一首"
+  },
+  "sidebar.media.progress": {
+   "de": "Wiedergabeposition",
+   "en": "Playback position",
+   "es": "Posición de reproducción",
+   "fr": "Position de lecture",
+   "ja": "再生位置",
+   "ko": "재생 위치",
+   "nl": "Afspeelpositie",
+   "zh-Hans": "播放位置",
+   "zh-Hant": "播放位置"
+  },
+  "sidebar.media.untitled": {
+   "de": "Medien",
+   "en": "Media",
+   "es": "Multimedia",
+   "fr": "Média",
+   "ja": "メディア",
+   "ko": "미디어",
+   "nl": "Media",
+   "zh-Hans": "媒体",
+   "zh-Hant": "媒體"
+  },
+  "sidebar.media.volumeButtonAlt": {
+   "en": "Volume (Alt-click to toggle mute)"
+  },
+  "sidebar.media.volumeSlider": {
+   "de": "Wiedergabelautstärke",
+   "en": "Playback volume",
+   "es": "Volumen de reproducción",
+   "fr": "Volume de lecture",
+   "ja": "再生音量",
+   "ko": "재생 음량",
+   "nl": "Afspeelvolume",
+   "zh-Hans": "播放音量",
+   "zh-Hant": "播放音量"
   },
   "sidebar.newSpaceWithNewProfile": {
    "de": "Neuer Space mit neuem Profil…",

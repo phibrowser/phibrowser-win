@@ -668,6 +668,7 @@ void PhiCoordinator::OnProfileLoaded(const char* profile_id) {
   PushPeekPreferences();
   PushKioskPreferences();
   PushNewTabPreferences();
+  PushMiniPlayerPreference();
   PushDisplayLanguageToChromium();
 }
 
@@ -3989,6 +3990,22 @@ void PhiCoordinator::PushKioskPreferences() {
   }
 }
 
+void PhiCoordinator::PushMiniPlayerPreference() {
+  if (framework_) {
+    framework_->SetMediaControlsEnabled(preferences_.MiniPlayerEnabled());
+  }
+  for (PhiShellWindow* controller : registry_.Controllers()) {
+    controller->ApplyMiniPlayerPreference(preferences_.MiniPlayerEnabled(),
+                                          preferences_.MiniPlayerMode());
+  }
+}
+
+void PhiCoordinator::OnMediaSessionsChanged() {
+  for (PhiShellWindow* controller : registry_.Controllers()) {
+    controller->OnMediaSessionsChanged();
+  }
+}
+
 void PhiCoordinator::PushNewTabPreferences() {
   if (framework_) {
     framework_->SetNewTabOpensOmnibox(preferences_.NewTabOpensOmnibox());
@@ -4506,6 +4523,9 @@ void PhiCoordinator::OnPreferencesChanged(
     case PreferenceChange::kKiosk:
       PushKioskPreferences();  // Likewise: the click is remapped there.
       break;
+    case PreferenceChange::kMiniPlayer:
+      PushMiniPlayerPreference();
+      break;
     case PreferenceChange::kRestore:
       PushRestorePreference();  // Every LOADED profile takes the choice.
       break;
@@ -4692,6 +4712,10 @@ void PhiCoordinator::SetThemeId(const std::string& id) {
 
 void PhiCoordinator::SetAutoPictureInPictureMode(const std::string& mode) {
   preferences_.SetAutoPictureInPictureMode(mode);
+}
+
+void PhiCoordinator::SetMiniPlayer(bool enabled, const std::string& mode) {
+  preferences_.SetMiniPlayer(enabled, mode);
 }
 
 void PhiCoordinator::SetAppearance(PhiAppearance appearance) {
@@ -6782,6 +6806,8 @@ void PhiCoordinator::HostUserShell(BrowserId browser, HWND hwnd,
                                             first_space),
       /*agent=*/false, incognito);
   registry_.Bind(browser, slot);
+  controller->ApplyMiniPlayerPreference(preferences_.MiniPlayerEnabled(),
+                                        preferences_.MiniPlayerMode());
   controller->ScheduleRefresh();  // After registration (lane 1 D12).
   if (incognito) {
     return;

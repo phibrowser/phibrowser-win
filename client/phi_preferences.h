@@ -74,6 +74,8 @@ class PhiPreferences : public ChromePrefsHost {
     kPinScope,       // The write-through mirror of the tab store's scope.
     kSyncedMisc,     // A synced value with no Windows consumer yet changed.
     kFolio,          // Folio's folder or auto-save opt-in (re-arm Mirage).
+    kMiniPlayer,     // The Mini Player switch or mode: the framework mirror
+                     // and every sidebar's card are due.
   };
   class Observer {
    public:
@@ -178,6 +180,13 @@ class PhiPreferences : public ChromePrefsHost {
   }
   // "off" / "normal" / "parked"; anything else is refused.
   void SetAutoPictureInPictureMode(const std::string& mode);
+  // The sidebar Mini Player: on/off, and "dynamic" / "alwaysExpanded" /
+  // "alwaysCompact" (anything else is refused).
+  bool MiniPlayerEnabled() const { return settings_.mini_player_enabled; }
+  const std::string& MiniPlayerMode() const {
+    return settings_.mini_player_mode;
+  }
+  void SetMiniPlayer(bool enabled, const std::string& mode);
   bool SelectionTintEnabled() const { return settings_.selection_tint_enabled; }
   void SetSelectionTintEnabled(bool enabled);
   void SetShowTabPreviews(bool enabled);
