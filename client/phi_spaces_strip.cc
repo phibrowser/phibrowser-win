@@ -38,6 +38,19 @@ constexpr int kCornerRadius = 8;  // The pill radius, everywhere.
 // The band slide (the Mac's Space switch) and the theme ramp behind it.
 constexpr int kSpaceSwapMs = 150;
 constexpr int kThemeRampMs = 600;
+// SwapProgress's frame lead: reads closer than this are one frame, and no
+// frame counts as longer than the cap (a stall must not skip the slide).
+constexpr double kSwapSameFrameMs = 8;
+constexpr double kSwapMaxFrameLeadMs = 100;
+
+double PreciseNowMs() {
+  LARGE_INTEGER now = {};
+  LARGE_INTEGER freq = {};
+  ::QueryPerformanceCounter(&now);
+  ::QueryPerformanceFrequency(&freq);
+  return static_cast<double>(now.QuadPart) * 1000.0 /
+         static_cast<double>(std::max<LONGLONG>(1, freq.QuadPart));
+}
 // The pip hover card's dwell and its (rounder than the pills') radius.
 constexpr int kHoverCardDelayMs = 300;
 constexpr int kHoverCardRadius = 8;  // windows-native-ui.md §5.6.
@@ -798,7 +811,17 @@ double PhiSpacesStrip::SwapProgress() const {
   if (!swap_start_) {
     return 1.0;
   }
-  return Smoothstep(static_cast<double>(::GetTickCount64() - swap_start_) /
+  const double now = PreciseNowMs();
+  // Calls this close together are one frame (the band and the strip's pill
+  // both read it): they share its lead.
+  if (now - swap_frame_at_ms_ > kSwapSameFrameMs) {
+    swap_frame_lead_ms_ =
+        swap_frame_at_ms_ > 0
+            ? std::min(now - swap_frame_at_ms_, kSwapMaxFrameLeadMs)
+            : 0;
+    swap_frame_at_ms_ = now;
+  }
+  return Smoothstep((now + swap_frame_lead_ms_ - swap_start_ms_) /
                     kSpaceSwapMs);
 }
 
@@ -835,6 +858,8 @@ void PhiSpacesStrip::BeginSwap(const std::string& entering_space_id) {
   shell_->SpacesDropLeavingBand();
   shell_->SpacesSwapBandModel();
   swap_start_ = ramp_start_ = ::GetTickCount64();
+  swap_start_ms_ = PreciseNowMs();
+  swap_frame_at_ms_ = swap_frame_lead_ms_ = 0;
 
   const HWND shell = shell_->SpacesShellWindow();
   if (!shell) {

@@ -262,7 +262,11 @@ class PhiSpacesStrip {
   // agent Spaces (the Mac's presentedSpaces) — whatever the layout shows;
   // one past the end for a Space the strip does not list.
   int StripPosition(const std::string& space_id) const;
-  // The slide's eased position, 1.0 when idle.
+  // The slide's eased position for the frame being painted, 1.0 when idle.
+  // It reads the clock where that frame reaches the screen: now plus the
+  // length of the swap's previous frame. A shell frame at 300 % on a slow
+  // box takes ~50 ms, and read at "now" the band showed its end a frame
+  // late, holding the page flip (which waits for it) with it.
   double SwapProgress() const;
   // The palette the leaving Space's retained rows are painted at — frozen
   // when the switch began, so the two models never share a tint.
@@ -394,6 +398,12 @@ class PhiSpacesStrip {
   // usually moved (or scrolled out) by the time the first frame is drawn.
   ULONGLONG swap_start_ = 0;
   ULONGLONG ramp_start_ = 0;
+  // The slide's own clock in precise milliseconds (GetTickCount64 steps by
+  // ~16 ms), and the frame lead SwapProgress adds: when this swap's last
+  // frame read the clock, and how long the frame before took.
+  double swap_start_ms_ = 0;
+  mutable double swap_frame_at_ms_ = 0;
+  mutable double swap_frame_lead_ms_ = 0;
   bool swap_forward_ = true;
   std::string swap_from_space_;
   PhiPalette swap_source_palette_{};

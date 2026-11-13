@@ -5318,11 +5318,19 @@ void PhiShellWindow::RevealSwappedContent() {
   swap_reveal_ = nullptr;  // The native pages' swap gate opens.
   swap_conceal_ = nullptr;
   const bool had_reveal = reveal != nullptr;
-  if (had_reveal && layout_mode_ != PhiLayoutMode::kComfortable) {
+  if (had_reveal && layout_mode_ != PhiLayoutMode::kComfortable &&
+      (native_pages_->ntp_mounted() ||
+       native_pages_->bookmark_page_mounted())) {
     // The card as the screen shows it now holds over the swap: an area a
     // native page uncovers stays empty until the entering child's next
     // commit — a black frame. (The comfortable slide lands from its own
-    // composite under the child, ReleaseContentSlide.)
+    // composite under the child, ReleaseContentSlide.) Only while a native
+    // page is up, i.e. the leaving Space shows one (the swap gate keeps it
+    // mounted until here): the screen read and the card-sized layer cost
+    // ~90 ms at 300 % and hide the entering page for the veil's hold, which
+    // made a page-to-page Space switch 4-7 times slower than a tab switch
+    // (GitHub phibrowser/phibrowser-win#13). A page-to-page reveal swaps two
+    // browser children and was clean without it.
     RECT card = ComputeWindowLayout().content;
     ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&card),
                       2);
