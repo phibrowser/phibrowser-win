@@ -92,8 +92,9 @@ struct PhiArcSpace {
 };
 // StorableSidebar.json → the Spaces in Arc's sidebar order (the Mac's
 // ArcDataParserTool.parse, without the Favorites and theme the Migration
-// wizard reads). `untitled` names a Space with no title. Nullopt when the
-// file is not Arc's shape.
+// wizard reads). Reads the Mac's file and Arc for Windows' (which keeps its
+// synced copy under firebaseSyncState.syncData). `untitled` names a Space
+// with no title. Nullopt when the file has no sidebar.containers.
 std::optional<std::vector<PhiArcSpace>> PhiParseArcSidebar(
     std::string_view json,
     const std::string& untitled);

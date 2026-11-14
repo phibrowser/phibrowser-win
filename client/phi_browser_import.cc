@@ -576,18 +576,26 @@ std::optional<std::vector<PhiArcSpace>> PhiParseArcSidebar(
     const std::string& untitled) {
   std::optional<base::DictValue> root =
       base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+  // The synced copy: the Mac's sidebarSyncState, Arc for Windows'
+  // firebaseSyncState.syncData. Either may be missing; the live sidebar
+  // alone holds every Space and pin.
   const base::DictValue* sync =
       root ? root->FindDict("sidebarSyncState") : nullptr;
+  if (!sync && root) {
+    sync = root->FindDictByDottedPath("firebaseSyncState.syncData");
+  }
   const base::DictValue* sidebar = root ? root->FindDict("sidebar") : nullptr;
   const base::ListValue* sync_items = sync ? sync->FindList("items") : nullptr;
   const base::ListValue* containers =
       sidebar ? sidebar->FindList("containers") : nullptr;
-  if (!sync_items || !containers) {
+  if (!containers) {
     return std::nullopt;
   }
   // The synced items, then the live sidebar's own on top of them.
   std::map<std::string, ArcItem> items;
-  ReadArcItems(*sync_items, &items);
+  if (sync_items) {
+    ReadArcItems(*sync_items, &items);
+  }
   std::vector<const base::ListValue*> container_spaces;
   for (const base::Value& c : *containers) {
     const base::DictValue* container = c.GetIfDict();
@@ -602,7 +610,7 @@ std::optional<std::vector<PhiArcSpace>> PhiParseArcSidebar(
     }
   }
   std::vector<ArcSpaceModel> models = ReadArcSpaceModels(container_spaces);
-  if (models.empty()) {
+  if (models.empty() && sync) {
     if (const base::ListValue* synced = sync->FindList("spaceModels")) {
       models = ReadArcSpaceModels({synced});
     }

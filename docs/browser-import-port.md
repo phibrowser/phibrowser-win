@@ -104,9 +104,11 @@ their cookies are decrypted by the fork (below).
   importer: `ChromiumImporter` with the folder name per type).
 * Arc for Windows: `GetArcUserDataFolder` reads
   `%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\User Data`
-  (the client reads `StorableSidebar.json` beside it). **Unverified against
-  a real Arc install** — the box has none; the layout was tested with a
-  fixture in that place.
+  (the client reads `StorableSidebar.json` beside it). Verified 2026-11-14
+  against Arc 1.132.0.527 (MSIX) on nuc. Arc for Windows' sidebar file keeps
+  its synced copy under `firebaseSyncState.syncData`, not the Mac's
+  `sidebarSyncState`, so the parser takes either and needs only
+  `sidebar.containers` (0.5.0.16 greyed the row on a real install).
 * `chrome/utility/importer/chromium_import_decryptor_win.cc`: the Windows
   `ChromiumImportDecryptor` — the `Local State` key unwrapped with DPAPI
   (`CryptUnprotectData`; the profile-import utility runs unsandboxed), `v10`
