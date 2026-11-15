@@ -259,6 +259,11 @@ PhiHsb PhiThemePalette::ResolvedHsb(int index, bool dark) const {
 }
 
 PhiColor PhiThemePalette::Accent(bool dark) const {
+  // The neutral centre shows no hue, so it takes the default accent rather
+  // than one from the hue kept before the snap (Mac ca764c6e).
+  if (!(saturation > 0)) {
+    return dark ? PhiRgb(0x1E, 0x70, 0x99) : PhiRgb(0x3A, 0xA4, 0xD5);
+  }
   return PhiColorFromHsb({hue, dark ? 0.50 : 0.65, dark ? 0.85 : 0.60});
 }
 
