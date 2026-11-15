@@ -1720,16 +1720,20 @@ void PhiSettingsWindow::BuildAbout(int* y) {
   }
   EndSection(y);
 
-  // "What's new" opens chrome://whats-new in a tab, as the Mac's Help menu
-  // item does; the whole row is the button (behind its label, like the
-  // Advanced page's browser-settings row). "Documentation" was a dead row
-  // with no page behind it on either client, and is gone.
+  // "What's new" opens the Windows release notes in a tab: the
+  // phibrowser/phibrowser-win GitHub releases, newest first. Not
+  // chrome://whats-new, the Mac's Help item: the framework
+  // routes that to phibrowser.com/release-note/<Mac version>, and the site
+  // answers anything it does not know with the latest Mac notes (PHI-2024).
+  // The whole row is the button (behind its label, like the Advanced page's
+  // browser-settings row). "Documentation" was a dead row with no page
+  // behind it on either client, and is gone.
   BeginSection(y, nullptr);
   {
     Item row;
     row.kind = ItemKind::kListRow;
     row.action = "openpage";
-    row.payload = "chrome://whats-new";
+    row.payload = "https://github.com/phibrowser/phibrowser-win/releases/";
     items_.push_back(std::move(row));
     const size_t row_index = items_.size() - 1;
     const RECT area =
