@@ -1291,6 +1291,23 @@ bool LocalStore::UpdatePin(const std::string& guid,
   return Flush();
 }
 
+bool LocalStore::UpdatePinIcon(const std::string& guid,
+                               const std::string& icon) {
+  const Tab* found = FindTab(guid);
+  if (!db_ || icon.empty() || !found ||
+      found->type != RowType::kPinnedTab || !BelongsTo(*found, pin_scope_)) {
+    return false;
+  }
+  if (found->icon == icon) {
+    return false;
+  }
+  Tab tab = *found;
+  tab.icon = icon;
+  tab.updated = env_.now();
+  PutTab(tab);
+  return Flush();
+}
+
 // The Mac's pinnedItems pairing over rows in (index, guid) order: a row is
 // consumed with its partner — by its own link, or by a row linking back to
 // it when its own link was never written.

@@ -3092,6 +3092,9 @@
    "zh-Hans": "搜索图标",
    "zh-Hant": "搜尋圖示"
   },
+  "common.iconPicker.reset": {
+   "en": "Reset Icon"
+  },
   "common.iconPicker.searchEmptyMessage": {
    "de": "Keine Ergebnisse",
    "en": "No results",
@@ -12062,6 +12065,9 @@
    "nl": "Nieuwe Space met nieuw profiel…",
    "zh-Hans": "使用新个人资料新建空间…",
    "zh-Hant": "使用新設定檔新增空間…"
+  },
+  "sidebar.pinnedTabContextMenu.changeIcon": {
+   "en": "Change Icon…"
   },
   "sidebar.pinnedTabContextMenu.editSubmenu": {
    "de": "Angehefteten Tab bearbeiten",

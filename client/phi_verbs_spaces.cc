@@ -853,6 +853,9 @@ PhiVerbResult PhiControlDispatcher::VerbPinnedList(
       }
       entry.Set("secondaryTitle", row.title_b);
       entry.Set("layout", row.layout);
+      if (!row.icon.empty()) {
+        entry.Set("icon", row.icon);  // A single pin's own icon (storage form).
+      }
       list.Append(std::move(entry));
     }
   }

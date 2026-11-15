@@ -526,7 +526,8 @@ struct ShortcutRow {
   std::string url;
   std::wstring title;
   bool folder = false;
-  // Folders only: the catalog symbol drawn in the row's icon slot.
+  // Folders: the catalog symbol drawn in the row's icon slot. A single
+  // pinned cell: its chosen icon (storage form) in place of the favicon.
   std::string icon;
   // Split rows: the divider axis the pair reopens with.
   std::string layout;

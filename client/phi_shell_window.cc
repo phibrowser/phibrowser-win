@@ -4761,7 +4761,7 @@ PhiShellWindow::BandSignature PhiShellWindow::CurrentBandSignature()
             (row.expanded ? "e" : "") + std::to_string(row.depth) + "|" +
             std::to_string(static_cast<int>(row.attached_surface)) + "|" +
             std::to_string(fold(row.favicon)) + "|" +
-            std::to_string(fold(row.favicon_b)),
+            std::to_string(fold(row.favicon_b)) + "|" + row.icon,
         row.bounds);
   };
   for (const ShortcutRow& pin : sidebar_->pinned()) {
@@ -7030,6 +7030,7 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
   in.can_replace_url = !current_url.empty();
   in.horizontal = row.layout == "horizontal";
   in.open = row.open;
+  in.custom_icon = !row.icon.empty();
   const PhiMenuAction action =
       PhiRunPopupMenu(PhiBuildPinnedCellMenu(in),
                       PopupAt(pt, TPM_LEFTALIGN | TPM_TOPALIGN |
@@ -7069,6 +7070,23 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
                       /*confirm_label=*/nullptr, kPhiNameRules)) {
       services_.sidebar->RenameStoredRow(row.guid, base::WideToUTF8(name));
     }
+  } else if (action.is("pin.changeIcon") && services_.sidebar &&
+             !row.guid.empty() && !in.split_cell) {
+    // The Space icon picker (icons and emoji), hanging off the cell as the
+    // Mac's popover does (91740002).
+    const RECT anchor = LayoutToScreen(row.bounds);
+    std::string picked;
+    {
+      PhiModalScope modal(shell_hwnd_);  // The picker pumps its own loop.
+      picked = PhiPickSpaceIcon(shell_hwnd_, CurrentPalette(), anchor,
+                                row.icon);
+    }
+    if (!picked.empty()) {
+      services_.sidebar->SetStoredRowIcon(row.guid, picked);
+    }
+  } else if (action.is("pin.resetIcon") && services_.sidebar &&
+             !row.guid.empty()) {
+    services_.sidebar->SetStoredRowIcon(row.guid, std::string());
   } else if (action.is("pin.convertSplit")) {
     // Flip what the cell REMEMBERS, and the live split too when it is
     // currently open — the Mac's convertClosedPinnedSplitLayout.
@@ -7664,6 +7682,8 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
     snapshot.title = pin.title;
     snapshot.layout = pin.layout;
     snapshot.open = pin.open;
+    snapshot.icon = pin.icon;
+    snapshot.bounds = pin.bounds;
     ShowPinnedCellMenu(pt, snapshot);
     return;
   }

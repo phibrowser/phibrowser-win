@@ -336,6 +336,10 @@ class LocalStore {
   bool UpdatePin(const std::string& guid,
                  const std::optional<std::string>& url,
                  const std::optional<std::string>& title);
+  // updatePinnedTabIcon (Mac 91740002): the exact row in the active scope;
+  // `icon` is a storage value ("phi:<id>" / "emoji:<id>") or "default" for
+  // the favicon. Stamps updatedDate only; the icon is not synced.
+  bool UpdatePinIcon(const std::string& guid, const std::string& icon);
   // updatePinnedSplitPair / updateTabSplitPartnerBody(nil) /
   // updatePinnedSplitLayout.
   bool SetPinSplitPair(const std::string& primary,

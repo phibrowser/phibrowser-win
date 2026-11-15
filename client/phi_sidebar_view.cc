@@ -22,6 +22,7 @@
 #include "client/phi_animator.h"
 #include "client/phi_bookmark_manager.h"
 #include "client/phi_dwrite.h"
+#include "client/phi_emoji.h"
 #include "client/phi_fluent.h"
 #include "client/phi_folder_icons.h"
 #include "client/phi_group_overview.h"
@@ -3762,6 +3763,21 @@ void PhiSidebarView::PaintBand(HDC dc,
                   pane.favicon_width, pane.favicon_height,
                   pane.unloaded && !pin.active && dim_reclaimed);
       }
+    } else if (!pin.icon.empty() &&
+               [&] {
+                 // The pin's chosen icon in place of its favicon (Mac
+                 // 91740002): a catalog symbol in the label ink, or an
+                 // emoji in its own colours.
+                 const std::wstring text =
+                     base::UTF8ToWide(PhiIconDisplayText(pin.icon));
+                 const int size = icon_size;
+                 const RECT icon = {cx - size / 2, cy - size / 2,
+                                    cx + size / 2, cy + size / 2};
+                 return !text.empty() &&
+                        (PhiDrawCatalogIcon(dc, icon, text, size, kLabel) ||
+                         PhiDrawColorIcon(dc, icon, text, size, kLabel));
+               }()) {
+      // Drawn above.
     } else if (!pin.favicon.empty()) {
       const int size = icon_size;
       const RECT icon = {cx - size / 2, cy - size / 2, cx + size / 2,

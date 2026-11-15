@@ -384,6 +384,16 @@ PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in) {
     items.push_back(PhiMenuItem::Command("pin.copyUrl", PhiStr("contextMenu.copyLink")));
   }
   items.push_back(PhiMenuItem::Command("pin.rename", PhiStr("contextMenu.rename")));
+  // Mac 91740002: a single pin can wear an icon or emoji of its own.
+  if (!in.split_cell) {
+    items.push_back(PhiMenuItem::Command(
+        "pin.changeIcon",
+        PhiStr("sidebar.pinnedTabContextMenu.changeIcon")));
+    if (in.custom_icon) {
+      items.push_back(PhiMenuItem::Command(
+          "pin.resetIcon", PhiStr("common.iconPicker.reset")));
+    }
+  }
   // The Mac's Edit…: the pin's address (a split pin keeps its panes).
   // With it, "Replace Saved URL with Current" (the Mac's `0d8342c4`): the
   // two share a submenu, and the second only saves.

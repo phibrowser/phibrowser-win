@@ -206,6 +206,9 @@ struct PhiPinnedMenuInputs {
   // The bound tab's page has left the saved address: "Replace Saved URL with
   // Current" is live (single cells only).
   bool can_replace_url = false;
+  // A single cell wears its own icon: "Reset Icon" is offered (Mac 91740002
+  // has it in the picker; the Windows picker has no slot for it).
+  bool custom_icon = false;
 };
 PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in);
 

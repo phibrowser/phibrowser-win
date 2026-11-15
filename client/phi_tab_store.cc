@@ -164,6 +164,11 @@ PhiRow PhiTabStore::CellFromPin(const store::Tab& a,
               &row.favicon_height);
   row.lineage_id = a.pin_lineage_id.value_or(a.guid);
   row.layout = a.layout.value_or(std::string());
+  // A single pin's chosen icon (Mac 91740002); a split cell keeps its
+  // panes' favicons.
+  if (!b && a.icon != store::kDefaultFolderIcon) {
+    row.icon = a.icon;
+  }
   if (b) {
     row.url_b = b->url;
     row.title_b = b->title;
@@ -459,10 +464,18 @@ bool PhiTabStore::RenameRow(const std::string& guid, const std::string& title) {
 
 bool PhiTabStore::SetRowIcon(const std::string& guid, const std::string& icon) {
   const store::Tab* t = store_.FindTab(guid);
-  if (!t || t->type != store::RowType::kBookmarkFolder) {
+  if (!t) {
     return false;
   }
   const std::string stored = icon.empty() ? store::kDefaultFolderIcon : icon;
+  if (t->type == store::RowType::kPinnedTab) {
+    // A single pin's own icon in place of its favicon (Mac 91740002);
+    // "default" goes back to the favicon.
+    return store_.UpdatePinIcon(guid, stored);
+  }
+  if (t->type != store::RowType::kBookmarkFolder) {
+    return false;
+  }
   if (t->icon == stored) {
     return false;
   }

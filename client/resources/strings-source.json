@@ -2310,6 +2310,10 @@
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): Spaces editor, the embedded icon picker's search placeholder (Icon tab)",
    "en": "Search icons"
   },
+  "common.iconPicker.reset": {
+   "comment": "sidebar — used at phi_shell_menus.cc (pinned cell Reset Icon)",
+   "en": "Reset Icon"
+  },
   "common.iconPicker.searchEmptyMessage": {
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): Spaces editor, the embedded icon picker when the search matches nothing",
    "en": "No results"
@@ -9052,6 +9056,10 @@
   "sidebar.pinnedTabContextMenu.editSubmenu": {
    "comment": "Mac key (translations by key); contextMenu — pinned cell: submenu holding Edit URL and Replace Saved URL with Current",
    "en": "Edit Pinned Tab"
+  },
+  "sidebar.pinnedTabContextMenu.changeIcon": {
+   "comment": "sidebar — used at phi_shell_menus.cc (pinned cell Change Icon…)",
+   "en": "Change Icon…"
   },
   "sidebar.pinnedTabContextMenu.replaceSavedURL": {
    "comment": "Mac key (translations by key); contextMenu — pinned cell: saves the open page's address as the pin's",
