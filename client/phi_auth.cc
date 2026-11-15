@@ -262,7 +262,12 @@ PhiAuth::~PhiAuth() {
 }
 
 std::string PhiAuth::AccessTokenBlocking() {
-  std::string token;
+  // A dev-hooks box test sends the account calls (PHI_ACCOUNT_BASE_URL) to
+  // a stub with this token and no session; a release build has no override.
+  std::string token = EnvOr("PHI_ACCESS_TOKEN", "");
+  if (!token.empty()) {
+    return token;
+  }
   ::EnterCriticalSection(&token_lock_);
   const bool signed_in = worker_signed_in_;
   token = worker_access_token_;

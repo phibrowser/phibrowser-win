@@ -1213,7 +1213,10 @@ std::string SubmitFeedback(PhiAuth* auth,
     return "Feedback V2 submit supports at most five attachments";
   }
   base::DictValue body;
-  body.Set("description", manifest.description);
+  // The service posts the description to Slack as is, and Windows versions
+  // look like Mac ones there, so tag it. Only the wire copy: the manifest
+  // keeps the user's text, so a retried job is not tagged twice.
+  body.Set("description", "[Windows] " + manifest.description);
   if (!manifest.contact_email.empty()) {
     body.Set("contact_email", manifest.contact_email);
   }
