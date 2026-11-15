@@ -164,6 +164,11 @@ PhiMenuSpec PhiBuildGroupHeaderMenu(
 
 // The tab row's menu, in the Mac TabModel+Sidebar order: pin, duplicate,
 // copy, the split block, bookmarks, groups, Spaces, then close.
+// The "Mute tab" / "Unmute tab" row (GitHub phibrowser/phibrowser-win#14),
+// the menu twin of the Mac's speaker button: a row with no live tab has
+// none, and a split reads "Unmute tab" only when every live pane is muted.
+enum class PhiMuteRow { kNone, kMute, kUnmute };
+
 struct PhiTabMenuInputs {
   bool merged = false;      // A split row: every action takes the pair.
   bool incognito = false;   // Nothing persists: the store rows grey off.
@@ -187,6 +192,7 @@ struct PhiTabMenuInputs {
   // move, no Remove from Split.
   bool split_stored = false;
   bool grouped = false;        // The row is in a tab group.
+  PhiMuteRow mute = PhiMuteRow::kNone;
   bool bookmark_folders = false;  // Emit the "Add to Folder" submenu.
   std::vector<PhiMenuChoice> folders;  // Labels already indented.
   std::vector<PhiMenuChoice> groups;   // Labels already carry the count.
@@ -209,6 +215,7 @@ struct PhiPinnedMenuInputs {
   // A single cell wears its own icon: "Reset Icon" is offered (Mac 91740002
   // has it in the picker; the Windows picker has no slot for it).
   bool custom_icon = false;
+  PhiMuteRow mute = PhiMuteRow::kNone;  // Live cells only.
 };
 PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in);
 
@@ -219,6 +226,7 @@ struct PhiBookmarkMenuInputs {
   int pane_count = 2;  // As PhiPinnedMenuInputs'.
   bool horizontal = false;
   bool can_replace_url = false;  // As PhiPinnedMenuInputs'.
+  PhiMuteRow mute = PhiMuteRow::kNone;  // Leaf rows with a live tab only.
   std::vector<PhiMenuChoice> spaces;  // Leaf rows only.
 };
 PhiMenuSpec PhiBuildBookmarkRowMenu(const PhiBookmarkMenuInputs& in);

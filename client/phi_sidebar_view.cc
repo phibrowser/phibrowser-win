@@ -106,6 +106,9 @@ using sidebar_metrics::kHTabGap;
 using sidebar_metrics::kHTabHeight;
 using sidebar_metrics::kHTabMinWidth;
 using sidebar_metrics::kHTabWidth;
+using sidebar_metrics::kMuteBoxSize;
+using sidebar_metrics::kMuteGlyphSize;
+using sidebar_metrics::kMuteMinTitle;
 using sidebar_metrics::kPinnedFavicon;
 using sidebar_metrics::kPinnedMinWidth;
 using sidebar_metrics::kRowPad;
@@ -291,6 +294,15 @@ COLORREF PhiBlendOver(COLORREF over, COLORREF base, int alpha) {
   return RGB(mix(GetRValue(over), GetRValue(base)),
              mix(GetGValue(over), GetGValue(base)),
              mix(GetBValue(over), GetBValue(base)));
+}
+
+PhiTabAudio PhiTabAudioOf(const TabSnapshot* tab) {
+  if (!tab) {
+    return PhiTabAudio::kSilent;
+  }
+  return tab->audio_muted ? PhiTabAudio::kMuted
+         : tab->audible   ? PhiTabAudio::kAudible
+                          : PhiTabAudio::kSilent;
 }
 
 // Readers over a WindowSnapshot — the model's copy or a freshly pulled one
@@ -570,6 +582,15 @@ bool PhiSidebarView::OnStoredRowClick(POINT pt) {
         Apply(SidebarCloseSurface{bookmark.key});
         return true;
       }
+      if (const int pane = bookmark.MutePaneAt(pt); pane >= 0) {
+        const TabId tab = pane == 0 ? bookmark.tab_id : bookmark.tab_id_b;
+        if (framework_ && tab.valid()) {
+          framework_->SetTabAudioMutedById(
+              shell_->SidebarActiveBrowser().value, tab.value,
+              bookmark.audio[static_cast<size_t>(pane)] != PhiTabAudio::kMuted);
+        }
+        return true;
+      }
       if (bookmark.close_box.right > bookmark.close_box.left &&
           ::PtInRect(&bookmark.close_box, pt)) {
         if (!agent_holds_input_) {  // The Mac refuses its close under the agent.
@@ -638,6 +659,13 @@ bool PhiSidebarView::OnContentRowClick(POINT pt) {
       if (row.attached_surface != SidebarSurface::kContent &&
           ::PtInRect(&row.surface_box, pt)) {
         Apply(SidebarCloseSurface{row.key});  // The indicator's minus.
+      } else if (const int mute_pane = row.MutePaneAt(pt); mute_pane >= 0) {
+        // The speaker button: that pane's mute flips, nothing activates.
+        framework_->SetTabAudioMutedById(
+            shell_->SidebarActiveBrowser().value,
+            row.PaneId(mute_pane).value,
+            row.pane_audio[static_cast<size_t>(mute_pane)] !=
+                PhiTabAudio::kMuted);
       } else if (::PtInRect(&row.close_box, pt)) {
         if (!agent_holds_input_) {  // The Mac refuses ✕ under the agent.
           Apply(SidebarClose{row.key, -1});  // A merged row: both panes.
@@ -687,7 +715,7 @@ SidebarKey PhiSidebarView::TabBodyAt(POINT pt, int* pane) const {
     if (!::PtInRect(&row.bounds, pt)) {
       continue;
     }
-    if (::PtInRect(&row.close_box, pt) ||
+    if (::PtInRect(&row.close_box, pt) || row.MutePaneAt(pt) >= 0 ||
         (row.attached_surface != SidebarSurface::kContent &&
          ::PtInRect(&row.surface_box, pt))) {
       return {};
@@ -1349,6 +1377,7 @@ void PhiSidebarView::Rebuild() {
     row.tag = a->tag;
     row.internal_page = a->url.rfind("chrome://", 0) == 0;
     row.unloaded = a->unloaded;
+    row.pane_audio[0] = PhiTabAudioOf(a);
     fill_pane(*a, &row.title, &row.url, &row.favicon, &row.favicon_width,
               &row.favicon_height);
     if (node.kind == SidebarNodeKind::kSplit) {
@@ -1356,6 +1385,7 @@ void PhiSidebarView::Rebuild() {
         row.b_index = b->index;
         row.b_id = b->id;
         row.b_active = b->active;
+        row.pane_audio[1] = PhiTabAudioOf(b);
         fill_pane(*b, &row.b_title, &row.b_url, &row.b_favicon,
                   &row.b_favicon_width, &row.b_favicon_height);
         for (int id : node.more) {
@@ -1370,6 +1400,9 @@ void PhiSidebarView::Rebuild() {
           pane.unloaded = tab->unloaded;
           fill_pane(*tab, &pane.title, &pane.url, &pane.favicon,
                     &pane.favicon_width, &pane.favicon_height);
+          if (row.more.size() < 2) {
+            row.pane_audio[row.more.size() + 2] = PhiTabAudioOf(tab);
+          }
           row.more.push_back(std::move(pane));
         }
       }
@@ -1524,6 +1557,25 @@ void PhiSidebarView::Rebuild() {
       for (size_t i = 0; i < row->more.size(); ++i) {
         row->more[i].bounds = segment(static_cast<int>(i) + 2);
       }
+    }
+    // The speaker button after each sounding pane's favicon, where the
+    // paint puts it (the pill's left, 6 in, past the 16 dip slot).
+    row->mute_boxes = {};
+    const int panes = row->PaneCount();
+    const int width = row->bounds.right - row->bounds.left;
+    for (int pane = 0; pane < panes && pane < 4 && width > 0; ++pane) {
+      if (row->pane_audio[static_cast<size_t>(pane)] == PhiTabAudio::kSilent) {
+        continue;
+      }
+      const int left = row->bounds.left + width * pane / panes;
+      const int right = row->bounds.left + width * (pane + 1) / panes;
+      const int x = left + Scaled(6) + Scaled(kFaviconSlot) + Scaled(4);
+      const int box = Scaled(kMuteBoxSize);
+      if (x + box + Scaled(kMuteMinTitle) > right) {
+        continue;  // A narrow strip tab or pane: the favicon only.
+      }
+      row->mute_boxes[static_cast<size_t>(pane)] = {x, box_mid - box / 2,
+                                                    x + box, box_mid + box / 2};
     }
   };
   int list_scroll_max = 0;
@@ -1917,6 +1969,7 @@ void PhiSidebarView::Rebuild() {
       row.bounds = none;
       row.frame = none;
       row.surface_box = none;
+      row.mute_boxes = {};
     }
     space_root_.bounds = none;
     space_root_.frame = none;
@@ -1932,6 +1985,7 @@ void PhiSidebarView::Rebuild() {
       }
       row.close_box = none;
       row.surface_box = none;
+      row.mute_boxes = {};
     }
   }
   // The reveal is consumed; the keyboard's row, if it went (closed, moved
@@ -2030,6 +2084,9 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     row->tab_id_b = TabId(cell.binding.tab_b);
     row->unloaded = dormant(cell.binding.tab_a);
     row->unloaded_b = dormant(cell.binding.tab_b);
+    row->audio = {
+        PhiTabAudioOf(PhiFindTabIn(snapshot, TabId(cell.binding.tab_a))),
+        PhiTabAudioOf(PhiFindTabIn(snapshot, TabId(cell.binding.tab_b)))};
     for (size_t i = 0; i < row->more.size(); ++i) {
       const int tab = cell.binding.TabOfPane(static_cast<int>(i) + 2);
       row->more[i].tab_id = TabId(tab);
@@ -2250,6 +2307,37 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
                            row.frame.right - Scaled(4), mid + box / 2};
       }
       row.close_box = RECT{};
+      // The speaker buttons, where the paint puts them: after the primary
+      // favicon, and after the secondary one of a split row (which the
+      // first button pushes along).
+      row.mute_boxes = {};
+      if (row.open && !row.folder && row.bounds.right > row.bounds.left) {
+        const int left = std::min(
+            row.frame.left +
+                OutlineIndentDepth(row.depth) * Scaled(kBookmarkIndent),
+            row.frame.right - Scaled(kFaviconSlot) - Scaled(12));
+        const int mid = (row.frame.top + row.frame.bottom) / 2;
+        const int box = Scaled(kMuteBoxSize);
+        int slot_right = left + Scaled(6) + Scaled(kFaviconSlot);
+        for (size_t pane = 0; pane < 2; ++pane) {
+          if (pane == 1) {
+            if (row.url_b.empty()) {
+              break;
+            }
+            // The secondary favicon sits 24 after the primary.
+            slot_right += Scaled(24);
+          }
+          if (row.audio[pane] == PhiTabAudio::kSilent) {
+            continue;
+          }
+          const int x = slot_right + Scaled(4);
+          if (x + box + Scaled(kMuteMinTitle) > row.frame.right) {
+            break;
+          }
+          row.mute_boxes[pane] = {x, mid - box / 2, x + box, mid + box / 2};
+          slot_right += box + Scaled(4);
+        }
+      }
       if (row.open && !row.folder &&
           row.attached_surface == SidebarSurface::kContent &&
           row.bounds.right > row.bounds.left) {
@@ -2467,6 +2555,25 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     d.Set("bottom", static_cast<int>(r.bottom));
     return d;
   };
+  // Each pane's sound and speaker button ("silent" | "audible" | "muted"),
+  // so a probe can read the mute state and aim at the button.
+  const auto audio = [&](const PhiTabAudio* sound, const RECT* boxes,
+                         size_t count, base::DictValue* extra) {
+    base::ListValue names;
+    base::ListValue rects;
+    for (size_t i = 0; i < count; ++i) {
+      names.Append(sound[i] == PhiTabAudio::kMuted     ? "muted"
+                   : sound[i] == PhiTabAudio::kAudible ? "audible"
+                                                       : "silent");
+      if (boxes) {
+        rects.Append(box(boxes[i]));
+      }
+    }
+    extra->Set("audio", std::move(names));
+    if (boxes) {
+      extra->Set("muteBoxes", std::move(rects));
+    }
+  };
   const auto emit = [&](const char* band, const SidebarKey& key,
                         const RECT& r, base::DictValue extra) {
     base::DictValue row = std::move(extra);
@@ -2487,6 +2594,8 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     extra.Set("unloadedB", pin.unloaded_b);
     extra.Set("surface", surface_name(pin.attached_surface));
     extra.Set("surfaceBox", box(pin.surface_box));
+    extra.Set("tabIdB", pin.tab_id_b.value);
+    audio(pin.audio.data(), nullptr, pin.audio.size(), &extra);
     emit("pinned", pin.key, pin.bounds, std::move(extra));
   }
   for (const ShortcutRow& bookmark : bookmarks_) {
@@ -2502,6 +2611,9 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     extra.Set("unloadedB", bookmark.unloaded_b);
     extra.Set("surface", surface_name(bookmark.attached_surface));
     extra.Set("surfaceBox", box(bookmark.surface_box));
+    extra.Set("tabIdB", bookmark.tab_id_b.value);
+    audio(bookmark.audio.data(), bookmark.mute_boxes.data(),
+          bookmark.audio.size(), &extra);
     emit("bookmarks", bookmark.key, bookmark.bounds, std::move(extra));
   }
   if (space_root_.shown) {
@@ -2543,6 +2655,8 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     extra.Set("unloaded", tab.unloaded);
     extra.Set("surface", surface_name(tab.attached_surface));
     extra.Set("surfaceBox", box(tab.surface_box));
+    audio(tab.pane_audio.data(), tab.mute_boxes.data(),
+          static_cast<size_t>(std::min(tab.PaneCount(), 4)), &extra);
     emit("tabs", tab.key, tab.bounds, std::move(extra));
   }
   return rows;
@@ -4023,12 +4137,36 @@ void PhiSidebarView::PaintBand(HDC dc,
       }
     }
     text.left = pill.left + Scaled(6) + Scaled(kFaviconSlot) + Scaled(8);
+    // The speaker buttons ride the row's slide like the pill; each one
+    // pushes what follows it along by its width.
+    const int speaker_dx = pill.left - bookmark.frame.left -
+                           std::min(OutlineIndentDepth(bookmark.depth) *
+                                        Scaled(kBookmarkIndent),
+                                    static_cast<int>(bookmark.frame.right -
+                                                     bookmark.frame.left) -
+                                        Scaled(kFaviconSlot) - Scaled(12));
+    const int speaker_dy = pill.top - Scaled(kRowPad) - bookmark.frame.top;
+    const auto draw_speaker = [&](size_t pane) {
+      RECT speaker = bookmark.mute_boxes[pane];
+      if (speaker.right <= speaker.left) {
+        return 0;
+      }
+      ::OffsetRect(&speaker, speaker_dx, speaker_dy);
+      PhiDrawIconGlyph(dc, speaker,
+                       bookmark.audio[pane] == PhiTabAudio::kMuted
+                           ? fluent::kMute
+                           : fluent::kVolume,
+                       Scaled(kMuteGlyphSize), kLabelDim);
+      return Scaled(kMuteBoxSize) + Scaled(4);
+    };
+    const int speaker_a = draw_speaker(0);
+    text.left += speaker_a;
     const bool split_row = !bookmark.url_b.empty();
     if (split_row) {
       // A split bookmark shows BOTH panes' favicons (the Mac's
       // BookmarkCellView secondary favicon, 24pt after the primary).
       RECT icon_b = icon;
-      ::OffsetRect(&icon_b, Scaled(24), 0);
+      ::OffsetRect(&icon_b, Scaled(24) + speaker_a, 0);
       if (!bookmark.favicon_b.empty()) {
         DrawFavicon(dc, icon_b, bookmark.favicon_b,
                     bookmark.favicon_b_width, bookmark.favicon_b_height,
@@ -4042,6 +4180,9 @@ void PhiSidebarView::PaintBand(HDC dc,
         }
       }
       text.left += Scaled(24);
+      const int speaker_b = draw_speaker(1);
+      text.left += speaker_b;
+      ::OffsetRect(&icon_b, speaker_b, 0);
       // A split of three or four: one more favicon per later pane.
       for (const ShortcutRow::ExtraPane& pane : bookmark.more) {
         ::OffsetRect(&icon_b, Scaled(24), 0);
@@ -4494,6 +4635,20 @@ void PhiSidebarView::PaintBand(HDC dc,
       ::SetTextColor(dc, dormant ? row_palette.label_dim : row_palette.label);
       RECT title_rc = {slot.right + Scaled(8), pill.top, right - Scaled(4),
                        pill.bottom};
+      // The speaker button: the wave while it plays, the slash once muted.
+      if (pane < 4) {
+        RECT speaker = r.mute_boxes[static_cast<size_t>(pane)];
+        if (speaker.right > speaker.left) {
+          ::OffsetRect(&speaker, dx, dy);
+          PhiDrawIconGlyph(
+              dc, speaker,
+              r.pane_audio[static_cast<size_t>(pane)] == PhiTabAudio::kMuted
+                  ? fluent::kMute
+                  : fluent::kVolume,
+              Scaled(kMuteGlyphSize), row_palette.label_dim);
+          title_rc.left = speaker.right + Scaled(4);
+        }
+      }
       PhiDrawTextAA(dc,
                   (extra ? extra->title : pane_b ? r.b_title : r.title).c_str(),
                   -1, &title_rc,

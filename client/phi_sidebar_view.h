@@ -192,6 +192,11 @@ inline constexpr int kHTabActiveWidth = 240;  // The active tab takes more room.
 inline constexpr int kHTabMinWidth = 56;
 inline constexpr int kHTabGap = 0;        // Tabs abut; a hairline divides them.
 inline constexpr int kCloseBoxSize = 24;  // UnifiedTabCloseButton frame.
+// The speaker button after a pane's favicon (the Mac's SplitPaneMuteButton
+// frame), its glyph, and the room it needs before it is drawn at all.
+inline constexpr int kMuteBoxSize = 20;
+inline constexpr int kMuteGlyphSize = 12;
+inline constexpr int kMuteMinTitle = 24;
 // The overlay scrollbars (Windows 11's thin bar): a 4 dip capsule 3 dip in
 // from the band's trailing edge, at least 24 dip long, shown while the band
 // scrolls or is hovered and faded out after it rests.
@@ -363,6 +368,11 @@ struct PhiSidebarRects {
 };
 
 // One rendered tab row: what to draw and what a click at that row does.
+// A live tab's sound, as the speaker button shows it (the Mac's
+// isCurrentlyAudible / isMuted): no button while silent.
+enum class PhiTabAudio : uint8_t { kSilent, kAudible, kMuted };
+PhiTabAudio PhiTabAudioOf(const phi_framework::TabSnapshot* tab);
+
 struct TabRow {
   SidebarKey key;  // The tree node this row paints (kTab or kSplit).
   int index = 0;
@@ -478,6 +488,20 @@ struct TabRow {
   RECT pane_b{};       // Pane B's segment of a merged row (activates it).
   RECT close_box{};    // The row's close affordance.
   RECT surface_box{};  // The attached-surface indicator.
+  // The Mac's speaker button (UnifiedTabMuteButton, and SplitPaneMuteButton
+  // per pane of a merged row): each pane's sound, and the button after that
+  // pane's favicon while it is audible or muted — empty when silent, or
+  // when the segment has no room for it. A click toggles that pane's mute.
+  std::array<PhiTabAudio, 4> pane_audio{};
+  std::array<RECT, 4> mute_boxes{};
+  // The pane whose speaker button holds `pt`, or -1.
+  int MutePaneAt(POINT pt) const {
+    for (int pane = 0; pane < 4; ++pane) {
+      const RECT& box = mute_boxes[static_cast<size_t>(pane)];
+      if (box.right > box.left && ::PtInRect(&box, pt)) return pane;
+    }
+    return -1;
+  }
 };
 
 // Sidebar tab-group headers (TabGroupHeaderView): chevron + color dot +
@@ -602,6 +626,18 @@ struct ShortcutRow {
   std::vector<unsigned char> favicon_b;
   int favicon_b_width = 0;
   int favicon_b_height = 0;
+  // A bookmark row's speaker buttons (the Mac's BookmarkCellView: one after
+  // the primary favicon, one after the secondary), as TabRow's. Pinned cells
+  // keep the sound state but draw no button, as on the Mac.
+  std::array<PhiTabAudio, 2> audio{};
+  std::array<RECT, 2> mute_boxes{};
+  int MutePaneAt(POINT pt) const {
+    for (int pane = 0; pane < 2; ++pane) {
+      const RECT& box = mute_boxes[static_cast<size_t>(pane)];
+      if (box.right > box.left && ::PtInRect(&box, pt)) return pane;
+    }
+    return -1;
+  }
 };
 
 // What the sidebar asks of its shell (docs/architecture-review.md §3.5).

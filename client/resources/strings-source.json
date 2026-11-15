@@ -10460,6 +10460,14 @@
   "sidebar.media.volumeButtonAlt": {
    "comment": "Windows-only; sidebar — Mini Player (phi_mini_player.cc). Open the volume slider; Alt-click toggles the player's mute (the Mac's sidebar.media.volumeButton says Option)",
    "en": "Volume (Alt-click to toggle mute)"
+  },
+  "sidebar.media.mute": {
+   "comment": "Tab mute — the Mute tab row of the tab-row, pinned-cell and bookmark-row context menus, and the speaker button tooltip (the Mac's sidebar.media.mute), phi_shell_menus.cc.",
+   "en": "Mute tab"
+  },
+  "sidebar.media.unmute": {
+   "comment": "Tab mute — the Unmute tab row of the tab-row, pinned-cell and bookmark-row context menus, and the speaker button tooltip on a muted tab (the Mac's sidebar.media.unmute), phi_shell_menus.cc.",
+   "en": "Unmute tab"
   }
  }
 }

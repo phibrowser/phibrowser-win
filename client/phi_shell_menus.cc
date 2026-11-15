@@ -190,6 +190,23 @@ void AppendGroupBlock(const PhiTabMenuInputs& in,
 
 }  // namespace
 
+namespace {
+
+// "<prefix>.mute" / "<prefix>.unmute", after the copy rows.
+void AppendMuteRow(const char* prefix,
+                   PhiMuteRow mute,
+                   std::vector<PhiMenuItem>& items) {
+  if (mute == PhiMuteRow::kNone) {
+    return;
+  }
+  const bool unmute = mute == PhiMuteRow::kUnmute;
+  items.push_back(PhiMenuItem::Command(
+      (std::string(prefix) + (unmute ? ".unmute" : ".mute")).c_str(),
+      PhiStr(unmute ? "sidebar.media.unmute" : "sidebar.media.mute")));
+}
+
+}  // namespace
+
 PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
   PhiMenuSpec spec;
   std::vector<PhiMenuItem>& items = spec.items;
@@ -205,6 +222,7 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
     items.push_back(PersistCommand("tab.pin", PhiStr("contextMenu.pin"), in.incognito));
     items.push_back(PhiMenuItem::Command("tab.duplicate", PhiStr("contextMenu.duplicate")));
     items.push_back(PhiMenuItem::Command("tab.copyUrl", PhiStr("contextMenu.copyLink")));
+    AppendMuteRow("tab", in.mute, items);
     items.push_back(PhiMenuItem::Separator());
     if (!in.split_bound) {
       // "Split with Current" pairs this row with the FOCUSED tab; on the
@@ -259,6 +277,7 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
       copy.target.id = std::to_string(pane);
       items.push_back(std::move(copy));
     }
+    AppendMuteRow("tab", in.mute, items);
     items.push_back(PhiMenuItem::Separator());
     PhiMenuItem back = PhiMenuItem::Command(
         "tab.movePaneBack",
@@ -297,6 +316,7 @@ PhiMenuSpec PhiBuildTabRowMenu(const PhiTabMenuInputs& in) {
     items.push_back(PhiMenuItem::Command("tab.duplicate", PhiStr("contextMenu.duplicateSplit")));
     items.push_back(PhiMenuItem::Command("tab.copyLeft", PhiStr("contextMenu.copyLeftURL")));
     items.push_back(PhiMenuItem::Command("tab.copyRight", PhiStr("contextMenu.copyRightURL")));
+    AppendMuteRow("tab", in.mute, items);
     items.push_back(PhiMenuItem::Separator());
     // The Mac's "Reverse Panes": swap the two sides of this split.
     PhiMenuItem reverse = PhiMenuItem::Command(
@@ -383,6 +403,7 @@ PhiMenuSpec PhiBuildPinnedCellMenu(const PhiPinnedMenuInputs& in) {
   } else {
     items.push_back(PhiMenuItem::Command("pin.copyUrl", PhiStr("contextMenu.copyLink")));
   }
+  AppendMuteRow("pin", in.mute, items);
   items.push_back(PhiMenuItem::Command("pin.rename", PhiStr("contextMenu.rename")));
   // Mac 91740002: a single pin can wear an icon or emoji of its own.
   if (!in.split_cell) {
@@ -448,6 +469,7 @@ PhiMenuSpec PhiBuildBookmarkRowMenu(const PhiBookmarkMenuInputs& in) {
     } else {
       items.push_back(PhiMenuItem::Command("bm.copyUrl", PhiStr("contextMenu.copyLink")));
     }
+    AppendMuteRow("bm", in.mute, items);
   }
   items.push_back(PhiMenuItem::Command("bm.rename", PhiStr("contextMenu.rename")));
   if (!in.folder && !in.split_row) {

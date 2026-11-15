@@ -11964,6 +11964,17 @@
    "zh-Hans": "关闭画中画",
    "zh-Hant": "關閉子母畫面"
   },
+  "sidebar.media.mute": {
+   "de": "Tab stummschalten",
+   "en": "Mute tab",
+   "es": "Silenciar pestaña",
+   "fr": "Couper le son de l'onglet",
+   "ja": "タブをミュート",
+   "ko": "탭 음소거",
+   "nl": "Schakel geluid van tabblad uit",
+   "zh-Hans": "将标签页静音",
+   "zh-Hant": "將分頁靜音"
+  },
   "sidebar.media.nextTrack": {
    "de": "Nächster Titel",
    "en": "Next track",
@@ -12029,6 +12040,17 @@
    "nl": "Afspeelpositie",
    "zh-Hans": "播放位置",
    "zh-Hant": "播放位置"
+  },
+  "sidebar.media.unmute": {
+   "de": "Stummschaltung des Tabs aufheben",
+   "en": "Unmute tab",
+   "es": "Activar sonido de la pestaña",
+   "fr": "Réactiver le son de l'onglet",
+   "ja": "タブのミュートを解除",
+   "ko": "탭 음소거 해제",
+   "nl": "Schakel geluid van tabblad in",
+   "zh-Hans": "取消标签页静音",
+   "zh-Hant": "取消分頁靜音"
   },
   "sidebar.media.untitled": {
    "de": "Medien",

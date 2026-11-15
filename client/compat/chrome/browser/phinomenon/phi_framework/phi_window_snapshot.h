@@ -34,6 +34,8 @@ struct TabSnapshot {
   TabId origin;
   bool has_page_color = false;
   uint32_t page_color_argb = 0;
+  bool audible = false;
+  bool audio_muted = false;
 };
 
 struct SplitSnapshot {
@@ -89,7 +91,8 @@ inline WindowSnapshot ToOwnedSnapshot(const WindowSnapshotView& view) {
     owned.tabs.push_back(
         {tab.id, tab.index, tab.title, tab.url, tab.tag, tab.split_id,
          tab.group_id, tab.active, tab.loading, tab.unloaded, tab.surface,
-         tab.origin, tab.has_page_color, tab.page_color_argb});
+         tab.origin, tab.has_page_color, tab.page_color_argb, tab.audible,
+         tab.audio_muted});
   }
   owned.splits.reserve(view.split_count);
   for (size_t i = 0; i < view.split_count; ++i) {

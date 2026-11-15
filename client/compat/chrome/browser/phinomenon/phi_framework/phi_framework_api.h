@@ -215,6 +215,13 @@ struct TabSnapshotView {
   // crash clears it. Opaque 0xFFRRGGBB when has_page_color.
   bool has_page_color = false;
   uint32_t page_color_argb = 0;
+  // Appended (ABI 7, the Mac's isCurrentlyAudible / audioMutePublisher):
+  // `audible` is Chromium's debounced "recently audible" (the tab strip's
+  // speaker icon: it holds ~2 s after the sound stops); `audio_muted` is tab
+  // mute OR the media session's element mute (SetTabAudioMutedById may take
+  // either). A change of either is a WindowChangeReason::kAudio push.
+  bool audible = false;
+  bool audio_muted = false;
 };
 
 struct SplitSnapshotView {
@@ -283,6 +290,7 @@ enum class WindowChangeReason : uint8_t {
   kSplits,
   kFaviconReady, // FaviconForUrlBgra's async fetch landed; nothing structural
   kPageColor,    // a tab's TabSnapshot::page_color changed; nothing structural
+  kAudio,        // a tab's audible / audio_muted changed; nothing structural
 };
 
 class PhiFrameworkDelegate {
@@ -1810,6 +1818,17 @@ class PhiFramework {
   virtual bool SetMediaSessionMuted(int tab_id,
                                     bool muted,
                                     const char* expected_token) = 0;
+
+  // --- Tab mute (ABI 7) ------------------------------------------------------
+  // The Mac's Tab.toggleAudioMuted for one tab, made idempotent: brings the
+  // tab's TabSnapshotView::audio_muted to `muted`. Muting a tab whose media
+  // session can mute its player mutes that player (the Mini Player keeps the
+  // session); otherwise, and for every unmute, it is Chromium's tab mute.
+  // True when the tab resolved (already in that state included); the new
+  // state arrives as a kAudio OnWindowChanged.
+  virtual bool SetTabAudioMutedById(int64_t window_id,
+                                    int tab_id,
+                                    bool muted) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -1880,7 +1899,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 6;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 7;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

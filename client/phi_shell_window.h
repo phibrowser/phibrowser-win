@@ -1507,7 +1507,17 @@ class PhiShellWindow : public PhiHitSource,
     bool folder = false;
     bool open = false;  // A pinned cell with a live bound tab.
     RECT bounds{};      // Where a popover the action opens hangs off.
+    // Store rows: the live tabs bound to the cell's panes (none when closed),
+    // what Mute tab / Unmute tab acts on. A tab row's are id, b_id, more_ids.
+    std::vector<TabId> live_ids;
   };
+  // Mute tab / Unmute tab (GitHub #14) for `tabs` in `browser`: which row
+  // the menu offers, from the model's audio_muted, and the action itself.
+  PhiMuteRow MuteRowFor(BrowserId browser,
+                        const std::vector<TabId>& tabs) const;
+  void SetTabsMuted(BrowserId browser,
+                    const std::vector<TabId>& tabs,
+                    bool muted);
   // Screen placement for a popup, resolved from a CLIENT point.
   PhiPopupMenuRequest PopupAt(POINT client_pt, UINT align) const;
   // The dynamic rows the builders take: every Space but this slot's (for the

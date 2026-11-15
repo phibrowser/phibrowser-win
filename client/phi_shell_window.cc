@@ -4734,6 +4734,14 @@ PhiShellWindow::BandSignature PhiShellWindow::CurrentBandSignature()
     return std::to_string(r.left) + "," + std::to_string(r.top) + "," +
            std::to_string(r.right) + "," + std::to_string(r.bottom);
   };
+  // Each pane's sound (the speaker buttons), one digit per pane.
+  const auto audio_key = [](const PhiTabAudio* audio, size_t count) {
+    std::string key;
+    for (size_t i = 0; i < count; ++i) {
+      key += static_cast<char>('0' + static_cast<int>(audio[i]));
+    }
+    return key;
+  };
   BandSignature out;
   for (const TabRow& row : sidebar_->tabs()) {
     out.rows.emplace_back(
@@ -4742,7 +4750,8 @@ PhiShellWindow::BandSignature PhiShellWindow::CurrentBandSignature()
             (row.b_active ? "b" : "") + (row.unloaded ? "u" : "") +
             std::to_string(static_cast<int>(row.attached_surface)) + "|" +
             std::to_string(fold(row.favicon)) + "|" +
-            std::to_string(fold(row.b_favicon)) + "|" + rect_key(row.pane_b),
+            std::to_string(fold(row.b_favicon)) + "|" + rect_key(row.pane_b) +
+            "|" + audio_key(row.pane_audio.data(), row.pane_audio.size()),
         row.bounds);
   }
   for (const GroupHeader& header : sidebar_->group_headers()) {
@@ -4761,7 +4770,8 @@ PhiShellWindow::BandSignature PhiShellWindow::CurrentBandSignature()
             (row.expanded ? "e" : "") + std::to_string(row.depth) + "|" +
             std::to_string(static_cast<int>(row.attached_surface)) + "|" +
             std::to_string(fold(row.favicon)) + "|" +
-            std::to_string(fold(row.favicon_b)) + "|" + row.icon,
+            std::to_string(fold(row.favicon_b)) + "|" + row.icon + "|" +
+            audio_key(row.audio.data(), row.audio.size()),
         row.bounds);
   };
   for (const ShortcutRow& pin : sidebar_->pinned()) {
@@ -6794,6 +6804,64 @@ void PhiShellWindow::ShowGroupHeaderMenu(POINT pt,
   }
 }
 
+namespace {
+
+// The live tabs bound to a pinned cell's or bookmark row's panes.
+std::vector<TabId> LiveTabsOf(const ShortcutRow& row) {
+  std::vector<TabId> ids;
+  if (!row.open) {
+    return ids;
+  }
+  for (const TabId id : {row.tab_id, row.tab_id_b}) {
+    if (id.valid()) {
+      ids.push_back(id);
+    }
+  }
+  for (const ShortcutRow::ExtraPane& pane : row.more) {
+    if (pane.tab_id.valid()) {
+      ids.push_back(pane.tab_id);
+    }
+  }
+  return ids;
+}
+
+}  // namespace
+
+PhiMuteRow PhiShellWindow::MuteRowFor(BrowserId browser,
+                                      const std::vector<TabId>& tabs) const {
+  const WindowSnapshot* snapshot = model_ ? model_->Get(browser) : nullptr;
+  if (!snapshot) {
+    return PhiMuteRow::kNone;
+  }
+  bool any = false;
+  bool all_muted = true;
+  for (const TabId id : tabs) {
+    for (const TabSnapshot& tab : snapshot->tabs) {
+      if (id.valid() && tab.id == id) {
+        any = true;
+        all_muted = all_muted && tab.audio_muted;
+      }
+    }
+  }
+  if (!any) {
+    return PhiMuteRow::kNone;
+  }
+  return all_muted ? PhiMuteRow::kUnmute : PhiMuteRow::kMute;
+}
+
+void PhiShellWindow::SetTabsMuted(BrowserId browser,
+                                  const std::vector<TabId>& tabs,
+                                  bool muted) {
+  if (!framework_ || !browser.valid()) {
+    return;
+  }
+  for (const TabId id : tabs) {
+    if (id.valid()) {
+      framework_->SetTabAudioMutedById(browser.value, id.value, muted);
+    }
+  }
+}
+
 void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
   // The Mac tab menu (TabModel+Sidebar), in its order: pin, duplicate, copy,
   // the split block, bookmarks, groups, then close.
@@ -6857,6 +6925,12 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
     row_tabs.insert(id.value);
   }
   in.close_rows = DirectionalCloseRows(opening_browser, row_tabs);
+  std::vector<TabId> mute_tabs = {row.id};
+  if (row.b_id.valid()) {
+    mute_tabs.push_back(row.b_id);
+  }
+  mute_tabs.insert(mute_tabs.end(), row.more_ids.begin(), row.more_ids.end());
+  in.mute = MuteRowFor(opening_browser, mute_tabs);
   if (!row.merged) {
     in.bookmark_folders = !ShowsIncognito() && services_.sidebar != nullptr;
     if (in.bookmark_folders) {
@@ -6947,6 +7021,8 @@ void PhiShellWindow::ShowTabRowMenu(POINT pt, const MenuRow& row) {
         }
       }
     }
+  } else if (action.is("tab.mute") || action.is("tab.unmute")) {
+    SetTabsMuted(browser, mute_tabs, action.is("tab.mute"));
   } else if (action.is("tab.copyUrl") || action.is("tab.copyLeft")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url));
   } else if (action.is("tab.copyRight")) {
@@ -7031,6 +7107,7 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
   in.horizontal = row.layout == "horizontal";
   in.open = row.open;
   in.custom_icon = !row.icon.empty();
+  in.mute = MuteRowFor(opening_browser, row.live_ids);
   const PhiMenuAction action =
       PhiRunPopupMenu(PhiBuildPinnedCellMenu(in),
                       PopupAt(pt, TPM_LEFTALIGN | TPM_TOPALIGN |
@@ -7057,6 +7134,8 @@ void PhiShellWindow::ShowPinnedCellMenu(POINT pt, const MenuRow& row) {
             in.horizontal ? "horizontal" : "vertical");
       }
     }
+  } else if (action.is("pin.mute") || action.is("pin.unmute")) {
+    SetTabsMuted(browser, row.live_ids, action.is("pin.mute"));
   } else if (action.is("pin.copyUrl") || action.is("pin.copyLeft")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url));
   } else if (action.is("pin.copyRight")) {
@@ -7132,6 +7211,9 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
     // none.
     in.spaces = SpaceMenuChoices(/*with_incognito=*/false);
   }
+  if (!row.folder) {
+    in.mute = MuteRowFor(opening_browser, row.live_ids);
+  }
   const PhiMenuAction action =
       PhiRunPopupMenu(PhiBuildBookmarkRowMenu(in),
                       PopupAt(pt, TPM_LEFTALIGN | TPM_TOPALIGN |
@@ -7183,6 +7265,8 @@ void PhiShellWindow::ShowBookmarkRowMenu(POINT pt, const MenuRow& row) {
         sidebar_->SplitTabsNormalized(browser, partner_id, fresh);
       }
     }
+  } else if (action.is("bm.mute") || action.is("bm.unmute")) {
+    SetTabsMuted(browser, row.live_ids, action.is("bm.mute"));
   } else if (action.is("bm.copyUrl") || action.is("bm.copyLeft")) {
     CopyTextToClipboard(shell_hwnd_, base::UTF8ToWide(row.url));
   } else if (action.is("bm.copyPane")) {
@@ -7684,6 +7768,7 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
     snapshot.open = pin.open;
     snapshot.icon = pin.icon;
     snapshot.bounds = pin.bounds;
+    snapshot.live_ids = LiveTabsOf(pin);
     ShowPinnedCellMenu(pt, snapshot);
     return;
   }
@@ -7704,6 +7789,7 @@ void PhiShellWindow::OnChromeContextMenu(int x, int y) {
     snapshot.icon = bookmark.icon;
     snapshot.folder = bookmark.folder;
     snapshot.bounds = bookmark.bounds;
+    snapshot.live_ids = LiveTabsOf(bookmark);
     ShowBookmarkRowMenu(pt, snapshot);
     return;
   }
