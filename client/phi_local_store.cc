@@ -11,6 +11,8 @@
 #include <fstream>
 #include <iterator>
 #include <random>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include "client/phi_url_rule_normalize.h"
@@ -255,6 +257,41 @@ CREATE TABLE IF NOT EXISTS browser_data_settings(
 bool Exec(sqlite3* db, const char* sql) {
   return sqlite3_exec(db, sql, nullptr, nullptr, nullptr) == SQLITE_OK;
 }
+
+// The first column of the first row of `sql` as text; empty when the
+// statement fails or returns nothing.
+std::string QueryText(sqlite3* db, const char* sql) {
+  sqlite3_stmt* stmt = nullptr;
+  std::string value;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK &&
+      sqlite3_step(stmt) == SQLITE_ROW) {
+    if (const unsigned char* text = sqlite3_column_text(stmt, 0)) {
+      value = reinterpret_cast<const char*>(text);
+    }
+  }
+  sqlite3_finalize(stmt);
+  return value;
+}
+
+bool HasColumn(sqlite3* db, const char* table, const char* column) {
+  const std::string sql = std::string("PRAGMA table_info(") + table + ");";
+  sqlite3_stmt* stmt = nullptr;
+  bool found = false;
+  if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+    while (!found && sqlite3_step(stmt) == SQLITE_ROW) {
+      const unsigned char* name = sqlite3_column_text(stmt, 1);
+      found = name && std::string_view(reinterpret_cast<const char*>(name)) ==
+                          column;
+    }
+  }
+  sqlite3_finalize(stmt);
+  return found;
+}
+
+// Opening may wait out WAL recovery or another connection's closing
+// checkpoint; a save keeps the old, shorter wait.
+constexpr int kOpenBusyTimeoutMs = 10000;
+constexpr int kSaveBusyTimeoutMs = 2000;
 
 // A prepared statement with 1-based positional binds (in call order) and
 // 0-based column reads.
@@ -509,17 +546,39 @@ LocalStore::OpenResult LocalStore::Open(const std::string& dir) {
     }
   }
   const std::string path = dir + "/" + kStoreFilename;
-  if (sqlite3_open_v2(path.c_str(), &db_,
-                      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE |
-                          SQLITE_OPEN_FULLMUTEX,
-                      nullptr) != SQLITE_OK) {
+  const int opened = sqlite3_open_v2(path.c_str(), &db_,
+                                     SQLITE_OPEN_READWRITE |
+                                         SQLITE_OPEN_CREATE |
+                                         SQLITE_OPEN_FULLMUTEX,
+                                     nullptr);
+  if (opened != SQLITE_OK) {
+    NoteOpenError("open", opened);
     sqlite3_close(db_);
     db_ = nullptr;
     return OpenResult::kFailed;
   }
-  sqlite3_busy_timeout(db_, 2000);
-  if (!Exec(db_, "PRAGMA journal_mode=WAL;") || !Exec(db_, kSchema) ||
+  // Opening an existing store takes no write lock, so it cannot fail while
+  // another connection writes: WAL lets this reader in beside that writer
+  // (a previous run still flushing on its way out; Chromium hands the
+  // profile to the next launch before the old process is gone). Only a new
+  // store's journal mode and version are written. The long wait covers WAL
+  // recovery and a checkpoint at another connection's close; the save
+  // path's shorter wait is set after.
+  sqlite3_busy_timeout(db_, kOpenBusyTimeoutMs);
+  if (QueryText(db_, "PRAGMA journal_mode;") != "wal" &&
+      !Exec(db_, "PRAGMA journal_mode=WAL;")) {
+    NoteOpenError("journal_mode", sqlite3_extended_errcode(db_));
+    Close();
+    return OpenResult::kFailed;
+  }
+  if (!Exec(db_, kSchema)) {
+    NoteOpenError("schema", sqlite3_extended_errcode(db_));
+    Close();
+    return OpenResult::kFailed;
+  }
+  if (QueryText(db_, "PRAGMA user_version;") != "13" &&
       !Exec(db_, "PRAGMA user_version=13;")) {
+    NoteOpenError("user_version", sqlite3_extended_errcode(db_));
     Close();
     return OpenResult::kFailed;
   }
@@ -527,18 +586,32 @@ LocalStore::OpenResult LocalStore::Open(const std::string& dir) {
   // one that has it refuses the statement, which is the answer wanted. The
   // format stays 13: the column is optional, and a build without it still
   // opens the store and reads such a cell as a pair.
-  sqlite3_exec(db_, "ALTER TABLE tab ADD COLUMN splitExtraPanes TEXT;",
-               nullptr, nullptr, nullptr);
+  if (!HasColumn(db_, "tab", "splitExtraPanes")) {
+    sqlite3_exec(db_, "ALTER TABLE tab ADD COLUMN splitExtraPanes TEXT;",
+                 nullptr, nullptr, nullptr);
+  }
   if (!has_manifest ||
       ManifestFormatVersion(manifest) != kStoreFormatVersion) {
     WriteWholeFileAtomic(manifest_path, ManifestJson(kStoreFormatVersion));
   }
   dir_ = dir;
   if (!LoadAll()) {
+    NoteOpenError("load", sqlite3_extended_errcode(db_));
     Close();
     return OpenResult::kFailed;
   }
+  sqlite3_busy_timeout(db_, kSaveBusyTimeoutMs);
+  last_error_.clear();
   return OpenResult::kOk;
+}
+
+void LocalStore::NoteOpenError(const char* step, int code) {
+  // Read before the caller closes the connection: the message lives on it.
+  last_error_ = std::string(step) + ": SQLite " + std::to_string(code) +
+                " (" + sqlite3_errstr(code) + ")";
+  if (db_) {
+    last_error_ += std::string(", ") + sqlite3_errmsg(db_);
+  }
 }
 
 void LocalStore::Close() {

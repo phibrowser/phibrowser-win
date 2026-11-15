@@ -3613,7 +3613,8 @@ void PhiCoordinator::OpenDataAccount(const std::string& account_id,
       // is read or written; the built-in default Space stands in.
       LOG(ERROR) << "[PhiClient] the local store needs a newer Phi";
     } else if (opened != store::LocalStore::OpenResult::kOk) {
-      LOG(ERROR) << "[PhiClient] the local store could not be opened";
+      LOG(ERROR) << "[PhiClient] the local store could not be opened ("
+                 << local_store_.last_error() << ")";
     }
   }
   account_defaults_.Load(dir);

@@ -245,6 +245,10 @@ class LocalStore {
   OpenResult Open(const std::string& dir);
   void Close();
   bool is_open() const { return db_ != nullptr; }
+  // Why the last Open() failed: the step, the SQLite result code and its
+  // message ("user_version: SQLite 5 (database is locked), ..."). Empty
+  // after an Open() that succeeded.
+  const std::string& last_error() const { return last_error_; }
   const std::string& dir() const { return dir_; }
 
   // --- Reads (memory; valid until the next mutation) ---------------------
@@ -569,6 +573,7 @@ class LocalStore {
   struct Dirty;
 
   bool LoadAll();
+  void NoteOpenError(const char* step, int code);
   // Writes what `dirty_` names in one transaction; on failure reloads the
   // memory from disk and returns false. Either way `dirty_` is emptied.
   bool Flush();
@@ -631,6 +636,7 @@ class LocalStore {
   // sqlite3 is a C handle, not a PartitionAlloc object.
   RAW_PTR_EXCLUSION sqlite3* db_ = nullptr;
   std::string dir_;
+  std::string last_error_;
   std::map<std::string, Tab> tabs_;
   std::map<std::string, Profile> profiles_;
   std::map<std::string, Space> spaces_;
