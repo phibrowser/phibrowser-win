@@ -1172,8 +1172,8 @@ void PhiOmniboxSession::DeleteRow(int index) {
 RECT PhiOmniboxSession::RowDeleteRect(int row) const {
   RECT rc = {};
   if (!popup_ || row < 0 || row >= static_cast<int>(rows_.size()) ||
-      !rows_[static_cast<size_t>(row)].deletable ||
-      (row != hovered_ && row != selected_)) {
+      !rows_[static_cast<size_t>(row)].deletable || row != hovered_) {
+    // Only under the pointer, not on the arrows' pick (Mac 00e3ad2d).
     return RECT{};
   }
   ::GetClientRect(popup_, &rc);
@@ -1286,8 +1286,8 @@ void PhiOmniboxSession::PaintPopup(HWND popup, HDC dc) {
     }
     RECT text_rc = {glyph_rc.right + Scaled(6), r.top, r.right - Scaled(8),
                     r.bottom};
-    // The trailing stack, right to left: the × of a lit deletable row (the
-    // Mac's delete button), then "Hold Ctrl to switch →" on a row that has
+    // The trailing stack, right to left: the × of a hovered deletable row
+    // (the Mac's delete button), then "Hold Ctrl to switch →" on a row that has
     // an open tab (the Mac's SwitchToTabView).
     const RECT remove = RowDeleteRect(index);
     if (remove.right > remove.left) {
