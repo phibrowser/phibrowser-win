@@ -95,10 +95,20 @@ class PhiBookmarkManager : public PhiPanel {
     std::vector<unsigned char> favicon_b;
     int favicon_b_width = 0;
     int favicon_b_height = 0;
+    // A split of three or four: the panes after the second (Mac 9f3756f2).
+    struct Pane {
+      std::string url;
+      std::wstring title;
+      std::vector<unsigned char> favicon;
+      int favicon_width = 0;
+      int favicon_height = 0;
+    };
+    std::vector<Pane> more;
     RECT bounds{};      // Row rect in client coords, scroll applied.
     RECT disclosure{};  // The folder's twisty.
   };
 
+  static std::vector<Row::Pane> PanesOf(struct PhiStoredRowView& view);
   void EnsureWindow();
   void EnsureSearchField();
   void LayoutChrome();

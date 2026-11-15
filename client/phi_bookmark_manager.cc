@@ -294,6 +294,22 @@ void PhiBookmarkManager::OnSize(int, int) {
   Invalidate();
 }
 
+// static
+std::vector<PhiBookmarkManager::Row::Pane> PhiBookmarkManager::PanesOf(
+    PhiStoredRowView& view) {
+  std::vector<Row::Pane> panes;
+  for (PhiStoredRowView::ExtraPane& extra : view.more) {
+    Row::Pane pane;
+    pane.url = extra.url;
+    pane.title = base::UTF8ToWide(extra.title);
+    pane.favicon = std::move(extra.favicon_bgra);
+    pane.favicon_width = extra.favicon_width;
+    pane.favicon_height = extra.favicon_height;
+    panes.push_back(std::move(pane));
+  }
+  return panes;
+}
+
 void PhiBookmarkManager::AppendSubtree(const std::string& parent_guid,
                                        int depth) {
   if (!controller_ || !controller_->sidebar_host()) {
@@ -312,6 +328,7 @@ void PhiBookmarkManager::AppendSubtree(const std::string& parent_guid,
     row.favicon_b = std::move(view.favicon_b_bgra);
     row.favicon_b_width = view.favicon_b_width;
     row.favicon_b_height = view.favicon_b_height;
+    row.more = PanesOf(view);
     row.icon = view.icon;
     row.folder = view.folder;
     row.depth = depth;
@@ -346,10 +363,16 @@ void PhiBookmarkManager::AppendMatches(const std::string& parent_guid) {
     const std::wstring url = base::UTF8ToWide(view.url);
     const std::wstring title_b = base::UTF8ToWide(view.title_b);
     const std::wstring url_b = base::UTF8ToWide(view.url_b);
-    const bool hit = Fold(title).find(needle) != std::wstring::npos ||
-                     Fold(url).find(needle) != std::wstring::npos ||
-                     Fold(title_b).find(needle) != std::wstring::npos ||
-                     Fold(url_b).find(needle) != std::wstring::npos;
+    bool hit = Fold(title).find(needle) != std::wstring::npos ||
+               Fold(url).find(needle) != std::wstring::npos ||
+               Fold(title_b).find(needle) != std::wstring::npos ||
+               Fold(url_b).find(needle) != std::wstring::npos;
+    for (const PhiStoredRowView::ExtraPane& pane : view.more) {
+      hit = hit ||
+            Fold(base::UTF8ToWide(pane.title)).find(needle) !=
+                std::wstring::npos ||
+            Fold(base::UTF8ToWide(pane.url)).find(needle) != std::wstring::npos;
+    }
     const std::string guid = view.guid;
     const bool folder = view.folder;
     if (hit) {
@@ -364,6 +387,7 @@ void PhiBookmarkManager::AppendMatches(const std::string& parent_guid) {
       row.favicon_b = std::move(view.favicon_b_bgra);
       row.favicon_b_width = view.favicon_b_width;
       row.favicon_b_height = view.favicon_b_height;
+      row.more = PanesOf(view);
       row.icon = view.icon;
       row.folder = folder;
       // Results are FLAT root rows and folders are not expandable here, as
@@ -543,12 +567,24 @@ void PhiBookmarkManager::PaintRow(HDC dc,
                 row.favicon_height);
   }
   x = icon.right + Scaled(8);
-  // A split bookmark shows BOTH favicons, as its Website cell does on Mac.
+  // A split bookmark shows every pane's favicon, as its Website cell does
+  // on Mac (all panes of a split of three or four since 9f3756f2).
   if (!row.url_b.empty() && !row.favicon_b.empty()) {
     RECT icon_b = {x, mid - icon_px / 2, x + icon_px, mid + icon_px / 2};
     PhiDrawBgra(dc, icon_b, row.favicon_b.data(), row.favicon_b_width,
                 row.favicon_b_height);
     x = icon_b.right + Scaled(8);
+  }
+  if (!row.url_b.empty()) {
+    for (const Row::Pane& pane : row.more) {
+      if (pane.favicon.empty()) {
+        continue;
+      }
+      RECT icon_n = {x, mid - icon_px / 2, x + icon_px, mid + icon_px / 2};
+      PhiDrawBgra(dc, icon_n, pane.favicon.data(), pane.favicon_width,
+                  pane.favicon_height);
+      x = icon_n.right + Scaled(8);
+    }
   }
 
   const int body_width = row.bounds.right - row.bounds.left;
@@ -570,6 +606,9 @@ void PhiBookmarkManager::PaintRow(HDC dc,
               (row.child_count == 1 ? L" item" : L" items");
   } else if (!row.url_b.empty()) {
     address = base::UTF8ToWide(row.url) + L"  |  " + base::UTF8ToWide(row.url_b);
+    for (const Row::Pane& pane : row.more) {
+      address += L"  |  " + base::UTF8ToWide(pane.url);
+    }
   } else {
     address = base::UTF8ToWide(row.url);
   }
@@ -736,6 +775,10 @@ void PhiBookmarkManager::OpenRow(const Row& row) {
   if (!row.url_b.empty()) {
     controller_->sidebar_host()->RequestOpen(controller_->slot().value,
                                              row.url_b);
+    for (const Row::Pane& pane : row.more) {
+      controller_->sidebar_host()->RequestOpen(controller_->slot().value,
+                                               pane.url);
+    }
   }
 }
 
