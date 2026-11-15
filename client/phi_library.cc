@@ -32,6 +32,7 @@
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 #include "client/phi_agent_spaces.h"
 #include "client/phi_animator.h"
+#include "client/phi_backdrop.h"
 #include "client/phi_app_menu.h"
 #include "client/phi_client_analytics.h"
 #include "client/phi_create_space_panel.h"
@@ -217,6 +218,10 @@ struct SpaceCard {
   PhiSpaceView space;
   PhiPalette palette;  // The Space's own palette (text colours, hover).
   COLORREF ground = 0;
+  // A linked palette of two or three colours: the card's gradient, top to
+  // bottom (the Mac's setStaticFill paletteColors, eb53f280). `ground` is
+  // the first stop, which the card paints and then regrades.
+  PhiPalette gradient;
   std::wstring icon_text;
   std::vector<PhiStoredRowView> pins;
   std::vector<OutlineRow> rows;
@@ -538,6 +543,31 @@ class LibraryView : public PhiPanel, private PhiCreateSpaceFormHost {
     ::PostMessageW(hwnd(), kMsgEndCreation, 0, 0);
   }
   COLORREF FormGround() const override { return creation_ground_; }
+  bool FormCorners(COLORREF* outside, int* radius) const override {
+    *outside = ContentGround();
+    *radius = Scaled(kSpaceCardRadius);
+    return true;
+  }
+  // The card wears the form's draft: its random theme on opening, then each
+  // palette edit (the Mac's LibrarySpaceCreationCard, eb53f280).
+  void FormThemeChanged(const std::string& theme_id,
+                        const PhiThemePalette* draft,
+                        int saturation) override {
+    const bool dark = palette().dark;
+    const PhiTheme& theme = PhiThemeById(theme_id);
+    const COLORREF overlay =
+        draft ? draft->ResolvedColor(0, dark)
+              : (dark ? theme.dark.overlay : theme.light.overlay);
+    const COLORREF ground = PhiBlend(overlay, CardGround(), 204);
+    if (ground == creation_ground_) {
+      return;
+    }
+    creation_ground_ = ground;
+    Invalidate();
+    if (creation_) {
+      creation_->Invalidate();
+    }
+  }
 
  private:
   static constexpr UINT kMsgEndCreation = WM_APP + 41;
@@ -720,6 +750,16 @@ class LibraryView : public PhiPanel, private PhiCreateSpaceFormHost {
         card.space = space;
         card.palette = spaces->PaletteForSpace(space.id);
         card.ground = GroundFor(*spaces, space.id, dark);
+        if (const std::optional<PhiThemePalette> linked =
+                spaces->SpacePalette(space.id)) {
+          const int count = std::clamp(linked->color_count(), 1, 3);
+          card.gradient.ground_top = card.ground;
+          card.gradient.ground_stop_count = count;
+          for (int i = 0; i < count; ++i) {
+            card.gradient.ground_stops[static_cast<size_t>(i)] =
+                PhiBlend(linked->ResolvedColor(i, dark), CardGround(), 204);
+          }
+        }
         card.icon_text = base::UTF8ToWide(space.icon_text);
         if (sidebar) {
           card.pins = sidebar->PinnedRowsForSpace(space.id);
@@ -984,6 +1024,7 @@ class LibraryView : public PhiPanel, private PhiCreateSpaceFormHost {
     for (const size_t index : paint_order) {
       if (index < cards_.size()) {
         PaintCard(dc, static_cast<int>(index), cards_[index]);
+        RegradeCard(dc, cards_[index]);
       }
     }
     if (creation_) {
@@ -1001,6 +1042,56 @@ class LibraryView : public PhiPanel, private PhiCreateSpaceFormHost {
                        p.label);
     }
     ::RestoreDC(dc, saved);
+  }
+
+  // A multi-colour palette's card: the flat first stop it was painted on
+  // becomes the palette's gradient, row by row, every wash, label and icon
+  // keeping its coverage (the sidebar's regrade, phi_backdrop.h). Pixels
+  // outside the rounded card are left alone.
+  void RegradeCard(HDC dc, const SpaceCard& card) {
+    if (card.gradient.ground_stop_count <= 1) {
+      return;
+    }
+    DIBSECTION dib = {};
+    HGDIOBJ bitmap = ::GetCurrentObject(dc, OBJ_BITMAP);
+    if (!bitmap || ::GetObject(bitmap, sizeof(dib), &dib) != sizeof(dib) ||
+        !dib.dsBm.bmBits || dib.dsBm.bmBitsPixel != 32) {
+      return;  // Not a 32 bpp DIB back buffer: stay flat.
+    }
+    // GetObject reports a DIB section's height as positive either way; both
+    // painters (PhiWindow's back buffer, PhiCommitShapedLayer) are top-down.
+    POINT origin = {};
+    ::GetViewportOrgEx(dc, &origin);
+    ::GdiFlush();
+    const int width = dib.dsBm.bmWidth;
+    const int height = std::abs(dib.dsBm.bmHeight);
+    // SAFETY: a top-down, tightly packed 32 bpp DIB of width x height.
+    auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
+        static_cast<uint32_t*>(dib.dsBm.bmBits),
+        static_cast<size_t>(width) * static_cast<size_t>(height)));
+    RECT b = card.bounds;
+    ::OffsetRect(&b, origin.x, origin.y);
+    const int radius = Scaled(kSpaceCardRadius);
+    const uint32_t flat = PhiPackedRgb(card.ground);
+    const double span = std::max<int>(1, (b.bottom - b.top) - 1);
+    for (int y = std::max<int>(b.top, 0); y < std::min<int>(b.bottom, height);
+         ++y) {
+      const uint32_t target =
+          0xFF000000u | PhiPackedRgb(PhiPaletteGroundAt(
+                            card.gradient, (y - b.top) / span));
+      // The rounded corners' horizontal inset on this row.
+      const int dy = std::max<int>({b.top + radius - y, y - (b.bottom - 1 - radius), 0});
+      const int inset =
+          dy > 0 ? radius - static_cast<int>(std::floor(std::sqrt(
+                                std::max(0, radius * radius - dy * dy))))
+                 : 0;
+      for (int x = std::max<int>(b.left + inset, 0);
+           x < std::min<int>(b.right - inset, width); ++x) {
+        uint32_t& pixel = pixels[static_cast<size_t>(y) * width + x];
+        pixel = 0xFF000000u | (PhiBackdropPixelOver(pixel, flat, target) &
+                               0x00FFFFFFu);
+      }
+    }
   }
 
   void PaintCard(HDC dc, int index, const SpaceCard& card) {

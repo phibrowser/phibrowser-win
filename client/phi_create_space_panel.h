@@ -35,6 +35,18 @@ class PhiCreateSpaceFormHost {
   // The ground the form paints on — the host window's, in place of the
   // sidebar's tint ramp.
   virtual COLORREF FormGround() const = 0;
+  // The form's theme as it stands: on opening (its random theme) and after
+  // each palette edit (`palette` set), so a host whose card wears the draft
+  // can follow it (the Mac's LibrarySpaceCreationCard, eb53f280).
+  virtual void FormThemeChanged(const std::string& theme_id,
+                                const PhiThemePalette* palette,
+                                int saturation) {}
+  // A host whose form is a rounded card (the Library's): the form paints
+  // its corners in `outside` around a `radius` rounded ground. False (the
+  // default) for a square form.
+  virtual bool FormCorners(COLORREF* outside, int* radius) const {
+    return false;
+  }
 
  protected:
   // The window owns the form, never the reverse.

@@ -750,6 +750,10 @@ void PhiCreateSpacePanel::CloseColorEditor() {
 }
 
 void PhiCreateSpacePanel::PushPreview() {
+  if (host_) {
+    host_->FormThemeChanged(theme_id_, palette_ ? &*palette_ : nullptr,
+                            saturation_);
+  }
   if (!controller_ || standalone()) {
     return;
   }
@@ -914,10 +918,20 @@ void PhiCreateSpacePanel::PaintForm(HDC dc) {
   const PhiPalette palette = controller_->CurrentPalette();
   // Match the shell's flat ground. Paint() turns the sidebar form into
   // premultiplied pixels; standalone/flyout forms keep their opaque ground.
-  HBRUSH brush = ::CreateSolidBrush(host_ ? host_->FormGround()
-                                         : palette.ground_top);
-  ::FillRect(dc, &rc, brush);
-  ::DeleteObject(brush);
+  COLORREF outside = 0;
+  int radius = 0;
+  if (host_ && host_->FormCorners(&outside, &radius)) {
+    // A card: the host's ground at the corners, the form's rounded inside.
+    HBRUSH corners = ::CreateSolidBrush(outside);
+    ::FillRect(dc, &rc, corners);
+    ::DeleteObject(corners);
+    PhiFillRoundRectAA(dc, rc, radius, host_->FormGround());
+  } else {
+    HBRUSH brush = ::CreateSolidBrush(host_ ? host_->FormGround()
+                                           : palette.ground_top);
+    ::FillRect(dc, &rc, brush);
+    ::DeleteObject(brush);
+  }
   const Geometry g = ComputeGeometry();
   ::SetBkMode(dc, TRANSPARENT);
   const COLORREF ink = palette.dark ? RGB(0xFF, 0xFF, 0xFF) : RGB(0, 0, 0);
