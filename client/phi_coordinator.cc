@@ -2001,6 +2001,20 @@ bool PhiCoordinator::SetStoredRowUrl(const std::string& guid,
   if (!tab_store_.SetRowUrl(guid, url)) {
     return false;
   }
+  // An open bound tab follows the edit in place, as on the Mac
+  // (navigateOpenPinnedTab / 843817e5); one already there (Replace URL) is
+  // left alone.
+  if (framework_) {
+    for (const auto& [browser, tab] :
+         window_model_.TabsWithTag(TagFor(guid, false))) {
+      const auto* live = window_model_.FindTab(browser, tab);
+      if (live && live->url == url) {
+        continue;
+      }
+      framework_->NavigateTabInPlace(browser.value, tab.value, url.c_str(),
+                                     /*keep_current=*/false);
+    }
+  }
   registry_.InvalidateAll();
   NotifySettingsObservers(PhiSettingsChange::kStoredRows);
   return true;
