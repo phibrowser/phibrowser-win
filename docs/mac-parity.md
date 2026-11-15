@@ -7,8 +7,8 @@ either the decision to leave it out or that it still needs to be built.
 It is a list of surfaces, not of code: how a feature is implemented is in
 the owning doc each row points to.
 
-**Checked against phibrowser-mac `80bd9bdb` (2026-11-11) and
-phibrowser-win `d067af2`, on 2026-11-11.**
+**Checked against phibrowser-mac `13f47f02` (2026-11-13) and
+phibrowser-win `1b4bf96`, on 2026-11-14.**
 
 ## Legend
 
@@ -74,9 +74,12 @@ Two standing decisions cover many rows and are not repeated in full:
 |---|---|---|---|---|
 | Docked sidebar: Space pips, pinned grid, bookmarks, tab tree, bottom bar | yes | yes, 200–480 dip | ✅ | `sidebar-architecture.md`. |
 | Floating sidebar (edge hover) | yes | yes | ✅ | No fade on slide-in (impl doc §4.4). |
+| Sidebar on the right (Mac `574c20c4`, 2026-11-12) | Settings ▸ General ▸ Appearance Left / Right (`sidebarPosition`, local, default left; width kept per side, `lastKnownRightSidebarWidth`); tab-area menu "Move Sidebar to Right / Left" in vertical layouts; the docked and floating sidebars, trigger edge, previews and omnibox popup mirror; the traffic lights move to a 32 pt band that fades in when the pointer reaches the top edge; Comfortable is always left | left only | 🔧 | Triaged 2026-11-14. Windows needs no hover band: its caption buttons already sit at the top right. Proposed: with the sidebar on the right the caption buttons move to the trailing end of the sidebar header (the window corner), and back to the address row while the sidebar is collapsed; the floating panel docks at the right edge below the address row. Touches `phi_shell_layout`, the shell's resize, caption and floating-panel code, menus, Settings and prefs. L, client only. |
 | Sidebar bottom bar: profile, chat, memory, downloads, feedback | all five | profile avatar + Downloads + Feedback pill | ✅ | Chat and memory are ⛔ AI suite. The profile button returned 2026-10-27 on request (left-most 24 dip avatar / person glyph, the Mac's menu: Download List → Library ▸ Downloads, Manage Bookmarks, Manage Extensions, New Tab, New Incognito Space / Window, Settings, Sign in when guest), reversing the 2026-09 decision in `windows-native-ui.md` §4.2. 2026-11-11 (Mac `ce1f357f`): the sidebar area menu ends in a "Bottom Buttons" submenu that shows or hides Profile, Downloads and Feedback (`sidebarBottomBarShows*`, this device only, all on by default); a hidden button leaves no slot. Run on nuc. No Memory entry: the chip is ⛔ AI suite. 2026-11-13 (GitHub #13): the Downloads button now does what the Mac's `DownloadButtonView` does: the `download-button` Lottie's arrow drop through the tray once per new download (drawn natively from the button's own mask, `phi_download_indicator.cc`) and a 14 × 2 dip accent progress bar under the icon while a download runs (bytes over bytes, fading in and out over 200 ms). The framework has no download event, so the shell polls the list every 500 ms, every 150 ms for 1.5 s after a page change. Gap: Comfortable, a hidden sidebar or a hidden Downloads button have no button to show it on (the Mac's header shows a Downloads button in its traditional layout; Windows has none in the address row by the 2026-09-20 decision). |
 | Horizontal strip: Space chip, group chips, overflow, bookmarks bar | yes | yes | ✅ | Group headers in the horizontal layout: none on either side's strip beyond chips. |
 | Tab groups (9 colours, collapse, overview) | yes | yes | ✅ | |
+| Group tabs opened from links (Mac `7f937b6b`, `4964a1e3`, `33199022`, `2f4cf3b6`, 2026-11-11) | Advanced toggle `groupTabsOpenedFromLinks`, off by default, not synced: a tab the user opens from a link (Ctrl / middle click, Open Link in New Tab) of an ungrouped tab forms a group of the opener (its whole split) and the new tab, named after the results page's search terms, else the opener's title or site; from a pinned tab or Bookmark Tab the group holds the new tabs only and later links join it; never in agent, Kiosk or shadow windows; `auto_tab_groups_enabled` in `user_defaults_snapshot` | none | 🔧 | Triaged 2026-11-14. The client is never told which tab opened a tab or that the user opened it: a fork callback after the `PhiLinkTabMarker` check (the Mac's `ScopedUserOpenedNewTab` is `IS_MAC_PHI`), with the opener's search terms, ABI 6 → 7. Grouping itself uses the existing `CreateTabGroupForTabs` / `RenameTabGroup`. M. |
+| New tabs at the top, New Tab row at the bottom (Mac `5590a1d1`, 2026-11-13) | General ▸ Browsing toggle `newTabsAtTop`, off by default, SYNCED: in sidebar layouts ordinary new tabs go before the first normal tab (before a whole split, after pins and bookmark tabs); Comfortable always appends; the sidebar New Tab row follows the setting, so by default it now sits under the tabs, sticky at that edge | new tabs append; New Tab row above the tabs | 🔧 | Triaged 2026-11-14. Needs the fork's `PhiMoveNewTabTo` (`8c50bbc3e88`, on `phi-r156`) exported as a placement call, so opener children survive (`MoveTabBefore` is a user move), plus `BoolSetting("newTabsAtTop")` in `phi_sync_settings_win.cc`. The unknown key already round-trips through sync. The row move is what users will notice. M–L, fork + ABI. |
 | Tab hover preview card | yes | yes | ✅ | |
 | Open-tab indicators / unloaded (dimmed) indicators | yes | yes | ✅ | |
 | Tab audio / muted indicator on rows and strip cells | yes (Mac `4e6de510` keeps it while muted) | none | 🔧 | No audio glyph on Windows tab rows; needs the framework's per-tab audible / muted state. |
@@ -88,7 +91,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Clear All Tabs with Undo (Mac `06bee451`, `af8702c3`, `ea18f661`, 2026-11-02) | File menu, rebindable ⇧⌘K, sidebar separator button; closes ordinary background tabs and keeps the foreground tab, its split, a visible Peek, pins and bookmark-bound tabs; Edit ▸ Undo and Redo per window bring the pages back unloaded with their order, groups and splits; a toast names the shortcut (`docs/architecture/clear-tabs.md`) | ⋯ menu row, rebindable Ctrl+Shift+K. Keeps the foreground tab, its split, pins and bound tabs. A toast's Undo button brings the pages back unloaded in one batch with their order, groups and splits; only removals Chromium confirmed return | ◐ | Done 2026-11-04, see §9 port 5. Left out by decision: the sidebar button, Edit ▸ Undo and Redo. The toast lasts 10 s and holds only the latest cleanup. Fork `RestoreTabs` export in `phi_framework_api.h`. |
 | Pinned tabs: scope App / Profile / Space, split pins, rename, edit URL | yes | yes | ✅ | |
 | Keep pinned tabs loaded (Mac `375fed24`, `734319a9`, 2026-11-10) | Advanced toggle, on by default, this Mac only; an open pinned tab is skipped by Memory Saver and memory-pressure unloading | Advanced toggle, on by default, this device only; the sidebar pushes each pinned cell's live tabs through the framework call `SetTabKeepLoaded` (ABI 4) | ✅ | Ported 2026-11-11. nuc, read from `chrome://discards`: the pinned tab carries "Tab is a Phi pinned tab" with the switch on, loses it with the switch off, and a plain tab never has it. A real unload under memory pressure was not provoked. Pinned tabs of a Space that is not on screen get the state the next time that Space's sidebar rebuilds. |
-| Edit pinned tab icon | Edit… dialog has icon | Rename… / Edit URL… only | ◐ | No icon override on a pin. |
+| Edit pinned tab icon (Mac `91740002`, 2026-11-13: pinned cell menu ▸ Change Icon…, not on split cells, symbol or emoji with Reset; stored in the V14 `icon` column, `"default"` = none; not synced) | Edit… dialog has icon; Change Icon… | Change Icon… (Space icon picker, icons and emoji) and Reset Icon in the single pinned cell's menu; stored in the pin's `icon` column, not synced | ✅ | Ported 2026-11-15. Reset Icon is a menu row: the Windows picker has no slot for the Mac's trash button. `pinned.list` reports `icon`. suite-pinicon nuc 5/5. |
 | Bookmark favicon actions: Separate From Bookmark / Back to Saved URL; a slash before the title when the open tab left the saved page (Mac `e917b732`, 2026-11-10) | row favicon menu; slanted separator between favicon and title | the slash only | ◐ | The slash was ported 2026-11-11 (single bookmark rows, the Mac's URL comparison: `www.` and a lone root slash do not count), seen on nuc. The favicon actions themselves are still missing. |
 | Bookmark folder icon picker | yes | yes (24 symbols) | ✅ | |
 | Close an open bookmark from its row (hover minus, Mac `7ec6e1b7`, 2026-10-27) | minus on hover while open | minus on hover while open | ✅ | Ported 2026-11-02, box-verified on nuc: `ShortcutRow::close_box`, a `fluent::kRemove` minus and a UIA button; a click closes the tab through `SidebarClose` and the bookmark stays. `kRemove` is new in `phi_fluent.h`. |
@@ -111,7 +114,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Feature | Mac | Windows | Status | Gap / decision |
 |---|---|---|---|---|
 | Omnibox with suggestions, keyword chip ("Tab to search") | yes | yes | ✅ | Under the Omnibox new-tab behaviour an EMPTY window (Ctrl+N, last tab closed) shows the placeholder with the field focused instead of a new-tab tab, as on the Mac (`936d090e`, ported 2026-10-27, fork + client). Since 2026-10-28 the Mac's centred floating omnibox exists too (`phi_floating_omnibox.{h,cc}`, a `PhiPopover` whose field joins `PhiOmniboxSession`): under the Omnibox new-tab behaviour Ctrl+T, the New Tab rows and an empty window open it over the page, suggestions drop flush under it, the keyword chip works in it, a commit opens a new tab (or the empty window's first); Escape, a click outside, or the user's New Tab / Close Tab chord close it. The empty window's placeholder under it is blank (the native new-tab page mounts with its controls hidden, `NativePagesBlankPlaceholder`), and switching to a Space whose window is already empty opens the card too (the Mac's `emptyLiveSpaceOpensOmniBox`). A window that is not in front when it empties focuses the address field instead and does not open the card later (the Mac owes it until the window is presented). The Mac went blank for new windows and empty Spaces on 2026-11-02 (`0c4f1552`) but still shows its game after a last-tab close; Windows is blank in all three. |
-| "Hold ⌘ to switch" to an already-open tab | yes | "Hold Ctrl to switch →" | ✅ | Ported 2026-10-28 with the rest of the Mac `OmniBoxViewModel` / `OmniBoxTextField` logic (fork `OpenOmniboxMatch` takes an explicit disposition, `DeleteOmniboxMatch`, `StartOmniboxQuery(prevent_inline)`, `swap` in the results json; client `phi_omnibox_session.{h,cc}`): a row with an open tab opens in the current tab unless Ctrl is held (Enter or click), where it used to switch silently; inline autocompletion of the default row (selected, typed over, dropped on Backspace / Delete); the default row armed when the rows answer the typed text, an arrowed pick kept across streamed updates, stale result sets dropped; Shift+Delete and a hover × forget deletable rows; history rows show their favicon; Chromium's swapped rows, pedals and empty rows filtered; chrome:// reads phi:// in the field and the rows; the keyword chip wears the seeded engines' brand colours. Not ported: a bookmark / pinned row's tab opening address-bar submissions in a NEW tab (`3d3719b1`). |
+| "Hold ⌘ to switch" to an already-open tab | yes | "Hold Ctrl to switch →" | ✅ | Ported 2026-10-28 with the rest of the Mac `OmniBoxViewModel` / `OmniBoxTextField` logic (fork `OpenOmniboxMatch` takes an explicit disposition, `DeleteOmniboxMatch`, `StartOmniboxQuery(prevent_inline)`, `swap` in the results json; client `phi_omnibox_session.{h,cc}`): a row with an open tab opens in the current tab unless Ctrl is held (Enter or click), where it used to switch silently; inline autocompletion of the default row (selected, typed over, dropped on Backspace / Delete); the default row armed when the rows answer the typed text, an arrowed pick kept across streamed updates, stale result sets dropped; Shift+Delete and a hover × forget deletable rows; history rows show their favicon; Chromium's swapped rows, pedals and empty rows filtered; chrome:// reads phi:// in the field and the rows; the keyword chip wears the seeded engines' brand colours. Not ported: a bookmark / pinned row's tab opening address-bar submissions in a NEW tab (`3d3719b1`). Watched since 2026-11-14: the Mac's unified omnibox (`92ba12c5`, `df77cf4a`, `13f47f02`: Phi pins, bookmarks, split items and commands ranked as rows, Enter opens a split item as a new copy, ⌘ switches) runs only in its Canary build; on Windows the fork's `IsUnifiedOmniboxEnabled` stub returns false and the framework API has no session calls. Revisit when the Mac takes it out of Canary. |
 | Site menu: security row, Content blocking on this site, Always show URL path, Site settings, Clear cache / cookie, Extensions ▸, Share ▸ | yes | all but Share ▸ and Extensions ▸ | ◐ | Share: see §1. Extensions live in the field's puzzle button instead (design). Always show URL path drives the field since 2026-11-04, default off as on the Mac: off shows the host alone, on adds the port, path, query and fragment, and neither shows the scheme, `www.` or trailing slashes. Editing and copying use the whole URL. Unlike the Mac's on state, `data:`, `blob:`, `view-source:` and `file:///` URLs stay whole. |
 | Site menu: Collect Site Memories / Delete Site Memories | yes | none | ⛔ | AI suite (site memory is browser memory). |
 | Copy link in the field, Reader button (hover) | yes | yes | ✅ | Copies the presented Peek's URL (the Mac's `d94d3329`), through `RebuildNavState` and `nav_url_`. |
@@ -202,13 +205,13 @@ Two standing decisions cover many rows and are not repeated in full:
 | Folio: Save to Folio, Open Folio, auto-save on site actions, Add Note | yes | yes | ✅ | `folio-port.md`. |
 | Folio library | Mirage `library.html` — the Mac DELETED its native library 2026-10-19 (`45a10144`; `docs/folio-native-library.md` now says the extension page is the only Folio UI) | Mirage `library.html` (`PhiFolio::OpenLibrary`) | ✅ | The 2026-10-19 "implement the native library" decision is void: both sides open `library.html`. The Library surface's Folio section (§2) hosts the same page. |
 
-## 7. Summary (2026-11-11)
+## 7. Summary (2026-11-15)
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 64 |
-| ◐ partial | 29 |
-| 🔧 to implement | 21 |
+| ✅ ported | 65 |
+| ◐ partial | 28 |
+| 🔧 to implement | 24 |
 | ⛔ deliberately left | 21 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
@@ -224,7 +227,8 @@ app) · `agentSpace.app.info` · tab audio indicator ·
 bookmark Separate/Back-to-saved (the slash is there) ·
 What's new / Documentation / Improve
 translations rows · Export logs / Extension info rows · settings deeplink ·
-sync problem telemetry.
+sync problem telemetry · (2026-11-14) sidebar on the right · group tabs
+opened from links · new tabs at the top.
 
 **Decided 2026-10-19:** the five rows that were ❓ in the first pass
 (Library, Time Machine snapshots, native Folio library, Arc/Zen wizard,
@@ -302,6 +306,94 @@ it, pointing at the owning doc.
 ## 9. Triage log
 
 One table per pass, newest first. Commits are in Mac history order.
+
+### 2026-11-14 — phibrowser-mac `80bd9bdb` → `13f47f02` (64 commits, 3 merges)
+
+Read through the diffs and the Windows code (and the fork on `phi/phi-r156` where a Mac
+commit touched it). Nothing built or run when this table was written. Nine commits are
+release-branch copies (Telegram bots, stale strings) and share a row. The Windows strings
+catalog regenerated from the `13f47f02` Mac catalog is byte-identical to the committed one,
+so the stale-string removals cost Windows no translation. Three new 🔧 rows (§2: sidebar on
+the right, group tabs opened from links, new tabs at the top).
+
+**Port recommendations, smallest first.** S under half a day, M about a day, L several days.
+
+1. `00e3ad2d` omnibox × on hover only. S, client.
+2. `ca764c6e` default accent at the palette centre. S, client.
+3. `843817e5` (nearby gap) Edit URL on a single pin or bookmark loads the new address in its open bound tab. S, client.
+4. `9f3756f2` Bookmarks page shows every pane of a split of three or four. S–M, client.
+5. `eb53f280` Library create card follows the form's theme (S), then gradient card grounds (M). Client.
+6. `91740002` pinned tab icon. S–M, client.
+7. `0c35bdfd` focus stays in a split when its focused pane closes. S, fork, no ABI; box check first.
+8. `7f937b6b` family: group tabs opened from links. M, fork + ABI 7.
+9. `5590a1d1` new tabs at the top. M–L, fork + ABI.
+10. `574c20c4` sidebar on the right. L, client; design (caption buttons in the sidebar header) to confirm.
+
+Box checks first, ported only if Windows fails them: `42668491`, `1ddf16c7`, `1802b94c`, `a4863fc0`.
+
+**Port status (2026-11-15).** The user approved ports 1–7; 8–10 wait. All seven are committed
+(client branch `feat/mac-parity-13f47f02`; port 7 on fork `phi/phi-r156`, needs a framework
+release). Each suite fails on the baseline (client `416af7c2`, origin/main
+`1b4bf96`, dev-hooks) and passes on the port. Tests in phibrowser-win-test branch
+`test/mac-parity-13f47f02`.
+
+| # | Mac | Windows change | Test | Result |
+|---|---|---|---|---|
+| 1 | `00e3ad2d` | `phi_omnibox_session.cc` RowDeleteRect: × only on the hovered row | suite-omniboxdelete, cu omnibox-delete-hover | gmk 3/3 (baseline fails), scenario PASS |
+| 2 | `ca764c6e` | `phi_theme_palette.cc` Accent: zero saturation → #3AA4D5 / #1E7099 | suite-paletteaccent, cu palette-centre-accent | gmk 4/4 (baseline keeps the old hue), scenario PASS |
+| 3 | `843817e5` | `phi_coordinator.cc` SetStoredRowUrl navigates the bound tab in place (not when it is already there) | suite-pinediturl, cu pin-edit-url-loads | gmk 5/5 (baseline 3/5), scenario PASS 3/3 |
+| 4 | `9f3756f2` | `phi_bookmark_manager.{h,cc}`: extra panes in icons, address column, search, Open | suite-bookmarksplit4, cu bookmarks-page-split4 | nuc 7/7 (baseline 5/7), scenario PASS 3/3 on gmk |
+| 5 | `eb53f280` | `phi_library.cc` RegradeCard (gradient cards), FormThemeChanged / FormCorners host callbacks in `phi_create_space_panel.{h,cc}` | cu library-card-theme (no pipe access to the Library) | nuc scenario PASS 3/3, baseline FAIL C1/C2 |
+| 6 | `91740002` | menu rows, `LocalStore::UpdatePinIcon`, `PhiTabStore` pin icon, cell paint, band signature, `pinned.list` `icon`, two strings | suite-pinicon, cu pinned-tab-icon | nuc 5/5 (baseline fails), scenario PASS 5/5 on gmk |
+| 7 | `0c35bdfd` | fork `tab_strip_model.cc` RemoveTabFromIndexImpl, `IS_WIN_PHI_CLIENT`: a surviving split focuses the next pane, else the previous (the fork chose the first pane) | suite-splitfocus, cu split-focus-close | nuc 5/5 twice with chrome.dll `526d99ea` (baseline 3/5), scenario PASS 2/2 on gmk |
+Final check: suites 1, 2, 3, 4 and 6 all pass on nuc against the combined client `e0f7862a`
+(3/3, 4/4, 5/5, 7/7, 5/5). Per-port diffs: `wt/mac-parity-patches/`.
+
+| Commit | Subject | Verdict | Windows note |
+|---|---|---|---|
+| `f181bd16`, `c24a080f`, `764be18c`, `74f9dee0`, `7195439e`, `1b44e8aa` | custom Telegram bots (release/2.16.1) | skip | Phi Link, ⛔ AI suite. |
+| `10c3dfb4`, `755a2758`, `6245d153`, `aa39fd90` | i18n: stale strings, catalog order, Toolbar Buttons | skip | Catalog regenerated against `13f47f02`: no change. The Toolbar Buttons keys are not asked for (see `c592b83d`). |
+| `42668491` | fix: bring Phi to the front when switching to the agent Space from the handoff prompt | box check | The prompt activates Phi when clicked and `Switch()` hands activation to its owner shell, but `RequestWatch` never raises the hosting window. If the box shows it behind another app: `BringToFront()` on the watcher after `HostAgentSpace`. XS. |
+| `98e9b12b` | Report edge-to-edge content preference in launch snapshot | skip | Edge-to-edge is ⛔ (§3). |
+| `eb53f280` | fix: Library new Space card follows palette edits and shows gradients | port | `phi_library.cc` computes `creation_ground_` once from the source Space; the form tells its host nothing about theme changes. Add a `FormThemeChanged` host callback; then paint card grounds from `ground_stops` with `PhiOklabGradient`. |
+| `c592b83d` | feat: let users choose which toolbar buttons are shown in Comfortable | watch | Windows' horizontal address row has no Profile, Downloads, Memory or Feedback button (2026-09-20 decision). Revisit if one is added. |
+| `62fd9b82` | fix: remove the gray line around the page when edge-to-edge is on | skip | Edge-to-edge is ⛔. |
+| `122b7f69`, `deb16820`, `005548b1` | Pi Agent Transcript mirror and companion extension removal | skip | Already removed on Windows 2026-11-12. |
+| `0f0732d9` | fix: register supported file types for macOS Open With | skip | The NSIS installer registers Chromium-for-Windows' association set (`phi-installer.nsi`). |
+| `9b6824d7`, `3906564a` | Cmd-W on a pane of a stored split keeps the saved panes | skip | Both reverted by `a424c64b`; Windows went through the same two steps (8cc8172, e74483e). |
+| `7100f07a` | fix: host the omnibox in the browser window above Peek and Reader | skip | The suggestion list is an owned popup with a DWM shadow, above the child Peek panel; nothing clips it. |
+| `29b57b4b` | fix: keep the header row uncovered, clickable and undimmed while a Peek is open | skip | The Peek and its dim sit in the content rect only (`phi_peek_panel.cc`). |
+| `c1c471c3`, `30c855ab` | keep the panes of an opening or closing bookmark split out of the tab list | skip | `OpenCell` opens, tags and splits in one call before the posted rebuild; a tagged pane outside a split is held by its cell, not listed. |
+| `1ddf16c7` | feat: show the sidebar context menu when right-clicking the bottom bar | box check | Code says Windows already does it (each click hit-tests its own point, the bar falls through to `ShowTabAreaMenu`, the floating panel forwards to the same handler). |
+| `ca764c6e` | fix: use default accent when theme palette returns to center | port | Same bug: the centre snap keeps the hue and `PhiThemePalette::Accent` ignores saturation. Return #3AA4D5 / #1E7099 at saturation 0. |
+| `e0b0bd8e` | feat: admit Athena under its new bundle ids | skip | Companion apps ⛔ (§6). |
+| `9f3756f2` | fix: display all split bookmark panes in bookmark manager | port | `phi_bookmark_manager.cc` reads `url_b` only; carry `PhiStoredRowView::more` through `Row`, search and paint. The white / black ground is skipped (`window_bg`). |
+| `a424c64b` | fix: close the whole split when Cmd-W closes a pane of a pinned or bookmark split | done | Windows e74483e (2026-11-12). The comment in `phi_shell_window.h` that says the Mac closes only the pane is updated. |
+| `82c45010` | fix: open an Option-clicked link in a new tab when its split is full | skip | Alt-click in a split loads the link in another pane on Windows (stock Chromium), so no link is dropped. Windows replaces a pane where the Mac adds one: a product difference, not this commit. |
+| `1802b94c` | fix: let links in an unfocused split pane respond to clicks | box check | Windows panes are Chromium's MultiContentsView; the client does not focus panes on click. Check a first click on a link in an unfocused pane. |
+| `cf42447e` | fix: truncate kiosk URL before the profile button in narrow windows | skip | `phi_kiosk_window.cc` already partitions the capsule; the rects cannot overlap. |
+| `4eba5dce` | fix: keep a split whole when its tab group moves to bookmarks | watch | Windows cannot drag a whole group onto bookmarks yet (D33). |
+| `db5ed88f` | refactor: inject a tab-group bridge into BrowserState | skip | Test seam. |
+| `7f937b6b`, `4964a1e3`, `33199022`, `2f4cf3b6` | group tabs opened from links (setting, search-term names, pinned and Bookmark Tab openers, launch snapshot) | port | New §2 row. Fork callback with the opener and its search terms, ABI 7; client grouping, Advanced row, analytics property. |
+| `c804680d`, `880bdf61` | docs: Space routing of link tabs through redirects | skip | Describes fork behaviour Windows shares (`PhiLinkTabMarker`, the Redirector put-back). |
+| `6e387f16` | chore: resolve macOS Phi Framework releases by mac-v tags | skip | Mac build script; Windows releases are `win-v*` and never Latest. |
+| `c58e44be`, `74bb3a5f` | merges (release/2.17.0, main into dev) | skip | Their content is in the rows here and earlier passes. |
+| `574c20c4` | Add an option to put the sidebar on the right | port | New §2 row, L. |
+| `5e90e343`, `adb88ae4` | refactor + tests: route tab binding changes through one entry | skip | Windows writes tags in one place (`TagTab`). |
+| `60475b75` | fix: keep a Peek attached when its opener's binding changes | skip | Windows does not restore Peeks; the tag never holds Peek markers. |
+| `843817e5` | fix: navigate bound tabs in place instead of clearing their binding | port (nearby gap) | Pin return and the split editor already use `NavigateTabInPlace`. Gap: single Edit URL (`SetStoredRowUrl`) saves only, the open tab stays on the old page. |
+| `de19a7e4` | fix: pin a tab with a stale binding as a new pinned record | skip | Pin always makes a new row and retags; a stale tag names no record. |
+| `9aebe163` | fix: keep a split bookmark active when its focused pane joins the split | skip | `active` is recomputed from each snapshot. |
+| `3478c44b` | fix: stop the split AI Chat panel going blank | skip | ⛔ AI suite. |
+| `0c35bdfd` | fix: keep focus in a split when one of its panes closes | port | Chromium's `DetermineNewSelectedIndex` runs the opener rules before the split-sibling rule, so a pane that opened a background tab hands focus out of the split. Fork, `IS_WIN_PHI_CLIENT`; box check first. |
+| `d0887f1f`, `1a296ec2` | bind a restored split to its bookmark again (relaunch, reopened window) | skip | The tag is in `PhiTabData::custom_value`, saved by session and tab restore. |
+| `a4863fc0` | fix: keep an automatic Peek in its Space through redirects | box check | Windows marks the Peek right after `OpenURL`, before redirects; open question is a rule matching the first request. If it fails: `ExemptNextNavigation` before `OpenURL` in `OpenUrlAsPeek` (fork, S). |
+| `f4c5316c` | fix: stop a late page title from overwriting a tab's newer title | skip | One coalesced snapshot path on Windows. |
+| `8ff5cbb7` | fix: keep the Peek card on whole points | skip | Integer physical pixels on Windows. |
+| `91740002` | feat: add custom icons for pinned tabs | port | §2 row stays ◐ until done. |
+| `5590a1d1` | Add configurable new-tab placement with split-safe ordering | port | New §2 row. |
+| `92ba12c5`, `df77cf4a`, `13f47f02` | unified omnibox: Phi pins, bookmarks, splits and commands as rows | watch | Mac Canary only; §3 omnibox row. |
+| `00e3ad2d` | fix: right-align omnibox switch hints and show delete only on hover | port | Hints already right-aligned; `RowDeleteRect` also shows the × on the selected row. |
 
 ### 2026-11-11 — phibrowser-mac `28df0d0d` → `80bd9bdb` (16 commits, no merges)
 

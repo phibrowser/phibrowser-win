@@ -297,7 +297,7 @@ class SidebarHost {
   // first) and returns true, so the cell reads as not open and keeps what
   // it saved. False, and nothing closed, for any other tab; the caller then
   // closes just that tab. The chip's Close pane still closes one pane.
-  // Decided 2026-11-12; the Mac's Cmd+W closes only the focused pane.
+  // Decided 2026-11-12; the Mac does the same since a424c64b.
   virtual bool CloseStoredSplitOfTab(int64_t browser_id, int tab_id) = 0;
   virtual void NoteStoredPaneReplaced(int64_t browser_id,
                                       int evicted_tab,
