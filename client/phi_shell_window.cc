@@ -631,6 +631,7 @@ PhiShellWindow::Layout PhiShellWindow::ToLayout(
   out.stored_band = PhiToRect(shell.stored_band);
   out.bookmark_separator = PhiToRect(shell.bookmark_separator);
   out.new_tab_row = PhiToRect(shell.new_tab_row);
+  out.new_tab_row_at_bottom = shell.new_tab_row_at_bottom;
   out.bottom_bar = PhiToRect(shell.bottom_bar);
   out.media_card = PhiToRect(shell.media_card);
   out.sidebar_profile = PhiToRect(shell.sidebar_profile);
@@ -696,6 +697,8 @@ ShellLayoutInputs PhiShellWindow::CurrentLayoutInputs(bool include_floating) con
   in.agent_chip_dip = agent_chip_dip_;
   in.update_dip = update_dip_;
   in.media_card_dip = mini_player_ ? mini_player_->ReservedDip() : 0;
+  in.new_tab_row_at_bottom =
+      services_.prefs && !services_.prefs->NewTabsAtTop();
   if (floating && floating_panel_h_ > 0) {
     // The panel's own height: its bands (the bottom bar) fit the panel.
     in.client_height = floating_panel_h_;
@@ -985,6 +988,14 @@ RECT PhiShellWindow::sidebar_toggle_rect() {
 
 RECT PhiShellWindow::update_rect() {
   return ComputeLayout().update;
+}
+
+RECT PhiShellWindow::new_tab_row_rect() const {
+  return sidebar_->new_tab_row();
+}
+
+bool PhiShellWindow::new_tab_row_separator() const {
+  return sidebar_->new_tab_row_separator();
 }
 
 bool PhiShellWindow::ActiveTabExtensionOfferable() const {
@@ -2742,6 +2753,7 @@ PhiSidebarRects PhiShellWindow::BandRects(const Layout& layout) const {
   rects.stored_band = layout.stored_band;
   rects.bookmark_separator = layout.bookmark_separator;
   rects.new_tab_row = layout.new_tab_row;
+  rects.new_tab_row_at_bottom = layout.new_tab_row_at_bottom;
   rects.bottom_bar = layout.bottom_bar;
   rects.spaces_strip = layout.spaces_strip;
   // The strip's first trailing control, which the "+" and a dragged tab
@@ -3860,7 +3872,7 @@ RECT PhiShellWindow::HoverRect(HoverKind kind, int index) {
       break;
     }
     case HoverKind::kNewTabRow:
-      r = ComputeLayout().new_tab_row;
+      r = sidebar_->new_tab_row();
       break;
     case HoverKind::kFieldExt:
       r = FieldExtRect(ComputeLayout(),
@@ -3985,7 +3997,7 @@ void PhiShellWindow::OnChromeMouseMove(POINT client_pt) {
     }
   }
   if (band && kind == HoverKind::kNone) {
-    const RECT new_tab = ComputeLayout().new_tab_row;
+    const RECT new_tab = sidebar_->new_tab_row();
     if (::PtInRect(&new_tab, client_pt)) {
       kind = HoverKind::kNewTabRow;
       index = 0;
@@ -4243,6 +4255,198 @@ void PhiShellWindow::NoteTabDistillable(TabId tab_id,
   RefreshLayoutInputs();
   if (shell_hwnd_) {
     ::InvalidateRect(shell_hwnd_, nullptr, FALSE);
+  }
+}
+
+namespace {
+
+// The Mac's URLProcessor.displayName(for:): the host without "www.", or ""
+// for an extension page.
+std::string LinkGroupSiteName(const std::string& url) {
+  if (url.rfind("chrome-extension:", 0) == 0) {
+    return std::string();
+  }
+  const size_t scheme = url.find("://");
+  if (scheme == std::string::npos) {
+    return url;
+  }
+  size_t start = scheme + 3;
+  const size_t at = url.find('@', start);
+  const size_t end_of_host = url.find_first_of("/?#", start);
+  if (at != std::string::npos && at < end_of_host) {
+    start = at + 1;
+  }
+  std::string host = url.substr(start, url.find_first_of(":/?#", start) - start);
+  if (host.rfind("www.", 0) == 0) {
+    host = host.substr(4);
+  }
+  return host;
+}
+
+std::string TrimLinkGroupName(const std::string& text) {
+  const size_t first = text.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) {
+    return std::string();
+  }
+  const size_t last = text.find_last_not_of(" \t\r\n");
+  return text.substr(first, last - first + 1);
+}
+
+}  // namespace
+
+void PhiShellWindow::OnUserOpenedLinkTab(BrowserId browser,
+                                         TabId tab,
+                                         TabId opener,
+                                         const std::string& opener_search_terms) {
+  // Only a regular window's Space or an Incognito one groups: never an agent
+  // Space (also while the user holds it, or hosts it for a watch), and never a
+  // Kiosk, shadow or Peek browser, which no slot hosts as a Space.
+  if (!framework_ || !services_.prefs ||
+      !services_.prefs->GroupTabsOpenedFromLinks() || is_agent() ||
+      HostsAgentSpace()) {
+    return;
+  }
+  const std::string space = SpaceForBrowser(browser);
+  if (space.empty() || PhiIsAgentSpaceId(space)) {
+    return;
+  }
+  const phi_framework::WindowSnapshotView* view =
+      framework_->Snapshot(browser);
+  if (!view) {
+    return;
+  }
+  const phi_framework::WindowSnapshot snapshot =
+      phi_framework::ToOwnedSnapshot(*view);
+  const phi_framework::TabSnapshot* arrival = nullptr;
+  const phi_framework::TabSnapshot* source = nullptr;
+  for (const phi_framework::TabSnapshot& candidate : snapshot.tabs) {
+    if (candidate.id == tab) {
+      arrival = &candidate;
+    } else if (candidate.id == opener) {
+      source = &candidate;
+    }
+  }
+  // A tab that arrived in a group inherited its opener's (Chromium's own rule
+  // for a link of a grouped tab); one that became a Peek or a reading surface,
+  // or was bound, is not a tab of the list.
+  if (!arrival || !source || !arrival->group_id.empty() ||
+      !arrival->tag.empty() || !arrival->split_id.empty() ||
+      arrival->surface != phi_framework::TabSurface::kContent ||
+      source->surface != phi_framework::TabSurface::kContent) {
+    return;
+  }
+  // Search terms, else the title, else the site; set once at creation.
+  std::string name = opener_search_terms;
+  if (name.empty()) {
+    name = TrimLinkGroupName(source->title);
+  }
+  if (name.empty()) {
+    name = LinkGroupSiteName(source->url);
+  }
+  const auto create = [&](const std::string& ids_json) {
+    const char* raw =
+        framework_->CreateTabGroupForTabs(browser.value, ids_json.c_str());
+    const std::string group = raw ? raw : "";
+    if (!group.empty() && !name.empty()) {
+      framework_->RenameTabGroup(browser.value, group.c_str(), name.c_str());
+    }
+    return group;
+  };
+  const std::string tab_json = "[" + std::to_string(tab.value) + "]";
+  if (!source->tag.empty()) {
+    // A pinned tab or Bookmark Tab never joins a group, so its links group
+    // without it, where the first one landed, and later links join that
+    // group. Forget the groups that are gone and the openers that closed.
+    for (auto it = link_group_by_bound_opener_.begin();
+         it != link_group_by_bound_opener_.end();) {
+      const bool opener_alive =
+          PhiFindTabIn(snapshot, TabId(it->first)) != nullptr;
+      bool group_alive = false;
+      for (const phi_framework::GroupSnapshot& group : snapshot.groups) {
+        group_alive |= group.id == it->second;
+      }
+      it = opener_alive && group_alive ? std::next(it)
+                                       : link_group_by_bound_opener_.erase(it);
+    }
+    const auto known = link_group_by_bound_opener_.find(opener.value);
+    if (known != link_group_by_bound_opener_.end()) {
+      framework_->AddTabsToGroup(browser.value, known->second.c_str(),
+                                 tab_json.c_str());
+      return;
+    }
+    const std::string group = create(tab_json);
+    if (!group.empty()) {
+      link_group_by_bound_opener_[opener.value] = group;
+    }
+    return;
+  }
+  if (!source->group_id.empty()) {
+    return;  // A grouped opener's links join its group by Chromium's rule.
+  }
+  // Chromium groups a split as a whole: the opener's every pane joins.
+  std::string ids = "[";
+  bool first = true;
+  const auto add = [&](TabId id) {
+    ids += (first ? "" : ",") + std::to_string(id.value);
+    first = false;
+  };
+  bool in_split = false;
+  if (!source->split_id.empty()) {
+    for (const phi_framework::SplitSnapshot& split : snapshot.splits) {
+      if (split.id == source->split_id) {
+        for (TabId pane : split.tabs) {
+          add(pane);
+        }
+        in_split = true;
+      }
+    }
+  }
+  if (!in_split) {
+    add(opener);
+  }
+  add(tab);
+  ids += "]";
+  create(ids);
+}
+
+void PhiShellWindow::OmniboxPlaceOrdinaryNewTab(BrowserId window, int index) {
+  // The Mac's opensNewTabsAtTop: the destination window's sidebar layouts
+  // only; Comfortable always appends, as Chromium already did.
+  if (index < 0 || !framework_ || !window.valid() || !services_.prefs ||
+      !services_.prefs->NewTabsAtTop() ||
+      layout_mode_ == PhiLayoutMode::kComfortable) {
+    return;
+  }
+  const phi_framework::WindowSnapshotView* view =
+      framework_->Snapshot(window);
+  if (!view) {
+    return;
+  }
+  const phi_framework::WindowSnapshot snapshot =
+      phi_framework::ToOwnedSnapshot(*view);
+  const phi_framework::TabSnapshot* arrival = nullptr;
+  for (const phi_framework::TabSnapshot& candidate : snapshot.tabs) {
+    if (candidate.index == index) {
+      arrival = &candidate;
+    }
+  }
+  // An ordinary creation only: unbound, ungrouped, not a split pane.
+  if (!arrival || !arrival->tag.empty() || !arrival->group_id.empty() ||
+      !arrival->split_id.empty()) {
+    return;
+  }
+  // Before the first tab of the list: after pins and bookmark tabs (bound,
+  // so never rows), before a whole split or group (the framework snaps).
+  for (const phi_framework::TabSnapshot& candidate : snapshot.tabs) {
+    if (candidate.id == arrival->id) {
+      return;  // Already first.
+    }
+    if (candidate.tag.empty() &&
+        candidate.surface == phi_framework::TabSurface::kContent) {
+      framework_->PlaceNewTabBefore(window.value, arrival->id.value,
+                                    candidate.id.value);
+      return;
+    }
   }
 }
 
@@ -6248,7 +6452,7 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   if (sidebar_->OnStoredRowClick(pt)) {
     return;
   }
-  if (framework_ && (::PtInRect(&layout.new_tab_row, pt) ||
+  if (framework_ && (::PtInRect(&sidebar_->new_tab_row(), pt) ||
                      ::PtInRect(&sidebar_->add_tab_button(), pt))) {
     if (!AgentHoldsInput()) {  // The Mac refuses New Tab under the agent.
       StartNewTab();

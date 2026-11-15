@@ -79,6 +79,8 @@ base::DictValue PhiUserDefaultsSnapshotProperties(
   // The Mac's AutoPictureInPictureMode raw value: off / normal / parked.
   props.Set("auto_picture_in_picture_mode",
             settings.auto_picture_in_picture_mode);
+  // The Mac's 2f4cf3b6: "Group tabs opened from links".
+  props.Set("auto_tab_groups_enabled", settings.group_tabs_opened_from_links);
   // Windows-only switches, named for what they are.
   props.Set("agent_user_spaces_enabled", settings.allow_agent_user_spaces);
   props.Set("always_show_bookmark_bar", settings.always_show_bookmark_bar);

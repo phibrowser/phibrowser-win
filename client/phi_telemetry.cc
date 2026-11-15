@@ -368,7 +368,7 @@ std::string_view PhiTelemetry::AllowedProperties(std::string_view module) {
            "developer_mode_enabled|cdp_agent_access_enabled|"
            "agent_user_spaces_enabled|always_show_bookmark_bar|"
            "open_kiosk_on_command_option_click|auto_picture_in_picture_mode|"
-           "sync_enabled|sync_paired_device_count|sync_account_profile_count|"
+           "auto_tab_groups_enabled|sync_enabled|sync_paired_device_count|sync_account_profile_count|"
            "sync_default_flagged_profile_count|enabled|from|to|";
   }
   if (module == "spaces") {

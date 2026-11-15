@@ -1434,6 +1434,13 @@ void PhiSettingsWindow::BuildGeneral(int* y) {
     }
   }
   AddDividerRow(y);
+  // The Mac's "Open new tabs at top" (5590a1d1), right under the new tab
+  // behavior there too. Synced; the sidebar's New Tab row follows it.
+  AddToggleRow(y, PhiStr("settings.general.newTabsAtTop.title"),
+               prefs_->NewTabsAtTop(), /*enabled=*/true, "newtabsattop",
+               PhiStr("settings.general.newTabsAtTop.description"),
+               kChipIndent, 0xE74A);  // Up.
+  AddDividerRow(y);
   AddToggleRow(y, PhiStr("settings.general.restoreLastSession.toggle"),
                prefs_->RestoreLastSession(),
                /*enabled=*/true, "restoresession",
@@ -1767,6 +1774,15 @@ void PhiSettingsWindow::BuildAdvanced(int* y) {
                /*enabled=*/true, "directionalclose",
                PhiStr("settings.advanced.tabs.directionalClosingDescription"),
                kChipIndent, 0xE711);
+  AddDividerRow(y);
+  // The Mac's "Group tabs opened from links" (7f937b6b), after the closing
+  // rows as there.
+  AddToggleRow(y, PhiStr("settings.advanced.tabs.groupTabsOpenedFromLinksToggle"),
+               prefs_->GroupTabsOpenedFromLinks(),
+               /*enabled=*/true, "linkgroups",
+               PhiStr("settings.advanced.tabs."
+                      "groupTabsOpenedFromLinksDescriptionCtrl"),
+               kChipIndent, 0xF168);  // GroupList.
   AddDividerRow(y);
   // The Mac's "Keep pinned tabs loaded" (`734319a9`). It sits with the
   // unloaded-tab row there; that row is an Appearance one on Windows, and
@@ -6609,6 +6625,10 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetDoubleClickToCloseTabs(!item.on);
   } else if (item.action == "directionalclose") {
     host_->SetDirectionalTabClosing(!item.on);
+  } else if (item.action == "linkgroups") {
+    host_->SetGroupTabsOpenedFromLinks(!item.on);
+  } else if (item.action == "newtabsattop") {
+    host_->SetNewTabsAtTop(!item.on);
   } else if (item.action == "fullurl") {
     host_->SetAlwaysShowFullUrl(!item.on);
   } else if (item.action == "restoresession") {

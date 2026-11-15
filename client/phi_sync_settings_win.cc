@@ -164,6 +164,12 @@ std::vector<SyncableSetting> PhiSyncableSettings(
         prefs->SetNewTabBehavior(ntp ? model::NewTabBehavior::kNewTabPage
                                      : model::NewTabBehavior::kOmnibox);
       }));
+  // The Mac's SyncableSettings.generalBoolCases carries newTabsAtTop
+  // (5590a1d1); groupTabsOpenedFromLinks stays on this device, as there.
+  out.push_back(BoolSetting(
+      "newTabsAtTop", run_on_ui,
+      [prefs] { return prefs->NewTabsAtTop(); },
+      [prefs](bool on) { prefs->SetNewTabsAtTop(on); }));
   out.push_back(BoolSetting(
       "alwaysShowURLPath", run_on_ui,
       [prefs] { return prefs->AlwaysShowFullUrl(); },

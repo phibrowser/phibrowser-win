@@ -165,6 +165,10 @@ class PhiSettingsHost {
   // GeneralSettings.tabSwitcherIncludesAllSpaces (Spaces ▸ its own card).
   virtual void SetTabSwitcherIncludesAllSpaces(bool enabled) = 0;
   virtual void SetDirectionalTabClosing(bool enabled) = 0;
+  // GeneralSettings.groupTabsOpenedFromLinks (Advanced ▸ the tab card) and
+  // newTabsAtTop (General ▸ Browsing). Both off by default, as on Mac.
+  virtual void SetGroupTabsOpenedFromLinks(bool enabled) = 0;
+  virtual void SetNewTabsAtTop(bool enabled) = 0;
   // Appearance ▸ "Sidebar transparency", 0-100 % (Windows only; 50 by
   // default).
   virtual void SetSidebarTransparency(int percent) = 0;

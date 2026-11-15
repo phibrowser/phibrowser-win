@@ -339,6 +339,14 @@ bool PhiPreferences::TabSwitcherIncludesAllSpaces() const {
   return settings_.tab_switcher_all_spaces;
 }
 
+bool PhiPreferences::GroupTabsOpenedFromLinks() const {
+  return settings_.group_tabs_opened_from_links;
+}
+
+bool PhiPreferences::NewTabsAtTop() const {
+  return settings_.new_tabs_at_top;
+}
+
 bool PhiPreferences::DirectionalTabClosing() const {
   return settings_.directional_tab_closing;
 }
@@ -565,6 +573,24 @@ void PhiPreferences::SetDoubleClickToCloseTabs(bool enabled) {
   settings_.double_click_to_close_tabs = enabled;
   MarkDirty();
   Notify(PreferenceChange::kTabClosing);
+}
+
+void PhiPreferences::SetGroupTabsOpenedFromLinks(bool enabled) {
+  if (enabled == settings_.group_tabs_opened_from_links) {
+    return;
+  }
+  settings_.group_tabs_opened_from_links = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kLinkGroups);
+}
+
+void PhiPreferences::SetNewTabsAtTop(bool enabled) {
+  if (enabled == settings_.new_tabs_at_top) {
+    return;
+  }
+  settings_.new_tabs_at_top = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kNewTabsAtTop);
 }
 
 void PhiPreferences::SetDirectionalTabClosing(bool enabled) {

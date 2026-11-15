@@ -229,6 +229,15 @@ struct PhiSettings {
   // menus' Close Tabs to the Left / Right (Above / Below in a vertical list).
   // On by default, as on Mac.
   bool directional_tab_closing = true;
+  // The Mac's GeneralSettings.groupTabsOpenedFromLinks (Advanced): a tab the
+  // user opens from a link of an ungrouped tab forms a tab group with that
+  // tab. Off by default, this device only, as on Mac.
+  bool group_tabs_opened_from_links = false;
+  // The Mac's GeneralSettings.newTabsAtTop (General ▸ Browsing, synced): in
+  // the sidebar layouts ordinary new tabs open at the top of the tab list and
+  // the New Tab row sits above the tabs; off, they append and the row sits
+  // under the last tab. Comfortable always appends. Off by default, as on Mac.
+  bool new_tabs_at_top = false;
   // The Mac's SidebarCollapsedBookmarkRootSpaceIds: the Spaces whose bookmark
   // root row is collapsed. Local to this machine, as on Mac.
   std::set<std::string> collapsed_bookmark_root_spaces;

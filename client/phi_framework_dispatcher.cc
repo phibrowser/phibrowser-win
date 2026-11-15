@@ -329,4 +329,14 @@ void PhiFrameworkDispatcher::OnMediaSessionsChanged() {
   coordinator_.OnMediaSessionsChanged();
 }
 
+void PhiFrameworkDispatcher::OnUserOpenedLinkTab(
+    int64_t window_id,
+    int64_t tab_id,
+    int64_t opener_tab_id,
+    const char* opener_search_terms) {
+  coordinator_.OnUserOpenedLinkTab(
+      window_id, tab_id, opener_tab_id,
+      opener_search_terms ? std::string(opener_search_terms) : std::string());
+}
+
 }  // namespace phi_client

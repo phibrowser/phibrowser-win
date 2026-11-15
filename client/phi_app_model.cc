@@ -126,6 +126,11 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
   out->directional_tab_closing =
       dict.FindBool("directionalTabClosingEnabled")
           .value_or(out->directional_tab_closing);
+  out->group_tabs_opened_from_links =
+      dict.FindBool("groupTabsOpenedFromLinks")
+          .value_or(out->group_tabs_opened_from_links);
+  out->new_tabs_at_top =
+      dict.FindBool("newTabsAtTop").value_or(out->new_tabs_at_top);
   if (const base::ListValue* collapsed =
           dict.FindList("SidebarCollapsedBookmarkRootSpaceIds")) {
     out->collapsed_bookmark_root_spaces.clear();
@@ -350,6 +355,8 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("doubleClickToCloseTabs", value.double_click_to_close_tabs);
   root.Set("tabSwitcherIncludesAllSpaces", value.tab_switcher_all_spaces);
   root.Set("directionalTabClosingEnabled", value.directional_tab_closing);
+  root.Set("groupTabsOpenedFromLinks", value.group_tabs_opened_from_links);
+  root.Set("newTabsAtTop", value.new_tabs_at_top);
   base::ListValue collapsed_roots;
   for (const std::string& id : value.collapsed_bookmark_root_spaces) {
     collapsed_roots.Append(id);

@@ -668,6 +668,22 @@ class PhiFrameworkDelegate {
   // volume moved. One posted task for any number of tabs; read
   // MediaSessionsJson for the state. Never sent while observation is off.
   virtual void OnMediaSessionsChanged() {}
+
+  // Appended (ABI 8, the Mac's creation context isUserOpenedNewTab /
+  // openerSearchTerms): the user opened the tab `tab_id` from a link of
+  // `opener_tab_id` on purpose -- a Ctrl- or middle-click, Ctrl+Shift-click,
+  // or the context menu's Open Link in New Tab -- rather than the page opening
+  // it by itself or a Phi command (Space routing, a pinned tab's cross-site
+  // tab, the new tab an Alt-click opens from a full split). Both tabs are in
+  // `window_id`'s strip when it is sent, one posted task after the insert
+  // (after that insert's OnWindowChanged). `opener_search_terms` is the
+  // opener's search terms when it shows a results page of a search engine
+  // its profile knows (Chromium's normalised form), else "". The client's
+  // "Group tabs opened from links" groups such a tab with its opener.
+  virtual void OnUserOpenedLinkTab(int64_t window_id,
+                                   int64_t tab_id,
+                                   int64_t opener_tab_id,
+                                   const char* opener_search_terms) {}
 };
 
 // Client → framework. Implemented by the framework and handed to the client
@@ -1829,6 +1845,20 @@ class PhiFramework {
   virtual bool SetTabAudioMutedById(int64_t window_id,
                                     int tab_id,
                                     bool muted) = 0;
+
+  // --- New tab placement (ABI 8) ---------------------------------------------
+  // The Mac's placeNewTabWithWindowId:tabId:beforeTabId:, for "Open new tabs
+  // at top": moves the tab `tab_id` the client just opened before `anchor_id`
+  // as its INITIAL placement. Unlike MoveTabBefore it is not a user move, so
+  // the opener relationships Chromium keeps for a new tab survive. It never
+  // joins or tears a group or split: before a grouped anchor the tab lands
+  // before the whole group, before a split pane before the whole split.
+  // Refused (false) for an unknown id, a tab that is pinned, grouped or in a
+  // split, an anchor equal to the tab, or an agent's drive; true when the tab
+  // already sits there.
+  virtual bool PlaceNewTabBefore(int64_t window_id,
+                                 int tab_id,
+                                 int anchor_id) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -1899,7 +1929,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 7;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 8;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

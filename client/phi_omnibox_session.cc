@@ -423,7 +423,8 @@ void PhiOmniboxSession::Commit(HWND edit) {
     // applies the full typed-text resolution to it (NewTab itself loads
     // URLs literally).
     new_tab_pending_ = false;
-    framework->NewTab(window.value, "");
+    shell_->OmniboxPlaceOrdinaryNewTab(window,
+                                       framework->NewTab(window.value, ""));
   } else {
     // The page the field describes: a presented Peek navigates in place and
     // stays up (PHI-1745); the opener behind the card is never the target.
@@ -463,7 +464,8 @@ void PhiOmniboxSession::StartNewTab() {
   const BrowserId browser = shell_->OmniboxBrowser();
   phi_framework::PhiFramework* framework = shell_->OmniboxFramework();
   if (framework && browser.valid()) {
-    framework->NewTab(browser.value, "");
+    shell_->OmniboxPlaceOrdinaryNewTab(browser,
+                                       framework->NewTab(browser.value, ""));
   }
 }
 
@@ -1569,7 +1571,8 @@ void PhiOmniboxSession::NavigateCommitted(
   BrowserId target = browser;
   if (new_tab_pending_ || shell_->OmniboxBrowserPlaceholding()) {
     new_tab_pending_ = false;  // As Commit: the tab is born on commit.
-    framework->NewTab(browser.value, "");
+    shell_->OmniboxPlaceOrdinaryNewTab(browser,
+                                       framework->NewTab(browser.value, ""));
   } else {
     target = CurrentTabTarget();
     if (!target.valid()) {

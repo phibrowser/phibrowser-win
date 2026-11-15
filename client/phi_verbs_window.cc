@@ -212,6 +212,11 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   out.Set("sidebarCollapsed", shell->sidebar_collapsed());
   out.Set("sidebarFloating", shell->sidebar_floating());
   out.Set("tabsTop", shell->tabs_top());
+  // The "+ New Tab" row (empty in Comfortable or with the sidebar hidden):
+  // above the tabs, or after the last one and sticky at the list's bottom
+  // edge, with its hairline while rows scroll under it (newTabsAtTop).
+  out.Set("newTabRow", RectDict(shell->new_tab_row_rect()));
+  out.Set("newTabRowSeparator", shell->new_tab_row_separator());
   out.Set("rowHeight", shell->tab_row_height());
   out.Set("rowGap", shell->tab_row_gap());
   out.Set("titleBar", shell->title_bar_height());

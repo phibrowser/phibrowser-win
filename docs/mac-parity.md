@@ -78,8 +78,8 @@ Two standing decisions cover many rows and are not repeated in full:
 | Sidebar bottom bar: profile, chat, memory, downloads, feedback | all five | profile avatar + Downloads + Feedback pill | ✅ | Chat and memory are ⛔ AI suite. The profile button returned 2026-10-27 on request (left-most 24 dip avatar / person glyph, the Mac's menu: Download List → Library ▸ Downloads, Manage Bookmarks, Manage Extensions, New Tab, New Incognito Space / Window, Settings, Sign in when guest), reversing the 2026-09 decision in `windows-native-ui.md` §4.2. 2026-11-11 (Mac `ce1f357f`): the sidebar area menu ends in a "Bottom Buttons" submenu that shows or hides Profile, Downloads and Feedback (`sidebarBottomBarShows*`, this device only, all on by default); a hidden button leaves no slot. Run on nuc. No Memory entry: the chip is ⛔ AI suite. 2026-11-13 (GitHub #13): the Downloads button now does what the Mac's `DownloadButtonView` does: the `download-button` Lottie's arrow drop through the tray once per new download (drawn natively from the button's own mask, `phi_download_indicator.cc`) and a 14 × 2 dip accent progress bar under the icon while a download runs (bytes over bytes, fading in and out over 200 ms). The framework has no download event, so the shell polls the list every 500 ms, every 150 ms for 1.5 s after a page change. Gap: Comfortable, a hidden sidebar or a hidden Downloads button have no button to show it on (the Mac's header shows a Downloads button in its traditional layout; Windows has none in the address row by the 2026-09-20 decision). |
 | Horizontal strip: Space chip, group chips, overflow, bookmarks bar | yes | yes | ✅ | Group headers in the horizontal layout: none on either side's strip beyond chips. |
 | Tab groups (9 colours, collapse, overview) | yes | yes | ✅ | |
-| Group tabs opened from links (Mac `7f937b6b`, `4964a1e3`, `33199022`, `2f4cf3b6`, 2026-11-11) | Advanced toggle `groupTabsOpenedFromLinks`, off by default, not synced: a tab the user opens from a link (Ctrl / middle click, Open Link in New Tab) of an ungrouped tab forms a group of the opener (its whole split) and the new tab, named after the results page's search terms, else the opener's title or site; from a pinned tab or Bookmark Tab the group holds the new tabs only and later links join it; never in agent, Kiosk or shadow windows; `auto_tab_groups_enabled` in `user_defaults_snapshot` | none | 🔧 | Triaged 2026-11-14. The client is never told which tab opened a tab or that the user opened it: a fork callback after the `PhiLinkTabMarker` check (the Mac's `ScopedUserOpenedNewTab` is `IS_MAC_PHI`), with the opener's search terms, ABI 6 → 7. Grouping itself uses the existing `CreateTabGroupForTabs` / `RenameTabGroup`. M. |
-| New tabs at the top, New Tab row at the bottom (Mac `5590a1d1`, 2026-11-13) | General ▸ Browsing toggle `newTabsAtTop`, off by default, SYNCED: in sidebar layouts ordinary new tabs go before the first normal tab (before a whole split, after pins and bookmark tabs); Comfortable always appends; the sidebar New Tab row follows the setting, so by default it now sits under the tabs, sticky at that edge | new tabs append; New Tab row above the tabs | 🔧 | Triaged 2026-11-14. Needs the fork's `PhiMoveNewTabTo` (`8c50bbc3e88`, on `phi-r156`) exported as a placement call, so opener children survive (`MoveTabBefore` is a user move), plus `BoolSetting("newTabsAtTop")` in `phi_sync_settings_win.cc`. The unknown key already round-trips through sync. The row move is what users will notice. M–L, fork + ABI. |
+| Group tabs opened from links (Mac `7f937b6b`, `4964a1e3`, `33199022`, `2f4cf3b6`, 2026-11-11) | Advanced toggle `groupTabsOpenedFromLinks`, off by default, not synced: a tab the user opens from a link (Ctrl / middle click, Open Link in New Tab) of an ungrouped tab forms a group of the opener (its whole split) and the new tab, named after the results page's search terms, else the opener's title or site; from a pinned tab or Bookmark Tab the group holds the new tabs only and later links join it; never in agent, Kiosk or shadow windows; `auto_tab_groups_enabled` in `user_defaults_snapshot` | Advanced ▸ "Group tabs opened from links", off by default, this device only: a Ctrl-click, middle-click or Open Link in New Tab from an ungrouped tab groups the opener (its whole split) with the new tab, named after the opener's search terms, else its title, else its site; a later link of a grouped opener joins by Chromium's rule; a pinned tab or Bookmark Tab groups its links without itself and later links join that group (memory only); a page's own new tab (plain click on target=_blank) is never grouped; never in agent Spaces (also watched), Kiosk, shadow or Peek browsers; `auto_tab_groups_enabled` in `user_defaults_snapshot` | ✅ | Done 2026-11-15, see §9 port 8. Fork `OnUserOpenedLinkTab` (the Mac's `ScopedUserOpenedNewTab` now also on Windows, reported from `OnTabCreated`, posted after the insert's snapshot), ABI 8 with port 9. |
+| New tabs at the top, New Tab row at the bottom (Mac `5590a1d1`, 2026-11-13) | General ▸ Browsing toggle `newTabsAtTop`, off by default, SYNCED: in sidebar layouts ordinary new tabs go before the first normal tab (before a whole split, after pins and bookmark tabs); Comfortable always appends; the sidebar New Tab row follows the setting, so by default it now sits under the tabs, sticky at that edge | General ▸ Browsing "Open new tabs at top", off by default, synced (`newTabsAtTop`): off, ordinary new tabs (Ctrl+T, the New Tab row, an omnibox commit into a new tab) append and the New Tab row follows the last tab, sticking at the list's bottom edge with its hairline once the tabs overflow; on, the row leads the list (hairline while rows scroll under it) and those tabs open before the first tab of the list: after pins and bookmark tabs, before a whole split or group; Comfortable always appends | ✅ | Done 2026-11-15, see §9 port 9. Fork `PlaceNewTabBefore` (TabsProxy's initial placement over `PhiMoveNewTabTo`, so opener children survive), ABI 8 with port 8. Not ported: the Mac's drop index for a tab dropped on the New Tab row itself (Windows drop zones come from the tab rows). |
 | Tab hover preview card | yes | yes | ✅ | |
 | Open-tab indicators / unloaded (dimmed) indicators | yes | yes | ✅ | |
 | Tab audio / muted indicator on rows and strip cells | yes (Mac `4e6de510` keeps it while muted) | none | 🔧 | No audio glyph on Windows tab rows; needs the framework's per-tab audible / muted state. |
@@ -209,9 +209,9 @@ Two standing decisions cover many rows and are not repeated in full:
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 65 |
+| ✅ ported | 67 |
 | ◐ partial | 28 |
-| 🔧 to implement | 24 |
+| 🔧 to implement | 22 |
 | ⛔ deliberately left | 21 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
@@ -227,8 +227,7 @@ app) · `agentSpace.app.info` · tab audio indicator ·
 bookmark Separate/Back-to-saved (the slash is there) ·
 What's new / Documentation / Improve
 translations rows · Export logs / Extension info rows · settings deeplink ·
-sync problem telemetry · (2026-11-14) sidebar on the right · group tabs
-opened from links · new tabs at the top.
+sync problem telemetry · (2026-11-14) sidebar on the right.
 
 **Decided 2026-10-19:** the five rows that were ❓ in the first pass
 (Library, Time Machine snapshots, native Folio library, Arc/Zen wizard,
@@ -325,8 +324,8 @@ the right, group tabs opened from links, new tabs at the top).
 5. `eb53f280` Library create card follows the form's theme (S), then gradient card grounds (M). Client.
 6. `91740002` pinned tab icon. S–M, client.
 7. `0c35bdfd` focus stays in a split when its focused pane closes. S, fork, no ABI; box check first.
-8. `7f937b6b` family: group tabs opened from links. M, fork + ABI 7.
-9. `5590a1d1` new tabs at the top. M–L, fork + ABI.
+8. `7f937b6b` family: group tabs opened from links. M, fork + ABI 8 (with 9).
+9. `5590a1d1` new tabs at the top. M–L, fork + ABI 8 (with 8).
 10. `574c20c4` sidebar on the right. L, client; design (caption buttons in the sidebar header) to confirm.
 
 Box checks first, ported only if Windows fails them: `42668491`, `1ddf16c7`, `1802b94c`, `a4863fc0`.
@@ -346,6 +345,17 @@ release). Each suite fails on the baseline (client `416af7c2`, origin/main
 | 5 | `eb53f280` | `phi_library.cc` RegradeCard (gradient cards), FormThemeChanged / FormCorners host callbacks in `phi_create_space_panel.{h,cc}` | cu library-card-theme (no pipe access to the Library) | nuc scenario PASS 3/3, baseline FAIL C1/C2 |
 | 6 | `91740002` | menu rows, `LocalStore::UpdatePinIcon`, `PhiTabStore` pin icon, cell paint, band signature, `pinned.list` `icon`, two strings | suite-pinicon, cu pinned-tab-icon | nuc 5/5 (baseline fails), scenario PASS 5/5 on gmk |
 | 7 | `0c35bdfd` | fork `tab_strip_model.cc` RemoveTabFromIndexImpl, `IS_WIN_PHI_CLIENT`: a surviving split focuses the next pane, else the previous (the fork chose the first pane) | suite-splitfocus, cu split-focus-close | nuc 5/5 twice with chrome.dll `526d99ea` (baseline 3/5), scenario PASS 2/2 on gmk |
+| 8 | `7f937b6b`, `4964a1e3`, `33199022`, `2f4cf3b6` | fork: `ScopedUserOpenedNewTab` on Windows (`browser_web_contents_delegate.cc`, stub in `phi_bridge_wrapper_stub.cc`), `OnUserOpenedLinkTab` hook + posted delegate call with the opener's search terms (`phi_framework_impl.cc`, `phi_framework_hooks.*`); client `PhiShellWindow::OnUserOpenedLinkTab`, Advanced row, pref, `auto_tab_groups_enabled` | suite-linkgroups, cu link-tab-groups (written, not run) | gmk 12/12 (baseline 2/12) |
+| 9 | `5590a1d1` | fork `PlaceNewTabBefore` over `TabsProxy::PlaceNewTabBefore`; client `OmniboxPlaceOrdinaryNewTab` after each ordinary `NewTab`, New Tab row placement in `phi_shell_layout.cc` / `phi_sidebar_view.cc` (in the flow, sticky edge, hairline, row clip), General row, synced `newTabsAtTop`, `window.layout` `newTabRow` / `newTabRowSeparator` | suite-newtabtop, cu new-tabs-at-top (written, not run) | gmk 10/10 (baseline 2/10) |
+
+**Ports 8 and 9 (2026-11-15, approved by the user: "Mac ports others except the right sidebar
+feature"; port 10 not approved).** One framework ABI bump for both, 7 → 8 (`OnUserOpenedLinkTab`
+appended to the delegate, `PlaceNewTabBefore` to `PhiFramework`). Fork change built out of tree
+from `phi/phi-r156` `a509931ee6e` (patch, nothing pushed); the box run used that framework with
+the uncommitted client (dev hooks). Baseline: client `7880a8c` on the mute-tab ABI 7 framework.
+nuc's Smart App Control refused the freshly linked `phi_client.dll`, so both ran on gmk. Tests on
+phibrowser-win-test branch `test/mac-parity-8-9`.
+
 Final check: suites 1, 2, 3, 4 and 6 all pass on nuc against the combined client `e0f7862a`
 (3/3, 4/4, 5/5, 7/7, 5/5). Per-port diffs: `wt/mac-parity-patches/`.
 

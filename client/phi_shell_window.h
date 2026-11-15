@@ -493,6 +493,12 @@ class ChromePrefsHost {
   // The Mac's GeneralSettings.directionalTabClosingEnabled: the positional
   // rows of the tab and group menus. On by default.
   virtual bool DirectionalTabClosing() const = 0;
+  // The Mac's GeneralSettings.groupTabsOpenedFromLinks. Off by default.
+  virtual bool GroupTabsOpenedFromLinks() const = 0;
+  // The Mac's GeneralSettings.newTabsAtTop: ordinary new tabs open at the
+  // top of the sidebar's tab list and the New Tab row sits above the tabs.
+  // Off by default (they append; the row follows the last tab).
+  virtual bool NewTabsAtTop() const = 0;
   // The Mac's collapsed Space bookmark roots, local to this machine.
   virtual bool BookmarkRootCollapsed(const std::string& space_id) const = 0;
   virtual void SetBookmarkRootCollapsed(const std::string& space_id,
@@ -806,6 +812,13 @@ class PhiShellWindow : public PhiHitSource,
   SlotId slot() const { return slot_; }
   // Upstream's distillability verdict for one of this window's tabs.
   void NoteTabDistillable(TabId tab_id, bool distillable);
+  // The framework's OnUserOpenedLinkTab for one of this slot's browsers: the
+  // Mac's "Group tabs opened from links" (BrowserState
+  // groupTabOpenedFromLinkIfNeeded, 7f937b6b / 4964a1e3 / 33199022).
+  void OnUserOpenedLinkTab(BrowserId browser,
+                           TabId tab,
+                           TabId opener,
+                           const std::string& opener_search_terms);
   // True when `tab_id` is in the strip this window is currently drawing.
   bool ShowsTab(TabId tab_id) const;
   // Which corners of the content card are rounded right now. The reader panel
@@ -1227,6 +1240,10 @@ class PhiShellWindow : public PhiHitSource,
   RECT profile_rect();
   // The Update reminder pill (empty without an update), for the layout verb.
   RECT update_rect();
+  // The sidebar's "+ New Tab" row where the last rebuild put it, and whether
+  // it shows its sticky hairline, for the layout verb.
+  RECT new_tab_row_rect() const;
+  bool new_tab_row_separator() const;
   // The Mini Player: the preference, the framework's change notice, and its
   // state for agentSpace.window.layout.
   void ApplyMiniPlayerPreference(bool enabled, const std::string& mode);
@@ -1382,7 +1399,9 @@ class PhiShellWindow : public PhiHitSource,
     // The 16pt separator row between the bookmark outline and "+ New Tab"
     // (the Mac's SeparatorItem); empty without bookmarks.
     RECT bookmark_separator{};
-    RECT new_tab_row{};    // The sidebar's "+ New Tab" row.
+    RECT new_tab_row{};    // The sidebar's "+ New Tab" row (its sticky place
+                           // when new_tab_row_at_bottom; see the sidebar's).
+    bool new_tab_row_at_bottom = false;
     RECT bottom_bar{};
     RECT media_card{};     // The Mini Player's band (phi_mini_player.h).
     // Bottom-bar buttons, the Mac's order: the profile (avatar) button,
@@ -2084,6 +2103,7 @@ class PhiShellWindow : public PhiHitSource,
   BrowserId OmniboxPageBrowser() const override;
   bool OmniboxBrowserPlaceholding() const override;
   bool OmniboxNewTabFocusesField() const override;
+  void OmniboxPlaceOrdinaryNewTab(BrowserId window, int index) override;
   void OmniboxFocusContent() override;
   void OmniboxFieldPressed() override;
   void OmniboxLeaveReader() override;
@@ -2220,6 +2240,10 @@ class PhiShellWindow : public PhiHitSource,
   // the fade runs ActivePageColor() answers the blend, from the colour that
   // was showing (the plain surface when there was none) to the settled one.
   std::map<int, uint64_t> tab_seen_;
+  // The Mac's groupTokenByPinnedOrBookmarkOpenerTabId: per live tab id of a
+  // pinned tab or Bookmark Tab, the group its first link formed. Memory only,
+  // so after a relaunch the opener's next link starts a new group.
+  std::map<int, std::string> link_group_by_bound_opener_;
   uint64_t tab_seen_clock_ = 0;
   TabId tab_seen_last_;
   void NoteTabSeen(TabId tab);

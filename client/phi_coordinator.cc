@@ -2450,6 +2450,21 @@ void PhiCoordinator::OnTabDistillable(int64_t window_id, int tab_id,
   }
 }
 
+void PhiCoordinator::OnUserOpenedLinkTab(
+    int64_t window_id,
+    int64_t tab_id,
+    int64_t opener_tab_id,
+    const std::string& opener_search_terms) {
+  PhiShellWindow* controller =
+      registry_.ControllerForBrowser(BrowserId{window_id});
+  if (controller) {
+    controller->OnUserOpenedLinkTab(BrowserId{window_id},
+                                    TabId(static_cast<int>(tab_id)),
+                                    TabId(static_cast<int>(opener_tab_id)),
+                                    opener_search_terms);
+  }
+}
+
 void PhiCoordinator::NoteTabDistillable(int64_t window_id, int tab_id,
                                         bool distillable) {
   OnTabDistillable(window_id, tab_id, distillable);
@@ -3944,6 +3959,22 @@ void PhiCoordinator::SetDirectionalTabClosing(bool enabled) {
   preferences_.SetDirectionalTabClosing(enabled);
 }
 
+bool PhiCoordinator::GroupTabsOpenedFromLinks() const {
+  return preferences_.GroupTabsOpenedFromLinks();
+}
+
+void PhiCoordinator::SetGroupTabsOpenedFromLinks(bool enabled) {
+  preferences_.SetGroupTabsOpenedFromLinks(enabled);
+}
+
+bool PhiCoordinator::NewTabsAtTop() const {
+  return preferences_.NewTabsAtTop();
+}
+
+void PhiCoordinator::SetNewTabsAtTop(bool enabled) {
+  preferences_.SetNewTabsAtTop(enabled);
+}
+
 bool PhiCoordinator::DimUnloadedTabIcons() const {
   return preferences_.DimUnloadedTabIcons();
 }
@@ -4484,6 +4515,7 @@ void PhiCoordinator::OnPreferencesChanged(
     case PreferenceChange::kSidebarWidth:
     case PreferenceChange::kBottomBar:
     case PreferenceChange::kBookmarkBar:
+    case PreferenceChange::kNewTabsAtTop:  // The New Tab row changes edge.
       // The sidebar, or the bar's band, takes/releases part of the content
       // rect in every window.
       for (PhiShellWindow* controller : registry_.Controllers()) {
@@ -4512,6 +4544,8 @@ void PhiCoordinator::OnPreferencesChanged(
       break;
     case PreferenceChange::kTabClosing:
       break;  // Read at the double-click and when a menu opens.
+    case PreferenceChange::kLinkGroups:
+      break;  // Read as each link tab arrives.
     case PreferenceChange::kKeepPinnedLoaded:
       // Each sidebar pushes its pinned tabs' state on its next rebuild.
     case PreferenceChange::kBookmarkRoot:

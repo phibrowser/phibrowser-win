@@ -55,6 +55,8 @@ class PhiPreferences : public ChromePrefsHost {
     kOpenIndicators,  // The sidebar's open-tab dots: every sidebar repaints.
     kDimUnloaded,     // The reclaimed-tab dimming: every sidebar repaints.
     kTabClosing,      // Both tab-closing switches: read at the click or menu.
+    kLinkGroups,      // Group tabs opened from links: read at each new tab.
+    kNewTabsAtTop,    // New tab placement: every sidebar moves its New Tab row.
     kKeepPinnedLoaded,  // Every sidebar pushes its pinned tabs' state again.
     kBottomBar,       // A bottom-bar button came or went: every slot re-fits.
     kBookmarkRoot,    // A Space's bookmark root: every sidebar rebuilds.
@@ -127,6 +129,8 @@ class PhiPreferences : public ChromePrefsHost {
   void SetBottomBarShows(PhiBottomButton button, bool shown) override;
   bool TabSwitcherIncludesAllSpaces() const override;
   bool DirectionalTabClosing() const override;
+  bool GroupTabsOpenedFromLinks() const override;
+  bool NewTabsAtTop() const override;
   bool BookmarkRootCollapsed(const std::string& space_id) const override;
   void SetBookmarkRootCollapsed(const std::string& space_id,
                                 bool collapsed) override;
@@ -196,6 +200,8 @@ class PhiPreferences : public ChromePrefsHost {
   void SetKeepPinnedTabsLoaded(bool enabled);
   void SetTabSwitcherIncludesAllSpaces(bool enabled);
   void SetDirectionalTabClosing(bool enabled);
+  void SetGroupTabsOpenedFromLinks(bool enabled);
+  void SetNewTabsAtTop(bool enabled);
   void SetSidebarTransparency(int percent);
   void SetTranslucentFrame(bool enabled);
   bool PeekViewEnabled() const { return settings_.peek_view_enabled; }

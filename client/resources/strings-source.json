@@ -6411,6 +6411,14 @@
    "comment": "Mac key (translations by key); settings — Advanced ▸ the tab-closing card, phi_settings_window.cc",
    "en": "Double-click to close tabs"
   },
+  "settings.advanced.tabs.groupTabsOpenedFromLinksToggle": {
+   "comment": "Mac key (translations by key); settings — Advanced ▸ the tab card, phi_settings_window.cc",
+   "en": "Group tabs opened from links"
+  },
+  "settings.advanced.tabs.groupTabsOpenedFromLinksDescriptionCtrl": {
+   "comment": "settings — Advanced ▸ the tab card, phi_settings_window.cc; the Mac's settings.advanced.tabs.groupTabsOpenedFromLinksDescription with Ctrl-click for Command-click",
+   "en": "When you Ctrl-click a link, the new tab goes into a tab group for the page it came from."
+  },
   "settings.agentAccessPermissionsAndThe": {
    "comment": "settings — used at phi_settings_window.cc:833",
    "en": "Agent access, permissions, and the password manager ",
@@ -7214,6 +7222,14 @@
   "settings.general.restoreLastSession.enabledHint": {
    "comment": "settings — used at phi_settings_window.cc:774",
    "en": "Reopen your windows and tabs the next time you open Phi."
+  },
+  "settings.general.newTabsAtTop.title": {
+   "comment": "Mac key (translations by key); settings — General ▸ Browsing, phi_settings_window.cc",
+   "en": "Open new tabs at top"
+  },
+  "settings.general.newTabsAtTop.description": {
+   "comment": "Mac key (translations by key); settings — General ▸ Browsing, phi_settings_window.cc",
+   "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end."
   },
   "settings.general.restoreLastSession.toggle": {
    "comment": "settings — used at phi_settings_window.cc:772",

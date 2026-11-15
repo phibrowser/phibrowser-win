@@ -597,6 +597,11 @@ class PhiOmniboxShell {
   // "New tab behavior = Omnibox": Ctrl+T focuses the field instead of
   // opening a page.
   virtual bool OmniboxNewTabFocusesField() const = 0;
+  // An ordinary new tab (Ctrl+T, the New Tab rows, an omnibox commit into a
+  // new tab) was just opened at strip index `index` of `window` (-1: none):
+  // with "Open new tabs at top" in a sidebar layout it moves to the top of
+  // the tab list (the Mac's placeOrdinaryNewTabAtStart).
+  virtual void OmniboxPlaceOrdinaryNewTab(BrowserId window, int index) = 0;
   // Keys belong to the page again.
   virtual void OmniboxFocusContent() = 0;
   // The pointer pressed the field (or the native page's): a chrome press

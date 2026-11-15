@@ -8026,6 +8026,12 @@
    "zh-Hans": "双击关闭标签页",
    "zh-Hant": "連按兩下關閉分頁"
   },
+  "settings.advanced.tabs.groupTabsOpenedFromLinksDescriptionCtrl": {
+   "en": "When you Ctrl-click a link, the new tab goes into a tab group for the page it came from."
+  },
+  "settings.advanced.tabs.groupTabsOpenedFromLinksToggle": {
+   "en": "Group tabs opened from links"
+  },
   "settings.agentAccessPermissionsAndThe": {
    "de": "Agentenzugriff, Berechtigungen und den Passwortmanager ",
    "en": "Agent access, permissions, and the password manager ",
@@ -9048,6 +9054,12 @@
    "nl": "Gedrag van nieuwe tabbladen",
    "zh-Hans": "新标签页行为",
    "zh-Hant": "新分頁行為"
+  },
+  "settings.general.newTabsAtTop.description": {
+   "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end."
+  },
+  "settings.general.newTabsAtTop.title": {
+   "en": "Open new tabs at top"
   },
   "settings.general.pictureInPicture.normalDescription": {
    "de": "Laufendes Video als Bild-in-Bild öffnen, wenn du Tabs oder Apps wechselst",

@@ -180,6 +180,12 @@ class PhiCoordinator : public SidebarHost,
   bool ExtensionsButtonScreenRect(int64_t window_id, RECT* rect);
   void OnShowFeedbackRequested();
   void OnTabDistillable(int64_t window_id, int tab_id, bool distillable);
+  // A tab the user opened from a link (PhiFrameworkDelegate::
+  // OnUserOpenedLinkTab): the hosting slot may group it with its opener.
+  void OnUserOpenedLinkTab(int64_t window_id,
+                           int64_t tab_id,
+                           int64_t opener_tab_id,
+                           const std::string& opener_search_terms);
   void OnExtensionMessage(const char* request_id,
                           const char* sender_id,
                           const char* type,
@@ -449,6 +455,8 @@ class PhiCoordinator : public SidebarHost,
   void SetBottomBarShows(PhiBottomButton button, bool shown) override;
   bool TabSwitcherIncludesAllSpaces() const override;
   bool DirectionalTabClosing() const override;
+  bool GroupTabsOpenedFromLinks() const override;
+  bool NewTabsAtTop() const override;
   bool BookmarkRootCollapsed(const std::string& space_id) const override;
   void SetBookmarkRootCollapsed(const std::string& space_id,
                                 bool collapsed) override;
@@ -486,6 +494,8 @@ class PhiCoordinator : public SidebarHost,
   void SetKeepPinnedTabsLoaded(bool enabled) override;
   void SetTabSwitcherIncludesAllSpaces(bool enabled) override;
   void SetDirectionalTabClosing(bool enabled) override;
+  void SetGroupTabsOpenedFromLinks(bool enabled) override;
+  void SetNewTabsAtTop(bool enabled) override;
   void SetSidebarTransparency(int percent) override;
   void SetTranslucentFrame(bool enabled) override;
   std::string LanguagePreference() const;

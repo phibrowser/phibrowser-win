@@ -379,8 +379,15 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   } else {
     out.tabs_label = SidebarRect{};
   }
-  out.new_tab_row = {inset, y, sidebar - inset, y + scaled(kNewTabRowHeight)};
-  out.tabs_top = out.new_tab_row.bottom + scaled(kTabRowGap);
+  out.new_tab_row_at_bottom = in.new_tab_row_at_bottom;
+  if (in.new_tab_row_at_bottom) {
+    // The list leads; the row's sticky place is set below, once the list's
+    // bottom edge is known.
+    out.tabs_top = y;
+  } else {
+    out.new_tab_row = {inset, y, sidebar - inset, y + scaled(kNewTabRowHeight)};
+    out.tabs_top = out.new_tab_row.bottom + scaled(kTabRowGap);
+  }
 
   // The bottom bar: the profile button, downloads (and the memory chip
   // while the AI suite is on) leading, the Feedback pill trailing.
@@ -424,6 +431,10 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
 
   out.tabs_left = inset;
   out.tabs_limit = media_top - scaled(kFavoritesSpacer);
+  if (in.new_tab_row_at_bottom) {
+    out.new_tab_row = {inset, out.tabs_limit - scaled(kNewTabRowHeight),
+                       sidebar - inset, out.tabs_limit};
+  }
   if (hide_sidebar) {
     const SidebarRect zero = {};
     out.favorites = zero;

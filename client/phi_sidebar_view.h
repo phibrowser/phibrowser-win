@@ -358,6 +358,7 @@ struct PhiSidebarRects {
   RECT stored_band{};
   RECT bookmark_separator{};
   RECT new_tab_row{};
+  bool new_tab_row_at_bottom = false;  // ShellLayout::new_tab_row_at_bottom.
   RECT bottom_bar{};
   RECT spaces_strip{};
   RECT search_tabs{};  // Comfortable's "+" may not cross it.
@@ -816,6 +817,11 @@ class PhiSidebarView {
   }
   // Comfortable's "+" in the caption band, trailing the last tab.
   const RECT& add_tab_button() const { return add_tab_button_; }
+  // Where the "+ New Tab" row is now (empty when there is none): above the
+  // list, or after its last tab and sticky at its bottom edge once the tabs
+  // overflow (the Mac's newTabsAtTop, 5590a1d1). Set by every rebuild.
+  const RECT& new_tab_row() const { return new_tab_row_; }
+  bool new_tab_row_separator() const { return new_tab_row_separator_; }
   // Comfortable's overflow chevron, between the last tab that fits and the
   // "+": up while any strip item is scrolled out of the strip's window;
   // a click opens the tab search palette over every tab. Empty otherwise.
@@ -1159,6 +1165,12 @@ class PhiSidebarView {
   // in Rebuild(); nothing decides bindings or split rows anywhere else.
   SidebarTree sidebar_tree_;
   RECT add_tab_button_{};
+  RECT new_tab_row_{};
+  // The Mac's FloatingNewTabView separator: a hairline on the row's edge
+  // toward the tabs while rows scroll under it.
+  bool new_tab_row_separator_ = false;
+  // The tab rows' clip bottom: the list's viewport, above a sticky row.
+  int rows_clip_bottom_ = 0;
   std::vector<GroupHeader> group_headers_;
   std::vector<ShortcutRow> pinned_;
   std::vector<ShortcutRow> bookmarks_;

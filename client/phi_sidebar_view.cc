@@ -1051,8 +1051,8 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
         PhiStr("app.closeTab"),
         PhiHitRole::kButton, false);
   }
-  if (layout.new_tab_row.right > layout.new_tab_row.left) {
-    add(layout.new_tab_row, kTabKey - 1, PhiStr("app.newTab"),
+  if (new_tab_row_.right > new_tab_row_.left) {
+    add(new_tab_row_, kTabKey - 1, PhiStr("app.newTab"),
         PhiHitRole::kButton, false);
   }
   // Comfortable's overflow chevron (empty unless the strip overflows).
@@ -1580,6 +1580,9 @@ void PhiSidebarView::Rebuild() {
   };
   int list_scroll_max = 0;
   strip_overflow_button_ = RECT{};
+  new_tab_row_ = layout.new_tab_row;
+  new_tab_row_separator_ = false;
+  rows_clip_bottom_ = layout.tabs_limit;
   if (layout.horizontal_tabs) {
     // The strip: a chip before each group's first member, the tabs abutting
     // left to right after it, a collapsed group's members hidden under its
@@ -1805,6 +1808,23 @@ void PhiSidebarView::Rebuild() {
     m.clip = true;
     m.viewport_top = layout.tabs_top;
     m.viewport_bottom = layout.tabs_limit;
+    // The Mac's New Tab row with "Open new tabs at top" off (5590a1d1): the
+    // list's last item, which sticks at the viewport's bottom edge once the
+    // tabs and it no longer fit; the rows then scroll in the room above it.
+    const int new_tab_h =
+        layout.new_tab_row_at_bottom &&
+                layout.new_tab_row.right > layout.new_tab_row.left
+            ? layout.new_tab_row.bottom - layout.new_tab_row.top
+            : 0;
+    bool new_tab_sticks = false;
+    if (new_tab_h > 0) {
+      const ListPlacement probe = LayoutList(items, m);
+      new_tab_sticks = probe.content_height + new_tab_h >
+                       m.viewport_bottom - m.viewport_top;
+      if (new_tab_sticks) {
+        m.viewport_bottom -= new_tab_h;
+      }
+    }
     ListPlacement list = LayoutList(items, m);
     // Rows closed under a scrolled list shrink its range: clamp BEFORE the
     // rows are kept, or the list keeps a blank tail until the next rebuild.
@@ -1856,6 +1876,20 @@ void PhiSidebarView::Rebuild() {
     }
     revealed_strip_limit_ = 0;  // Back on the strip, it reveals afresh.
     list_scroll_max = list.scroll_max;
+    rows_clip_bottom_ = m.viewport_bottom;
+    if (new_tab_h > 0) {
+      // In the flow right after the last row while everything fits; else
+      // at the bottom edge, with its hairline while the rows it covers are
+      // not scrolled up out from under it (the Mac's floating copy).
+      const int top = new_tab_sticks ? m.viewport_bottom : list.bottom;
+      new_tab_row_.top = top;
+      new_tab_row_.bottom = top + new_tab_h;
+      new_tab_row_separator_ = new_tab_sticks && list.bottom > m.viewport_bottom;
+    } else if (new_tab_row_.right > new_tab_row_.left) {
+      // At the top it never leaves the edge; the Mac shows its floating copy,
+      // hairline under it, once the first rows scroll up beneath it.
+      new_tab_row_separator_ = scroll_offset_ > 0;
+    }
     for (size_t i = 0; i < placed.size(); ++i) {
       const SidebarContentNode& node = *placed[i];
       if (node.kind == SidebarNodeKind::kGroup) {
@@ -4330,9 +4364,19 @@ void PhiSidebarView::PaintBand(HDC dc,
     ::FillRect(dc, &line, sep_brush);
     ::DeleteObject(sep_brush);
   }
-  if (layout.new_tab_row.right > layout.new_tab_row.left) {
-    RECT row = layout.new_tab_row;
+  if (new_tab_row_.right > new_tab_row_.left) {
+    RECT row = new_tab_row_;
     ::OffsetRect(&row, 0, band_shift);
+    if (new_tab_row_separator_) {
+      // FloatingNewTabView's 1 pt `separator` hairline, on the edge toward
+      // the rows scrolling beneath it.
+      const int line_y = layout.new_tab_row_at_bottom ? row.top
+                                                      : row.bottom - Scaled(1);
+      const RECT line = {row.left, line_y, row.right, line_y + Scaled(1)};
+      HBRUSH line_brush = ::CreateSolidBrush(palette.separator);
+      ::FillRect(dc, &line, line_brush);
+      ::DeleteObject(line_brush);
+    }
     if (hover_kind == HoverKind::kNewTabRow) {
       RECT pill = row;
       pill.top += Scaled(kRowPad);
@@ -4360,7 +4404,7 @@ void PhiSidebarView::PaintBand(HDC dc,
     // leaving for the list pulls them UP, and the first must not be cut
     // off at the band's resting top.
     ::IntersectClipRect(dc, 0, layout.tabs_top + std::min(0, band_shift),
-                        layout.sidebar.right, layout.tabs_limit);
+                        layout.sidebar.right, rows_clip_bottom_);
   }
 
   // Tab groups: TabGroupCellView — the whole group cell rests on an 18%
@@ -4717,7 +4761,7 @@ void PhiSidebarView::PaintBand(HDC dc,
   if (!layout.horizontal_tabs && !drag_capture) {
     // The tab list's overlay scrollbar, while it scrolls or is hovered.
     const RECT track = {layout.sidebar.left, layout.tabs_top,
-                        layout.sidebar.right, layout.tabs_limit};
+                        layout.sidebar.right, rows_clip_bottom_};
     PaintScrollbar(dc, track, scroll_offset_, tabs_scroll_max_, palette,
                    ScrollbarOpacity(hover_kind == HoverKind::kTab ||
                                     hover_kind == HoverKind::kGroupHeader));

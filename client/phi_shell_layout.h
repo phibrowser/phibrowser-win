@@ -194,6 +194,9 @@ struct ShellLayoutInputs {
   // The Mini Player's reserved band above the bottom bar in dip, gaps
   // included (phi_mini_player.h); 0 = no card. Vertical layouts only.
   int media_card_dip = 0;
+  // The Mac's newTabsAtTop off (its default): the sidebar's New Tab row
+  // follows the last tab instead of leading the list. Vertical layouts only.
+  bool new_tab_row_at_bottom = false;
 
   friend bool operator==(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -219,7 +222,8 @@ struct ShellLayoutInputs {
            a.space_chip_dip == b.space_chip_dip &&
            a.agent_chip_dip == b.agent_chip_dip &&
            a.update_dip == b.update_dip &&
-           a.media_card_dip == b.media_card_dip;
+           a.media_card_dip == b.media_card_dip &&
+           a.new_tab_row_at_bottom == b.new_tab_row_at_bottom;
   }
   friend bool operator!=(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -271,7 +275,11 @@ struct ShellLayout {
   SidebarRect stored_band;
   // The 16pt separator row between the bookmark outline and "+ New Tab".
   SidebarRect bookmark_separator;
-  SidebarRect new_tab_row;  // The sidebar's "+ New Tab" row.
+  // The sidebar's "+ New Tab" row. With new_tab_row_at_bottom it is only the
+  // row's sticky place at the list's bottom edge: PhiSidebarView places it
+  // after the last tab while the tabs fit (PhiSidebarView::new_tab_row()).
+  SidebarRect new_tab_row;
+  bool new_tab_row_at_bottom = false;
   SidebarRect bottom_bar;
   // The Mini Player's band, on top of the bottom bar. Empty without a card.
   SidebarRect media_card;
