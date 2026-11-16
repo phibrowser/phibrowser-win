@@ -25,6 +25,8 @@
 #                else none. --no-telemetry builds a config-less installer
 #                (crashes stay local, analytics never leave the machine).
 #   --no-sign    skip Authenticode. Otherwise every PE in the stage, the
+#                NSIS plugins the setup exe and the uninstaller extract
+#                (PhiSetupUI.dll, System.dll, nsDialogs.dll, ...), the
 #                setup exe and the uninstaller are signed by the sibling
 #                ../../phibrowser-win-build/sign-pe.sh with the identity in
 #                its phi-signing.env (the LAN rig's TEST chain or the release
@@ -223,13 +225,36 @@ fi
 # makensis on POSIX maps the script's backslashed paths onto these
 # directories; the script is UTF-8 (the "…" and "·" in its strings).
 [[ -f "$HERE/ui/x86-unicode/PhiSetupUI.dll" ]] || "$HERE/ui/build-plugin.sh"
+# The plugins are DLLs the setup exe and the uninstaller extract to
+# %TEMP% and load, so they need a signature too: Smart App Control blocks an
+# unsigned one, and without PhiSetupUI.dll the window stays blank. A signed
+# build signs copies - PhiSetupUI.dll and every stock x86-unicode plugin
+# (makensis packs only the ones the script calls) - in a temp folder that
+# the script adds ahead of the stock one (-DPHI_PLUGIN_DIR); the committed
+# DLL and the system's NSIS stay untouched.
+PLUGIN_DEFINE=()
+if [[ ${#SIGN_DEFINE[@]} -gt 0 ]]; then
+  NSIS_PLUGINS="${PHI_NSIS_PLUGINS:-/usr/share/nsis/Plugins/x86-unicode}"
+  [[ -f "$NSIS_PLUGINS/System.dll" && -f "$NSIS_PLUGINS/nsDialogs.dll" ]] || {
+    echo "no NSIS x86-unicode plugins in $NSIS_PLUGINS (set PHI_NSIS_PLUGINS)" >&2; exit 1; }
+  PLUGIN_DIR="$(mktemp -d -t phi-nsis-plugins.XXXXXX)"
+  trap 'rm -rf "$PLUGIN_DIR"' EXIT
+  cp -p "$NSIS_PLUGINS"/*.dll "$PLUGIN_DIR/"
+  cp -p "$HERE/ui/x86-unicode/PhiSetupUI.dll" "$PLUGIN_DIR/"
+  "$SIGN_TOOL" "$PLUGIN_DIR"/*.dll
+  "$SIGN_TOOL" --verify "$PLUGIN_DIR"/*.dll >/dev/null || {
+    "$SIGN_TOOL" --verify "$PLUGIN_DIR"/*.dll >&2; echo "plugin signing failed" >&2; exit 1; }
+  echo "plugins: $(cd "$PLUGIN_DIR" && ls *.dll | wc -l) signed in $PLUGIN_DIR"
+  PLUGIN_DEFINE=("-DPHI_PLUGIN_DIR=$PLUGIN_DIR")
+fi
 mkdir -p "$DIST"
 echo "running makensis..."
 (makensis -V2 -INPUTCHARSET UTF8 \
   "-DPHI_VERSION=$VERSION" "-DPHI_BUILD_NUMBER=$BUILD_NUMBER" \
   "-DPHI_ARCH=$ARCH" "-DPHI_STAGE=$STAGE" \
   "-DPHI_OUTDIR=$DIST" -DPHI_LAYOUT_FRAMEWORK \
-  "${TELEMETRY_DEFINE[@]}" "${SIGN_DEFINE[@]}" "$HERE/phi-installer.nsi") | tail -3
+  "${TELEMETRY_DEFINE[@]}" "${SIGN_DEFINE[@]}" "${PLUGIN_DEFINE[@]}" \
+  "$HERE/phi-installer.nsi") | tail -3
 [[ -f "$DIST/$SETUP" ]] || { echo "makensis produced no $DIST/$SETUP" >&2; exit 1; }
 [[ ${#SIGN_DEFINE[@]} -eq 0 ]] || "$SIGN_TOOL" --verify "$DIST/$SETUP"
 ls -la "$DIST/$SETUP"

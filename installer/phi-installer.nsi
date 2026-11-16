@@ -106,7 +106,16 @@ ManifestDPIAware true
 !include "WinMessages.nsh"
 !include "FileFunc.nsh"
 !include "WordFunc.nsh"
-!addplugindir /x86-unicode "${__FILEDIR__}/ui/x86-unicode"
+; Plugins NSIS extracts to $PLUGINSDIR at run time. Windows checks them like
+; any other DLL: Smart App Control refuses an unsigned one, so a signed
+; build takes make-installer.sh's signed copies of PhiSetupUI.dll and of
+; NSIS's own plugins (System, nsDialogs, nsExec), one folder that wins over
+; the stock one. Unsigned builds use the committed PhiSetupUI.dll.
+!ifdef PHI_PLUGIN_DIR
+  !addplugindir /x86-unicode "${PHI_PLUGIN_DIR}"
+!else
+  !addplugindir /x86-unicode "${__FILEDIR__}/ui/x86-unicode"
+!endif
 
 Name "Phi Browser"
 Caption "Phi Browser Setup"
@@ -194,6 +203,7 @@ Var Stage            ; setup | install | done - what Cancel means
 Var Expanded         ; the expander's state
 Var Running          ; 1 while Phi holds chrome.dll
 Var ErrorShown       ; 1 while the InfoBar shows a folder error
+Var UiFallback       ; 1 = Windows refused PhiSetupUI.dll and the user chose a default run
 ; The Setup screen's controls.
 Var hDlg
 Var hLead
@@ -306,6 +316,22 @@ UninstPage custom un.ConfirmCreate un.ConfirmLeave
 UninstPage instfiles "" un.InstShow
 
 ; ---------------------------------------------------------------- init
+; Every screen is drawn by PhiSetupUI. When Windows refuses to load it
+; (Smart App Control blocks a DLL it cannot trust), the plugin calls fail
+; with the error flag set and the window would stay blank, with an Install
+; button that cannot read its folders. Probe it before the window exists:
+; $0 is 1 when it loads. A failed call leaves nothing on the stack.
+!macro ProbeSetupUI
+  ClearErrors
+  PhiSetupUI::Dpi
+  ${If} ${Errors}
+    StrCpy $0 0
+  ${Else}
+    Pop $0
+    StrCpy $0 1
+  ${EndIf}
+!macroend
+
 Function .onInit
   StrCpy $ArchState ""
   ; The payload's architecture against this PC's (the header's note on
@@ -407,6 +433,43 @@ Function .onInit
     StrCpy $SubLine "Update $PrevVersion → ${PHI_FULL_VERSION} · ${PHI_ARCH}"
     StrCpy $Verb "Update"
     StrCpy $VerbIng "Updating…"
+  ${EndIf}
+  ; No window without the plugin: say so, and offer the run a silent
+  ; install would do (the recorded or default folders, no screens).
+  StrCpy $UiFallback 0
+  ${IfNot} ${Silent}
+    !insertmacro ProbeSetupUI
+    ${If} $0 != 1
+      ${If} $ArchState == "block"
+        MessageBox MB_OK|MB_ICONSTOP "This is Phi Browser for Windows on ARM, and this PC is not ARM-based.$\r$\n$\r$\nPlease use the standard installer, PhiBrowserSetup-${PHI_FULL_VERSION}.exe."
+        Abort
+      ${EndIf}
+      ${If} $Downgrade == 1
+        MessageBox MB_OK|MB_ICONSTOP "A newer Phi Browser ($PrevVersion) is installed. Setup doesn't replace it with ${PHI_FULL_VERSION}."
+        SetErrorLevel 3
+        Quit
+      ${EndIf}
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION "Windows blocked part of Phi Browser Setup (PhiSetupUI.dll), so Setup can't show its window.$\r$\n$\r$\n$Verb Phi Browser ${PHI_FULL_VERSION} with the default settings?$\r$\nProgram: $INSTDIR$\r$\nBrowsing data: $DataDir$\r$\n$\r$\nClose Phi Browser first if it is open." IDYES ui_fallback
+      Abort
+      ui_fallback:
+      StrCpy $UiFallback 1
+      SetSilent silent
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+; The default run above has no Done screen: this box is its end.
+Function .onInstSuccess
+  ${If} $UiFallback == 1
+    MessageBox MB_YESNO|MB_ICONINFORMATION "Phi Browser ${PHI_FULL_VERSION} is installed. Launch it now?" IDNO no_launch
+    Call LaunchPhi
+    no_launch:
+  ${EndIf}
+FunctionEnd
+
+Function .onInstFailed
+  ${If} $UiFallback == 1
+    MessageBox MB_OK|MB_ICONSTOP "Phi Browser could not be installed. Close Phi Browser if it is open and run Setup again."
   ${EndIf}
 FunctionEnd
 
@@ -808,7 +871,15 @@ Function SetupLeave
     Abort
   ${EndIf}
   ; The program folder: a folder we cannot write is no place to install.
+  ; No edit box (the plugin that makes it never loaded) keeps the folder
+  ; already in effect rather than reading an empty path.
+  IsWindow $hR1Edit 0 keep_instdir
   ${NSD_GetText} $hR1Edit $INSTDIR
+  keep_instdir:
+  ${If} $INSTDIR == ""
+    MessageBox MB_OK|MB_ICONSTOP "Setup could not read the program folder. Run Setup again."
+    Abort
+  ${EndIf}
   ClearErrors
   CreateDirectory "$INSTDIR"
   FileOpen $0 "$INSTDIR\.phi-write-probe" w
@@ -819,7 +890,9 @@ Function SetupLeave
   Delete "$INSTDIR\.phi-write-probe"
   ; The data folder: trim trailing separators - Chromium is unhappy with
   ; them - then the same probe.
+  IsWindow $hR2Edit 0 keep_datadir
   ${NSD_GetText} $hR2Edit $DataDir
+  keep_datadir:
   loop:
     StrCpy $0 $DataDir 1 -1
     ${If} $0 == "\"
@@ -1260,6 +1333,25 @@ Function un.onInit
   ${EndIf}
   !insertmacro ReadDataDirOwned
   StrCpy $DeleteData 0
+  ; The installer's probe (ProbeSetupUI): no plugin, no window - offer the
+  ; silent removal, which keeps the browsing data.
+  StrCpy $UiFallback 0
+  ${IfNot} ${Silent}
+    !insertmacro ProbeSetupUI
+    ${If} $0 != 1
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION "Windows blocked part of the Phi Browser uninstaller (PhiSetupUI.dll), so it can't show its window.$\r$\n$\r$\nRemove Phi Browser from $INSTDIR? Your browsing data stays in $DataDir." IDYES un_ui_fallback
+      Abort
+      un_ui_fallback:
+      StrCpy $UiFallback 1
+      SetSilent silent
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+Function un.onUninstSuccess
+  ${If} $UiFallback == 1
+    MessageBox MB_OK|MB_ICONINFORMATION "Phi Browser was removed."
+  ${EndIf}
 FunctionEnd
 
 ; "Delete my data" in a folder Setup did not create: only what Phi and
