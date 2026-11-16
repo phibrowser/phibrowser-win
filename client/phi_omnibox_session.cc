@@ -325,6 +325,7 @@ void PhiOmniboxSession::OnFieldFocused() {
     field_at_rest_ = false;
     SetFieldText(PhiOmniboxBrandUrl(nav_url_));
   }
+  FocusLookChanged();
 }
 
 void PhiOmniboxSession::OnFieldBlurred() {
@@ -332,6 +333,19 @@ void PhiOmniboxSession::OnFieldBlurred() {
   // Alt+Tab away and back keeps it.
   if (TextOf(field_) == PhiOmniboxBrandUrl(nav_url_)) {
     Sync(/*force=*/false);
+  }
+  FocusLookChanged();
+}
+
+void PhiOmniboxSession::FocusLookChanged() {
+  // The capsule's leading slot follows the focus: the shell's Not secure cue
+  // leaves while the field is edited and returns with the resting text. The
+  // EDIT takes or gives back that room, and the box repaints.
+  Position();
+  if (const HWND shell_hwnd = shell_->OmniboxShellWindow()) {
+    RECT field = ToRect(shell_->OmniboxCapsule().field);
+    ::InflateRect(&field, Scaled(2), Scaled(2));
+    ::InvalidateRect(shell_hwnd, &field, FALSE);
   }
 }
 

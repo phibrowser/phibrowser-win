@@ -109,6 +109,8 @@ inline constexpr wchar_t kEqualizer[] = L"\uE9E9";
 inline constexpr wchar_t kShield[] = L"\uEA18";
 inline constexpr wchar_t kLock[] = L"\uE72E";
 inline constexpr wchar_t kStatusError[] = L"\uEA39";
+// The address field's Not secure cue: the warning triangle.
+inline constexpr wchar_t kWarning[] = L"\uE7BA";
 inline constexpr wchar_t kClock[] = L"";  // Recently closed.
 inline constexpr wchar_t kUpload[] = L"";  // Drop zone.
 inline constexpr wchar_t kDiagnostic[] = L"";  // Feedback diagnostics.

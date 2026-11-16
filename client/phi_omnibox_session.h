@@ -35,6 +35,8 @@ namespace phi_client {
 struct PhiOmniboxCapsule {
   SidebarRect field;            // The painted pill.
   SidebarRect page_icon;        // Comfortable's leading site chip.
+  // The "Not secure" label trailing the page icon; empty unless on show.
+  SidebarRect security_cue;
   SidebarRect field_ext_strip;  // Pinned-extension icons.
   SidebarRect reader;
   SidebarRect copy_link;  // The Mac's hover-only pair: Copy link …
@@ -43,8 +45,9 @@ struct PhiOmniboxCapsule {
 };
 
 // The EDIT's rect inside `capsule`: a `text_height`-tall line centred in the
-// box, starting after the page icon (plus `icon_gap`) or at `leading_inset`
-// without one, and stopping `trailing_gap` before the LEFTMOST accessory
+// box, starting after the page icon or the Not secure label behind it (plus
+// `icon_gap`) or at `leading_inset` without one, and stopping `trailing_gap`
+// before the LEFTMOST accessory
 // that actually sits inside the capsule — the EDIT must not extend under the
 // buttons or it eats their clicks. `leading_extra` is the room the keyword
 // chip takes ahead of the text and `trailing_extra` what the keyword hint
@@ -69,10 +72,13 @@ inline SidebarRect PhiOmniboxTextRect(const PhiOmniboxCapsule& capsule,
       right_stop = accessory.left;
     }
   }
-  const int text_left = (capsule.page_icon.right > capsule.page_icon.left
-                             ? capsule.page_icon.right + icon_gap
-                             : box.left + leading_inset) +
-                        leading_extra;
+  const int text_left =
+      (capsule.security_cue.right > capsule.security_cue.left
+           ? capsule.security_cue.right + icon_gap
+       : capsule.page_icon.right > capsule.page_icon.left
+           ? capsule.page_icon.right + icon_gap
+           : box.left + leading_inset) +
+      leading_extra;
   const int width = right_stop - trailing_gap - trailing_extra - text_left;
   // A single-line EDIT draws its text at the top of its own rect, so filling
   // the whole box would leave the text hugging the upper edge.
@@ -812,6 +818,9 @@ class PhiOmniboxSession {
   // whole URL trade places.
   void OnFieldFocused();
   void OnFieldBlurred();
+  // Either way the capsule's leading slot may change with it (the shell's
+  // Not secure cue shows at rest only): re-seats the EDIT, repaints the box.
+  void FocusLookChanged();
 
   // Rows mirror the framework's OnOmniboxResults json; the popup is a
   // non-activating WS_POPUP under the address field, so the EDIT keeps focus

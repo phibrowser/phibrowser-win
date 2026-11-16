@@ -32,6 +32,21 @@
    "comment": "sidebar — hint at the address field's trailing end when Tab or Space picks the highlighted search engine; {0} is the engine name (used at phi_omnibox_session.cc)",
    "en": "Tab or Space to search {0}"
   },
+  "addressBar.notSecure": {
+   "comment": "addressBar — the label beside the warning triangle in the address field on a page whose connection is not secure (plain http, a certificate error); Chrome's \"Not secure\" wording; phi_shell_window.cc",
+   "en": "Not secure",
+   "translations": {
+    "de": "Nicht sicher",
+    "es": "No es seguro",
+    "fr": "Non sécurisé",
+    "ja": "保護されていない通信",
+    "ko": "주의 요함",
+    "nl": "Niet beveiligd",
+    "pt-BR": "Não seguro",
+    "zh-Hans": "不安全",
+    "zh-Hant": "不安全"
+   }
+  },
   "addressBar.suggestions.addOpenTabToSplitHintCtrl": {
    "comment": "omnibox — used in phi_omnibox_session.cc; the Mac addressBar.suggestions.addOpenTabToSplitHint with Ctrl for Cmd",
    "en": "Hold Ctrl to add split",

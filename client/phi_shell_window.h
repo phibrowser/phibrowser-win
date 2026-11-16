@@ -1260,6 +1260,9 @@ class PhiShellWindow : public PhiHitSource,
   // The address field (a Win32 EDIT), for the test rig's readout.
   HWND address_field() const;
   RECT site_menu_rect();
+  // The address field's Not secure cue, glyph and label together, for the
+  // layout verb; empty unless it is on show.
+  RECT security_cue_rect();
   // The active tab is one pane of a split.
   bool ActiveTabIsSplit() const;
   // The active tab's split's pane count: 0 outside a split, else 2 to 4.
@@ -1944,6 +1947,20 @@ class PhiShellWindow : public PhiHitSource,
   // The in-field Copy link / site-menu pair shows: the field is hovered,
   // the menu is open, or the copy flash is still up.
   bool FieldToolsShown() const;
+  // The address field's Not secure cue. The Mac's address row carries no
+  // security mark at all (its only one is the site menu's last row), so this
+  // is Windows' own: a page the site menu calls "Connection is not secure"
+  // (plain http, a certificate error) trades the leading globe for a warning
+  // triangle and a "Not secure" label, both in a red that reads on the row.
+  // Re-reads the state for `page` when its snapshot `version` moved.
+  void RefreshPageSecurity(BrowserId page, uint64_t version);
+  // On show: the page is not secure and the field is at rest. While the
+  // field is edited the globe returns and the text has its room back.
+  bool SecurityCueShown() const;
+  // The label's rect behind `layout`'s page icon, or empty: no cue, or a
+  // field too narrow to hold the label and still show the address (the
+  // triangle alone stays).
+  RECT SecurityCueLabelRect(const Layout& layout);
   // Dismisses the active browser's extension action popup when native shell
   // activity bypasses Chromium's widget activation.
   void CloseExtensionPopup();
@@ -2271,6 +2288,15 @@ class PhiShellWindow : public PhiHitSource,
   int download_fade_animation_ = 0;
   // The site menu is tracking (its button stays lit and shown).
   bool site_menu_open_ = false;
+  // The Not secure cue's state (RefreshPageSecurity): what was asked last,
+  // the answer, and the label's width for `security_label_text_` at
+  // `security_label_dpi_`.
+  BrowserId security_browser_;
+  uint64_t security_version_ = 0;
+  bool page_not_secure_ = false;
+  int security_label_px_ = 0;
+  UINT security_label_dpi_ = 0;
+  std::wstring security_label_text_;
   std::string last_regular_space_;  // See last_regular_space().
   // A Library open waiting for its Space's browser to arrive
   // (OpenStoredRowInSpace): opened by BrowserHostNoteActiveSpace once the

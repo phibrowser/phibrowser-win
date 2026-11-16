@@ -100,6 +100,18 @@
    "zh-Hans": "按 Tab 键或空格键搜索 {0}",
    "zh-Hant": "按 Tab 鍵或空白鍵搜尋 {0}"
   },
+  "addressBar.notSecure": {
+   "de": "Nicht sicher",
+   "en": "Not secure",
+   "es": "No es seguro",
+   "fr": "Non sécurisé",
+   "ja": "保護されていない通信",
+   "ko": "주의 요함",
+   "nl": "Niet beveiligd",
+   "pt-BR": "Não seguro",
+   "zh-Hans": "不安全",
+   "zh-Hant": "不安全"
+  },
   "addressBar.suggestions.addOpenTabToSplitHintCtrl": {
    "de": "Ctrl halten für Split View",
    "en": "Hold Ctrl to add split",
