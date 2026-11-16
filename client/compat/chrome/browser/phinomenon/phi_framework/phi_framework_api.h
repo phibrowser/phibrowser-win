@@ -701,6 +701,24 @@ class PHI_ABI_INTERFACE PhiFrameworkDelegate {
                                    int64_t tab_id,
                                    int64_t opener_tab_id,
                                    const char* opener_search_terms) {}
+
+  // Appended (ABI 9, the Mac bridge's ContentBlockingSettings replies): the
+  // answer to one PhiFramework content blocking request, exactly once and
+  // from a posted task, never inside the call that started it. `success`
+  // false carries the error text in `payload` ("unknown profile", "unknown
+  // list", "no downloadable list", ...). On success `payload` is the
+  // settings JSON for RequestContentBlockingSettings, the new list id for
+  // AddContentBlockingCustomList, and "" for the rest. Valid for the call
+  // only; copy it.
+  virtual void OnContentBlockingReply(int64_t request_id,
+                                      bool success,
+                                      const char* payload) {}
+  // Appended (ABI 9, the Mac's contentBlockingStatusChanged:): profile
+  // `profile_id` (its on-disk basename) published a rule set, changed status
+  // or moved a list download, progress included. Re-read with
+  // RequestContentBlockingSettings. A posted task, coalesced per profile;
+  // sent only after the client's first content blocking request.
+  virtual void OnContentBlockingChanged(const char* profile_id) {}
 };
 
 // Client → framework. Implemented by the framework and handed to the client
@@ -1876,6 +1894,63 @@ class PHI_ABI_INTERFACE PhiFramework {
   virtual bool PlaceNewTabBefore(int64_t window_id,
                                  int tab_id,
                                  int anchor_id) = 0;
+
+  // --- Content blocking (ABI 9) ----------------------------------------------
+  // The Mac's ContentBlockingSettings bridge for the profile settings pane:
+  // a profile's three switches (ads, cookie banners, trackers; all off until
+  // the user turns one on), which filter lists each uses, the user's custom
+  // lists, and downloads. Profiles are addressed by on-disk basename and a
+  // cold profile is loaded first. Downloads happen only through these calls:
+  // Chromium never fetches a list on its own. Every call is asynchronous: it
+  // returns a request id (> 0; 0 when nothing started: a null or empty
+  // argument, both or neither custom list source, list ids that are not a
+  // JSON array of strings) and its answer arrives once as
+  // PhiFrameworkDelegate::OnContentBlockingReply. Progress and rule set
+  // changes come as OnContentBlockingChanged.
+  enum class ContentBlockingCategory : uint8_t {
+    kAds,            // "Block ads": the ads and regional lists.
+    kCookieBanners,  // "Block cookie banners": the cookies lists.
+    kTrackers,       // "Block trackers": the trackers lists.
+  };
+  // Reply payload, one JSON object:
+  //   {"blockAds":false,"blockCookieBanners":false,"blockTrackers":false,
+  //    "status":"disabled","statusDetail":"","sessionBlockedCount":0,
+  //    "generationId":0,"lastBuildLog":"","siteExceptions":["example.com"],
+  //    "lists":[{"id":"easylist","category":"ads","name":"","custom":false,
+  //      "homepage":"https://easylist.to","license":"…","langs":[],
+  //      "sourceUrl":"","checked":false,"defaultChecked":true,
+  //      "available":false,"downloading":false,"downloadedBytes":0,
+  //      "totalBytes":-1,"fetchedAt":0,"lastError":""}, …]}
+  // status ∈ active | building | degraded | disabled | no_lists. category ∈
+  // ads | trackers | cookies | regional | phi | custom. `checked` is the
+  // list's own checkbox (a catalog default counts only once the list is on
+  // disk), independent of the switches; custom lists apply to every switch.
+  // totalBytes is -1 when the server gave no size; fetchedAt is ms since the
+  // Unix epoch, 0 for never (pasted custom lists: when they were added).
+  virtual int64_t RequestContentBlockingSettings(const char* profile_id) = 0;
+  // One switch; the service rebuilds its rule set on the change.
+  virtual int64_t SetContentBlockingCategory(const char* profile_id,
+                                             ContentBlockingCategory category,
+                                             bool enabled) = 0;
+  // A catalog or custom list's checkbox. Unknown ids fail.
+  virtual int64_t SetContentBlockingList(const char* profile_id,
+                                         const char* list_id,
+                                         bool checked) = 0;
+  // A custom list from `url` (downloaded now) or from pasted `rules`:
+  // exactly one is non-empty. Reply payload: the new list id.
+  virtual int64_t AddContentBlockingCustomList(const char* profile_id,
+                                               const char* name,
+                                               const char* url,
+                                               const char* rules) = 0;
+  // Removes a custom list and its file. Unknown ids fail.
+  virtual int64_t RemoveContentBlockingCustomList(const char* profile_id,
+                                                  const char* list_id) = 0;
+  // Downloads the lists `list_ids_json` names (a JSON array of ids) now,
+  // checked or not. Fails when none of them is downloadable.
+  virtual int64_t DownloadContentBlockingLists(const char* profile_id,
+                                               const char* list_ids_json) = 0;
+  // Downloads every downloaded list the profile uses again now.
+  virtual int64_t RefreshContentBlockingLists(const char* profile_id) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -1946,7 +2021,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 8;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 9;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

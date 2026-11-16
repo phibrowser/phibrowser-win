@@ -7211,6 +7211,281 @@
     "zh-Hant": "釘選分頁會在所有設定檔和"
    }
   },
+  "settings.privacy.contentBlocking.advanced.addFilter": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Button opening the sheet that adds a custom filter list",
+   "en": "Add Filter…"
+  },
+  "settings.privacy.contentBlocking.blockAds": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Toggle title for blocking ads",
+   "en": "Block ads"
+  },
+  "settings.privacy.contentBlocking.blockCookieBanners": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Toggle title for hiding cookie consent banners",
+   "en": "Block cookie banners"
+  },
+  "settings.privacy.contentBlocking.blockTrackers": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Toggle title for blocking trackers",
+   "en": "Block trackers"
+  },
+  "settings.privacy.contentBlocking.customFilter.add": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Button that adds the filter",
+   "en": "Add"
+  },
+  "settings.privacy.contentBlocking.customFilter.cancel": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Cancel button",
+   "en": "Cancel"
+  },
+  "settings.privacy.contentBlocking.customFilter.error.name": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Validation message when the name is empty",
+   "en": "Give the filter a name."
+  },
+  "settings.privacy.contentBlocking.customFilter.error.rules": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Validation message when the rules text is empty",
+   "en": "Enter at least one filter rule."
+  },
+  "settings.privacy.contentBlocking.customFilter.error.url": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Validation message when the URL is missing or not http(s)",
+   "en": "Enter a full http(s) URL."
+  },
+  "settings.privacy.contentBlocking.customFilter.kind.rules": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Segment for pasted filter rules",
+   "en": "Custom"
+  },
+  "settings.privacy.contentBlocking.customFilter.kind.url": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Segment for a filter list downloaded from a URL",
+   "en": "URL"
+  },
+  "settings.privacy.contentBlocking.customFilter.name": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Label of the name field",
+   "en": "Name"
+  },
+  "settings.privacy.contentBlocking.customFilter.namePlaceholder": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Placeholder of the name field",
+   "en": "e.g. My filter"
+  },
+  "settings.privacy.contentBlocking.customFilter.rules": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Label of the rules text area",
+   "en": "Filter rules"
+  },
+  "settings.privacy.contentBlocking.customFilter.title": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Title",
+   "en": "Custom filter"
+  },
+  "settings.privacy.contentBlocking.customFilter.url": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Custom filter sheet - Label of the URL field",
+   "en": "URL"
+  },
+  "settings.privacy.contentBlocking.list.adguardChinese.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the AdGuard Chinese regional filter list",
+   "en": "Ads and trackers on Chinese websites."
+  },
+  "settings.privacy.contentBlocking.list.adguardChinese.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the AdGuard Chinese regional filter list",
+   "en": "AdGuard Chinese (中文)"
+  },
+  "settings.privacy.contentBlocking.list.adguardDutch.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the AdGuard Dutch regional filter list",
+   "en": "Ads and trackers on Dutch websites."
+  },
+  "settings.privacy.contentBlocking.list.adguardDutch.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the AdGuard Dutch regional filter list",
+   "en": "AdGuard Dutch (Nederlands)"
+  },
+  "settings.privacy.contentBlocking.list.adguardFrench.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the AdGuard French regional filter list",
+   "en": "Ads and trackers on French websites."
+  },
+  "settings.privacy.contentBlocking.list.adguardFrench.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the AdGuard French regional filter list",
+   "en": "AdGuard French (Français)"
+  },
+  "settings.privacy.contentBlocking.list.adguardGerman.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the AdGuard German regional filter list",
+   "en": "Ads and trackers on German websites."
+  },
+  "settings.privacy.contentBlocking.list.adguardGerman.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the AdGuard German regional filter list",
+   "en": "AdGuard German (Deutsch)"
+  },
+  "settings.privacy.contentBlocking.list.adguardJapanese.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the AdGuard Japanese regional filter list",
+   "en": "Ads and trackers on Japanese websites."
+  },
+  "settings.privacy.contentBlocking.list.adguardJapanese.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the AdGuard Japanese regional filter list",
+   "en": "AdGuard Japanese (日本語)"
+  },
+  "settings.privacy.contentBlocking.list.adguardSpanish.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the AdGuard Spanish and Portuguese regional filter list",
+   "en": "Ads and trackers on Spanish and Portuguese websites."
+  },
+  "settings.privacy.contentBlocking.list.adguardSpanish.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the AdGuard Spanish and Portuguese regional filter list",
+   "en": "AdGuard Spanish/Portuguese (Español/Português)"
+  },
+  "settings.privacy.contentBlocking.list.download": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Tooltip of the button downloading a filter list",
+   "en": "Download this list"
+  },
+  "settings.privacy.contentBlocking.list.downloadFailed": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Line under a filter list whose download failed; %@ is the error",
+   "en": "Not downloaded: {0}"
+  },
+  "settings.privacy.contentBlocking.list.downloading": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Line under a filter list whose download is in progress",
+   "en": "Downloading…"
+  },
+  "settings.privacy.contentBlocking.list.downloadingBytes": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Line under a filter list being downloaded when the total size is unknown; the value is bytes received",
+   "en": "Downloading… {0}"
+  },
+  "settings.privacy.contentBlocking.list.downloadingOf": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Line under a filter list being downloaded; the two values are bytes received and the total size",
+   "en": "Downloading… {0} of {1}"
+  },
+  "settings.privacy.contentBlocking.list.easylist.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the EasyList ad filter list",
+   "en": "The most widely used list of ad servers and ad elements."
+  },
+  "settings.privacy.contentBlocking.list.easylist.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the EasyList ad filter list",
+   "en": "EasyList"
+  },
+  "settings.privacy.contentBlocking.list.easylistCookie.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the EasyList cookie notice filter list",
+   "en": "Hides cookie consent banners and unlocks scrolling behind them."
+  },
+  "settings.privacy.contentBlocking.list.easylistCookie.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the EasyList cookie notice filter list",
+   "en": "EasyList - Cookie Notices"
+  },
+  "settings.privacy.contentBlocking.list.easyprivacy.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of the EasyPrivacy tracker filter list",
+   "en": "Blocks tracking scripts, beacons and analytics."
+  },
+  "settings.privacy.contentBlocking.list.easyprivacy.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of the EasyPrivacy tracker filter list",
+   "en": "EasyPrivacy"
+  },
+  "settings.privacy.contentBlocking.list.info": {
+   "comment": "settings — the rule set chooser (phi_content_blocking_window.cc): accessible name and tooltip of the info button beside a filter list (the Mac button has no label)",
+   "en": "About this list",
+   "translations": {
+    "de": "Über diese Liste",
+    "es": "Acerca de esta lista",
+    "fr": "À propos de cette liste",
+    "ja": "このリストについて",
+    "ko": "이 목록 정보",
+    "nl": "Over deze lijst",
+    "zh-Hans": "关于此列表",
+    "zh-Hant": "關於此清單",
+    "pt-BR": "Sobre esta lista"
+   }
+  },
+  "settings.privacy.contentBlocking.list.phiSpecific.desc": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Privacy settings - Description of Phi's own first-party filter list",
+   "en": "Fixes and rules maintained by Phi. Keep this on unless a site misbehaves."
+  },
+  "settings.privacy.contentBlocking.list.phiSpecific.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Privacy settings - Name of Phi's own first-party filter list",
+   "en": "Phi Blocklists"
+  },
+  "settings.privacy.contentBlocking.list.remove": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Tooltip of the button removing a custom filter list",
+   "en": "Remove this filter"
+  },
+  "settings.privacy.contentBlocking.listInfo.builtIn": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Details line for a filter list shipped with the browser",
+   "en": "Built into Phi"
+  },
+  "settings.privacy.contentBlocking.listInfo.close": {
+   "comment": "settings — the rule set chooser (phi_content_blocking_window.cc): button closing a filter list's details",
+   "en": "Close"
+  },
+  "settings.privacy.contentBlocking.listInfo.license": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - License line in a filter list's details; %@ is the license name",
+   "en": "License: {0}"
+  },
+  "settings.privacy.contentBlocking.listInfo.notDownloaded": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Details line for a filter list that has not been downloaded",
+   "en": "Not downloaded yet"
+  },
+  "settings.privacy.contentBlocking.listInfo.source": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Link label pointing at a filter list's home page",
+   "en": "Source"
+  },
+  "settings.privacy.contentBlocking.listInfo.updated": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Advanced ad block settings - Details line with when a filter list was last downloaded; %@ is a relative time like '3 hours ago'",
+   "en": "Updated {0}"
+  },
+  "settings.privacy.contentBlocking.ruleSets.customSection": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Section title above the user's custom lists",
+   "en": "Your custom lists (apply to every switch)"
+  },
+  "settings.privacy.contentBlocking.ruleSets.done": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Button that downloads the chosen lists still missing and closes the sheet",
+   "en": "Done"
+  },
+  "settings.privacy.contentBlocking.ruleSets.downloading": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Done button label while the chosen lists are being downloaded",
+   "en": "Downloading…"
+  },
+  "settings.privacy.contentBlocking.ruleSets.intro": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Introductory sentence",
+   "en": "Check the rule sets to use. Done downloads any that are missing from their publishers; nothing is downloaded until you ask. Custom lists apply to all three switches."
+  },
+  "settings.privacy.contentBlocking.ruleSets.title.ads": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Title for the ads toggle",
+   "en": "Rule sets for blocking ads"
+  },
+  "settings.privacy.contentBlocking.ruleSets.title.cookies": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Title for the cookie banners toggle",
+   "en": "Rule sets for blocking cookie banners"
+  },
+  "settings.privacy.contentBlocking.ruleSets.title.trackers": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Title for the trackers toggle",
+   "en": "Rule sets for blocking trackers"
+  },
+  "settings.privacy.contentBlocking.ruleSets.update": {
+   "comment": "settings — the content blocking rule set chooser and its Custom filter form (phi_content_blocking_window.cc); the Mac's key: Choose rule sets sheet - Button at the bottom left that downloads the sheet's already-downloaded lists again to pick up new rules",
+   "en": "Update Downloaded"
+  },
+  "settings.privacy.contentBlocking.status.degraded": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Status line shown when the latest rule build failed and the previous rules stay in use",
+   "en": "Filtering is running with the last good rules"
+  },
+  "settings.privacy.contentBlocking.status.noLists": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Status line shown when a toggle is on but none of its filter lists has been downloaded",
+   "en": "Nothing is blocked until a rule set is downloaded."
+  },
+  "settings.privacy.contentBlocking.summary.count": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Line under a content blocking toggle when two or more filter lists are chosen for it; %d is the count",
+   "en": "{0} rule sets"
+  },
+  "settings.privacy.contentBlocking.summary.custom": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Part of the line under a content blocking toggle counting the user's custom lists, which apply to every toggle; %d is the count",
+   "en": "{0} custom lists"
+  },
+  "settings.privacy.contentBlocking.summary.customOne": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Part of the line under a content blocking toggle when the user has one custom list, which applies to every toggle",
+   "en": "1 custom list"
+  },
+  "settings.privacy.contentBlocking.summary.help": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Tooltip of the options button next to a content blocking toggle that opens the rule set chooser",
+   "en": "Choose and download rule sets"
+  },
+  "settings.privacy.contentBlocking.summary.noneSelected": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Line under a content blocking toggle when no filter list is checked for it",
+   "en": "No rule sets selected"
+  },
+  "settings.privacy.contentBlocking.summary.notDownloaded": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Suffix under a content blocking toggle; %d is how many of its checked lists are not downloaded",
+   "en": "{0} not downloaded"
+  },
+  "settings.privacy.contentBlocking.title": {
+   "comment": "settings — Settings ▸ Profiles ▸ Content blocking (phi_settings_window.cc); the Mac's key: Profile settings - Section title above the ad, cookie banner and tracker toggles",
+   "en": "Content blocking"
+  },
   "settings.profileManagesItsOwnSettings": {
    "comment": "settings — used at phi_settings_window.cc:803",
    "en": "profile manages its own settings.",

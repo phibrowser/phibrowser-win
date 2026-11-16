@@ -339,4 +339,15 @@ void PhiFrameworkDispatcher::OnUserOpenedLinkTab(
       opener_search_terms ? std::string(opener_search_terms) : std::string());
 }
 
+void PhiFrameworkDispatcher::OnContentBlockingReply(int64_t request_id,
+                                                    bool success,
+                                                    const char* payload) {
+  coordinator_.ContentBlocking().OnReply(request_id, success, payload);
+}
+
+void PhiFrameworkDispatcher::OnContentBlockingChanged(
+    const char* profile_id) {
+  coordinator_.ContentBlocking().OnFrameworkChanged(profile_id);
+}
+
 }  // namespace phi_client

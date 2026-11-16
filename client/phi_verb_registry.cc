@@ -1052,6 +1052,30 @@ constexpr PhiParamField kImportDrive[] = {
      "\"<source>:<bookmarks|history|cookies|extensions>\"; profile: "
      "\"<source>:<index>\" (an Arc Space for arc); file: a path."},
 };
+constexpr PhiParamField kContentBlockingGet[] = {
+    {"profileId", kParamString, kRequired, "", "A profile's on-disk name."},
+    {"refresh", kParamBool, kOptional, "",
+     "Ask the framework again (default true)."},
+};
+constexpr PhiParamField kContentBlockingSet[] = {
+    {"profileId", kParamString, kRequired, "", "A profile's on-disk name."},
+    {"category", kParamString, kOptional, "",
+     "ads, cookieBanners or trackers; with enabled."},
+    {"enabled", kParamBool, kOptional, "", "The switch."},
+    {"list", kParamString, kOptional, "", "A list id; with checked."},
+    {"checked", kParamBool, kOptional, "", "The list's checkbox."},
+    {"download", kParamStringList, kOptional, "", "List ids to download."},
+    {"refreshLists", kParamBool, kOptional, "",
+     "Download the downloaded lists again."},
+    {"addCustomList", kParamObject, kOptional, "",
+     "{name, url} or {name, rules}."},
+    {"removeCustomList", kParamString, kOptional, "", "A custom list id."},
+};
+constexpr PhiParamField kContentBlockingSiteMenu[] = {
+    {"windowId", kParamInt, kOptional, "", "The slot (default: focused)."},
+    {"blocking", kParamBool, kOptional, "",
+     "Set the site row first, as clicking it does."},
+};
 constexpr PhiParamField kFeedbackAccount[] = {
     {"userId", kParamString, kOptional, "", "A stand-in account id."},
     {"email", kParamString, kOptional, "", "Its email."},
@@ -1265,6 +1289,21 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        false, false, &Call<&PhiControlDispatcher::VerbAnalyticsList>,
        "test_rig_only",
        "Every analytics event the browser delivered this session."},
+      {"agentSpace.contentBlocking.get", "", kScopeNone, kHost, kVerbPlain,
+       kContentBlockingGet, false, false,
+       &Call<&PhiControlDispatcher::VerbContentBlockingGet>,
+       "test_rig_only invalid_payload",
+       "A profile's content blocking state as Settings shows it."},
+      {"agentSpace.contentBlocking.set", "", kScopeNone, kHost, kVerbPlain,
+       kContentBlockingSet, false, false,
+       &Call<&PhiControlDispatcher::VerbContentBlockingSet>,
+       "test_rig_only invalid_payload not_ready",
+       "Drives a profile's content blocking as Settings does."},
+      {"agentSpace.contentBlocking.siteMenu", "", kScopeNone, kHost,
+       kVerbPlain, kContentBlockingSiteMenu, false, false,
+       &Call<&PhiControlDispatcher::VerbContentBlockingSiteMenu>,
+       "test_rig_only window_not_open",
+       "What the site menu reads for the active tab; can set its row."},
       {"agentSpace.lazyRestore.ghosts", "", kScopeNone, kHost, kVerbPlain, {},
        false, false, &Call<&PhiControlDispatcher::VerbLazyRestoreGhosts>,
        "test_rig_only no_framework",

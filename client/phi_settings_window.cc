@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0; see the LICENSE file.
 
 #include "client/phi_settings_window.h"
+
+#include "client/phi_content_blocking_window.h"
 #include "client/phi_pop_animation.h"
 
 #include <shellapi.h>
@@ -546,6 +548,7 @@ bool PhiSettingsWindow::OpenWindow() {
   FitToWorkArea();
   EnsureFont();
   SyncTitle();
+  host_->ContentBlocking().AddObserver(this);
   return true;
 }
 
@@ -2831,6 +2834,11 @@ void PhiSettingsWindow::AddProfileBody(
     items_.push_back(std::move(text));
   }
   *y += Scaled(4);
+  // Content blocking, nested like the data links below it (the Mac's order:
+  // the browsing rows, Content blocking, then Your Data and Settings).
+  AddContentBlockingGroup(y, content_left_ + Scaled(kCardPadding + kChipIndent),
+                          content_right_ - Scaled(kCardPadding), id);
+  *y += Scaled(kDetailCardGap);
   // The data pages: a nested card of three rows into chrome://settings
   // for this profile, indented to the label column.
   {
@@ -3113,6 +3121,9 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
     *y += rows * row_h + Scaled(kSectionGap);
   }
 
+  AddContentBlockingGroup(y, left, right, profile_id);
+  *y += Scaled(kSectionGap);
+
   // "Your data": three live links into chrome://settings for this
   // profile's data pages, each with a chevron.
   {
@@ -3169,6 +3180,176 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
     }
     *y += 3 * row_h;
   }
+}
+
+void PhiSettingsWindow::AddContentBlockingGroup(int* y,
+                                                int left,
+                                                int right,
+                                                const std::string& profile_id) {
+  if (profile_id.empty()) {
+    return;
+  }
+  PhiContentBlocking& blocking = host_->ContentBlocking();
+  // One fresh read per profile while this window is up; the observer keeps
+  // it current from there (a reply, a download's progress, a rule set).
+  if (content_blocking_read_.insert(profile_id).second) {
+    blocking.Refresh(profile_id);
+  }
+  const PhiContentBlockingState* state = blocking.State(profile_id);
+  {
+    Item heading;
+    heading.kind = ItemKind::kSectionTitle;
+    heading.text = PhiStr("settings.privacy.contentBlocking.title");
+    heading.bounds = {left, *y, right, *y + Scaled(kSectionTitleHeight)};
+    items_.push_back(std::move(heading));
+    *y += Scaled(kSectionTitleHeight) + Scaled(kTitleToCard);
+  }
+  const struct {
+    PhiContentBlockingCategory category;
+    // Fluent / MDL2 glyphs for the Mac's SF Symbols: hand.raised.fill ->
+    // Blocked, circle.grid.2x2.fill -> ViewAll, eyeglasses -> View.
+    wchar_t glyph;
+    const char* title;
+  } kRows[] = {
+      {PhiContentBlockingCategory::kAds, 0xE733,
+       "settings.privacy.contentBlocking.blockAds"},
+      {PhiContentBlockingCategory::kCookieBanners, 0xE8A9,
+       "settings.privacy.contentBlocking.blockCookieBanners"},
+      {PhiContentBlockingCategory::kTrackers, 0xE890,
+       "settings.privacy.contentBlocking.blockTrackers"},
+  };
+  const int row_h = Scaled(kRowMinHeight + 2 * kRowPadding);
+  const size_t card_index = items_.size();
+  {
+    Item card;
+    card.kind = ItemKind::kCard;
+    card.bounds = {left, *y, right, *y + static_cast<int>(std::size(kRows)) *
+                                             row_h};
+    items_.push_back(std::move(card));
+  }
+  int row = 0;
+  for (const auto& def : kRows) {
+    const int top = *y + row * row_h;
+    const int mid = top + row_h / 2;
+    const bool on = state && state->Switch(def.category);
+    if (row > 0) {
+      Item divider;
+      divider.kind = ItemKind::kDivider;
+      divider.bounds = {left + 1, top, right - 1, top + 1};
+      items_.push_back(std::move(divider));
+    }
+    Item icon;
+    icon.kind = ItemKind::kIconChip;
+    icon.text = std::wstring(1, def.glyph);
+    icon.enabled = state != nullptr;
+    icon.bounds = {left + Scaled(kCardPadding), mid - Scaled(kChipSize) / 2,
+                   left + Scaled(kCardPadding) + Scaled(kChipSize),
+                   mid + Scaled(kChipSize) / 2};
+    items_.push_back(std::move(icon));
+    // The summary of the switch's lists, while it is on with something to
+    // apply (the Mac's subtitle).
+    std::wstring summary;
+    if (on && !PhiContentBlockingNeedsDownload(def.category, *state)) {
+      summary = PhiContentBlockingSummary(def.category, *state);
+    }
+    const int text_left = left + Scaled(kCardPadding + kChipIndent);
+    const int controls =
+        Scaled(kCardPadding) + Scaled(kToggleWidth) + Scaled(12) + Scaled(32);
+    const int text_right = right - controls - Scaled(12);
+    Item label;
+    label.kind = ItemKind::kRowLabel;
+    label.text = PhiStr(def.title);
+    label.enabled = state != nullptr;
+    label.bounds = summary.empty()
+                       ? RECT{text_left, top, text_right, top + row_h}
+                       : RECT{text_left, mid - Scaled(19), text_right, mid};
+    items_.push_back(std::move(label));
+    if (!summary.empty()) {
+      Item note;
+      note.kind = ItemKind::kHint;
+      note.text = summary;
+      note.bounds = {text_left, mid + Scaled(1), text_right, mid + Scaled(17)};
+      items_.push_back(std::move(note));
+    }
+    // The rule set button (the Mac's slider.horizontal.3 -> Equalizer).
+    const int toggle_left = right - Scaled(kCardPadding) - Scaled(kToggleWidth);
+    if (state) {
+      Item chooser;
+      chooser.kind = ItemKind::kToolButton;
+      chooser.text = std::wstring(1, wchar_t(0xE9E9));
+      chooser.a11y = PhiStrF(
+          "settings.a11y.labelValue",
+          {PhiStr("settings.privacy.contentBlocking.summary.help"),
+           PhiStr(def.title)});
+      chooser.action = "cbchooser";
+      chooser.payload = profile_id;
+      chooser.value = static_cast<int>(def.category);
+      chooser.bounds = {toggle_left - Scaled(12) - Scaled(32),
+                        mid - Scaled(16), toggle_left - Scaled(12),
+                        mid + Scaled(16)};
+      items_.push_back(std::move(chooser));
+    }
+    Item toggle;
+    toggle.kind = ItemKind::kToggle;
+    toggle.on = on;
+    toggle.enabled = state != nullptr;
+    toggle.action = "cbswitch";
+    toggle.payload = profile_id;
+    toggle.value = static_cast<int>(def.category);
+    toggle.bounds = {toggle_left, mid - Scaled(kToggleHeight) / 2,
+                     toggle_left + Scaled(kToggleWidth),
+                     mid + Scaled(kToggleHeight) / 2};
+    items_.push_back(std::move(toggle));
+    ++card_rows_;
+    ++row;
+  }
+  *y += static_cast<int>(std::size(kRows)) * row_h;
+  items_[card_index].bounds.bottom = *y;
+  // The small print: the build failed and the last good rules stay in use,
+  // or a switch is on with nothing downloaded. Nothing for the normal
+  // states; the blocked count stays diagnosis-only (owner decisions,
+  // 2026-09-20, as on the Mac).
+  std::vector<std::wstring> lines;
+  if (state && state->status == "degraded") {
+    lines.push_back(PhiStr("settings.privacy.contentBlocking.status.degraded"));
+    if (!state->status_detail.empty()) {
+      lines.push_back(base::UTF8ToWide(state->status_detail));
+    }
+  } else if (state && state->status == "no_lists") {
+    lines.push_back(PhiStr("settings.privacy.contentBlocking.status.noLists"));
+  }
+  if (!lines.empty()) {
+    *y += Scaled(6);
+  }
+  for (const std::wstring& line : lines) {
+    const int height = std::max(
+        Scaled(kHintHeight),
+        WrappedHeight(hint_font_, line.c_str(), right - left - Scaled(8)));
+    Item note;
+    note.kind = ItemKind::kHint;
+    note.text = line;
+    note.wrap = height > Scaled(kHintHeight);
+    note.bounds = {left + Scaled(4), *y, right - Scaled(4), *y + height};
+    items_.push_back(std::move(note));
+    *y += height + Scaled(2);
+  }
+}
+
+void PhiSettingsWindow::OnContentBlockingChanged(
+    const std::string& profile_id) {
+  if (!alive()) {
+    return;
+  }
+  PhiContentBlocking& blocking = host_->ContentBlocking();
+  if (const PhiContentBlockingState* state = blocking.State(profile_id)) {
+    // A switch is only on while it has something to apply: its last list
+    // unchecked or removed turns it off (the Mac section's onChange).
+    for (PhiContentBlockingCategory category :
+         PhiContentBlockingTogglesToTurnOff(*state)) {
+      blocking.SetCategory(profile_id, category, false);
+    }
+  }
+  ScheduleRebuild();
 }
 
 void PhiSettingsWindow::BuildAccount(int* y) {
@@ -6639,6 +6820,23 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     if (!folder.empty()) {
       host_->SetFolioGlobalFolder(base::WideToUTF8(folder));
     }
+  } else if (item.action == "cbswitch" || item.action == "cbchooser") {
+    // Content blocking: a switch turns on only with a usable rule set; with
+    // none yet, the chooser opens first and the switch follows what is
+    // picked there (the Mac's setCategory / chooserClosed).
+    const auto category = static_cast<PhiContentBlockingCategory>(item.value);
+    PhiContentBlocking& blocking = host_->ContentBlocking();
+    const PhiContentBlockingState* state = blocking.State(item.payload);
+    if (item.action == "cbchooser") {
+      PhiContentBlockingWindow::Open(host_, item.payload, category,
+                                     /*enable_on_close=*/false, hwnd());
+    } else if (!item.on && state &&
+               PhiContentBlockingNeedsDownload(category, *state)) {
+      PhiContentBlockingWindow::Open(host_, item.payload, category,
+                                     /*enable_on_close=*/true, hwnd());
+    } else if (state) {
+      blocking.SetCategory(item.payload, category, !item.on);
+    }
   } else if (item.action == "folioautosave") {
     host_->SetFolioAutoSaveOnSiteActions(!item.on);
   } else if (item.action == "foliosites") {
@@ -7869,6 +8067,8 @@ void PhiSettingsWindow::OnCaptureLost() {
 }
 
 void PhiSettingsWindow::OnNcDestroy() {
+  host_->ContentBlocking().RemoveObserver(this);
+  PhiContentBlockingWindow::CloseQuietly();
   sync_poll_.Stop();
   profile_poll_.Stop();
   card_timer_.Stop();

@@ -23,6 +23,7 @@
 #include "client/phi_agent_space_manager.h"
 #include "client/phi_chromium_sync.h"
 #include "client/phi_sync_key_service.h"
+#include "client/phi_content_blocking.h"
 #include "client/phi_sync_launch_metrics.h"
 #include "client/phi_import_window.h"
 #include "client/phi_sync_setup_window.h"
@@ -646,6 +647,7 @@ class PhiCoordinator : public SidebarHost,
   const PhiProfileService& ProfileList() const override;
   PhiAccountAndFeedback& Account() override;
   PhiUrlRouter& UrlRules() override;
+  PhiContentBlocking& ContentBlocking() override;
 
   // --- The control plane's view of the app ----------------------------------
   // What the verb ladder (PhiControlDispatcher) reaches: the model values and
@@ -1130,6 +1132,10 @@ class PhiCoordinator : public SidebarHost,
   PhiWindowModel window_model_;
   // The launch snapshot's sync fields, mirrored by the key service.
   sync::PhiSyncLaunchMetrics sync_launch_metrics_;
+  // Content blocking (the Mac's ContentBlockingSettings, every profile):
+  // the framework's ABI 9 calls, the settings pane's state and the launch
+  // snapshot's mirror. Gets the framework in OnFrameworkReady.
+  PhiContentBlocking content_blocking_;
   // Clear All Tabs: each browser's latest cleanup, for its toast's Undo.
   std::map<int64_t, PhiClearedTabsBatch> cleared_tabs_;
   uint64_t cleared_tabs_serial_ = 0;

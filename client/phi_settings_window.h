@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <map>
 #include <string>
 #include <utility>
@@ -15,6 +16,7 @@
 
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/values.h"
+#include "client/phi_content_blocking.h"
 #include "client/phi_popup_chrome.h"
 #include "client/phi_holographic_card.h"
 #include "client/phi_secondary_window.h"
@@ -31,6 +33,7 @@ class PhiPreferences;
 class PhiProfileService;
 class PhiSpaceManager;
 class PhiUrlRouter;
+class PhiContentBlocking;
 class PhiSyncKeyService;
 
 // Is Phi the browser Windows launches for an http: URL? A registry read
@@ -105,6 +108,10 @@ class PhiSettingsHost {
   // Mutable: see the class comment — the URL Rules editor (PhiUrlRulesWindow,
   // opened through the host below) IS this service's editor.
   virtual PhiUrlRouter& UrlRules() = 0;
+  // Mutable for the same reason: Settings ▸ Profiles' Content blocking
+  // group and its rule set chooser (PhiContentBlockingWindow) are the
+  // facade's views, and the facade sends every write to the framework.
+  virtual PhiContentBlocking& ContentBlocking() = 0;
   // Navigation ▸ "Manage URL Rules…": the universal editor window, over
   // `anchor` (the settings window).
   virtual void RequestUrlRulesEditor(HWND anchor) = 0;
@@ -322,7 +329,8 @@ class PhiSettingsHost {
 // to Chromium's DirectComposition surface, which composites above anything GDI
 // draws there (windows-framework-design.md — the falsified overlay approach).
 class PhiSettingsWindow : public PhiSecondaryWindow,
-                          public PhiSettingsObserver {
+                          public PhiSettingsObserver,
+                          public PhiContentBlockingObserver {
  public:
   static void Open(PhiSettingsHost* host);
   // Repaints the open window. The coordinator no longer calls this (it
@@ -349,10 +357,17 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   // rebuilds NOW and repaints — never from inside WM_PAINT (lane 3 §3.1
   // and ranked finding 1; docs/sidebar-architecture.md §2.7).
   void OnSettingsChanged(PhiSettingsChange what) override;
+  // PhiContentBlockingObserver: a profile's switches, lists or downloads
+  // moved; the Content blocking group rebuilds, and a switch left with
+  // nothing usable is turned off (the Mac's togglesToTurnOff).
+  void OnContentBlockingChanged(const std::string& profile_id) override;
 
  private:
   explicit PhiSettingsWindow(PhiSettingsHost* host);
   bool OpenWindow();
+  // Profiles whose content blocking state this window asked for: one fresh
+  // read per profile per window, the observer keeps it current after.
+  std::set<std::string> content_blocking_read_;
 
   // PhiSecondaryWindow. Paint() only paints: the item list it draws was
   // built by the last ScheduleRebuild().
@@ -496,6 +511,13 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   void BuildProfileDetail(int* y, int left, int right,
                           const std::string& profile_id,
                           bool show_folio_folder);
+  // The Mac's ContentBlockingSettingsSection: "Content blocking" over a card
+  // of three switches (Block ads, Block cookie banners, Block trackers),
+  // each with its rule set button and, while on, the summary of its lists;
+  // the status small print under the card. Between the profile's browsing
+  // rows and its data links, in both places a profile's detail shows.
+  void AddContentBlockingGroup(int* y, int left, int right,
+                               const std::string& profile_id);
   // One expander card's header row (windows-native-ui.md §7.1 / §7.2):
   // a tile (a Space icon, or a profile avatar when `avatar`, a filled
   // circle with `icon` as its initial), the 14 name, the 12 hint, an

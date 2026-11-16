@@ -236,6 +236,18 @@ void PhiCoordinator::OnFrameworkReady(phi_framework::PhiFramework* framework,
   // Chromium profiles (docs/architecture-review.md §3.4): the async
   // creation with tokens, the listing reads and the per-profile settings.
   profile_service_ = std::make_unique<PhiProfileService>(*framework_, *this);
+  // Content blocking reads and writes through the framework from here on;
+  // the launch snapshot's mirror is read below, with the settings.
+  content_blocking_.Init(framework_, user_data_dir_utf8
+                                         ? base::UTF8ToWide(user_data_dir_utf8)
+                                         : std::wstring());
+  content_blocking_.SetKnownProfiles([this] {
+    std::set<std::string> ids;
+    for (const PhiProfileSummary& profile : profile_service_->Profiles()) {
+      ids.insert(profile.id);
+    }
+    return ids;
+  });
 
   // Menu-bar accelerators (PhiKeyboardAccelerators): the service installs
   // its own thread-scoped WH_KEYBOARD hook on this thread and reads the
@@ -3622,6 +3634,9 @@ void PhiCoordinator::LoadStores(const std::wstring& user_data_dir) {
       PhiUserDefaultsSnapshotProperties(settings, PhiThisExeIsDefaultBrowser());
   sync_launch_metrics_.Load(user_data_dir);
   sync_launch_metrics_.AddSnapshotProperties(&defaults_snapshot);
+  // block_ads_enabled and its two siblings, from the mirror the content
+  // blocking facade keeps (the switches are Chromium prefs, unread yet).
+  content_blocking_.AddSnapshotProperties(&defaults_snapshot);
   CaptureAnalytics(kAnalyticsModuleSettings, kEventUserDefaultsSnapshot,
                    std::move(defaults_snapshot));
   // The first-time-action record, beside the version file it pairs with.
@@ -4443,6 +4458,10 @@ PhiAccountAndFeedback& PhiCoordinator::Account() {
 
 PhiUrlRouter& PhiCoordinator::UrlRules() {
   return *url_router_;
+}
+
+PhiContentBlocking& PhiCoordinator::ContentBlocking() {
+  return content_blocking_;
 }
 
 void PhiCoordinator::AddURLRule(const std::string& space_id,

@@ -97,7 +97,7 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 
 ## Verbs
 
-159 rows, 155 distinct names.
+162 rows, 158 distinct names.
 
 ### The agent-Space lifecycle
 
@@ -531,6 +531,52 @@ Every analytics event the browser delivered this session.
 - **Errors**: `test_rig_only`
 
 *No payload fields.*
+
+#### `agentSpace.contentBlocking.get`
+
+A profile's content blocking state as Settings shows it.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `invalid_payload`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `profileId` | string | yes | — | A profile's on-disk name. |
+| `refresh` | boolean | no | — | Ask the framework again (default true). |
+
+#### `agentSpace.contentBlocking.set`
+
+Drives a profile's content blocking as Settings does.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `invalid_payload`, `not_ready`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `profileId` | string | yes | — | A profile's on-disk name. |
+| `category` | string | no | — | ads, cookieBanners or trackers; with enabled. |
+| `enabled` | boolean | no | — | The switch. |
+| `list` | string | no | — | A list id; with checked. |
+| `checked` | boolean | no | — | The list's checkbox. |
+| `download` | string[] | no | — | List ids to download. |
+| `refreshLists` | boolean | no | — | Download the downloaded lists again. |
+| `addCustomList` | object | no | — | {name, url} or {name, rules}. |
+| `removeCustomList` | string | no | — | A custom list id. |
+
+#### `agentSpace.contentBlocking.siteMenu`
+
+What the site menu reads for the active tab; can set its row.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `window_not_open`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `windowId` | integer | no | — | The slot (default: focused). |
+| `blocking` | boolean | no | — | Set the site row first, as clicking it does. |
 
 #### `agentSpace.lazyRestore.ghosts`
 

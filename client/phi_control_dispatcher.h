@@ -550,6 +550,10 @@ class PhiControlDispatcher : public PhiControlDelegate {
   PhiVerbResult VerbFeedbackOpen(const PhiVerbContext& ctx);
   PhiVerbResult VerbFeedbackForm(const PhiVerbContext& ctx);
   PhiVerbResult VerbFeedbackSetAccount(const PhiVerbContext& ctx);
+  // Content blocking (phi_verbs_content_blocking.cc), test rig only.
+  PhiVerbResult VerbContentBlockingGet(const PhiVerbContext& ctx);
+  PhiVerbResult VerbContentBlockingSet(const PhiVerbContext& ctx);
+  PhiVerbResult VerbContentBlockingSiteMenu(const PhiVerbContext& ctx);
   // phi_verbs_account.cc: the Auth0 session (test rig only).
   PhiVerbResult VerbAccountStatus(const PhiVerbContext& ctx);
   PhiVerbResult VerbAccountSignIn(const PhiVerbContext& ctx);

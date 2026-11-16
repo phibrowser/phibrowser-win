@@ -154,7 +154,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Appearance: layout, colour appearance, Space colour (palette editor), tab toggles | yes (split across General/Advanced) | yes | ✅ | The saturation slider is gone on both sides (Mac `62986748`, Windows `d414679`). With several Spaces Windows shows a hint and a link to Spaces where the Mac greys the row. |
 | Spaces: list, expander editor, URL rules, pinned tab scope, shortcut | yes | yes | ✅ | No tab count in the expander hint (impl doc "What is left" §7). |
 | Profiles: list, search engine, download location, Folio folder, data links | yes | yes | ✅ | |
-| Profiles: Content blocking (Block ads / trackers / cookie banners, rule-set chooser, custom filters) | per profile, `docs/content-blocking.md` | per-site toggle only | 🔧 | The framework owns the engine, so the Windows half is the switches, the chooser sheet and the download/update actions. `analytics.md` already notes the missing snapshot keys. |
+| Profiles: Content blocking (Block ads / trackers / cookie banners, rule-set chooser, custom filters) | per profile, `docs/content-blocking.md` | Settings ▸ Profiles (and General with one profile): the three switches with their rule set button and summary, the status small print; the rule set chooser (`PhiContentBlockingWindow`: checkboxes, download with progress and errors, Update Downloaded, list details, custom lists) and its Custom filter form (URL or pasted rules); the site menu's per-site row | ✅ | 2026-11-16, framework ABI 9 (`PhiFramework` content blocking calls over the Mac bridge's `bridge_api`, `OnContentBlockingReply` / `OnContentBlockingChanged`), facade `client/phi_content_blocking.*`, launch snapshot keys `block_*_enabled`. Defaults stay off. The site row still shows only while a switch is on (the Mac shows it always; with nothing on it would claim blocking that is not happening). The list details are a dialog, not a popover. Needs the framework release with ABI 9 and a `framework.lock` bump before main can ship it. |
 | Navigation: Kiosk toggles, Peek toggles, URL rules | three Kiosk toggles | one Kiosk toggle | ◐ | The two missing Kiosk toggles are ⛔ (see §1). |
 | Phi & AI pane | yes | built, not mounted | ⛔ | AI suite. |
 | Phi Link (Telegram relay) | yes | none | ⛔ | AI suite (Sentinel relay). |
@@ -209,14 +209,14 @@ Two standing decisions cover many rows and are not repeated in full:
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 67 |
+| ✅ ported | 68 |
 | ◐ partial | 28 |
-| 🔧 to implement | 22 |
+| 🔧 to implement | 21 |
 | ⛔ deliberately left | 21 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
 
-**The 🔧 list, roughly by user impact:** content blocking switches · multi-selection ·
+**The 🔧 list, roughly by user impact:** multi-selection ·
 Bitwarden Settings rows and standing grants ·
 crash feedback prompt · image
 preview · Arc/Zen migration wizard · Share · Capture Full Page ·

@@ -134,6 +134,10 @@ class PhiFrameworkDispatcher : public phi_framework::PhiFrameworkDelegate {
                            int64_t tab_id,
                            int64_t opener_tab_id,
                            const char* opener_search_terms) override;
+  void OnContentBlockingReply(int64_t request_id,
+                              bool success,
+                              const char* payload) override;
+  void OnContentBlockingChanged(const char* profile_id) override;
 
  private:
   // The composition root that owns this. Non-owning back-pointer.
