@@ -76,6 +76,23 @@ namespace phi_framework {
 class PhiFramework;
 class PhiDevToolsClient;
 
+// Every interface class in this header is implemented on one side of the
+// boundary and called from the other, and the framework implements some of
+// them itself as well (PhiStringSink: StdStringSink). An official build links
+// chrome.dll with ThinLTO and -fwhole-program-vtables, which assumes the link
+// sees every implementation of a class: a call through a class with one
+// implementation in chrome.dll becomes a direct call to it. Framework
+// 0.6.0.17 ran its own StdStringSink::Append on the client's sink that way
+// (libc++ appending into the client's MSVC std::string) and the browser died
+// on /json/version. lto_visibility_public tells LTO the class has
+// implementations outside the link, so calls through it stay virtual. Every
+// class with a virtual method in this header carries it.
+#if defined(__clang__)
+#define PHI_ABI_INTERFACE [[clang::lto_visibility_public]]
+#else
+#define PHI_ABI_INTERFACE
+#endif
+
 // --- Result sinks (rule 6) ------------------------------------------------
 // Where a call has to hand a variable-length result to the other side, the
 // RECEIVER owns the storage and the sender writes through one of these; the
@@ -84,7 +101,7 @@ class PhiDevToolsClient;
 
 // The client's eager-window answer to OnColdStartRestorePlan. Framework-
 // owned; valid during the callback.
-class ColdStartPlan {
+class PHI_ABI_INTERFACE ColdStartPlan {
  public:
   virtual void AddEagerWindow(int32_t window_id) = 0;
 
@@ -95,7 +112,7 @@ class ColdStartPlan {
 // A byte sink for a document the framework produces on demand
 // (DevToolsDiscoveryJson). Client-owned; Append is called on the calling
 // thread, before the producing call returns, possibly more than once.
-class PhiStringSink {
+class PHI_ABI_INTERFACE PhiStringSink {
  public:
   virtual void Append(const char* data, size_t length) = 0;
 
@@ -293,7 +310,7 @@ enum class WindowChangeReason : uint8_t {
   kAudio,        // a tab's audible / audio_muted changed; nothing structural
 };
 
-class PhiFrameworkDelegate {
+class PHI_ABI_INTERFACE PhiFrameworkDelegate {
  public:
   virtual ~PhiFrameworkDelegate() = default;
 
@@ -689,7 +706,7 @@ class PhiFrameworkDelegate {
 // Client → framework. Implemented by the framework and handed to the client
 // via PhiFrameworkDelegate::OnFrameworkReady. Grows into the command surface
 // over F3.
-class PhiFramework {
+class PHI_ABI_INTERFACE PhiFramework {
  public:
   virtual ~PhiFramework() = default;
 
@@ -1876,7 +1893,7 @@ class PhiFramework {
 // valid only for the duration of the callback — copy it. The client must
 // CloseDevToolsSession (and let it return) before destroying the client
 // object; after Close no callback fires for that session.
-class PhiDevToolsClient {
+class PHI_ABI_INTERFACE PhiDevToolsClient {
  public:
   virtual ~PhiDevToolsClient() = default;
   // A protocol message (a response or an event) from the browser.

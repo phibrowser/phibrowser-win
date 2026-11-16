@@ -540,15 +540,19 @@ PhiAgentPeer ResolvePeer(HANDLE pipe) {
 // /json and /json/list cut down to the targets `connection_id`'s principal
 // may see (PhiControlDelegate::DevToolsTargetsInScope): the framework serves
 // the process-wide list and leaves the filtering to the client
-// (phi_devtools_transport.h). A document that does not parse becomes an
-// empty list — fail closed.
-std::string FilterTargetList(PhiControlDelegate* delegate,
-                             uint64_t connection_id,
-                             const std::string& doc) {
+// (phi_devtools_transport.h). A document that is not a JSON list is the
+// framework's fault and returns nullopt (the caller answers 503); with no
+// delegate to ask, nothing is in scope — fail closed.
+std::optional<std::string> FilterTargetList(PhiControlDelegate* delegate,
+                                            uint64_t connection_id,
+                                            const std::string& doc) {
   std::optional<base::Value> parsed =
       base::JSONReader::Read(doc, base::JSON_PARSE_RFC);
-  if (!delegate || !parsed || !parsed->is_list()) {
-    return "[]";
+  if (!parsed || !parsed->is_list()) {
+    return std::nullopt;
+  }
+  if (!delegate) {
+    return std::string("[]");
   }
   base::ListValue& list = parsed->GetList();
   std::vector<PhiDevToolsTargetRef> targets;
@@ -605,16 +609,38 @@ std::string CdpNotAllowedReply(const base::DictValue& command) {
 // `wake`; the connection thread drains the queue and does the pipe writes,
 // where a wedged peer can only ever stall itself.
 // The receiving end of DevToolsDiscoveryJson (api rule 6): the document
-// lands in a client-owned std::string.
+// lands in a client-owned std::string. The sink counts what it was handed
+// itself, so a producer that reports success without ever calling Append
+// is caught before `out_` is read: framework 0.6.0.17 (an official build,
+// whose LTO devirtualized the call to its own StdStringSink) appended with
+// ITS libc++ into this MSVC std::string, and reading the result threw
+// std::length_error and took the browser down.
 class StringSink : public phi_framework::PhiStringSink {
  public:
   explicit StringSink(std::string* out) : out_(out) {}
   void Append(const char* data, size_t length) override {
+    ++calls_;
+    if (!data || length > kMaxDiscoveryDoc - received_) {
+      overflow_ = true;
+      return;
+    }
+    received_ += length;
     out_->append(data, length);
   }
 
+  // True when the document arrived through Append, whole, and `out_` holds
+  // exactly what Append was given.
+  bool Delivered() const {
+    return calls_ > 0 && !overflow_ && out_->size() == received_;
+  }
+
  private:
+  static constexpr size_t kMaxDiscoveryDoc = 16u << 20;
+
   RAW_PTR_EXCLUSION std::string* out_;
+  size_t calls_ = 0;
+  size_t received_ = 0;
+  bool overflow_ = false;
 };
 
 class DevToolsPump : public phi_framework::PhiDevToolsClient {
@@ -1003,13 +1029,25 @@ void PhiControlServer::HandleConnection(HANDLE pipe) {
                 path == "/json/list")) {
       std::string doc;
       StringSink sink(&doc);
+      std::optional<std::string> body;
       if (framework_ &&
-          framework_->DevToolsDiscoveryJson(path.c_str(), &sink)) {
+          framework_->DevToolsDiscoveryJson(path.c_str(), &sink) &&
+          sink.Delivered()) {
         if (path != "/json/version") {
-          doc = FilterTargetList(delegate_, connection_id, doc);
+          body = FilterTargetList(delegate_, connection_id, doc);
+        } else if (std::optional<base::Value> version = base::JSONReader::Read(
+                       doc, base::JSON_PARSE_RFC);
+                   version && version->is_dict()) {
+          body = std::move(doc);
         }
+        if (!body) {
+          LOG(WARNING) << "[PhiControl] DevTools discovery for " << path
+                       << " returned a malformed document; answering 503.";
+        }
+      }
+      if (body) {
         conn.Write(HttpResponse("200 OK", "application/json; charset=UTF-8",
-                                doc));
+                                *body));
       } else {
         conn.Write(HttpText("503 Service Unavailable",
                             "DevTools discovery unavailable.\n"));
