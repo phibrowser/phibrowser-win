@@ -36,9 +36,10 @@ void PhiPopIn(HWND hwnd, const POINT* source = nullptr);
 // alone.
 void PhiPopOut(HWND hwnd);
 
-// TrackPopupMenu, with the pop-in and pop-out on the menu and on every
-// submenu it opens. Same arguments and result. The system's own menu fade
-// is turned off for the call, so the two never stack.
+// TrackPopupMenu, with the pop-in and pop-out on the menu itself, once per
+// call; its submenus show the way Windows shows them. Same arguments and
+// result. The system's own menu fade is turned off for the call, so the two
+// never stack.
 BOOL PhiTrackPopupMenu(HMENU menu,
                        UINT flags,
                        int x,

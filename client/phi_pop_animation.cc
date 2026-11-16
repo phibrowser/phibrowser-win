@@ -192,47 +192,17 @@ void CALLBACK OnFrame(HWND, UINT, UINT_PTR, DWORD) {
   }
 }
 
-// Whether Windows is about to animate this menu window itself: a submenu
-// the pointer opened (it rests on the parent menu's row) gets the system's
-// menu fade when that is on, since only the root menu takes TPM_NOANIMATION.
-// That fade ends by clearing WS_EX_LAYERED in win32k, with no message to
-// see: a layer our pop-in had set to alpha 0 went with it, the window was
-// never repainted and stayed see-through with only its shadow on screen
-// (GitHub phibrowser/phibrowser-win#9 regression). Such a submenu is left
-// to Windows; one opened from the keyboard has no system fade and keeps
-// the pop-in.
-bool SystemAnimatesSubmenu(HWND menu) {
-  BOOL animation = FALSE;
-  if (!::SystemParametersInfoW(SPI_GETMENUANIMATION, 0, &animation, 0) ||
-      !animation) {
-    return false;
-  }
-  struct Search {
-    HWND self;
-    POINT pointer;
-    bool over_parent = false;
-  } search{menu, {}};
-  if (!::GetCursorPos(&search.pointer)) {
-    return false;
-  }
-  ::EnumThreadWindows(
-      ::GetCurrentThreadId(),
-      [](HWND hwnd, LPARAM lparam) -> BOOL {
-        auto* s = reinterpret_cast<Search*>(lparam);
-        wchar_t cls[16] = {};
-        RECT rect = {};
-        if (hwnd != s->self && ::IsWindowVisible(hwnd) &&
-            ::GetClassNameW(hwnd, cls, 16) > 0 &&
-            ::lstrcmpW(cls, kMenuWindowClass) == 0 &&
-            ::GetWindowRect(hwnd, &rect) && ::PtInRect(&rect, s->pointer)) {
-          s->over_parent = true;
-          return FALSE;
-        }
-        return TRUE;
-      },
-      reinterpret_cast<LPARAM>(&search));
-  return search.over_parent;
-}
+// The menu window this PhiTrackPopupMenu call has popped in, if any. One
+// open, one pop-in: only the first menu window shown in the call (its root)
+// flies in. Submenus appear the way Windows shows them, so a pass of the
+// pointer down the ⋯ menu no longer starts a zoom in and a zoom out for
+// every submenu row it rests on (with Windows' animation effects off each
+// one had its own; a keyboard-opened one always did), and a menu window
+// that is hidden and shown again inside the same open is not flown twice
+// (PHI-2037, feedback 372: "fired twice or more"). Leaving a hover-opened
+// submenu to Windows also keeps its own fade from dropping a layer we set
+// (GitHub phibrowser/phibrowser-win#9 regression, 9e52ee8).
+HWND g_menu_popped = nullptr;
 
 // Sees every message SENT on this thread while a menu is up: a menu window
 // about to be shown is armed before its first frame, and one about to be
@@ -248,8 +218,15 @@ LRESULT CALLBACK MenuHook(int code, WPARAM wparam, LPARAM lparam) {
           ::lstrcmpW(cls, kMenuWindowClass) == 0) {
         const bool visible = ::IsWindowVisible(message->hwnd) != FALSE;
         if ((pos->flags & SWP_SHOWWINDOW) && !visible) {
-          if (!SystemAnimatesSubmenu(message->hwnd)) {
+          if (!g_menu_popped) {
+            g_menu_popped = message->hwnd;
             PhiPopIn(message->hwnd);
+          } else if (message->hwnd == g_menu_popped &&
+                     !Arriving().count(message->hwnd)) {
+            // Shown again in the same open: as it is, with no second
+            // flight (a pop-out that cut its first one short left it at
+            // alpha 0).
+            Reveal(message->hwnd);
           }
         } else if ((pos->flags & SWP_HIDEWINDOW) && visible) {
           PhiPopOut(message->hwnd);
@@ -271,6 +248,9 @@ bool PhiPopAnimationsEnabled() {
 void PhiPopIn(HWND hwnd, const POINT* source) {
   if (!hwnd || !PhiPopAnimationsEnabled()) {
     return;
+  }
+  if (Arriving().count(hwnd)) {
+    return;  // Already on its way in: one pop-in per showing, never a restart.
   }
   const LONG_PTR ex_style = ::GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
   if (!(ex_style & WS_EX_LAYERED)) {
@@ -348,6 +328,9 @@ BOOL PhiTrackPopupMenu(HMENU menu,
     PhiMenuApplyFrameMode(PhiPopupColorsNow().dark);
   }
   const bool animate = PhiPopAnimationsEnabled();
+  // A menu opened from inside another's loop gets its own pop-in.
+  const HWND outer_popped = g_menu_popped;
+  g_menu_popped = nullptr;
   if (animate && g_menu_depth++ == 0) {
     g_menu_hook = ::SetWindowsHookExW(WH_CALLWNDPROC, &MenuHook, nullptr,
                                       ::GetCurrentThreadId());
@@ -361,6 +344,7 @@ BOOL PhiTrackPopupMenu(HMENU menu,
     ::UnhookWindowsHookEx(g_menu_hook);
     g_menu_hook = nullptr;
   }
+  g_menu_popped = outer_popped;
   return result;
 }
 
