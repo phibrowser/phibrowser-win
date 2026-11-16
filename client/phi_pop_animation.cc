@@ -7,7 +7,9 @@
 #include <map>
 
 #include "client/phi_card_flight.h"
+#include "client/phi_menu_paint.h"
 #include "client/phi_modal_scope.h"
+#include "client/phi_popup_chrome.h"
 
 namespace phi_client {
 
@@ -336,6 +338,15 @@ BOOL PhiTrackPopupMenu(HMENU menu,
   // The menu's loop is a nested one: pipe verbs wait, Chromium's tasks run
   // (PHIBROWSER-WIN-7). A caller's own scope around this one just nests.
   PhiModalScope modal(owner);
+  // A plain menu (Settings' dropdowns, the import and URL-rules pickers)
+  // is drawn by Windows in uxtheme's app mode, which only a themed menu's
+  // show used to set: in Dark it opened light until some Phi-drawn menu
+  // had been shown. Follow the app appearance here; a menu
+  // PhiMenuApplyTheme has dressed keeps the palette it was given (an
+  // incognito window's menus are dark in a light app).
+  if (!PhiMenuIsThemed(menu)) {
+    PhiMenuApplyFrameMode(PhiPopupColorsNow().dark);
+  }
   const bool animate = PhiPopAnimationsEnabled();
   if (animate && g_menu_depth++ == 0) {
     g_menu_hook = ::SetWindowsHookExW(WH_CALLWNDPROC, &MenuHook, nullptr,

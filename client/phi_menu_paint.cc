@@ -112,7 +112,8 @@ int TextWidth(HDC dc, HFONT font, const std::wstring& text) {
 // (SetPreferredAppMode ordinal 135, FlushMenuThemes 136; Windows 10 1903+):
 // the popup's FRAME and its submenu arrows follow the app mode, which the
 // documented API cannot reach. A missing export leaves light frames — the
-// rows are still ours.
+// rows are still ours. A plain (not owner-drawn) menu takes its rows from
+// the mode as well.
 void ApplyMenuFrameMode(bool dark) {
   static bool last_dark = false;
   static bool applied = false;
@@ -375,6 +376,16 @@ void PhiMenuApplyTheme(HMENU root, const PhiPalette& palette) {
   info.hbrBack = it->second;
   ::SetMenuInfo(root, &info);
   ApplyMenuFrameMode(palette.dark);
+}
+
+void PhiMenuApplyFrameMode(bool dark) {
+  ApplyMenuFrameMode(dark);
+}
+
+bool PhiMenuIsThemed(HMENU menu) {
+  MENUINFO info = {sizeof(info)};
+  info.fMask = MIM_BACKGROUND;
+  return menu && ::GetMenuInfo(menu, &info) && info.hbrBack;
 }
 
 // --- Measure / draw --------------------------------------------------------

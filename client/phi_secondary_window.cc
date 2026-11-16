@@ -451,6 +451,13 @@ void PhiSecondaryWindow::RefreshColors() {
   chrome_.ApplyColors(colors_);
   OnColorsChanged();
   Invalidate();
+  // The child controls too (owner-drawn buttons, fields, cards): the frame
+  // clips its children, so invalidating it alone left Feedback's Cancel,
+  // Add files and diagnostics card in the old appearance after a switch.
+  if (alive()) {
+    ::RedrawWindow(hwnd(), nullptr, nullptr,
+                   RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+  }
 }
 
 void PhiSecondaryWindow::OnThemeChanged() {

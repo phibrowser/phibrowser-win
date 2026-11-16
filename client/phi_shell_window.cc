@@ -4671,6 +4671,8 @@ void PhiShellWindow::UpdateTabPreview() {
         utf8.rfind("phi://bookmarks", 0) == 0) {
       *allow = false;
     }
+    // Chromium's own pages show as phi://, as in the address field.
+    *url = PhiOmniboxBrandUrl(*url);
   };
   apply_url_policy(&target.url, &target.allow_snapshot);
   if (target.tab_id_b.valid()) {
@@ -10380,10 +10382,15 @@ void PhiShellWindow::PaintChrome(HDC dc,
   }
   avatar_disc_ = {};
   {
+    // Each control takes the palette of the row it stands in: the bottom
+    // bar's tint, or the address row's page colour where a layout moves the
+    // control up there (the Extensions puzzle beside ⋯) — the Space's dark
+    // ink on a white page row was all but invisible.
     const auto tool = [&](const RECT& rect, const wchar_t* glyph, bool hot) {
+      const PhiPalette& ink = row_palette(rect);
       PhiPaintIconButton(dc, rect, glyph,
                          hot ? PhiButtonState::kHover : PhiButtonState::kRest,
-                         palette, kLabel, Scaled(fluent::kIconToolbar),
+                         ink, ink.label, Scaled(fluent::kIconToolbar),
                          Scaled(fluent::kButtonRadius));
     };
     if (layout.sidebar_profile.right > layout.sidebar_profile.left) {
@@ -10396,6 +10403,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
       // 16 dip icon size — a bare outline at the disc's 24 dwarfs the
       // Downloads and Feedback glyphs beside it.
       const RECT& b = layout.sidebar_profile;
+      const PhiPalette& ink = row_palette(b);
       const int px = Scaled(24);
       const int left = (b.left + b.right - px) / 2;
       const int top = (b.top + b.bottom - px) / 2;
@@ -10407,8 +10415,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
             services_.window->AccountAvatarCircle(px);
         if (!circle.empty()) {
           const std::vector<uint8_t> ringed =
-              WithAvatarRing(circle, px, std::max(1, Scaled(1)), palette.ink,
-                             palette.dark ? 20 : 23);
+              WithAvatarRing(circle, px, std::max(1, Scaled(1)), ink.ink,
+                             ink.dark ? 20 : 23);
           drew_avatar = PhiBlendBgra(dc, disc, ringed.data(), px, px);
         }
       }
@@ -10416,7 +10424,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
         avatar_disc_ = disc;
       } else {
         PhiDrawIconGlyph(dc, disc, fluent::kContact,
-                         Scaled(fluent::kIconToolbar), kLabelDim);
+                         Scaled(fluent::kIconToolbar), ink.label_dim);
       }
     }
     if (layout.sidebar_downloads.right > layout.sidebar_downloads.left) {
@@ -10425,7 +10433,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
       // same wash the Fluent tools use.
       const PhiButtonState state =
           bottom_hot(11) ? PhiButtonState::kHover : PhiButtonState::kRest;
-      PhiPaintButtonWash(dc, layout.sidebar_downloads, state, palette,
+      const PhiPalette& ink = row_palette(layout.sidebar_downloads);
+      PhiPaintButtonWash(dc, layout.sidebar_downloads, state, ink,
                          Scaled(fluent::kButtonRadius));
       const int art = Scaled(24);
       const RECT& b = layout.sidebar_downloads;
@@ -10434,17 +10443,18 @@ void PhiShellWindow::PaintChrome(HDC dc,
       const RECT art_rc = {left, top, left + art, top + art};
       // The arrow's start cue and the progress bar (#13) paint with it.
       download_indicator_.Paint(
-          dc, art_rc, PhiButtonInk(state, palette, kLabel), palette.accent,
-          state == PhiButtonState::kHover ? palette.hover : kTintTop,
+          dc, art_rc, PhiButtonInk(state, ink, ink.label), ink.accent,
+          state == PhiButtonState::kHover ? ink.hover : ink.ground_top,
           static_cast<int>(dpi()), USER_DEFAULT_SCREEN_DPI);
     }
     if (layout.memory.right > layout.memory.left) {
+      const PhiPalette& ink = row_palette(layout.memory);
       if (bottom_hot(1)) {
-        PhiFillRounded(dc, layout.memory, palette.hover, Scaled(4));
+        PhiFillRounded(dc, layout.memory, ink.hover, Scaled(4));
       }
       const int memory_px = layout.memory.right - layout.memory.left;
       const std::vector<unsigned char> memory_bgra =
-          PhiTintedIconBgra(PhiMemoryIcon(), palette.ink, memory_px);
+          PhiTintedIconBgra(PhiMemoryIcon(), ink.ink, memory_px);
       PhiBlendBgra(dc, layout.memory, memory_bgra.data(), memory_px,
                    memory_px);
     }
@@ -10458,16 +10468,17 @@ void PhiShellWindow::PaintChrome(HDC dc,
       const PhiButtonState state =
           bottom_hot(2) ? PhiButtonState::kHover : PhiButtonState::kRest;
       const RECT& b = layout.feedback;
+      const PhiPalette& ink = row_palette(b);
       if (state == PhiButtonState::kHover) {
-        PhiFillCapsuleAA(dc, b, palette.hover);
+        PhiFillCapsuleAA(dc, b, ink.hover);
       }
-      PhiStrokeCapsuleAA(dc, b, palette.border, std::max(1, Scaled(1)));
+      PhiStrokeCapsuleAA(dc, b, ink.border, std::max(1, Scaled(1)));
       const int art = Scaled(16);
       const int left = (b.left + b.right - art) / 2;
       const int top = (b.top + b.bottom - art) / 2;
       const RECT art_rc = {left, top, left + art, top + art};
       const std::vector<unsigned char> bug_bgra = PhiTintedIconBgra(
-          PhiFeedbackIcon(), PhiButtonInk(state, palette, kLabel), art);
+          PhiFeedbackIcon(), PhiButtonInk(state, ink, ink.label), art);
       PhiBlendBgra(dc, art_rc, bug_bgra.data(), art, art);
     }
   }

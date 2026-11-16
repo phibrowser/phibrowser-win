@@ -416,6 +416,9 @@ void PhiTabPreview::Present() {
   }
   const bool handoff = visible_;
   shown_ = pending_;
+  // The card's name is what it shows (title, then address), for assistive
+  // technology and for the test suites, which cannot read its pixels.
+  ::SetWindowTextW(hwnd(), (shown_.title + L" \u2014 " + shown_.url).c_str());
   const SIZE size = CardSize();
   const RECT target = PlacementRect(CardPlacement(), size);
 

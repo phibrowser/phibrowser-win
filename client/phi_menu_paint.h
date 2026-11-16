@@ -134,6 +134,14 @@ std::wstring PhiMenuLabelAt(HMENU menu, int position);
 // The flyout ground behind the rows, applied to `root` and every submenu.
 // Called once per show (the palette can change between shows).
 void PhiMenuApplyTheme(HMENU root, const PhiPalette& palette);
+// uxtheme's app mode for native menus: the frame and the submenu arrows of
+// Phi-drawn menus, and the WHOLE of a plain menu (Settings' dropdowns, an
+// EDIT's context menu). PhiMenuApplyTheme sets it for its own palette;
+// PhiTrackPopupMenu sets it from the app appearance for a menu nobody
+// themed.
+void PhiMenuApplyFrameMode(bool dark);
+// True when PhiMenuApplyTheme has given `menu` its flyout ground.
+bool PhiMenuIsThemed(HMENU menu);
 
 // The owner's message handlers. Each returns true when the message was one
 // of our menu rows (the owner then returns TRUE from the message).

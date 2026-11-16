@@ -42,6 +42,7 @@
 #include "client/phi_fonts.h"
 #include "client/phi_i18n.h"
 #include "client/phi_icons.h"
+#include "client/phi_menu_paint.h"
 #include "client/phi_modal_scope.h"
 #include "client/phi_new_tab_page.h"
 #include "client/phi_popup_chrome.h"
@@ -77,6 +78,9 @@ PhiCoordinator::PhiCoordinator() : tab_store_(local_store_) {
   // palette and repaints the shells, as a theme pick does (phi_theme_bus.h).
   PhiThemeBus::Get().AddObserver([this] {
     preferences_.RefreshPalette();  // Popups read it through a pointer.
+    // Native menus that are not Phi-drawn (an EDIT's context menu, the
+    // window menu) take uxtheme's app mode; keep it on the new appearance.
+    PhiMenuApplyFrameMode(preferences_.palette().dark);
     if (space_manager_) {
       space_manager_->RebuildSpacePalettes();
       for (PhiShellWindow* controller : registry_.Controllers()) {
@@ -4525,12 +4529,13 @@ void PhiCoordinator::OnPreferencesChanged(
       return;
     case PreferenceChange::kTheme:
     case PreferenceChange::kSaturation:
-      // The app-wide palette is re-resolved; the per-Space overrides follow
-      // it, and every slot repaints with the result.
-      space_manager_->RebuildSpacePalettes();
-      for (PhiShellWindow* controller : registry_.Controllers()) {
-        controller->ApplyPalette();
-      }
+      // The same fan-out as a Windows light/dark switch (the bus observer
+      // above): the per-Space overrides follow the app palette and every
+      // slot repaints, and then every open Phi window — Settings, Feedback
+      // and the other secondary windows, popovers, panels — re-reads its
+      // colours. Without the second half an open Settings window kept its
+      // caption band in the appearance it opened with.
+      PhiThemeBus::Get().Broadcast();
       break;
     case PreferenceChange::kFullUrl:
       for (PhiShellWindow* controller : registry_.Controllers()) {

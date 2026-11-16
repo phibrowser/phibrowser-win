@@ -804,11 +804,7 @@ void PhiOmniboxSession::CopyLinkToClipboard() {
   }
   // The Mac's phiBrandEnsuredUrlString: Chromium's own pages travel as
   // phi:// links.
-  std::wstring url = nav_url_;
-  static constexpr wchar_t kChromeScheme[] = L"chrome://";
-  if (url.rfind(kChromeScheme, 0) == 0) {
-    url = L"phi://" + url.substr(std::size(kChromeScheme) - 1);
-  }
+  const std::wstring url = PhiOmniboxBrandUrl(nav_url_);
   ::EmptyClipboard();
   const size_t bytes = (url.size() + 1) * sizeof(wchar_t);
   if (HGLOBAL mem = ::GlobalAlloc(GMEM_MOVEABLE, bytes)) {
