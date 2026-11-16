@@ -22,6 +22,19 @@ docs/i18n/localization-guidelines.md). This script joins the two:
     reported and falls back to English at runtime, which is the same
     degradation the Mac has for a new key awaiting the translation repo.
 
+  * A Mac key the translation repository has not reached yet may carry an
+    `interim` block: per-locale values used ONLY for the locales the Mac
+    match lacks. The Mac's translation replaces each one the day it lands,
+    with no edit here, which a `translations` block would prevent.
+
+  * ONE COMMAND, ONE NAME. The app menu, the menu bar, the profile menu and
+    the Shortcuts page each have their own key for "New tab", because the
+    English differs in case, ellipsis and accelerator. `"sameAs": "<key>"`
+    makes a key take another key's translations (a key of this file, or a
+    Mac key this client does not otherwise use), so the command reads the
+    same on every surface in every language. This key's own "&", ellipsis
+    and accelerator are re-applied around the borrowed label.
+
   * PLURALS. A string that counts something is not one key but a FAMILY:
     `<key>.one` and `<key>.other` (the CLDR category name is the suffix, so
     `few`/`many`/`zero`/`two` need no format change when a locale that has
@@ -49,7 +62,9 @@ from collections import defaultdict
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(REPO, "client", "resources", "strings-source.json")
 OUTPUT = os.path.join(REPO, "client", "resources", "strings.json")
-MAC_CATALOG = os.path.join(
+# PHI_MAC_CATALOG names it from a checkout that does not sit beside the Mac's
+# (a git worktree).
+MAC_CATALOG = os.environ.get("PHI_MAC_CATALOG") or os.path.join(
     os.path.dirname(os.path.dirname(REPO)), "Phi", "phibrowser-mac",
     "Resources", "Localizable.xcstrings")
 
@@ -139,6 +154,18 @@ def normalize(text):
     return text.split("\t")[0].replace("&", "").replace("…", "...").strip()
 
 
+_ELLIPSIS = re.compile(r"\s*(?:…|\.\.\.)$")
+
+
+def split_ellipsis(text):
+    """("New profile", "…") for "New profile…": the label and how it ends."""
+    label = text.split("\t")[0]
+    match = _ELLIPSIS.search(label)
+    if not match:
+        return label, ""
+    return label[:match.start()], match.group(0).strip()
+
+
 def plural_families(source):
     """{family: {category, ...}} for every plural key in the source file."""
     families = defaultdict(set)
@@ -164,6 +191,8 @@ def check_plural_families(families):
 
 def build(source, by_key, by_english, by_plural, by_plural_english):
     out, report = {}, defaultdict(list)
+    # key -> its undecorated translations, which is what "sameAs" borrows.
+    bare, deferred = {}, []
     for key, entry in source["strings"].items():
         english = entry["en"]
         table = {"en": english}
@@ -197,7 +226,24 @@ def build(source, by_key, by_english, by_plural, by_plural_english):
         # "&" mnemonic and the "\tCtrl+N" accelerator are Windows layout, not
         # language, so they are re-applied around it.
         own = entry.get("translations") or {}
+        # "interim" fills only the locales the Mac match lacks, so the Mac's
+        # own translation takes over the day the translation repo delivers.
+        interim = entry.get("interim") or {}
+        if interim and not own:
+            used = [l for l in interim if l not in (mac or {})]
+            if used:
+                report["interim"].append(key)
+            mac = {**interim, **(mac or {})}
         translations = own or mac or {}
+        same_as = entry.get("sameAs")
+        if same_as:
+            if own or interim or entry.get("verbatim"):
+                sys.exit(f"{key}: \"sameAs\" cannot be combined with "
+                         "\"translations\", \"interim\" or \"verbatim\"")
+            # Resolved after the loop, once every target's table exists.
+            deferred.append(key)
+            continue
+        bare[key] = translations
         # Decoration: translations are authored and reused BARE, and the
         # Windows "&" mnemonic plus "\tCtrl+N" accelerator are re-applied
         # around them. An entry marked "verbatim" opts out because its
@@ -217,6 +263,33 @@ def build(source, by_key, by_english, by_plural, by_plural_english):
         missing = [l for l in LOCALES if l not in table]
         if missing and key not in report["untranslated"]:
             report["partial"].append(key)
+        out[key] = table
+
+    for key in deferred:
+        entry = source["strings"][key]
+        english = entry["en"]
+        target = entry["sameAs"]
+        if target in deferred:
+            sys.exit(f"{key}: \"sameAs\" names {target}, which is itself a "
+                     "\"sameAs\" key; name the key that owns the wording")
+        if source["strings"].get(target, {}).get("verbatim"):
+            sys.exit(f"{key}: \"sameAs\" names {target}, a verbatim key "
+                     "whose values carry their own mnemonic")
+        borrowed = bare.get(target)
+        if borrowed is None:
+            borrowed = by_key.get(target)
+        if borrowed is None:
+            sys.exit(f"{key}: \"sameAs\" names {target}, which is neither a "
+                     "key of the source file nor a Mac key")
+        prefix = "&" if english.startswith("&") else ""
+        accelerator = ("\t" + english.split("\t", 1)[1]) if "\t" in english else ""
+        ending = split_ellipsis(english)[1]
+        table = {"en": english}
+        for locale, text in borrowed.items():
+            if locale in LOCALES and locale != "en":
+                label = split_ellipsis(text.replace("&", ""))[0]
+                table[locale] = prefix + label + ending + accelerator
+        report["same-as"].append(key)
         out[key] = table
     return out, report
 
@@ -242,6 +315,8 @@ def main():
     print(f"  plural branches joined: {len(report['mac-plural'])}")
     print(f"  translated by English : {len(report['mac-english'])}")
     print(f"  translated in source  : {len(report['own'])}")
+    print(f"  same as another key   : {len(report['same-as'])}")
+    print(f"  interim, Mac pending  : {len(report['interim'])}")
     print(f"  ENGLISH ONLY          : {len(report['untranslated'])}")
     if report["untranslated"]:
         print("\nawaiting translation (falls back to English at runtime):")

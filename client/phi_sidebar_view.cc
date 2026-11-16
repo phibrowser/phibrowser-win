@@ -4390,7 +4390,7 @@ void PhiSidebarView::PaintBand(HDC dc,
     RECT text = row;
     text.left = icon.right + Scaled(8);
     ::SetTextColor(dc, palette.label_tertiary);
-    PhiDrawTextAA(dc, L"New Tab", -1, &text,
+    PhiDrawTextAA(dc, PhiStr("sidebar.newTabRow.title"), -1, &text,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE);
   }
 

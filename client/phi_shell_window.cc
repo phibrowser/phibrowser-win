@@ -9841,7 +9841,7 @@ void PhiShellWindow::PaintBookmarkBar(HDC dc,
     RECT hint = band;
     hint.left += Scaled(12);
     ::SetTextColor(dc, palette.label_dim);
-    PhiDrawTextAA(dc, L"Bookmarks you add appear here", -1, &hint,
+    PhiDrawTextAA(dc, PhiStr("sidebar.bookmarksYouAddAppearHere"), -1, &hint,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     return;
   }
@@ -10219,7 +10219,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
                   shown.empty()
                       ? (omnibox_->keyword_mode()
                              ? PhiStr("addressBar.keywordSearch.queryPlaceholder")
-                             : L"Search or enter address")
+                             : PhiStr("addressBar.configuration."
+                                      "defaultPlaceholder"))
                       : shown.c_str(),
                   -1, &url_rc,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS |
@@ -10504,7 +10505,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
     ::SetTextColor(dc, palette.on_accent);
     RECT chat_rc = {icon_rc.right + Scaled(2), layout.chat.top,
                     layout.chat.right - Scaled(8), layout.chat.bottom};
-    PhiDrawTextAA(dc, L"Chat", -1, &chat_rc,
+    PhiDrawTextAA(dc, PhiStr("sidebar.chat"), -1, &chat_rc,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     if (previous_small) {
       ::SelectObject(dc, previous_small);

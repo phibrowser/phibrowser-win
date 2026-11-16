@@ -624,7 +624,7 @@
    "fr": "Fermer l'onglet",
    "ja": "タブを閉じる",
    "ko": "탭 닫기",
-   "nl": "Tabblad sluiten",
+   "nl": "Sluit tabblad",
    "zh-Hans": "关闭标签页",
    "zh-Hant": "關閉分頁"
   },
@@ -767,7 +767,7 @@
    "fr": "Nouvel Espace de navigation privée",
    "ja": "新しいシークレットスペース",
    "ko": "새 시크릿 스페이스",
-   "nl": "Nieuwe Incognito-Space",
+   "nl": "Nieuwe incognito-Space",
    "zh-Hans": "新建无痕空间",
    "zh-Hant": "新增無痕空間"
   },
@@ -1115,9 +1115,9 @@
   "app.reopenClosedTab": {
    "de": "Geschlossenen Tab wieder öffnen",
    "en": "Reopen Closed Tab",
-   "es": "Volver a abrir la pestaña cerrada",
+   "es": "Volver a abrir pestaña cerrada",
    "fr": "Rouvrir l'onglet fermé",
-   "ja": "閉じたタブを開く",
+   "ja": "閉じたタブを再度開く",
    "ko": "닫은 탭 다시 열기",
    "nl": "Open gesloten tabblad opnieuw",
    "zh-Hans": "重新打开关闭的标签页",
@@ -1126,13 +1126,13 @@
   "app.showFullHistory": {
    "de": "Gesamten Verlauf anzeigen",
    "en": "Show Full History",
-   "es": "Mostrar el historial completo",
-   "fr": "Afficher l'historique complet",
-   "ja": "すべての履歴を表示",
+   "es": "Mostrar todo el historial",
+   "fr": "Afficher tout l'historique",
+   "ja": "履歴をすべて表示",
    "ko": "전체 방문 기록 보기",
    "nl": "Volledige geschiedenis weergeven",
-   "zh-Hans": "显示全部历史记录",
-   "zh-Hant": "顯示完整瀏覽記錄"
+   "zh-Hans": "显示完整历史记录",
+   "zh-Hant": "顯示完整歷史記錄"
   },
   "app.spacesMenu.closeActiveIncognitoSpace": {
    "de": "Inkognito-Space schließen",
@@ -1259,12 +1259,12 @@
    "de": "Seitenleiste ein-/ausblenden",
    "en": "Toggle Sidebar",
    "es": "Mostrar u ocultar la barra lateral",
-   "fr": "Afficher/Masquer la barre latérale",
+   "fr": "Afficher/masquer la barre latérale",
    "ja": "サイドバーの表示/非表示",
-   "ko": "사이드바 표시/숨기기",
-   "nl": "Toon/verberg zijbalk",
-   "zh-Hans": "切换侧边栏",
-   "zh-Hant": "切換側邊欄"
+   "ko": "사이드바 보기/가리기",
+   "nl": "Toon of verberg zijbalk",
+   "zh-Hans": "显示或隐藏侧边栏",
+   "zh-Hant": "顯示或隱藏側邊欄"
   },
   "app.urlRulesEditor.windowTitle": {
    "de": "URL-Regeln",
@@ -1369,12 +1369,12 @@
    "de": "Seitenleiste ein-/ausblenden\tCtrl+S",
    "en": "Toggle Sidebar\tCtrl+S",
    "es": "Mostrar u ocultar la barra lateral\tCtrl+S",
-   "fr": "Afficher/Masquer la barre latérale\tCtrl+S",
+   "fr": "Afficher/masquer la barre latérale\tCtrl+S",
    "ja": "サイドバーの表示/非表示\tCtrl+S",
-   "ko": "사이드바 표시/숨기기\tCtrl+S",
-   "nl": "Toon/verberg zijbalk\tCtrl+S",
-   "zh-Hans": "切换侧边栏\tCtrl+S",
-   "zh-Hant": "切換側邊欄\tCtrl+S"
+   "ko": "사이드바 보기/가리기\tCtrl+S",
+   "nl": "Toon of verberg zijbalk\tCtrl+S",
+   "zh-Hans": "显示或隐藏侧边栏\tCtrl+S",
+   "zh-Hant": "顯示或隱藏側邊欄\tCtrl+S"
   },
   "app.wantsToControlPhiTabs": {
    "de": ") möchte Phi steuern – Tabs, Navigation und Seiteninhalte.",
@@ -1410,15 +1410,15 @@
    "zh-Hant": "實際大小\tCtrl+0"
   },
   "appMenu.agentAutoview": {
-   "de": "Agent-Autoansicht",
+   "de": "Automatische Agentenansicht",
    "en": "Agent autoview",
    "es": "Vista automática del agente",
-   "fr": "Vue automatique de l'agent",
+   "fr": "Suivi automatique des agents",
    "ja": "エージェント自動表示",
    "ko": "에이전트 자동 보기",
    "nl": "Automatische agentweergave",
    "zh-Hans": "智能体自动视图",
-   "zh-Hant": "代理自動檢視"
+   "zh-Hant": "AI 代理自動檢視"
   },
   "appMenu.back": {
    "de": "Zurück\tAlt+Left",
@@ -1428,40 +1428,40 @@
    "ja": "戻る\tAlt+Left",
    "ko": "뒤로\tAlt+Left",
    "nl": "Terug\tAlt+Left",
-   "zh-Hans": "后退\tAlt+Left",
-   "zh-Hant": "返回\tAlt+Left"
+   "zh-Hans": "返回\tAlt+Left",
+   "zh-Hant": "上一頁\tAlt+Left"
   },
   "appMenu.bookmarkAllTabs": {
-   "de": "Alle Tabs als Lesezeichen speichern…\tCtrl+Shift+D",
+   "de": "Lesezeichen für alle Tabs hinzufügen…\tCtrl+Shift+D",
    "en": "Bookmark all tabs…\tCtrl+Shift+D",
-   "es": "Añadir todas las pestañas a marcadores…\tCtrl+Shift+D",
+   "es": "Agregar todas las pestañas a marcadores…\tCtrl+Shift+D",
    "fr": "Ajouter tous les onglets aux favoris…\tCtrl+Shift+D",
-   "ja": "すべてのタブをブックマーク…\tCtrl+Shift+D",
+   "ja": "すべてのタブをブックマークに追加…\tCtrl+Shift+D",
    "ko": "모든 탭을 북마크에 추가…\tCtrl+Shift+D",
-   "nl": "Alle tabbladen toevoegen aan bladwijzers…\tCtrl+Shift+D",
-   "zh-Hans": "将所有标签页加入书签…\tCtrl+Shift+D",
+   "nl": "Maak bladwijzers van alle tabbladen…\tCtrl+Shift+D",
+   "zh-Hans": "为所有标签页添加书签…\tCtrl+Shift+D",
    "zh-Hant": "將所有分頁加入書籤…\tCtrl+Shift+D"
   },
   "appMenu.bookmarkManager": {
-   "de": "Lesezeichen-Manager\tCtrl+Shift+O",
+   "de": "Lesezeichenverwaltung\tCtrl+Shift+O",
    "en": "Bookmark manager\tCtrl+Shift+O",
    "es": "Administrador de marcadores\tCtrl+Shift+O",
    "fr": "Gestionnaire de favoris\tCtrl+Shift+O",
-   "ja": "ブックマーク マネージャー\tCtrl+Shift+O",
+   "ja": "ブックマークマネージャ\tCtrl+Shift+O",
    "ko": "북마크 관리자\tCtrl+Shift+O",
    "nl": "Bladwijzerbeheer\tCtrl+Shift+O",
    "zh-Hans": "书签管理器\tCtrl+Shift+O",
    "zh-Hant": "書籤管理員\tCtrl+Shift+O"
   },
   "appMenu.bookmarkThisTab": {
-   "de": "Diesen Tab als Lesezeichen speichern…\tCtrl+D",
+   "de": "Lesezeichen für diesen Tab hinzufügen…\tCtrl+D",
    "en": "Bookmark this tab…\tCtrl+D",
-   "es": "Añadir esta pestaña a marcadores…\tCtrl+D",
+   "es": "Agregar esta pestaña a marcadores…\tCtrl+D",
    "fr": "Ajouter cet onglet aux favoris…\tCtrl+D",
-   "ja": "このタブをブックマーク…\tCtrl+D",
+   "ja": "このタブをブックマークに追加…\tCtrl+D",
    "ko": "이 탭을 북마크에 추가…\tCtrl+D",
-   "nl": "Dit tabblad toevoegen aan bladwijzers…\tCtrl+D",
-   "zh-Hans": "将此标签页加入书签…\tCtrl+D",
+   "nl": "Maak bladwijzer van dit tabblad…\tCtrl+D",
+   "zh-Hans": "为此标签页添加书签…\tCtrl+D",
    "zh-Hant": "將此分頁加入書籤…\tCtrl+D"
   },
   "appMenu.bookmarks": {
@@ -1479,10 +1479,10 @@
    "de": "Symbol ändern…",
    "en": "Change icon…",
    "es": "Cambiar icono…",
-   "fr": "Changer l'icône…",
+   "fr": "Modifier l'icône…",
    "ja": "アイコンを変更…",
    "ko": "아이콘 변경…",
-   "nl": "Pictogram wijzigen…",
+   "nl": "Wijzig symbool…",
    "zh-Hans": "更改图标…",
    "zh-Hant": "變更圖示…"
   },
@@ -1493,18 +1493,18 @@
    "fr": "Changer de profil",
    "ja": "プロファイルを変更",
    "ko": "프로필 변경",
-   "nl": "Profiel wijzigen",
-   "zh-Hans": "更改配置文件",
+   "nl": "Wijzig profiel",
+   "zh-Hans": "更改个人资料",
    "zh-Hant": "變更設定檔"
   },
   "appMenu.checkForUpdate": {
-   "de": "Nach Update suchen…",
+   "de": "Nach Updates suchen…",
    "en": "Check for update…",
-   "es": "Buscar actualización…",
-   "fr": "Rechercher une mise à jour…",
+   "es": "Buscar actualizaciones…",
+   "fr": "Rechercher des mises à jour…",
    "ja": "アップデートを確認…",
    "ko": "업데이트 확인…",
-   "nl": "Controleren op update…",
+   "nl": "Zoek naar updates…",
    "zh-Hans": "检查更新…",
    "zh-Hant": "檢查更新…"
   },
@@ -1537,8 +1537,8 @@
    "fr": "Supprimer le profil",
    "ja": "プロファイルを削除",
    "ko": "프로필 삭제",
-   "nl": "Profiel verwijderen",
-   "zh-Hans": "删除配置文件",
+   "nl": "Verwijder profiel",
+   "zh-Hans": "删除个人资料",
    "zh-Hant": "刪除設定檔"
   },
   "appMenu.deleteSpace": {
@@ -1548,7 +1548,7 @@
    "fr": "Supprimer l'Espace…",
    "ja": "スペースを削除…",
    "ko": "스페이스 삭제…",
-   "nl": "Space verwijderen…",
+   "nl": "Verwijder Space…",
    "zh-Hans": "删除空间…",
    "zh-Hant": "刪除空間…"
   },
@@ -1582,8 +1582,8 @@
    "ja": "ダウンロード\tCtrl+J",
    "ko": "다운로드\tCtrl+J",
    "nl": "Downloads\tCtrl+J",
-   "zh-Hans": "下载内容\tCtrl+J",
-   "zh-Hant": "下載\tCtrl+J"
+   "zh-Hans": "下载\tCtrl+J",
+   "zh-Hant": "下載項目\tCtrl+J"
   },
   "appMenu.editTheme": {
    "de": "Design bearbeiten…",
@@ -1592,7 +1592,7 @@
    "fr": "Modifier le thème…",
    "ja": "テーマを編集…",
    "ko": "테마 편집…",
-   "nl": "Thema bewerken…",
+   "nl": "Wijzig thema…",
    "zh-Hans": "编辑主题…",
    "zh-Hant": "編輯主題…"
   },
@@ -1612,9 +1612,9 @@
    "en": "Export bookmarks…",
    "es": "Exportar marcadores…",
    "fr": "Exporter les favoris…",
-   "ja": "ブックマークをエクスポート…",
+   "ja": "ブックマークを書き出す…",
    "ko": "북마크 내보내기…",
-   "nl": "Bladwijzers exporteren…",
+   "nl": "Exporteer bladwijzers…",
    "zh-Hans": "导出书签…",
    "zh-Hant": "匯出書籤…"
   },
@@ -1625,7 +1625,7 @@
    "fr": "Exporter les données utilisateur…",
    "ja": "ユーザーデータを書き出す…",
    "ko": "사용자 데이터 내보내기…",
-   "nl": "Gebruikersgegevens exporteren…",
+   "nl": "Exporteer gebruikersgegevens…",
    "zh-Hans": "导出用户数据…",
    "zh-Hant": "匯出使用者資料…"
   },
@@ -1698,8 +1698,8 @@
   "appMenu.home": {
    "de": "Startseite\tAlt+Home",
    "en": "Home\tAlt+Home",
-   "es": "Inicio\tAlt+Home",
-   "fr": "Accueil\tAlt+Home",
+   "es": "Página principal\tAlt+Home",
+   "fr": "Page d'accueil\tAlt+Home",
    "ja": "ホーム\tAlt+Home",
    "ko": "홈\tAlt+Home",
    "nl": "Startpagina\tAlt+Home",
@@ -1735,7 +1735,7 @@
    "fr": "Importer depuis un autre navigateur…",
    "ja": "他のブラウザからインポート…",
    "ko": "다른 브라우저에서 가져오기…",
-   "nl": "Importeren uit een andere browser…",
+   "nl": "Importeer uit een andere browser…",
    "zh-Hans": "从其他浏览器导入…",
    "zh-Hant": "從其他瀏覽器匯入…"
   },
@@ -1746,7 +1746,7 @@
    "fr": "Importer les données utilisateur…",
    "ja": "ユーザーデータを読み込む…",
    "ko": "사용자 데이터 가져오기…",
-   "nl": "Gebruikersgegevens importeren…",
+   "nl": "Importeer gebruikersgegevens…",
    "zh-Hans": "导入用户数据…",
    "zh-Hant": "匯入使用者資料…"
   },
@@ -1786,11 +1786,11 @@
   "appMenu.manageExtensions": {
    "de": "Erweiterungen verwalten",
    "en": "Manage extensions",
-   "es": "Gestionar extensiones",
+   "es": "Administrar extensiones",
    "fr": "Gérer les extensions",
    "ja": "拡張機能を管理",
    "ko": "확장 프로그램 관리",
-   "nl": "Extensies beheren",
+   "nl": "Beheer extensies",
    "zh-Hans": "管理扩展程序",
    "zh-Hant": "管理擴充功能"
   },
@@ -1812,7 +1812,7 @@
    "fr": "Nouvel Espace de navigation privée\tCtrl+Alt+N",
    "ja": "新しいシークレットスペース\tCtrl+Alt+N",
    "ko": "새 시크릿 스페이스\tCtrl+Alt+N",
-   "nl": "Nieuwe Incognito-Space\tCtrl+Alt+N",
+   "nl": "Nieuwe incognito-Space\tCtrl+Alt+N",
    "zh-Hans": "新建无痕空间\tCtrl+Alt+N",
    "zh-Hant": "新增無痕空間\tCtrl+Alt+N"
   },
@@ -1821,11 +1821,11 @@
    "en": "New incognito window\tCtrl+Shift+N",
    "es": "Nueva ventana de incógnito\tCtrl+Shift+N",
    "fr": "Nouvelle fenêtre de navigation privée\tCtrl+Shift+N",
-   "ja": "新しいシークレット ウィンドウ\tCtrl+Shift+N",
-   "ko": "새 시크릿 창\tCtrl+Shift+N",
+   "ja": "新しいシークレットウインドウ\tCtrl+Shift+N",
+   "ko": "새 시크릿 윈도우\tCtrl+Shift+N",
    "nl": "Nieuw incognitovenster\tCtrl+Shift+N",
-   "zh-Hans": "新的无痕窗口\tCtrl+Shift+N",
-   "zh-Hant": "新增無痕式視窗\tCtrl+Shift+N"
+   "zh-Hans": "新建无痕式窗口\tCtrl+Shift+N",
+   "zh-Hant": "新增無痕視窗\tCtrl+Shift+N"
   },
   "appMenu.newProfile": {
    "de": "Neues Profil…",
@@ -1835,7 +1835,7 @@
    "ja": "新しいプロファイル…",
    "ko": "새 프로필…",
    "nl": "Nieuw profiel…",
-   "zh-Hans": "新建配置文件…",
+   "zh-Hans": "新建个人资料…",
    "zh-Hant": "新增設定檔…"
   },
   "appMenu.newSpace": {
@@ -1857,19 +1857,19 @@
    "ja": "新しいタブ\tCtrl+T",
    "ko": "새 탭\tCtrl+T",
    "nl": "Nieuw tabblad\tCtrl+T",
-   "zh-Hans": "新标签页\tCtrl+T",
-   "zh-Hant": "新分頁\tCtrl+T"
+   "zh-Hans": "新建标签页\tCtrl+T",
+   "zh-Hant": "新增分頁\tCtrl+T"
   },
   "appMenu.newWindow": {
    "de": "Neues Fenster\tCtrl+N",
    "en": "New window\tCtrl+N",
    "es": "Nueva ventana\tCtrl+N",
    "fr": "Nouvelle fenêtre\tCtrl+N",
-   "ja": "新しいウィンドウ\tCtrl+N",
-   "ko": "새 창\tCtrl+N",
+   "ja": "新しいウインドウ\tCtrl+N",
+   "ko": "새 윈도우\tCtrl+N",
    "nl": "Nieuw venster\tCtrl+N",
-   "zh-Hans": "新窗口\tCtrl+N",
-   "zh-Hant": "新視窗\tCtrl+N"
+   "zh-Hans": "新建窗口\tCtrl+N",
+   "zh-Hant": "新增視窗\tCtrl+N"
   },
   "appMenu.nextSpace": {
    "de": "Nächster Space\tCtrl+Alt+Right",
@@ -1889,9 +1889,9 @@
    "fr": "Ouvrir un fichier…\tCtrl+O",
    "ja": "ファイルを開く…\tCtrl+O",
    "ko": "파일 열기…\tCtrl+O",
-   "nl": "Bestand openen…\tCtrl+O",
+   "nl": "Open bestand…\tCtrl+O",
    "zh-Hans": "打开文件…\tCtrl+O",
-   "zh-Hant": "開啟檔案…\tCtrl+O"
+   "zh-Hant": "打開檔案…\tCtrl+O"
   },
   "appMenu.openFolio": {
    "de": "Folio öffnen",
@@ -1920,9 +1920,9 @@
    "en": "Print…\tCtrl+P",
    "es": "Imprimir…\tCtrl+P",
    "fr": "Imprimer…\tCtrl+P",
-   "ja": "印刷…\tCtrl+P",
-   "ko": "인쇄…\tCtrl+P",
-   "nl": "Afdrukken…\tCtrl+P",
+   "ja": "プリント…\tCtrl+P",
+   "ko": "프린트…\tCtrl+P",
+   "nl": "Druk af…\tCtrl+P",
    "zh-Hans": "打印…\tCtrl+P",
    "zh-Hant": "列印…\tCtrl+P"
   },
@@ -1955,18 +1955,18 @@
    "fr": "Renommer l'Espace…",
    "ja": "スペースの名前を変更…",
    "ko": "스페이스 이름 변경…",
-   "nl": "Space hernoemen…",
+   "nl": "Wijzig Space-naam…",
    "zh-Hans": "重命名空间…",
    "zh-Hant": "重新命名空間…"
   },
   "appMenu.reopenClosedTab": {
    "de": "Geschlossenen Tab wieder öffnen\tCtrl+Shift+T",
    "en": "Reopen closed tab\tCtrl+Shift+T",
-   "es": "Reabrir pestaña cerrada\tCtrl+Shift+T",
+   "es": "Volver a abrir pestaña cerrada\tCtrl+Shift+T",
    "fr": "Rouvrir l'onglet fermé\tCtrl+Shift+T",
    "ja": "閉じたタブを再度開く\tCtrl+Shift+T",
    "ko": "닫은 탭 다시 열기\tCtrl+Shift+T",
-   "nl": "Gesloten tabblad opnieuw openen\tCtrl+Shift+T",
+   "nl": "Open gesloten tabblad opnieuw\tCtrl+Shift+T",
    "zh-Hans": "重新打开关闭的标签页\tCtrl+Shift+T",
    "zh-Hant": "重新開啟已關閉的分頁\tCtrl+Shift+T"
   },
@@ -2063,7 +2063,7 @@
    "en": "Task manager\tShift+Esc",
    "es": "Administrador de tareas\tShift+Esc",
    "fr": "Gestionnaire de tâches\tShift+Esc",
-   "ja": "タスク マネージャー\tShift+Esc",
+   "ja": "タスクマネージャ\tShift+Esc",
    "ko": "작업 관리자\tShift+Esc",
    "nl": "Taakbeheer\tShift+Esc",
    "zh-Hans": "任务管理器\tShift+Esc",
@@ -2074,11 +2074,11 @@
    "en": "URL rules…",
    "es": "Reglas de URL…",
    "fr": "Règles d'URL…",
-   "ja": "URL ルール…",
+   "ja": "URLルール…",
    "ko": "URL 규칙…",
    "nl": "URL-regels…",
-   "zh-Hans": "URL 规则…",
-   "zh-Hant": "URL 規則…"
+   "zh-Hans": "网址规则…",
+   "zh-Hant": "網址規則…"
   },
   "appMenu.verticalTabs": {
    "de": "Vertikale Tabs",
@@ -2111,7 +2111,7 @@
    "ko": "새로운 기능",
    "nl": "Wat is er nieuw",
    "zh-Hans": "新功能",
-   "zh-Hant": "最新消息"
+   "zh-Hant": "新功能"
   },
   "appMenu.zoom": {
    "de": "Zoom",
@@ -3093,7 +3093,15 @@
    "zh-Hant": "搜尋圖示"
   },
   "common.iconPicker.reset": {
-   "en": "Reset Icon"
+   "de": "Symbol zurücksetzen",
+   "en": "Reset Icon",
+   "es": "Restablecer icono",
+   "fr": "Réinitialiser l'icône",
+   "ja": "アイコンをリセット",
+   "ko": "아이콘 재설정",
+   "nl": "Stel symbool opnieuw in",
+   "zh-Hans": "重置图标",
+   "zh-Hant": "重設圖示"
   },
   "common.iconPicker.searchEmptyMessage": {
    "de": "Keine Ergebnisse",
@@ -5197,7 +5205,15 @@
    "zh-Hant": "登入 Phi 帳號後即可傳送意見回饋。要立即登入嗎？"
   },
   "feedback.form.termsOfServiceLink": {
-   "en": "Terms of Service"
+   "de": "Nutzungsbedingungen",
+   "en": "Terms of Service",
+   "es": "Términos del Servicio",
+   "fr": "Conditions d'utilisation",
+   "ja": "利用規約",
+   "ko": "서비스 약관",
+   "nl": "Servicevoorwaarden",
+   "zh-Hans": "服务条款",
+   "zh-Hant": "服務條款"
   },
   "feedback.form.urlField.label": {
    "de": "URL",
@@ -5541,7 +5557,7 @@
    "zh-Hant": "所有開啟的分頁都會儲存到使用此名稱的新資料夾中。"
   },
   "menuBar.bookmarkManager": {
-   "de": "Lesezeichen-Manager\tCtrl+Shift+O",
+   "de": "Lesezeichenverwaltung\tCtrl+Shift+O",
    "en": "Bookmark Manager\tCtrl+Shift+O",
    "es": "Administrador de marcadores\tCtrl+Shift+O",
    "fr": "Gestionnaire de favoris\tCtrl+Shift+O",
@@ -5588,12 +5604,12 @@
    "de": "Symbol ändern...",
    "en": "Change Icon...",
    "es": "Cambiar icono...",
-   "fr": "Changer d’icône...",
+   "fr": "Modifier l'icône...",
    "ja": "アイコンを変更...",
    "ko": "아이콘 변경...",
-   "nl": "Pictogram wijzigen...",
+   "nl": "Wijzig symbool...",
    "zh-Hans": "更改图标...",
-   "zh-Hant": "更改圖示..."
+   "zh-Hant": "變更圖示..."
   },
   "menuBar.checkForUpdate": {
    "de": "Nach Updates suchen",
@@ -5602,7 +5618,7 @@
    "fr": "Rechercher des mises à jour",
    "ja": "アップデートを確認",
    "ko": "업데이트 확인",
-   "nl": "Controleren op updates",
+   "nl": "Zoek naar updates",
    "zh-Hans": "检查更新",
    "zh-Hant": "檢查更新"
   },
@@ -5635,7 +5651,7 @@
    "fr": "Effacer les données de navigation...",
    "ja": "閲覧データを削除...",
    "ko": "인터넷 사용 기록 삭제...",
-   "nl": "Browsegegevens wissen...",
+   "nl": "Browsegegevens verwijderen...",
    "zh-Hans": "删除浏览数据...",
    "zh-Hant": "刪除瀏覽資料..."
   },
@@ -5677,9 +5693,9 @@
    "en": "Developer Tools\tCtrl+Shift+I",
    "es": "Herramientas para desarrolladores\tCtrl+Shift+I",
    "fr": "Outils de développement\tCtrl+Shift+I",
-   "ja": "デベロッパーツール\tCtrl+Shift+I",
+   "ja": "デベロッパー ツール\tCtrl+Shift+I",
    "ko": "개발자 도구\tCtrl+Shift+I",
-   "nl": "Ontwikkelaarstools\tCtrl+Shift+I",
+   "nl": "Hulpprogramma's voor ontwikkelaars\tCtrl+Shift+I",
    "zh-Hans": "开发者工具\tCtrl+Shift+I",
    "zh-Hant": "開發人員工具\tCtrl+Shift+I"
   },
@@ -5767,18 +5783,18 @@
    "fr": "Rechercher...\tCtrl+F",
    "ja": "検索...\tCtrl+F",
    "ko": "찾기...\tCtrl+F",
-   "nl": "Zoeken...\tCtrl+F",
+   "nl": "Zoek...\tCtrl+F",
    "zh-Hans": "查找...\tCtrl+F",
    "zh-Hant": "尋找...\tCtrl+F"
   },
   "menuBar.forceReloadThisPage": {
-   "de": "Neuladen erzwingen\tCtrl+Shift+R",
+   "de": "Neuladen der Seite erzwingen\tCtrl+Shift+R",
    "en": "Force Reload This Page\tCtrl+Shift+R",
-   "es": "Forzar recarga de la página\tCtrl+Shift+R",
-   "fr": "Forcer le rechargement\tCtrl+Shift+R",
-   "ja": "強制的に再読み込み\tCtrl+Shift+R",
-   "ko": "강제 새로고침\tCtrl+Shift+R",
-   "nl": "Vernieuwen forceren\tCtrl+Shift+R",
+   "es": "Forzar la recarga de la página\tCtrl+Shift+R",
+   "fr": "Forcer le rechargement de la page\tCtrl+Shift+R",
+   "ja": "ページを強制的に再読み込み\tCtrl+Shift+R",
+   "ko": "페이지 강력 새로고침\tCtrl+Shift+R",
+   "nl": "Pagina geforceerd vernieuwen\tCtrl+Shift+R",
    "zh-Hans": "强制重新加载此页\tCtrl+Shift+R",
    "zh-Hant": "強制重新載入此頁\tCtrl+Shift+R"
   },
@@ -5899,9 +5915,9 @@
    "fr": "Ouvrir un fichier...\tCtrl+O",
    "ja": "ファイルを開く...\tCtrl+O",
    "ko": "파일 열기...\tCtrl+O",
-   "nl": "Bestand openen...\tCtrl+O",
+   "nl": "Open bestand...\tCtrl+O",
    "zh-Hans": "打开文件...\tCtrl+O",
-   "zh-Hant": "開啟檔案...\tCtrl+O"
+   "zh-Hant": "打開檔案...\tCtrl+O"
   },
   "menuBar.openLocation": {
    "de": "Adresse öffnen...\tCtrl+L",
@@ -5963,9 +5979,9 @@
    "en": "Quit Phi\tCtrl+Shift+Q",
    "es": "Salir de Phi\tCtrl+Shift+Q",
    "fr": "Quitter Phi\tCtrl+Shift+Q",
-   "ja": "Phi を終了\tCtrl+Shift+Q",
+   "ja": "Phiを終了\tCtrl+Shift+Q",
    "ko": "Phi 종료\tCtrl+Shift+Q",
-   "nl": "Phi afsluiten\tCtrl+Shift+Q",
+   "nl": "Stop Phi\tCtrl+Shift+Q",
    "zh-Hans": "退出 Phi\tCtrl+Shift+Q",
    "zh-Hant": "結束 Phi\tCtrl+Shift+Q"
   },
@@ -5998,20 +6014,20 @@
    "fr": "Signaler un problème...",
    "ja": "問題を報告...",
    "ko": "문제 신고...",
-   "nl": "Probleem melden...",
+   "nl": "Een probleem melden...",
    "zh-Hans": "报告问题...",
    "zh-Hant": "回報問題..."
   },
   "menuBar.savePageAs": {
-   "de": "Seite sichern unter...",
+   "de": "Seite speichern unter...",
    "en": "Save Page As...",
    "es": "Guardar página como...",
    "fr": "Enregistrer la page sous...",
-   "ja": "ページを別名で保存...",
+   "ja": "名前を付けてページを保存...",
    "ko": "다른 이름으로 페이지 저장...",
    "nl": "Pagina opslaan als...",
-   "zh-Hans": "将页面另存为...",
-   "zh-Hant": "另存頁面為..."
+   "zh-Hans": "网页另存为...",
+   "zh-Hant": "另存網頁為..."
   },
   "menuBar.savedTabs": {
    "de": "Gesicherte Tabs",
@@ -6062,11 +6078,11 @@
    "en": "Show Full History\tCtrl+H",
    "es": "Mostrar todo el historial\tCtrl+H",
    "fr": "Afficher tout l'historique\tCtrl+H",
-   "ja": "すべての履歴を表示\tCtrl+H",
-   "ko": "전체 기록 보기\tCtrl+H",
-   "nl": "Volledige geschiedenis tonen\tCtrl+H",
+   "ja": "履歴をすべて表示\tCtrl+H",
+   "ko": "전체 방문 기록 보기\tCtrl+H",
+   "nl": "Volledige geschiedenis weergeven\tCtrl+H",
    "zh-Hans": "显示完整历史记录\tCtrl+H",
-   "zh-Hant": "顯示完整瀏覽記錄\tCtrl+H"
+   "zh-Hant": "顯示完整歷史記錄\tCtrl+H"
   },
   "menuBar.spaces": {
    "de": "&Spaces",
@@ -6105,7 +6121,7 @@
    "de": "Task-Manager",
    "en": "Task Manager",
    "es": "Administrador de tareas",
-   "fr": "Moniteur d’activité",
+   "fr": "Gestionnaire de tâches",
    "ja": "タスクマネージャ",
    "ko": "작업 관리자",
    "nl": "Taakbeheer",
@@ -6160,8 +6176,8 @@
    "de": "URL-Regeln...",
    "en": "URL Rules...",
    "es": "Reglas de URL...",
-   "fr": "Règles d’URL...",
-   "ja": "URL ルール...",
+   "fr": "Règles d'URL...",
+   "ja": "URLルール...",
    "ko": "URL 규칙...",
    "nl": "URL-regels...",
    "zh-Hans": "网址规则...",
@@ -6179,14 +6195,14 @@
    "zh-Hant": "檢視(&V)"
   },
   "menuBar.viewSource": {
-   "de": "Seitenquelltext anzeigen\tCtrl+U",
+   "de": "Quelltext anzeigen\tCtrl+U",
    "en": "View Source\tCtrl+U",
    "es": "Ver código fuente\tCtrl+U",
-   "fr": "Afficher le code source\tCtrl+U",
+   "fr": "Afficher la source\tCtrl+U",
    "ja": "ソースを表示\tCtrl+U",
    "ko": "소스 보기\tCtrl+U",
    "nl": "Bron weergeven\tCtrl+U",
-   "zh-Hans": "查看网页源代码\tCtrl+U",
+   "zh-Hans": "查看源代码\tCtrl+U",
    "zh-Hant": "檢視原始碼\tCtrl+U"
   },
   "menuBar.window": {
@@ -6201,7 +6217,7 @@
    "zh-Hant": "視窗(&W)"
   },
   "menuBar.zoom": {
-   "de": "Zoomen",
+   "de": "Zoom",
    "en": "Zoom",
    "es": "Zoom",
    "fr": "Zoom",
@@ -6212,10 +6228,10 @@
    "zh-Hant": "縮放"
   },
   "menuBar.zoomIn": {
-   "de": "Größer\tCtrl++",
+   "de": "Vergrößern\tCtrl++",
    "en": "Zoom In\tCtrl++",
-   "es": "Aumentar\tCtrl++",
-   "fr": "Agrandir\tCtrl++",
+   "es": "Ampliar\tCtrl++",
+   "fr": "Zoom avant\tCtrl++",
    "ja": "拡大\tCtrl++",
    "ko": "확대\tCtrl++",
    "nl": "Inzoomen\tCtrl++",
@@ -6223,10 +6239,10 @@
    "zh-Hant": "放大\tCtrl++"
   },
   "menuBar.zoomOut": {
-   "de": "Kleiner\tCtrl+-",
+   "de": "Verkleinern\tCtrl+-",
    "en": "Zoom Out\tCtrl+-",
    "es": "Reducir\tCtrl+-",
-   "fr": "Réduire\tCtrl+-",
+   "fr": "Zoom arrière\tCtrl+-",
    "ja": "縮小\tCtrl+-",
    "ko": "축소\tCtrl+-",
    "nl": "Uitzoomen\tCtrl+-",
@@ -7062,7 +7078,7 @@
    "de": "Einstellungen",
    "en": "Settings",
    "es": "Configuración",
-   "fr": "Réglages",
+   "fr": "Paramètres",
    "ja": "設定",
    "ko": "설정",
    "nl": "Instellingen",
@@ -8027,10 +8043,26 @@
    "zh-Hant": "連按兩下關閉分頁"
   },
   "settings.advanced.tabs.groupTabsOpenedFromLinksDescriptionCtrl": {
-   "en": "When you Ctrl-click a link, the new tab goes into a tab group for the page it came from."
+   "de": "Wenn du bei gedrückter Ctrl-Taste auf einen Link klickst, kommt der neue Tab in eine Tabgruppe für die Seite, von der er stammt.",
+   "en": "When you Ctrl-click a link, the new tab goes into a tab group for the page it came from.",
+   "es": "Al hacer clic en un enlace con Ctrl pulsado, la pestaña nueva pasa a un grupo de pestañas de la página de la que procede.",
+   "fr": "Lorsque vous cliquez sur un lien en maintenant Ctrl, le nouvel onglet rejoint un groupe d'onglets pour la page dont il provient.",
+   "ja": "Ctrlを押しながらリンクをクリックすると、新しいタブは元のページのタブグループに入ります。",
+   "ko": "Ctrl 키를 누른 채 링크를 클릭하면 새 탭이 원래 페이지의 탭 그룹에 들어가요.",
+   "nl": "Als je met Ctrl ingedrukt op een link klikt, komt het nieuwe tabblad in een tabbladgroep voor de pagina waar het vandaan komt.",
+   "zh-Hans": "按住 Ctrl 点击链接时，新标签页会归入其来源页面的标签组。",
+   "zh-Hant": "按住 Ctrl 點按連結時，新分頁會加入其來源頁面的分頁群組。"
   },
   "settings.advanced.tabs.groupTabsOpenedFromLinksToggle": {
-   "en": "Group tabs opened from links"
+   "de": "Aus Links geöffnete Tabs gruppieren",
+   "en": "Group tabs opened from links",
+   "es": "Agrupar las pestañas abiertas desde enlaces",
+   "fr": "Regrouper les onglets ouverts depuis des liens",
+   "ja": "リンクから開いたタブをグループ化",
+   "ko": "링크에서 연 탭 그룹화",
+   "nl": "Groepeer tabbladen die via links zijn geopend",
+   "zh-Hans": "将从链接打开的标签页归入标签组",
+   "zh-Hant": "將從連結開啟的分頁加入群組"
   },
   "settings.agentAccessPermissionsAndThe": {
    "de": "Agentenzugriff, Berechtigungen und den Passwortmanager ",
@@ -9056,10 +9088,26 @@
    "zh-Hant": "新分頁行為"
   },
   "settings.general.newTabsAtTop.description": {
-   "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end."
+   "de": "In Layouts mit Seitenleiste werden neue Tabs oben in der Tab-Liste platziert. „Komfortabel“ öffnet neue Tabs immer am Ende.",
+   "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end.",
+   "es": "En los diseños con barra lateral, coloca las pestañas nuevas al principio de la lista de pestañas. Cómodo siempre abre las pestañas nuevas al final.",
+   "fr": "Dans les dispositions avec barre latérale, place les nouveaux onglets en haut de la liste des onglets. Confortable ouvre toujours les nouveaux onglets à la fin.",
+   "ja": "サイドバーレイアウトでは、新しいタブをタブリストの一番上に配置します。「ゆったり」では、新しいタブは常に末尾に開きます。",
+   "ko": "사이드바 레이아웃에서는 새 탭을 탭 목록 맨 위에 배치해요. 여유 레이아웃에서는 새 탭이 항상 맨 끝에 열려요.",
+   "nl": "Plaats nieuwe tabbladen in lay-outs met een zijbalk boven aan de tabbladenlijst. Comfortabel opent nieuwe tabbladen altijd aan het einde.",
+   "zh-Hans": "在侧边栏布局中，将新标签页放在标签页列表顶部。“舒适”布局始终在末尾打开新标签页。",
+   "zh-Hant": "在側邊欄版面配置中，將新分頁放在分頁列表頂端。「舒適」版面配置一律在最後開啟新分頁。"
   },
   "settings.general.newTabsAtTop.title": {
-   "en": "Open new tabs at top"
+   "de": "Neue Tabs oben öffnen",
+   "en": "Open new tabs at top",
+   "es": "Abrir las pestañas nuevas arriba",
+   "fr": "Ouvrir les nouveaux onglets en haut",
+   "ja": "新しいタブを一番上に開く",
+   "ko": "새 탭을 맨 위에 열기",
+   "nl": "Open nieuwe tabbladen bovenaan",
+   "zh-Hans": "在顶部打开新标签页",
+   "zh-Hant": "在頂端開啟新分頁"
   },
   "settings.general.pictureInPicture.normalDescription": {
    "de": "Laufendes Video als Bild-in-Bild öffnen, wenn du Tabs oder Apps wechselst",
@@ -10609,8 +10657,8 @@
    "ja": "アプリ",
    "ko": "앱",
    "nl": "App",
-   "zh-Hans": "App",
-   "zh-Hant": "App"
+   "zh-Hans": "应用",
+   "zh-Hant": "應用程式"
   },
   "settings.shortcuts.group.bookmarks": {
    "de": "Lesezeichen",
@@ -10994,8 +11042,8 @@
    "ja": "アプリ",
    "ko": "앱",
    "nl": "App",
-   "zh-Hans": "App",
-   "zh-Hant": "App"
+   "zh-Hans": "应用",
+   "zh-Hant": "應用程式"
   },
   "settings.spaces.pinnedTabScope.profileDescription": {
    "de": "Spaces mit demselben Profil teilen sich angeheftete Tabs.",
@@ -12076,7 +12124,15 @@
    "zh-Hant": "媒體"
   },
   "sidebar.media.volumeButtonAlt": {
-   "en": "Volume (Alt-click to toggle mute)"
+   "de": "Lautstärke (Alt-Klick: Stummschaltung ein/aus)",
+   "en": "Volume (Alt-click to toggle mute)",
+   "es": "Volumen (Alt-clic para silenciar o activar el sonido)",
+   "fr": "Volume (Alt-clic pour couper ou réactiver le son)",
+   "ja": "音量（Alt-クリックでミュートを切り替え）",
+   "ko": "음량 (Alt-클릭으로 음소거 전환)",
+   "nl": "Volume (Alt-klik om geluid in of uit te schakelen)",
+   "zh-Hans": "音量（按住 Alt 键点击可切换静音）",
+   "zh-Hant": "音量（Alt-按一下可切換靜音）"
   },
   "sidebar.media.volumeSlider": {
    "de": "Wiedergabelautstärke",
@@ -12100,8 +12156,27 @@
    "zh-Hans": "使用新个人资料新建空间…",
    "zh-Hant": "使用新設定檔新增空間…"
   },
+  "sidebar.newTabRow.title": {
+   "de": "Neuer Tab",
+   "en": "New Tab",
+   "es": "Nueva pestaña",
+   "fr": "Nouvel onglet",
+   "ja": "新しいタブ",
+   "ko": "새 탭",
+   "nl": "Nieuw tabblad",
+   "zh-Hans": "新建标签页",
+   "zh-Hant": "新增分頁"
+  },
   "sidebar.pinnedTabContextMenu.changeIcon": {
-   "en": "Change Icon…"
+   "de": "Symbol ändern...",
+   "en": "Change Icon…",
+   "es": "Cambiar icono...",
+   "fr": "Changer l'icône...",
+   "ja": "アイコンを変更...",
+   "ko": "아이콘 변경...",
+   "nl": "Wijzig symbool...",
+   "zh-Hans": "更改图标...",
+   "zh-Hant": "更改圖示..."
   },
   "sidebar.pinnedTabContextMenu.editSubmenu": {
    "de": "Angehefteten Tab bearbeiten",
