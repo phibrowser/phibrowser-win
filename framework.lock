@@ -1,8 +1,8 @@
 {
   "repository": "phibrowser/phibrowser-framework",
-  "tag": "win-v0.6.0.17",
+  "tag": "win-v0.6.0.18",
   "assets": {
-    "x64": {"name": "phi-browser-framework-win-x64.zip", "sha256": "12bb4b51cf7edff6bb0386854165a2d6404792ae34de45a5cdb40c3c096b0c49"},
-    "arm64": {"name": "phi-browser-framework-win-arm64.zip", "sha256": "2f38adc447d0e6e7d53e455f2691b8f38edf30d325c62f3a163b146465aa0d81"}
+    "x64": {"name": "phi-browser-framework-win-x64.zip", "sha256": "f835cde392c4378e27cce9aaea59ad1c6bc8e48177b58fd15ecda9b2a786e6c5"},
+    "arm64": {"name": "phi-browser-framework-win-arm64.zip", "sha256": "00be9813f0e35f469cad6feb166390c3b5f30c4b60763d088b3e24a17a7d04b9"}
   }
 }
