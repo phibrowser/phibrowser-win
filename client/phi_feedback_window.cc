@@ -575,10 +575,17 @@ HWND PhiFeedbackWindow::Child(const wchar_t* cls,
                               DWORD style,
                               UINT_PTR id,
                               DWORD ex_style) {
+  // WS_CLIPSIBLINGS is what makes ClipBodyControls() work. BUTTON and EDIT
+  // are CS_PARENTDC classes: without a clipping style of its own such a
+  // control paints with its PARENT's clip, so its window region limits where
+  // the pointer reaches it but not where it draws, and a control scrolled
+  // under the footer drew over Send and Cancel (one scrolled under the band
+  // drew over the caption). With the style Windows gives it its own visible
+  // region, which the window region cuts.
   HWND control = ::CreateWindowExW(
-      ex_style, cls, text, WS_CHILD | WS_VISIBLE | style, 0, 0, 10, 10,
-      hwnd(), reinterpret_cast<HMENU>(id), ::GetModuleHandleW(nullptr),
-      nullptr);
+      ex_style, cls, text, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | style, 0,
+      0, 10, 10, hwnd(), reinterpret_cast<HMENU>(id),
+      ::GetModuleHandleW(nullptr), nullptr);
   if (control) {
     // Keyboard: Escape closes, Ctrl+Enter sends, Ctrl+V attaches, Delete
     // removes a tile; the pointer: the owner-drawn controls' hover — the

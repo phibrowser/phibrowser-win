@@ -155,16 +155,17 @@ void DrawPlaceholder(Gdiplus::Graphics* g,
       icon + (title_height > 0 ? px(kPlaceholderIconGap) + title_height : 0);
   const Gdiplus::REAL top = rect.Y + (rect.Height - total) / 2;
 
-  // The favicon, never upscaled past its own pixels (a 16px icon inflated to
-  // 28 only blurs) — centred in the 28pt box either way.
+  // The favicon across its 28pt box at every display scale; only a bitmap
+  // within an eighth of the box keeps its own pixels (PhiFaviconDrawRect's
+  // rule, phi_icons.h).
   const Gdiplus::RectF box(rect.X + (rect.Width - icon) / 2, top, icon, icon);
   if (!pane.favicon.empty()) {
     Gdiplus::Bitmap favicon(pane.favicon.width, pane.favicon.height,
                             pane.favicon.width * 4, PixelFormat32bppPARGB,
                             Pixels(pane.favicon.bgra));
-    const Gdiplus::REAL side = std::min<Gdiplus::REAL>(
-        icon, static_cast<Gdiplus::REAL>(
-                  std::max(pane.favicon.width, pane.favicon.height)));
+    const Gdiplus::REAL own = static_cast<Gdiplus::REAL>(
+        std::max(pane.favicon.width, pane.favicon.height));
+    const Gdiplus::REAL side = own <= icon && own * 8 >= icon * 7 ? own : icon;
     const Gdiplus::RectF draw(box.X + (icon - side) / 2,
                               box.Y + (icon - side) / 2, side, side);
     g->SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);

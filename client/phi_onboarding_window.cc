@@ -133,6 +133,10 @@ constexpr int kFooterTop = kHeight - kButtonBottom - kPillHeight - 16;
 constexpr int kLoginFooterTop = kHeight - 91 - 22 - 12 - kPillHeight - 16;
 // One wheel notch / arrow key of scroll.
 constexpr int kScrollStep = 48;
+// How far the page shrinks to fit a short work area, as a share of the
+// window's DPI: 70 % keeps the 13-dip captions readable. Shorter than that
+// (1080p at 200 %) and the page splits and scrolls.
+constexpr int kMinPagePercent = 70;
 constexpr UINT kMsgNavigate = WM_APP + 0x3B1;
 constexpr UINT_PTR kIdNameField = 1;
 // The Mac's link gradient #9452F9 -> #E8C0FF, sampled at its middle.
@@ -494,10 +498,15 @@ bool PhiOnboardingWindow::Open(Page page) {
     LOG(ERROR) << "[Onboarding] CreateWindowEx failed err=" << ::GetLastError();
     return false;
   }
-  const SIZE outer = chrome().OuterSize(kWidth, kHeight);
-  ::SetWindowPos(hwnd(), nullptr, 0, 0, outer.cx, outer.cy,
-                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-  CenterOn(nullptr);
+  // Twice: the first pass puts the window on the monitor it opens on (the
+  // pointer's), the second sizes the page for THAT monitor's work area and
+  // centres it there.
+  for (int pass = 0; pass < 2; ++pass) {
+    const SIZE outer = FitPage();
+    ::SetWindowPos(hwnd(), nullptr, 0, 0, outer.cx, outer.cy,
+                   SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    CenterOn(nullptr);
+  }
   card_timer_ = NewTimer();
   card_.SetNotify(hwnd(), kMsgNavigate + 1);
   card_.SetCacheDir(prefs_->user_data_dir() + L"\\PhiCardArtwork");
@@ -622,9 +631,41 @@ void PhiOnboardingWindow::ScrollTo(int px) {
   Invalidate();
 }
 
+int PhiOnboardingWindow::Scaled(int design) const {
+  return ::MulDiv(design, static_cast<int>(page_dpi_), 96);
+}
+
+SIZE PhiOnboardingWindow::FitPage() {
+  // The design size at the window's DPI, and what the frame adds to it.
+  const UINT window_dpi = PhiSecondaryWindow::dpi();
+  const SIZE design = chrome().OuterSize(kWidth, kHeight);
+  const int frame_w = design.cx - PhiSecondaryWindow::Scaled(kWidth);
+  const int frame_h = design.cy - PhiSecondaryWindow::Scaled(kHeight);
+  const RECT work = WorkArea();
+  const int room = std::max<int>(0, work.bottom - work.top - frame_h);
+  UINT page_dpi = window_dpi;
+  if (PhiSecondaryWindow::Scaled(kHeight) > room) {
+    // Rounded down, so the page never comes out a pixel taller than the room.
+    page_dpi = std::max<UINT>(static_cast<UINT>(room) * 96 / kHeight,
+                              window_dpi * kMinPagePercent / 100);
+  }
+  if (page_dpi != page_dpi_) {
+    page_dpi_ = page_dpi;
+    page_fonts_.Rebuild(page_dpi_);
+    images_.clear();
+    if (name_field_) {
+      ::SendMessageW(name_field_, WM_SETFONT,
+                     reinterpret_cast<WPARAM>(fonts().Get(24, FW_NORMAL)),
+                     TRUE);
+    }
+  }
+  return SIZE{frame_w + Scaled(kWidth), frame_h + Scaled(kHeight)};
+}
+
 void PhiOnboardingWindow::Refit() {
-  // The design size at this DPI, cut down to the work area again.
-  const SIZE outer = chrome().OuterSize(kWidth, kHeight);
+  // The size the page takes in this work area at this DPI; FitToWorkArea()
+  // cuts what is still too tall (a page at its smallest splits and scrolls).
+  const SIZE outer = FitPage();
   ::SetWindowPos(hwnd(), nullptr, 0, 0, outer.cx, outer.cy,
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
   FitToWorkArea();
@@ -2012,13 +2053,9 @@ void PhiOnboardingWindow::OnTimerFired(UINT_PTR id) {
 
 void PhiOnboardingWindow::OnDpiChanged(UINT old_dpi) {
   PhiSecondaryWindow::OnDpiChanged(old_dpi);
-  images_.clear();
-  if (name_field_) {
-    ::SendMessageW(name_field_, WM_SETFONT,
-                   reinterpret_cast<WPARAM>(fonts().Get(24, FW_NORMAL)), TRUE);
-  }
   // The suggested rect scaled the old (possibly cut-down) size: back to
-  // the design size at the new DPI, then into this monitor's work area.
+  // the size that fits this monitor's work area at the new DPI. FitPage()
+  // drops the page's fonts and images when its DPI moves.
   Refit();
 }
 

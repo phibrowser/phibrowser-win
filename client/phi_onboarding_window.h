@@ -216,7 +216,22 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   // Where `control` can show on a split page: the footer or the viewport.
   RECT SplitRegion(Control control) const;
   void ScrollTo(int px);
-  // Back to the design size, cut to the work area, laid out again (a DPI,
+  // The page is the Mac's 640 x 800 design. Where the work area is too short
+  // for it at the window's DPI (2160p at 300 %, 1080p at 150 %), the whole
+  // page is laid out at a lower DPI, page_dpi_, so that it fits: nothing
+  // scrolls, the consent rows stay above the primary button and the footer
+  // keeps its design proportions. dpi(), Scaled() and fonts() SHADOW the
+  // window's on purpose, so every measure and font of the page follows
+  // page_dpi_; the caption band keeps the window's own DPI. The page stops
+  // shrinking at kMinPagePercent of the window's DPI and splits from there
+  // (MaxScroll).
+  UINT dpi() const { return page_dpi_; }
+  int Scaled(int design) const;
+  PhiFontSet& fonts() { return page_fonts_; }
+  // Picks page_dpi_ for the work area the window is in and answers the
+  // outer size the window takes with it.
+  SIZE FitPage();
+  // Back to the size that fits the work area, laid out again (a DPI,
   // display or taskbar change).
   void Refit();
   void PaintPage(HDC dc, const RECT& content);
@@ -326,6 +341,9 @@ class PhiOnboardingWindow : public PhiSecondaryWindow {
   std::map<std::wstring, std::unique_ptr<Image>> images_;
   int pressed_ = -1;
   int scroll_ = 0;  // Device px the page is scrolled (see MaxScroll).
+  // The DPI the page is laid out at (FitPage) and its fonts.
+  UINT page_dpi_ = 96;
+  PhiFontSet page_fonts_{96};
   // The Mac's OOBEAnalyticsSession, fed through the host's capture path.
   PhiOobeAnalyticsSession oobe_;
 };

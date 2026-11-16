@@ -16,6 +16,7 @@
 #include "client/phi_app_model.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_i18n.h"
+#include "client/phi_icons.h"
 #include "client/phi_new_tab_page.h"
 #include "client/phi_sidebar_view.h"
 #include "client/phi_spaces_strip.h"
@@ -1744,13 +1745,8 @@ PhiDragBitmap PhiSidebarDragSession::BuildDragRow(int width, int height) {
   bool drawn = false;
   if (!row.favicon.empty() && row.favicon_width > 0 &&
       row.favicon_height > 0) {
-    RECT draw = icon;
-    if (row.favicon_width < icon_px && row.favicon_height < icon_px) {
-      draw.left = icon.left + (icon_px - row.favicon_width) / 2;
-      draw.top = icon.top + (icon_px - row.favicon_height) / 2;
-      draw.right = draw.left + row.favicon_width;
-      draw.bottom = draw.top + row.favicon_height;
-    }
+    const RECT draw =
+        PhiFaviconDrawRect(icon, row.favicon_width, row.favicon_height);
     drawn = PhiDrawBgra(mem, draw, row.favicon.data(), row.favicon_width,
                         row.favicon_height);
   }
@@ -1863,21 +1859,14 @@ PhiDragBitmap PhiSidebarDragSession::BuildDragCell(int width, int height) {
   PhiStrokeRoundRectAA(mem, cell, Scaled(kCornerRadius), palette.border,
                        Scaled(1));
   ::SetBkMode(mem, TRANSPARENT);
-  // A favicon never upscales (1:1 centred when smaller than its slot).
+  // A favicon fills its slot, as in the cell it was lifted from.
   const auto draw_icon = [&](const RECT& slot,
                              const std::vector<unsigned char>* bgra, int w,
                              int h) {
     if (!bgra || bgra->empty() || w <= 0 || h <= 0) {
       return false;
     }
-    RECT draw = slot;
-    if (w < slot.right - slot.left && h < slot.bottom - slot.top) {
-      draw.left = slot.left + (slot.right - slot.left - w) / 2;
-      draw.top = slot.top + (slot.bottom - slot.top - h) / 2;
-      draw.right = draw.left + w;
-      draw.bottom = draw.top + h;
-    }
-    PhiDrawBgra(mem, draw, bgra->data(), w, h);
+    PhiDrawBgra(mem, PhiFaviconDrawRect(slot, w, h), bgra->data(), w, h);
     return true;
   };
   const int cx = width / 2;

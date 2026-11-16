@@ -3520,19 +3520,10 @@ void PhiSidebarView::DrawFavicon(HDC dc,
     }
     bgra = faded.data();
   }
-  // NEVER upscale: a 16px favicon inflated to a larger slot only blurs —
-  // 1:1 native pixels centred in the slot are the sharpest a small source
-  // can look (the driver rarely holds more than 16px). Downscaling larger
-  // art is fine and goes through the high-quality path.
-  RECT draw_rc = dest;
-  const int dest_w = dest.right - dest.left;
-  const int dest_h = dest.bottom - dest.top;
-  if (width < dest_w && height < dest_h) {
-    draw_rc.left = dest.left + (dest_w - width) / 2;
-    draw_rc.top = dest.top + (dest_h - height) / 2;
-    draw_rc.right = draw_rc.left + width;
-    draw_rc.bottom = draw_rc.top + height;
-  }
+  // The icon fills its slot at every display scale (PhiFaviconDrawRect): a
+  // small bitmap left at its own pixels shrank to a third of the slot at
+  // 300 %. Both directions go through the high-quality path.
+  const RECT draw_rc = PhiFaviconDrawRect(dest, width, height);
   // Premultiplied BGRA — exactly what the DirectWrite path draws with
   // high-quality interpolation. GDI's stretch below is the fallback.
   if (PhiDrawBgra(dc, draw_rc, bgra, width, height)) {

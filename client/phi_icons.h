@@ -80,6 +80,24 @@ HICON PhiAppIcon(int size);
 // entry — crisp at any size through the D2D downscale path.
 const std::vector<unsigned char>& PhiLogoBgra256();
 
+// Where a `width` x `height` favicon is drawn inside its `slot`: across the
+// whole slot, so the icon is the size the layout gives it at every display
+// scale (a 16 px bitmap left at its own pixels is a third of its slot at
+// 300 %). Only a bitmap within an eighth of the slot keeps its own pixels,
+// centred: 16 px in an 18 px slot at 125 %, where a resample would cost
+// sharpness for a difference nobody sees.
+inline RECT PhiFaviconDrawRect(const RECT& slot, int width, int height) {
+  const int slot_w = slot.right - slot.left;
+  const int slot_h = slot.bottom - slot.top;
+  if (width <= 0 || height <= 0 || width > slot_w || height > slot_h ||
+      width * 8 < slot_w * 7 || height * 8 < slot_h * 7) {
+    return slot;
+  }
+  const int left = slot.left + (slot_w - width) / 2;
+  const int top = slot.top + (slot_h - height) / 2;
+  return RECT{left, top, left + width, top + height};
+}
+
 }  // namespace phi_client
 
 #endif  // PHIBROWSER_WIN_CLIENT_PHI_ICONS_H_
