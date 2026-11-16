@@ -234,9 +234,20 @@ fi
 # DLL and the system's NSIS stay untouched.
 PLUGIN_DEFINE=()
 if [[ ${#SIGN_DEFINE[@]} -gt 0 ]]; then
-  NSIS_PLUGINS="${PHI_NSIS_PLUGINS:-/usr/share/nsis/Plugins/x86-unicode}"
+  # The stock plugins: wherever this makensis loads them from (its data
+  # dir differs between the Debian package, a source build and an NSISDIR
+  # override), as it reports the folder itself, else NSISDIR from its
+  # header info; PHI_NSIS_PLUGINS overrides both.
+  NSIS_PLUGINS="${PHI_NSIS_PLUGINS:-}"
+  if [[ -z "$NSIS_PLUGINS" ]]; then
+    d=$( { makensis -V4 - </dev/null 2>&1 || true; } |
+         sed -n 's|^Processing default plugins: "\(.*\)/[^/]*/\*\.dll"$|\1|p' | head -1)
+    [[ -n "$d" ]] || d=$( { makensis -HDRINFO 2>/dev/null || true; } |
+         grep -oP '(?<=\bNSISDIR=)[^,]+' | head -1 | sed 's|$|/Plugins|')
+    NSIS_PLUGINS="${d:+$d/x86-unicode}"
+  fi
   [[ -f "$NSIS_PLUGINS/System.dll" && -f "$NSIS_PLUGINS/nsDialogs.dll" ]] || {
-    echo "no NSIS x86-unicode plugins in $NSIS_PLUGINS (set PHI_NSIS_PLUGINS)" >&2; exit 1; }
+    echo "no NSIS x86-unicode plugins in '${NSIS_PLUGINS:-(makensis did not say)}' (set PHI_NSIS_PLUGINS)" >&2; exit 1; }
   PLUGIN_DIR="$(mktemp -d -t phi-nsis-plugins.XXXXXX)"
   trap 'rm -rf "$PLUGIN_DIR"' EXIT
   cp -p "$NSIS_PLUGINS"/*.dll "$PLUGIN_DIR/"
