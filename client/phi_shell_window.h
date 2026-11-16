@@ -1260,9 +1260,11 @@ class PhiShellWindow : public PhiHitSource,
   // The address field (a Win32 EDIT), for the test rig's readout.
   HWND address_field() const;
   RECT site_menu_rect();
-  // The address field's Not secure cue, glyph and label together, for the
-  // layout verb; empty unless it is on show.
+  // The address field's Not secure cue (the chip, or the bare triangle in a
+  // narrow field), for the layout verb; empty unless it is on show. Danger:
+  // the red state, a certificate error rather than plain http.
   RECT security_cue_rect();
+  bool security_cue_danger() const;
   // The active tab is one pane of a split.
   bool ActiveTabIsSplit() const;
   // The active tab's split's pane count: 0 outside a split, else 2 to 4.
@@ -1949,18 +1951,27 @@ class PhiShellWindow : public PhiHitSource,
   bool FieldToolsShown() const;
   // The address field's Not secure cue. The Mac's address row carries no
   // security mark at all (its only one is the site menu's last row), so this
-  // is Windows' own: a page the site menu calls "Connection is not secure"
-  // (plain http, a certificate error) trades the leading globe for a warning
-  // triangle and a "Not secure" label, both in a red that reads on the row.
+  // is Windows' own, drawn as Chrome draws it: a page the site menu calls
+  // "Connection is not secure" trades the leading globe for a rounded chip
+  // on its own ground with a warning triangle and a semibold "Not secure",
+  // neutral ink for plain http and red for a certificate error.
   // Re-reads the state for `page` when its snapshot `version` moved.
   void RefreshPageSecurity(BrowserId page, uint64_t version);
   // On show: the page is not secure and the field is at rest. While the
   // field is edited the globe returns and the text has its room back.
   bool SecurityCueShown() const;
-  // The label's rect behind `layout`'s page icon, or empty: no cue, or a
-  // field too narrow to hold the label and still show the address (the
+  // The chip's rect at the head of `layout`'s field, or empty: no cue, or a
+  // field too narrow to hold the chip and still show the address (the
   // triangle alone stays).
-  RECT SecurityCueLabelRect(const Layout& layout);
+  RECT SecurityCueChipRect(const Layout& layout);
+  // The chip in dip: its inset from the field's edge, its height, the room
+  // before the triangle, the triangle, the gap to the label, the room after.
+  static constexpr int kSecurityChipInset = 4;
+  static constexpr int kSecurityChipHeight = 24;
+  static constexpr int kSecurityChipLead = 8;
+  static constexpr int kSecurityChipIcon = 16;
+  static constexpr int kSecurityChipGap = 5;
+  static constexpr int kSecurityChipTrail = 10;
   // Dismisses the active browser's extension action popup when native shell
   // activity bypasses Chromium's widget activation.
   void CloseExtensionPopup();
@@ -2294,6 +2305,7 @@ class PhiShellWindow : public PhiHitSource,
   BrowserId security_browser_;
   uint64_t security_version_ = 0;
   bool page_not_secure_ = false;
+  bool page_security_danger_ = false;  // An https page: a certificate error.
   int security_label_px_ = 0;
   UINT security_label_dpi_ = 0;
   std::wstring security_label_text_;

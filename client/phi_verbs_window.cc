@@ -188,9 +188,12 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   // while the field is hovered).
   out.Set("copyLink", RectDict(shell->copy_link_rect()));
   out.Set("siteMenu", RectDict(shell->site_menu_rect()));
-  // The field's Not secure cue (warning triangle + label), empty unless the
-  // page is not secure and the field is at rest.
-  out.Set("securityCue", RectDict(shell->security_cue_rect()));
+  // The field's Not secure cue (the chip with its triangle and label), an
+  // empty rect unless the page is not secure and the field is at rest;
+  // `danger` for the red state, a certificate error.
+  base::DictValue security_cue = RectDict(shell->security_cue_rect());
+  security_cue.Set("danger", shell->security_cue_danger());
+  out.Set("securityCue", std::move(security_cue));
   // The address field as it stands: its rect in the shell, its text and its
   // selection, so a suite can tell what a double-click selected.
   if (const HWND field = shell->address_field()) {

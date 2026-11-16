@@ -2575,7 +2575,7 @@ PhiOmniboxCapsule PhiShellWindow::OmniboxCapsule() {
   PhiOmniboxCapsule capsule;
   capsule.field = to_pure(layout.url_field);
   capsule.page_icon = to_pure(layout.page_icon);
-  capsule.security_cue = to_pure(SecurityCueLabelRect(layout));
+  capsule.security_cue = to_pure(SecurityCueChipRect(layout));
   capsule.field_ext_strip = to_pure(layout.field_ext_strip);
   // The hover-only slots hold the text back only while they are on show: the
   // Mac keeps the text frame under them and cuts it off at the controls once
@@ -6766,12 +6766,13 @@ RECT PhiShellWindow::security_cue_rect() {
       layout.page_icon.right <= layout.page_icon.left) {
     return RECT{};
   }
-  RECT cue = layout.page_icon;
-  const RECT label = SecurityCueLabelRect(layout);
-  if (label.right > label.left) {
-    cue.right = label.right;
-  }
-  return cue;
+  // The chip, or the bare triangle's slot where the field is too narrow.
+  const RECT chip = SecurityCueChipRect(layout);
+  return chip.right > chip.left ? chip : layout.page_icon;
+}
+
+bool PhiShellWindow::security_cue_danger() const {
+  return SecurityCueShown() && page_security_danger_;
 }
 
 void PhiShellWindow::RefreshPageSecurity(BrowserId page, uint64_t version) {
@@ -6785,18 +6786,24 @@ void PhiShellWindow::RefreshPageSecurity(BrowserId page, uint64_t version) {
   // certificate error. "partial" (loopback http, a file, a page still on
   // its way) and Chromium's own pages get no cue, as in Chrome.
   bool not_secure = false;
+  bool danger = false;
   if (framework_ && page.valid()) {
     if (const char* json = framework_->SiteMenuJson(page.value)) {
       const std::optional<base::DictValue> info =
           base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
       const std::string* security = info ? info->FindString("security") : nullptr;
       not_secure = security && *security == "insecure";
+      // An https page that is not secure has a broken certificate: Chrome's
+      // red state. Plain http is its neutral "Not secure".
+      const std::string* url = info ? info->FindString("url") : nullptr;
+      danger = not_secure && url && url->starts_with("https:");
     }
   }
-  if (not_secure == page_not_secure_) {
+  if (not_secure == page_not_secure_ && danger == page_security_danger_) {
     return;
   }
   page_not_secure_ = not_secure;
+  page_security_danger_ = danger;
   if (shell_hwnd_) {
     // The leading slot repaints and the EDIT gives the label its room.
     RECT field = ComputeLayout().url_field;
@@ -6813,17 +6820,18 @@ bool PhiShellWindow::SecurityCueShown() const {
          !omnibox_->nav_url().empty();
 }
 
-RECT PhiShellWindow::SecurityCueLabelRect(const Layout& layout) {
+RECT PhiShellWindow::SecurityCueChipRect(const Layout& layout) {
   if (!SecurityCueShown() ||
-      layout.page_icon.right <= layout.page_icon.left || !ui_font_) {
+      layout.page_icon.right <= layout.page_icon.left ||
+      !ui_semibold_font_) {
     return RECT{};
   }
   const wchar_t* label = PhiStr("addressBar.notSecure");
   if (security_label_dpi_ != ui_font_dpi_ || security_label_text_ != label) {
-    // Measured once per DPI and display language, in the field's own font.
+    // Measured once per DPI and display language, in the label's own font.
     SIZE extent = {};
     if (HDC dc = ::GetDC(shell_hwnd_)) {
-      HGDIOBJ previous = ::SelectObject(dc, ui_font_);
+      HGDIOBJ previous = ::SelectObject(dc, ui_semibold_font_);
       ::GetTextExtentPoint32W(dc, label, static_cast<int>(wcslen(label)),
                               &extent);
       ::SelectObject(dc, previous);
@@ -6833,14 +6841,20 @@ RECT PhiShellWindow::SecurityCueLabelRect(const Layout& layout) {
     security_label_dpi_ = ui_font_dpi_;
     security_label_text_ = label;
   }
-  const int left = layout.page_icon.right + Scaled(2);
-  const int right = left + security_label_px_;
+  // Chrome's chip: 24 high in the 32 field, fully rounded; 8 before the 16
+  // triangle, 5 to the label, 10 after it.
+  const RECT& field = layout.url_field;
+  const int left = field.left + Scaled(kSecurityChipInset);
+  const int right = left + Scaled(kSecurityChipLead + kSecurityChipIcon +
+                                  kSecurityChipGap) +
+                    security_label_px_ + Scaled(kSecurityChipTrail);
   // Keep at least 120 dip of address beside it.
-  if (security_label_px_ <= 0 ||
-      right + Scaled(120) > layout.url_field.right) {
+  if (security_label_px_ <= 0 || right + Scaled(120) > field.right) {
     return RECT{};
   }
-  return RECT{left, layout.url_field.top, right, layout.url_field.bottom};
+  const int mid = (field.top + field.bottom) / 2;
+  const int half = Scaled(kSecurityChipHeight) / 2;
+  return RECT{left, mid - half, right, mid + half};
 }
 
 std::vector<PhiMenuChoice> PhiShellWindow::SpaceMenuChoices(
@@ -10267,25 +10281,41 @@ void PhiShellWindow::PaintChrome(HDC dc,
     // The leading site-info slot: the page glyph, in `dim`.
     if (layout.page_icon.right > layout.page_icon.left &&
         SecurityCueShown()) {
-      // A page that is not secure: the warning triangle and "Not secure"
-      // in red -- the palette's destructive red, or the lighter / darker
-      // one that reads on this row's field (a dark row under a light
-      // appearance and the reverse, since the row follows the page) -- and
-      // in the row's own ink where the page's colour swallows every red.
-      // Judged against the resting fill, so a hover never changes the ink.
-      COLORREF cue_ink = bar.label;
-      for (const PhiColor red : {bar.destructive, PhiRgb(0xF2, 0x8B, 0x82),
-                                 PhiRgb(0xB3, 0x26, 0x1E)}) {
-        if (PhiContrastRatio(red, kFieldBg) >= 3.0) {
-          cue_ink = red;
-          break;
-        }
-      }
-      PhiDrawIconGlyph(dc, layout.page_icon, fluent::kWarning,
-                       Scaled(fluent::kIconToolbar), cue_ink);
-      RECT label = SecurityCueLabelRect(layout);
-      if (label.right > label.left) {
-        HGDIOBJ previous_font = ::SelectObject(dc, ui_font_);
+      // A page that is not secure, as Chrome marks it: a fully rounded chip
+      // with a ground of its own leading the field, holding the warning
+      // triangle and a semibold "Not secure". The chip brings its ground, so
+      // it reads the same on any row, a page-coloured one included. Plain
+      // http is neutral ink; a broken certificate is red.
+      const bool contrast = PhiHighContrastActive();
+      const COLORREF chip_fill =
+          contrast   ? static_cast<COLORREF>(bar.selected)
+          : bar.dark ? static_cast<COLORREF>(
+                           PhiBlend(PhiRgb(0xFF, 0xFF, 0xFF), bar.card, 52))
+                     : static_cast<COLORREF>(PhiRgb(0xFF, 0xFF, 0xFF));
+      const COLORREF cue_ink =
+          contrast ? static_cast<COLORREF>(bar.label)
+          : page_security_danger_
+              ? static_cast<COLORREF>(bar.dark ? PhiRgb(0xFF, 0xB4, 0xAB)
+                                               : PhiRgb(0xC4, 0x2B, 0x1C))
+              : static_cast<COLORREF>(bar.dark ? PhiRgb(0xF2, 0xF2, 0xF2)
+                                               : PhiRgb(0x1F, 0x1F, 0x1F));
+      const RECT chip = SecurityCueChipRect(layout);
+      if (chip.right > chip.left) {
+        const int chip_radius = (chip.bottom - chip.top) / 2;
+        PhiFillRoundRectAA(dc, chip, chip_radius, chip_fill);
+        // A hairline, so a white chip keeps its edge on a near-white field.
+        PhiStrokeRoundRectAA(dc, chip, chip_radius,
+                             PhiBlend(bar.ink, chip_fill, 28), 1);
+        const int mid = (chip.top + chip.bottom) / 2;
+        const int icon_px = Scaled(kSecurityChipIcon);
+        const RECT icon = {chip.left + Scaled(kSecurityChipLead),
+                           mid - icon_px / 2,
+                           chip.left + Scaled(kSecurityChipLead) + icon_px,
+                           mid - icon_px / 2 + icon_px};
+        PhiDrawIconGlyph(dc, icon, fluent::kWarning, icon_px, cue_ink);
+        RECT label = {icon.right + Scaled(kSecurityChipGap), chip.top,
+                      chip.right - Scaled(kSecurityChipTrail), chip.bottom};
+        HGDIOBJ previous_font = ::SelectObject(dc, ui_semibold_font_);
         ::SetBkMode(dc, TRANSPARENT);
         const COLORREF previous_ink = ::SetTextColor(dc, cue_ink);
         PhiDrawTextAA(dc, PhiStr("addressBar.notSecure"), -1, &label,
@@ -10293,6 +10323,11 @@ void PhiShellWindow::PaintChrome(HDC dc,
                           DT_NOCLIP);
         ::SetTextColor(dc, previous_ink);
         ::SelectObject(dc, previous_font);
+      } else {
+        // A field too narrow for the chip: the triangle alone, in the
+        // row's own ink.
+        PhiDrawIconGlyph(dc, layout.page_icon, fluent::kWarning,
+                         Scaled(fluent::kIconToolbar), bar.label);
       }
     } else if (layout.page_icon.right > layout.page_icon.left) {
       // §4.9: an incognito window wears the incognito glyph in the
@@ -10310,9 +10345,9 @@ void PhiShellWindow::PaintChrome(HDC dc,
     const std::wstring shown = omnibox_->DisplayedUrl();
     ::SetTextColor(dc, shown.empty() ? bar.label_dim : bar.label);
     RECT url_rc = layout.url_field;
-    const RECT cue_label = SecurityCueLabelRect(layout);
-    url_rc.left = (cue_label.right > cue_label.left
-                       ? cue_label.right + Scaled(8)
+    const RECT cue_chip = SecurityCueChipRect(layout);
+    url_rc.left = (cue_chip.right > cue_chip.left
+                       ? cue_chip.right + Scaled(8)
                    : layout.page_icon.right > layout.page_icon.left
                        ? layout.page_icon.right + Scaled(4)
                        : url_rc.left + Scaled(kFieldTextInset)) +

@@ -35,7 +35,7 @@ namespace phi_client {
 struct PhiOmniboxCapsule {
   SidebarRect field;            // The painted pill.
   SidebarRect page_icon;        // Comfortable's leading site chip.
-  // The "Not secure" label trailing the page icon; empty unless on show.
+  // The "Not secure" chip leading the field; empty unless on show.
   SidebarRect security_cue;
   SidebarRect field_ext_strip;  // Pinned-extension icons.
   SidebarRect reader;
@@ -45,7 +45,7 @@ struct PhiOmniboxCapsule {
 };
 
 // The EDIT's rect inside `capsule`: a `text_height`-tall line centred in the
-// box, starting after the page icon or the Not secure label behind it (plus
+// box, starting after the Not secure chip or else the page icon (plus
 // `icon_gap`) or at `leading_inset` without one, and stopping `trailing_gap`
 // before the LEFTMOST accessory
 // that actually sits inside the capsule — the EDIT must not extend under the
