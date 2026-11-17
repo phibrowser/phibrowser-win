@@ -58,6 +58,8 @@ The deeper design and build notes live in [`docs/`](docs/) — see `docs/static-
 
 The client builds on its own, without a Chromium checkout. It is an ordinary Windows DLL, and everything it compiles is in this repository.
 
+Build from `main`. It is the released code: it moves only when we publish a release, and its `framework.lock` always names a published framework. Day-to-day work lands on `dev`, which can run ahead of every published framework, so a build of `dev` may not start. A fresh clone starts on `dev`; run `git switch main` first.
+
 ### Requirements
 - Windows x86_64
 - Visual Studio 2022 or later with the "Desktop development with C++" workload
@@ -82,7 +84,7 @@ The framework is `Phi.exe`, `chrome.dll` and their runtime files. It is prebuilt
 
 Because the Phi we distribute is built from this repository, a contribution accepted here reaches everyone using Phi. You are not patching a side project or a public mirror; you are changing the browser that ships.
 
-Contributions are welcome: bug reports, feature requests, documentation, and pull requests. Being early, the Windows client has plenty of room for both polish and new ground. Found a bug or have an idea? Open an issue first. To contribute code, send a PR with a clear description of the change and the motivation behind it.
+Contributions are welcome: bug reports, feature requests, documentation, and pull requests. Being early, the Windows client has plenty of room for both polish and new ground. Found a bug or have an idea? Open an issue first. To contribute code, make and test the change on `main`, then open a PR against `dev` with a clear description of the change and the motivation behind it. `dev` is the only branch we merge into, and your change reaches `main` with the next release.
 
 ### Getting in touch
 
