@@ -228,6 +228,11 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   out.Set("titleBar", shell->title_bar_height());
   out.Set("sidebarWidth", shell->sidebar_width());
   out.Set("contentMargin", shell->content_margin());
+  // The page card and the page margin around it (GitHub #13), physical px,
+  // and the DWM backdrop behind the margin and the sidebar.
+  out.Set("pane", RectDict(shell->pane_rect()));
+  out.Set("pageMargin", shell->page_margin());
+  out.Set("backdrop", shell->backdrop_kind());
   const POINT frame = shell->frame_offset();
   out.Set("frameLeft", static_cast<int>(frame.x));
   out.Set("frameTop", static_cast<int>(frame.y));
@@ -1114,6 +1119,8 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
   out.Set("sidebarTransparency",
           coordinator_->settings().sidebar_transparency);
   out.Set("translucentFrame", coordinator_->settings().translucent_frame);
+  out.Set("pageMargin", coordinator_->settings().page_margin);
+  out.Set("windowMaterial", coordinator_->settings().window_material);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
   out.Set("analyticsEnabled", coordinator_->settings().analytics_enabled);
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
@@ -1220,6 +1227,18 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
     coordinator_->SetTranslucentFrame(*frame);
     ok = true;
   }
+  if (std::optional<bool> margin = ctx.params.FindBool("pageMargin")) {
+    coordinator_->SetPageMargin(*margin);
+    ok = true;
+  }
+  if (const std::string* material = ctx.params.FindString("windowMaterial")) {
+    // "acrylic" or "mica"; anything else is refused.
+    if (*material != "acrylic" && *material != "mica") {
+      return PhiVerbOk(false);
+    }
+    coordinator_->SetMicaMaterial(*material == "mica");
+    ok = true;
+  }
   if (std::optional<bool> restore =
           ctx.params.FindBool("restoreLastSession")) {
     coordinator_->SetRestoreLastSession(*restore);
@@ -1305,6 +1324,8 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   out.Set("sidebarTransparency",
           coordinator_->settings().sidebar_transparency);
   out.Set("translucentFrame", coordinator_->settings().translucent_frame);
+  out.Set("pageMargin", coordinator_->settings().page_margin);
+  out.Set("windowMaterial", coordinator_->settings().window_material);
   out.Set("restoreLastSession", coordinator_->settings().restore_last_session);
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
   out.Set("autoPeekViewEnabled",

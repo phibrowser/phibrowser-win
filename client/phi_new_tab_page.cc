@@ -210,6 +210,11 @@ void PhiNewTabPage::Reposition() {
     ::InflateRect(&inner, -ring, -ring);
     SetPanelBounds(inner);
     ApplyPaneCorners();
+  } else if (controller_->PageMarginActive()) {
+    // A free-standing card (page margin, GitHub #13): the lower corners
+    // stand on the backdrop, which no opaque cap can show.
+    SetPanelBounds(controller_->ContentRect());
+    ApplyPaneCorners();
   } else {
     SetPagePanelBounds(controller_->ContentRect(), Scaled(8));
   }
@@ -219,7 +224,18 @@ void PhiNewTabPage::Reposition() {
 }
 
 void PhiNewTabPage::ApplyPaneCorners() {
-  if (!has_pane_ || !controller_) {
+  if (!controller_) {
+    return;
+  }
+  if (!has_pane_) {
+    // The whole card's page with a page margin: its lower corners, as
+    // Chromium rounds a web page's (the fringe holds the arcs' pixels).
+    if (controller_->PageMarginActive()) {
+      SetCornerFringe(
+          controller_->ContentCornerRadius(),
+          controller_->SplitPaneCardCorners(controller_->ContentRect()),
+          QueryPalette().card);
+    }
     return;
   }
   // Square, but where the pane meets the content card's rounded corner:

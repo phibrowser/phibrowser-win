@@ -509,6 +509,11 @@ class ChromePrefsHost {
   // Appearance ▸ "Transparent toolbars": the backdrop reaches the address
   // row, the bookmark bar and comfortable's tab strip too.
   virtual bool TranslucentFrame() const = 0;
+  // Appearance ▸ "Page margin" (GitHub #13): the page card stands in from
+  // the window's edges with the backdrop around it.
+  virtual bool PageMargin() const = 0;
+  // Appearance ▸ "Window material": Mica instead of acrylic.
+  virtual bool MicaMaterial() const = 0;
   // Developer ▸ "Allow agents to control Phi": gates the View menu's agent
   // items, as the Mac's cdpAgentAccessEnabled does.
   virtual bool AllowAgentControl() const = 0;
@@ -1276,6 +1281,12 @@ class PhiShellWindow : public PhiHitSource,
   // lower-right while Windows rounds the window, none in fullscreen); and
   // the card's radius there. A surface over a pane rounds the same corners.
   unsigned SplitPaneCardCorners(const RECT& pane);
+  // Appearance ▸ "Page margin" is in effect in this window's layout (on,
+  // and the window neither maximized nor fullscreen).
+  bool PageMarginActive();
+  // The page margin applies to this window now: the pref is on and the
+  // window is neither maximized nor fullscreen (the layout's rule).
+  bool PageMarginWanted() const;
   int ContentCornerRadius() const;
   bool sidebar_collapsed() const { return sidebar_collapsed_; }
   // The last user Space this slot showed (never an agent or Incognito
@@ -1319,6 +1330,12 @@ class PhiShellWindow : public PhiHitSource,
   int title_bar_height() const;
   // The tinted margin around the content card.
   int content_margin() const;
+  // The page card (address row / toolbar + content) and the page margin
+  // around it in pixels (GitHub #13); and which backdrop DWM draws:
+  // "none", "acrylic", "mica" or "accent" (Windows 10's).
+  RECT pane_rect();
+  int page_margin();
+  std::string backdrop_kind() const;
   // Client origin minus window origin. PrintWindow(PW_CLIENTONLY) renders from
   // the WINDOW origin, so a capture is offset by exactly this — a caller
   // comparing against client coordinates has to add it.
@@ -1382,6 +1399,10 @@ class PhiShellWindow : public PhiHitSource,
     RECT sidebar{};  // Empty in Comfortable.
     RECT top_bar{};  // The band above the content; empty in Performance.
     RECT content{};  // Where the reparented browser child goes.
+    // The page card (address row / toolbar + content) and the page margin
+    // around it in pixels (ShellLayout::pane / page_margin).
+    RECT pane{};
+    int page_margin = 0;
     // The bookmark bar band, carved off the content's top when visible
     // (the Mac's 32pt BookmarkBar under the header).
     RECT bookmark_bar{};
@@ -1690,6 +1711,13 @@ class PhiShellWindow : public PhiHitSource,
   bool legacy_acrylic_ = false;
   // WS_SYSMENU is off the shell (see UpdateSidebarBackdrop).
   bool dwm_caption_hidden_ = false;
+  // DWM refused the system backdrop, so the backdrop (when on) is the
+  // accent, which UpdateSidebarBackdrop drops while Phi is in the
+  // background (WM_ACTIVATEAPP keeps app_active_).
+  bool legacy_backdrop_path_ = false;
+  // Phi has the foreground (WM_ACTIVATEAPP); unset until the first one, when
+  // the foreground window's process answers instead.
+  std::optional<bool> app_active_;
   // What PaintChrome painted the address row and the bookmark bar with this
   // frame, and how far the row is toward its page colour (0 none, 1 all):
   // the glass pass keys on exactly these, not on a second clock read.
@@ -1703,6 +1731,13 @@ class PhiShellWindow : public PhiHitSource,
   RECT avatar_disc_ = {};
   void UpdateSidebarBackdrop();
   void PrepareBackdropPixels(const PhiPalette& palette);
+  // PrepareBackdropPixels' pass over an opaque-row frame: the sidebar and
+  // the page margin on the backdrop, the card's corners antialiased onto
+  // it, the content cleared for Chromium (or kept, under a slide).
+  void PrepareCardBackdrop(const PhiPalette& palette,
+                           const Layout& layout,
+                           const std::vector<uint32_t>& grounds,
+                           bool content_opaque);
   // PrepareBackdropPixels under frame_glass_; `content_opaque` while a
   // slide composes page snapshots into the content rect.
   void PrepareFrameGlass(const PhiPalette& palette, bool content_opaque);

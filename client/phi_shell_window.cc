@@ -160,6 +160,48 @@ std::wstring MenuChord(ChromePrefsHost* prefs, UINT id, const char* key) {
   return tab == std::wstring::npos ? std::wstring() : text.substr(tab + 1);
 }
 constexpr int kContentRadius = 8;  // The pane's corners (windows-native-ui.md §2.1).
+// Appearance ▸ "Page margin" (GitHub phibrowser/phibrowser-win#13): the
+// Mac's WebContentConstant.edgesSpacing, the backdrop between the card and
+// the window's edges.
+constexpr int kPageMargin = 8;
+
+// The rounded top corners of the card's first row (the address row, or
+// comfortable's toolbar): -1 when (x, y) is in neither corner square, else
+// the card's coverage of the pixel, 0-255.
+// Whether this UI thread owns the foreground window: the accent's stand-in
+// for the activation it has not been told about yet. The thread, not the
+// process: WM_ACTIVATEAPP reaches this thread's top-level windows, so only
+// a foreground window of this thread is sure to report losing it.
+bool PhiAppInForeground() {
+  const HWND foreground = ::GetForegroundWindow();
+  return foreground &&
+         ::GetWindowThreadProcessId(foreground, nullptr) ==
+             ::GetCurrentThreadId();
+}
+
+int BandCornerCoverage(const RECT& band,
+                       int radius,
+                       bool round_left,
+                       bool round_right,
+                       int x,
+                       int y) {
+  if (radius <= 0 || y < band.top || y >= band.bottom ||
+      y >= band.top + radius) {
+    return -1;
+  }
+  double cx = 0;
+  if (round_left && x >= band.left && x < band.left + radius) {
+    cx = band.left + radius;
+  } else if (round_right && x >= band.right - radius && x < band.right) {
+    cx = band.right - radius;
+  } else {
+    return -1;
+  }
+  const double cy = band.top + radius;
+  const double coverage = std::clamp(
+      radius + 0.5 - std::hypot(x + 0.5 - cx, y + 0.5 - cy), 0.0, 1.0);
+  return static_cast<int>(coverage * 255 + 0.5);
+}
 // 0x515 and 0x516 belonged to the Space swap and hover-card clocks; the
 // swap now rides PhiAnimator and the card's dwell timer is
 // PhiSpacesStrip::kHoverCardTimer (still 0x516), which the strip owns.
@@ -616,6 +658,8 @@ PhiShellWindow::Layout PhiShellWindow::ToLayout(
   out.sidebar = PhiToRect(shell.sidebar);
   out.top_bar = PhiToRect(shell.top_bar);
   out.content = PhiToRect(shell.content);
+  out.pane = PhiToRect(shell.pane);
+  out.page_margin = shell.page_margin;
   out.bookmark_bar = PhiToRect(shell.bookmark_bar);
   out.app_icon = PhiToRect(shell.app_icon);
   out.search_tabs = PhiToRect(shell.search_tabs);
@@ -726,7 +770,18 @@ ShellLayoutInputs PhiShellWindow::CurrentLayoutInputs(bool include_floating) con
   // whose placeholder pip lives in the strip (forcesSpaceSwitchVisible).
   in.spaces_switch =
       spaces_ && (spaces_->SwitchTargets() > 1 || spaces_->creating());
+  // Appearance ▸ "Page margin" (GitHub #13). Maximized or fullscreen the
+  // card fills the window again: the screen's edge frames it there, and
+  // the caption buttons keep the corner pixel. The floating panel paints
+  // the sidebar of the docked layout, which has none.
+  in.page_margin_dip = !floating && PageMarginWanted() ? kPageMargin : 0;
   return in;
+}
+
+bool PhiShellWindow::PageMarginWanted() const {
+  return services_.prefs && services_.prefs->PageMargin() &&
+         !(shell_hwnd_ && ::IsZoomed(shell_hwnd_)) &&
+         !browsers_->shell_fullscreen() && !browsers_->content_fullscreen();
 }
 
 void PhiShellWindow::RefreshLayoutInputs() {
@@ -1032,6 +1087,25 @@ int PhiShellWindow::sidebar_width() const {
 
 int PhiShellWindow::content_margin() const {
   return Scaled(kContentMargin);
+}
+
+RECT PhiShellWindow::pane_rect() {
+  return ComputeWindowLayout().pane;
+}
+
+int PhiShellWindow::page_margin() {
+  return ComputeWindowLayout().page_margin;
+}
+
+std::string PhiShellWindow::backdrop_kind() const {
+  if (!sidebar_backdrop_) {
+    return "none";
+  }
+  if (legacy_acrylic_) {
+    return "accent";
+  }
+  return services_.prefs && services_.prefs->MicaMaterial() ? "mica"
+                                                             : "acrylic";
 }
 
 POINT PhiShellWindow::frame_offset() const {
@@ -1663,6 +1737,14 @@ PhiCaptionRects PhiShellWindow::CaptionRects() {
   rects.field_ext_strip = layout.field_ext_strip;
   rects.extensions = layout.extensions;
   rects.spaces_strip = layout.spaces_strip;
+  rects.pane = layout.pane;
+  rects.sidebar = layout.sidebar;
+  if (layout.content.left < layout.sidebar.right) {
+    // The sidebar is hidden: only the left margin is its (the tucked
+    // panel's hover edge); the rest of its column is card or margin.
+    rects.sidebar.right = layout.content.left;
+  }
+  rects.page_margin = layout.page_margin;
   rects.tabs_top = layout.tabs_top;
   rects.horizontal_tabs = layout.horizontal_tabs;
   return rects;
@@ -5286,24 +5368,38 @@ void PhiShellWindow::UpdateSidebarBackdrop() {
   // Where DWM has no system backdrop (Windows 10, Windows 11 before 22H2)
   // the acrylic accent stands in (GitHub phibrowser/phibrowser-win#10);
   // where neither exists the palette stays opaque.
+  // Appearance ▸ "Window material": Mica samples the wallpaper once and is
+  // the cheaper of the two; acrylic blurs what is behind the window.
+  // Windows 11 22H2+ only; where DWM refuses either the accent stands in.
+  const bool mica = services_.prefs && services_.prefs->MicaMaterial();
   const DWM_SYSTEMBACKDROP_TYPE type =
-      enabled ? DWMSBT_TRANSIENTWINDOW : DWMSBT_NONE;
+      !enabled ? DWMSBT_NONE
+      : mica   ? DWMSBT_MAINWINDOW
+               : DWMSBT_TRANSIENTWINDOW;
   const bool system_backdrop =
       !PhiForceLegacyAcrylic() &&
       SUCCEEDED(::DwmSetWindowAttribute(shell_hwnd_,
                                         DWMWA_SYSTEMBACKDROP_TYPE, &type,
                                         sizeof(type)));
+  legacy_backdrop_path_ = !system_backdrop;
+  // The system backdrop goes solid by itself while the window is inactive
+  // (Microsoft's Mica / acrylic fallback rules); the accent does not, and
+  // would keep blurring whatever runs in front, a game included. So the
+  // accent path drops to the opaque palette while Phi is in the background.
+  const bool legacy_enabled =
+      enabled && app_active_.value_or(PhiAppInForeground());
   if (system_backdrop) {
     if (legacy_acrylic_) {
       PhiSetLegacyAcrylic(shell_hwnd_, false, dark != FALSE);
       legacy_acrylic_ = false;
     }
     sidebar_backdrop_ = enabled;
-  } else if (enabled && legacy_acrylic_ && was_dark == backdrop_dark_) {
+  } else if (legacy_enabled && legacy_acrylic_ && was_dark == backdrop_dark_) {
     sidebar_backdrop_ = true;  // Every relayout lands here: leave DWM be.
-  } else if (enabled || legacy_acrylic_) {
-    const bool set = PhiSetLegacyAcrylic(shell_hwnd_, enabled, dark != FALSE);
-    legacy_acrylic_ = enabled && set;
+  } else if (legacy_enabled || legacy_acrylic_) {
+    const bool set =
+        PhiSetLegacyAcrylic(shell_hwnd_, legacy_enabled, dark != FALSE);
+    legacy_acrylic_ = legacy_enabled && set;
     sidebar_backdrop_ = legacy_acrylic_;
   } else {
     sidebar_backdrop_ = false;
@@ -5364,6 +5460,17 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
       PrepareFrameGlass(palette, /*content_opaque=*/true);
       return;
     }
+    if (ComputeWindowLayout().page_margin > 0) {
+      // The margin keeps its glass through the slide, as the toolbars do.
+      const int height = back_buffer_size_.cy;
+      PrepareCardBackdrop(
+          palette, ComputeWindowLayout(),
+          gradient ? PhiBackdropRowGrounds(palette, 0, height, height,
+                                           /*glass=*/true)
+                   : std::vector<uint32_t>(),
+          /*content_opaque=*/true);
+      return;
+    }
     auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
         static_cast<uint32_t*>(back_buffer_bits_),
         static_cast<size_t>(back_buffer_size_.cx) * back_buffer_size_.cy));
@@ -5408,10 +5515,40 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
     PrepareFrameGlass(palette, /*content_opaque=*/false);
     return;
   }
+  PrepareCardBackdrop(palette, layout, grounds, /*content_opaque=*/false);
+}
+
+void PhiShellWindow::PrepareCardBackdrop(const PhiPalette& palette,
+                                         const Layout& layout,
+                                         const std::vector<uint32_t>& grounds,
+                                         bool content_opaque) {
+  const int width = back_buffer_size_.cx;
+  // The vertical layout's sidebar column (comfortable has none: its left
+  // page margin is margin, below, and its strip stays opaque).
+  const int sidebar =
+      layout.horizontal_tabs ? 0
+                             : std::clamp<int>(layout.content.left, 0, width);
+  const bool gradient = palette.ground_stop_count > 1;
+  const uint32_t rgb = PhiPackedRgb(palette.ground_top);
+  // SAFETY: AcquireBackBuffer allocated width * height 32-bit pixels in a
+  // top-down DIB; 32bpp rows require no additional stride padding.
+  auto pixels = UNSAFE_BUFFERS(base::span<uint32_t>(
+      static_cast<uint32_t*>(back_buffer_bits_),
+      static_cast<size_t>(width) * back_buffer_size_.cy));
   const uint32_t flat_tint =
       PhiBackdropPixel(rgb, palette.dark ? 0 : 0xFFFFFF);
   const int radius = Scaled(kContentRadius);
   const RECT& band = layout.top_bar;
+  // The page margin (GitHub #13): around the card is the backdrop at the
+  // sidebar's tint, the card's shadow and stroke keeping their coverage.
+  // Comfortable's tab strip stays opaque, as it is without a margin: only
+  // Transparent toolbars (PrepareFrameGlass) puts it on the glass.
+  const bool margin = layout.page_margin > 0;
+  const bool round_left =
+      band.left > 0 && (margin || !layout.horizontal_tabs);
+  const auto in = [](const RECT& r, int x, int y) {
+    return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+  };
   for (int y = 0; y < back_buffer_size_.cy; ++y) {
     auto row = pixels.subspan(static_cast<size_t>(y) * width,
                               static_cast<size_t>(width));
@@ -5427,21 +5564,20 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
     // Leave the shell underneath clear so its tint is not applied twice.
     // Only the rounded address-row corners expose ground in shell chrome.
     for (int x = sidebar; x < width; ++x) {
-      const bool bar_corner =
-          band.left > 0 && !layout.horizontal_tabs &&
-          x >= band.left && x < band.left + radius &&
-          y >= band.top && y < band.bottom && y < band.top + radius;
-      if (x >= layout.content.left &&
-          x < layout.content.right && y >= layout.content.top &&
-          y < layout.content.bottom) {
-        row[x] = 0;
-      } else if (bar_corner) {
-        const double cx = band.left + radius;
-        const double cy = band.top + radius;
-        const double coverage = std::clamp(
-            radius + 0.5 - std::hypot(x + 0.5 - cx, y + 0.5 - cy), 0.0, 1.0);
-        row[x] = PhiBackdropPixelOver(row[x], rgb, tint,
-                                      static_cast<int>(coverage * 255 + 0.5));
+      if (in(layout.content, x, y)) {
+        // A slide's composite stands in for the page: keep it.
+        row[x] = content_opaque ? (row[x] | 0xFF000000u) : 0;
+        continue;
+      }
+      const int corner =
+          BandCornerCoverage(band, radius, round_left, margin, x, y);
+      if (corner >= 0) {
+        row[x] = PhiBackdropPixelOver(row[x], rgb, tint, corner);
+      } else if (margin && !in(layout.pane, x, y) &&
+                 !(layout.horizontal_tabs && in(layout.title_bar, x, y))) {
+        row[x] = (row[x] & 0xFFFFFF) == rgb
+                     ? tint
+                     : PhiBackdropPixelOver(row[x], rgb, tint, 0);
       } else {
         row[x] |= 0xFF000000;
       }
@@ -5537,17 +5673,15 @@ void PhiShellWindow::PrepareFrameGlass(const PhiPalette& palette,
         // Chromium paints the page (opaque) and its corners' ground.
         pixel = content_opaque ? (pixel | 0xFF000000u) : 0;
       } else if (in(band, x, y)) {
-        const bool corner = band.left > 0 && !layout.horizontal_tabs &&
-                            x < band.left + radius && y < band.top + radius;
-        if (corner) {
-          // The row's rounded top-left corner, card inside, tint outside.
-          const double cx = band.left + radius;
-          const double cy = band.top + radius;
-          const double coverage = std::clamp(
-              radius + 0.5 - std::hypot(x + 0.5 - cx, y + 0.5 - cy), 0.0,
-              1.0);
-          pixel = PhiBackdropMix(card_glass, tint,
-                                 static_cast<int>(coverage * 255 + 0.5));
+        // The row's rounded top corners, card inside, tint outside: the
+        // left one against the sidebar, both on a free-standing card (page
+        // margin, GitHub #13).
+        const bool margin = layout.page_margin > 0;
+        const int corner = BandCornerCoverage(
+            band, radius, band.left > 0 && (margin || !layout.horizontal_tabs),
+            margin, x, y);
+        if (corner >= 0) {
+          pixel = PhiBackdropMix(card_glass, tint, corner);
         } else {
           pixel = over(pixel, card, card_glass, field_coverage(x, y));
         }
@@ -6731,6 +6865,10 @@ int PhiShellWindow::ActiveSplitPaneCount() const {
 
 int PhiShellWindow::ContentCornerRadius() const {
   return Scaled(kContentRadius);
+}
+
+bool PhiShellWindow::PageMarginActive() {
+  return ComputeWindowLayout().page_margin > 0;
 }
 
 RECT PhiShellWindow::app_menu_rect() {
@@ -8210,8 +8348,12 @@ RECT PhiShellWindow::FloatingPanelRect(bool expanded) const {
   POINT origin = {0, 0};
   ::ClientToScreen(shell_hwnd_, &origin);
   const int inset = Scaled(kEdgeInset);
+  // The address row stands on the page margin's top edge when there is one.
   const int row =
-      browsers_->content_fullscreen() ? 0 : Scaled(kAddressRowHeight);
+      browsers_->content_fullscreen()
+          ? 0
+          : Scaled(kAddressRowHeight) +
+                (PageMarginWanted() ? Scaled(kPageMargin) : 0);
   const int w = Scaled(sidebar_dip_);
   const int x = origin.x + (expanded ? inset : -w);
   const int top = origin.y + row + inset;
@@ -10178,16 +10320,22 @@ void PhiShellWindow::PaintChrome(HDC dc,
   // horizontal layout has no pane: its page runs edge to edge. A split
   // keeps it: the framework's two panes sit flush inside this one card
   // (docs/split-view-chrome.md).
+  // With a page margin (GitHub #13) the card stands free in either layout:
+  // all four corners round and the frame runs all the way round it.
+  const bool card_margin = layout.page_margin > 0;
   if (layout.content.right > layout.content.left &&
-      layout.mode != PhiLayoutMode::kComfortable && layout.content.left > 0) {
-    RECT pane = layout.content;
-    if (layout.top_bar.right > layout.top_bar.left) {
+      (card_margin || (layout.mode != PhiLayoutMode::kComfortable &&
+                       layout.content.left > 0))) {
+    RECT pane = card_margin ? layout.pane : layout.content;
+    if (!card_margin && layout.top_bar.right > layout.top_bar.left) {
       pane.top = layout.top_bar.top;
     }
     const int radius = Scaled(kContentRadius);
-    // The right corners are off the window: extend the rect past the edge
-    // so only the left arcs are drawn.
-    pane.right += radius * 2;
+    // Flush, the right corners are off the window: extend the rect past
+    // the edge so only the left arcs are drawn.
+    if (!card_margin) {
+      pane.right += radius * 2;
+    }
     // The shadow: three 1 px rings outside the edge at falling alpha
     // (0 2 8 @12 %, approximated on the tint), then the stroke.
     const std::array<int, 3> alphas = {14, 8, 4};
@@ -10218,7 +10366,12 @@ void PhiShellWindow::PaintChrome(HDC dc,
     HBRUSH bg = ::CreateSolidBrush(bar.window_bg);
     // A split leaves the row as it is: the panes sit flush under its
     // separator (docs/split-view-chrome.md).
-    if (layout.mode == PhiLayoutMode::kComfortable || band.left == 0) {
+    if (layout.page_margin > 0) {
+      // The free-standing card (page margin): both top corners round.
+      PhiFillRoundRectAA(dc, band, radius, bar.window_bg);
+      RECT lower = {band.left, band.top + radius, band.right, band.bottom};
+      ::FillRect(dc, &lower, bg);
+    } else if (layout.mode == PhiLayoutMode::kComfortable || band.left == 0) {
       // Edge to edge and square: the horizontal toolbar, or the pane
       // filling the window with the sidebar hidden.
       ::FillRect(dc, &band, bg);
@@ -10843,6 +10996,15 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       // window hears it): the accelerators drop a half-seen Alt.
       if (self && self->services_.window) {
         self->services_.window->NoteAppActivation(wparam != FALSE);
+      }
+      if (self) {
+        self->app_active_ = wparam != FALSE;
+        if (self->legacy_backdrop_path_) {
+          // The accent follows the foreground (UpdateSidebarBackdrop).
+          self->UpdateSidebarBackdrop();
+          self->PlaceContentChildren(self->ComputeWindowLayout());
+          ::InvalidateRect(hwnd, nullptr, FALSE);
+        }
       }
       if (!wparam) {
         // Drop the active look kept for an owned popup (WM_ACTIVATE below):

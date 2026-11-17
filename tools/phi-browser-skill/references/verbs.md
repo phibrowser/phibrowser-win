@@ -2038,6 +2038,8 @@ Changes app settings. developerMode / allowAgentUserSpaces / testRig / analytics
 | `sidebarBottomBarShowsFeedback` | boolean | no | — | The bottom bar's Feedback button. |
 | `sidebarTransparency` | integer | no | — | Acrylic through the sidebar, 0-100 %. |
 | `translucentFrame` | boolean | no | — | The backdrop through the toolbars too. |
+| `pageMargin` | boolean | no | — | The page as a card inset from the window's edges. |
+| `windowMaterial` | string | no | — | The window backdrop: acrylic or mica. |
 | `restoreLastSession` | boolean | no | — | Session restore. |
 | `peekViewEnabled` | boolean | no | — | Peek's master switch. |
 | `autoPeekViewEnabled` | boolean | no | — | Automatic peek. |

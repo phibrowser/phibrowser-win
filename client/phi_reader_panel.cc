@@ -198,6 +198,15 @@ void PhiReaderPanel::ApplyCardShape() {
   // the show paths ask for one. The region this used to cut stair-stepped
   // the same curve under the caps, and was all that showed whenever they
   // were not on top.
+  if (origin_ && origin_->PageMarginActive()) {
+    // A free-standing card (page margin, GitHub #13): the lower corners
+    // stand on the backdrop, which no opaque cap can show, so the fringe
+    // carries the arcs as Chromium's clip does for a page.
+    SetCornerFringe(origin_->ContentCornerRadius(),
+                    origin_->SplitPaneCardCorners(origin_->ContentRect()),
+                    QueryPalette().card);
+    return;
+  }
   ClearCornerFringe();
 }
 

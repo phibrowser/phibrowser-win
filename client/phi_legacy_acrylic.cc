@@ -74,6 +74,10 @@ constexpr DWORD kLightNeutral = 0x40F3F3F3;  // AABBGGRR
 
 }  // namespace
 
+bool PhiSystemBackdropSupported() {
+  return OsBuild() >= 22621 && !PhiForceLegacyAcrylic();
+}
+
 bool PhiLegacyAcrylicSupported() {
   return OsBuild() >= 17134 && CompositionSetter() != nullptr;
 }

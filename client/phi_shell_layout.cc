@@ -70,15 +70,28 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   const int btn = scaled(kNavButton);
   const int btn_gap = scaled(kNavGroupSpacing);
   const int cap = scaled(kCaptionButtonWidth);
+  // The page margin (GitHub #13): the card stands `margin` in from the
+  // window's edges. The vertical layout's rows stand on it too — the pane's
+  // address row and the sidebar's header row share one line — while
+  // comfortable's tab strip keeps the window's top edge and only the card
+  // under it (toolbar and page) is inset.
+  const int margin = in.page_margin_dip > 0 ? scaled(in.page_margin_dip) : 0;
+  out.page_margin = margin;
+  const int row_top = horizontal ? 0 : margin;
+  const int card_right = w - margin;
 
   // The caption row: the vertical layout's address row (44) or the
   // horizontal layout's strip row (40). Its trailing end holds minimize /
-  // maximize / close, square, at the window's top-right corner.
+  // maximize / close, square, at the window's top-right corner (the card's,
+  // with a page margin in the vertical layout).
   const int tb = scaled(horizontal ? kStripRowHeight : kAddressRowHeight);
-  out.title_bar = {0, 0, w, tb};
-  out.caption_close = {w - cap, 0, w, tb};
-  out.caption_max = {w - 2 * cap, 0, w - cap, tb};
-  out.caption_min = {w - 3 * cap, 0, w - 2 * cap, tb};
+  out.title_bar = {0, 0, w, row_top + tb};
+  const int cap_right = horizontal ? w : card_right;
+  out.caption_close = {cap_right - cap, row_top, cap_right, row_top + tb};
+  out.caption_max = {cap_right - 2 * cap, row_top, cap_right - cap,
+                     row_top + tb};
+  out.caption_min = {cap_right - 3 * cap, row_top, cap_right - 2 * cap,
+                     row_top + tb};
 
   // A 32 dip control centred on `mid`, its right edge at `right`.
   const auto control_r = [&](int right, int mid) {
@@ -208,9 +221,9 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     // The toolbar: nav trio leading, the omnibox filling the middle, the
     // tool cluster trailing.
     const int toolbar_h = scaled(kToolbarRowHeight);
-    out.top_bar = {0, tb, w, tb + toolbar_h};
+    out.top_bar = {margin, tb, card_right, tb + toolbar_h};
     const int mid = tb + toolbar_h / 2;
-    out.back = control_l(inset, mid);
+    out.back = control_l(margin + inset, mid);
     out.forward = control_l(out.back.right + btn_gap, mid);
     out.reload = control_l(out.forward.right + btn_gap, mid);
     int field_left = out.reload.right + scaled(kGroupGap);
@@ -222,25 +235,28 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
                         mid + chip_h / 2};
       field_left = out.agent_chip.right + scaled(kGroupGap);
     }
-    const int cluster_left = place_cluster(w - inset, mid, true);
+    const int cluster_left = place_cluster(card_right - inset, mid, true);
     place_omnibox(field_left, cluster_left - scaled(kGroupGap), mid);
-    out.content = {0, out.top_bar.bottom, w, h};
+    out.content = {margin, out.top_bar.bottom, card_right, h - margin};
+    out.pane = {margin, out.top_bar.top, card_right, h - margin};
     carve_bookmark_bar(&out);
     return out;
   }
 
   // The vertical layout (§4.2): the sidebar stands on the tint with its
   // own header row; the page pane runs flush to the window's top, right
-  // and bottom and carries the address row with the window buttons.
-  const int pane_left = hide_sidebar ? 0 : sidebar;
+  // and bottom (or stands the page margin in from them) and carries the
+  // address row with the window buttons.
+  const int pane_left = hide_sidebar ? margin : sidebar;
   out.sidebar = {0, 0, sidebar, h};
-  out.top_bar = {pane_left, 0, w, tb};
-  out.content = {pane_left, tb, w, h};
+  out.top_bar = {pane_left, row_top, card_right, row_top + tb};
+  out.content = {pane_left, row_top + tb, card_right, h - margin};
+  out.pane = {pane_left, row_top, card_right, h - margin};
   carve_bookmark_bar(&out);
-  const int mid = tb / 2;
+  const int mid = row_top + tb / 2;
   if (hide_sidebar) {
     // Keep both controls reachable while the sidebar is tucked away.
-    out.sidebar_toggle = control_l(inset, mid);
+    out.sidebar_toggle = control_l(pane_left + inset, mid);
     out.search_tabs = control_l(out.sidebar_toggle.right + btn_gap, mid);
     int nav_left = out.search_tabs.right + scaled(kGroupGap);
     if (in.update_dip > 0) {
@@ -305,14 +321,14 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // pins, bookmarks, new tab, tabs and the bottom bar.
   const bool header_row = in.spaces_switch || in.floating_panel;
   if (!hide_sidebar && header_row) {
-    place_spaces(0, sidebar, tb, tb);
+    place_spaces(0, sidebar, row_top + tb, tb);
   }
   // No section labels (§4.2): the bands follow each other 8 dip apart;
   // only the agent Space's "<Agent>'s tabs" cue keeps a label row.
   const int label_h = scaled(kSectionLabelHeight);
   const int label_inset = scaled(kSectionLabelInset);
   const int gap = scaled(kSectionGap);
-  const int sidebar_header_bottom = tb + (header_row ? tb : 0);
+  const int sidebar_header_bottom = row_top + tb + (header_row ? tb : 0);
   // The bottom bar's top, up front: the stored bands' cap is a share of the
   // room between the header and it.
   const int bar_h = scaled(kBottomBarHeight);

@@ -48,6 +48,11 @@ struct PhiCaptionRects {
   // The sidebar's header row (vertical layout): the pips take their own
   // clicks there; the empty run drags the window.
   RECT spaces_strip{};
+  // The page card, the sidebar column and the page margin around the card
+  // (GitHub #13): the margin is the window's frame and drags it.
+  RECT pane{};
+  RECT sidebar{};
+  int page_margin = 0;
   // Comfortable drops its caption glyphs onto the tab strip's line.
   int tabs_top = 0;
   bool horizontal_tabs = false;

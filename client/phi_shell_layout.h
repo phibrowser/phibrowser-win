@@ -197,6 +197,12 @@ struct ShellLayoutInputs {
   // The Mac's newTabsAtTop off (its default): the sidebar's New Tab row
   // follows the last tab instead of leading the list. Vertical layouts only.
   bool new_tab_row_at_bottom = false;
+  // Appearance ▸ "Page margin" (GitHub phibrowser/phibrowser-win#13): the
+  // page card stands this many dip in from the window's edges, the window
+  // backdrop showing around it, as on the Mac (WebContentConstant
+  // .edgesSpacing). 0 = flush. The caller passes 0 while the window is
+  // maximized or fullscreen.
+  int page_margin_dip = 0;
 
   friend bool operator==(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -223,7 +229,8 @@ struct ShellLayoutInputs {
            a.agent_chip_dip == b.agent_chip_dip &&
            a.update_dip == b.update_dip &&
            a.media_card_dip == b.media_card_dip &&
-           a.new_tab_row_at_bottom == b.new_tab_row_at_bottom;
+           a.new_tab_row_at_bottom == b.new_tab_row_at_bottom &&
+           a.page_margin_dip == b.page_margin_dip;
   }
   friend bool operator!=(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -245,6 +252,12 @@ struct ShellLayout {
   // edge to the window's; horizontal: the toolbar under the strip).
   SidebarRect top_bar;
   SidebarRect content;  // Where the reparented browser child goes.
+  // The page card: the address row (vertical) or the toolbar (horizontal)
+  // and the content under it, as one rounded sheet. With a page margin all
+  // four corners round; without one it runs off the window's edges.
+  SidebarRect pane;
+  // The page margin in pixels (0 = the card is flush with the window).
+  int page_margin = 0;
   // The bookmark bar band, carved off the content's top when visible.
   SidebarRect bookmark_bar;
   SidebarRect app_icon;  // The vertical sidebar's persistent header mark.

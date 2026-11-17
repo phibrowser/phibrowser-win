@@ -63,6 +63,14 @@ void PhiCaptionBand::SetCaptionHot(int code) {
 
 int PhiCaptionBand::HitTest(POINT client_pt) {
   const PhiCaptionRects rects = shell_->CaptionRects();
+  // The page margin (GitHub #13) is frame: it drags the window, as a
+  // border around a Zen or Arc page does. The sidebar column keeps its own
+  // clicks (a hidden sidebar's tucked edge sits over the left margin).
+  if (rects.page_margin > 0 && !::PtInRect(&rects.title_bar, client_pt) &&
+      !::PtInRect(&rects.pane, client_pt) &&
+      !::PtInRect(&rects.sidebar, client_pt)) {
+    return HTCAPTION;
+  }
   if (!::PtInRect(&rects.title_bar, client_pt)) {
     return 0;
   }

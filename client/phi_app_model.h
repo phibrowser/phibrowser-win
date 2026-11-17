@@ -251,6 +251,16 @@ struct PhiSettings {
   // Windows only; on by default. Every save writes the key, so a profile
   // saved while the default was off keeps its explicit false.
   bool translucent_frame = true;
+  // Appearance ▸ "Page margin" (GitHub phibrowser/phibrowser-win#13): the
+  // page card stands 8 dip in from the window's edges with the backdrop
+  // around it, as on the Mac. Collapses while maximized or fullscreen.
+  // Windows only; off by default.
+  bool page_margin = false;
+  // Appearance ▸ "Window material": the DWM system backdrop behind the
+  // sidebar, the margin and (with Transparent toolbars) the rows —
+  // "acrylic" (DWMSBT_TRANSIENTWINDOW; the accent on Windows 10) or "mica"
+  // (DWMSBT_MAINWINDOW, Windows 11 22H2+; acrylic where DWM refuses it).
+  std::string window_material = "acrylic";
   bool peek_view_enabled = true;
   bool auto_peek_view_enabled = true;
   // The Mac's autoPeekSameSiteLinksEnabled (2fec54f4): a pinned tab's or

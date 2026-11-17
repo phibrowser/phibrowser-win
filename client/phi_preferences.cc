@@ -363,6 +363,14 @@ bool PhiPreferences::TranslucentFrame() const {
   return settings_.translucent_frame;
 }
 
+bool PhiPreferences::PageMargin() const {
+  return settings_.page_margin;
+}
+
+bool PhiPreferences::MicaMaterial() const {
+  return settings_.window_material == "mica";
+}
+
 bool PhiPreferences::NewTabOpensOmnibox() const {
   return settings_.new_tab_behavior == model::NewTabBehavior::kOmnibox;
 }
@@ -644,6 +652,26 @@ void PhiPreferences::SetTranslucentFrame(bool enabled) {
   settings_.translucent_frame = enabled;
   MarkDirty();
   // The same re-apply as the slider: every window resets its backdrop.
+  Notify(PreferenceChange::kSidebarTransparency);
+}
+
+void PhiPreferences::SetPageMargin(bool enabled) {
+  if (enabled == settings_.page_margin) {
+    return;
+  }
+  settings_.page_margin = enabled;
+  MarkDirty();
+  // The backdrop's re-apply also lays every window out again.
+  Notify(PreferenceChange::kSidebarTransparency);
+}
+
+void PhiPreferences::SetMicaMaterial(bool mica) {
+  const std::string material = mica ? "mica" : "acrylic";
+  if (material == settings_.window_material) {
+    return;
+  }
+  settings_.window_material = material;
+  MarkDirty();
   Notify(PreferenceChange::kSidebarTransparency);
 }
 

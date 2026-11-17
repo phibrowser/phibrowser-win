@@ -181,6 +181,10 @@ class PhiSettingsHost {
   virtual void SetSidebarTransparency(int percent) = 0;
   // Appearance ▸ "Transparent toolbars" (Windows only; off by default).
   virtual void SetTranslucentFrame(bool enabled) = 0;
+  // Appearance ▸ "Page margin" (GitHub #13; Windows only; off by default).
+  virtual void SetPageMargin(bool enabled) = 0;
+  // Appearance ▸ "Window material": Mica (true) or acrylic (false).
+  virtual void SetMicaMaterial(bool mica) = 0;
   // The UI language. An EMPTY tag means "follow the operating system", which
   // is the default and the only value that tracks a later OS change.
   virtual void SetLanguagePreference(const std::string& tag) = 0;

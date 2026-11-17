@@ -4020,6 +4020,22 @@ void PhiCoordinator::SetTranslucentFrame(bool enabled) {
   preferences_.SetTranslucentFrame(enabled);
 }
 
+bool PhiCoordinator::PageMargin() const {
+  return preferences_.PageMargin();
+}
+
+void PhiCoordinator::SetPageMargin(bool enabled) {
+  preferences_.SetPageMargin(enabled);
+}
+
+bool PhiCoordinator::MicaMaterial() const {
+  return preferences_.MicaMaterial();
+}
+
+void PhiCoordinator::SetMicaMaterial(bool mica) {
+  preferences_.SetMicaMaterial(mica);
+}
+
 bool PhiCoordinator::PeekViewEnabled() const {
   return preferences_.PeekViewEnabled();
 }
@@ -4593,8 +4609,10 @@ void PhiCoordinator::OnPreferencesChanged(
       // The DWM backdrop is set (or dropped) per window and the tint's alpha
       // re-read; the corners, split ground and regrade follow it, as on a
       // palette change.
+      // The page margin moves every band: lay the window out again too.
       for (PhiShellWindow* controller : registry_.Controllers()) {
         controller->ApplyPalette();
+        controller->LayoutContents();
         if (HWND shell = controller->shell_hwnd()) {
           ::InvalidateRect(shell, nullptr, FALSE);
         }

@@ -6251,6 +6251,104 @@
     "zh-Hant": "網址列、書籤列和分頁列也透出桌面。網頁保持不透明。"
    }
   },
+  "settings.appearance.pageMargin.toggle": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, switch under Transparent toolbars (Windows only, GitHub #13): the page as a card inset from the window edges",
+   "en": "Page margin",
+   "translations": {
+    "de": "Seitenrand",
+    "es": "Margen de página",
+    "fr": "Marge autour de la page",
+    "ja": "ページの余白",
+    "ko": "페이지 여백",
+    "nl": "Paginamarge",
+    "zh-Hans": "页面边距",
+    "zh-Hant": "頁面邊距"
+   }
+  },
+  "settings.appearance.pageMargin.hint": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, hint under the page-margin switch",
+   "en": "Show the page as a card inset from the window's edges, with the window backdrop around it. Not while maximized or full screen.",
+   "translations": {
+    "de": "Zeigt die Seite als Karte mit Abstand zum Fensterrand, umgeben vom Fensterhintergrund. Nicht im maximierten Fenster oder im Vollbild.",
+    "es": "Muestra la página como una tarjeta separada de los bordes de la ventana, con el fondo de la ventana alrededor. No en ventana maximizada ni en pantalla completa.",
+    "fr": "Affiche la page comme une carte en retrait des bords de la fenêtre, entourée de l’arrière-plan de la fenêtre. Pas en fenêtre agrandie ni en plein écran.",
+    "ja": "ページをウィンドウの端から離したカードとして表示し、周囲にウィンドウの背景を表示します。最大化時と全画面表示時は除きます。",
+    "ko": "페이지를 창 가장자리에서 띄운 카드로 표시하고 주위에 창 배경을 보여 줍니다. 최대화 또는 전체 화면에서는 적용되지 않습니다.",
+    "nl": "Toont de pagina als een kaart die van de vensterranden af staat, met de vensterachtergrond eromheen. Niet bij een gemaximaliseerd venster of volledig scherm.",
+    "zh-Hans": "将网页显示为与窗口边缘留有间距的卡片，周围透出窗口背景。窗口最大化或全屏时不显示。",
+    "zh-Hant": "將網頁顯示為與視窗邊緣留有間距的卡片，周圍透出視窗背景。視窗最大化或全螢幕時不顯示。"
+   }
+  },
+  "settings.appearance.windowMaterial.title": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, the window-material drop-down (Windows only, GitHub #13): the DWM backdrop type",
+   "en": "Window material",
+   "translations": {
+    "de": "Fenstermaterial",
+    "es": "Material de la ventana",
+    "fr": "Matériau de la fenêtre",
+    "ja": "ウィンドウの素材",
+    "ko": "창 재질",
+    "nl": "Venstermateriaal",
+    "zh-Hans": "窗口材质",
+    "zh-Hant": "視窗材質"
+   }
+  },
+  "settings.appearance.windowMaterial.acrylic": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, window-material option: the Windows acrylic backdrop",
+   "en": "Acrylic",
+   "translations": {
+    "de": "Acryl",
+    "es": "Acrílico",
+    "fr": "Acrylique",
+    "ja": "アクリル",
+    "ko": "아크릴",
+    "nl": "Acryl",
+    "zh-Hans": "亚克力",
+    "zh-Hant": "壓克力"
+   }
+  },
+  "settings.appearance.windowMaterial.mica": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, window-material option: the Windows 11 Mica backdrop (use the Windows name for Mica)",
+   "en": "Mica",
+   "translations": {
+    "de": "Mica",
+    "es": "Mica",
+    "fr": "Mica",
+    "ja": "マイカ",
+    "ko": "Mica",
+    "nl": "Mica",
+    "zh-Hans": "云母",
+    "zh-Hant": "雲母"
+   }
+  },
+  "settings.appearance.windowMaterial.hint": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, hint under the window-material drop-down",
+   "en": "What shows through the sidebar and the page margin. Mica takes its colour from your wallpaper and is lighter on the GPU; acrylic blurs the windows behind.",
+   "translations": {
+    "de": "Was durch Seitenleiste und Seitenrand scheint. Mica übernimmt die Farbe Ihres Hintergrundbilds und schont die GPU; Acryl zeigt die Fenster dahinter weichgezeichnet.",
+    "es": "Lo que se ve a través de la barra lateral y el margen de página. Mica toma el color del fondo de escritorio y exige menos a la GPU; el acrílico difumina las ventanas de detrás.",
+    "fr": "Ce qui transparaît dans la barre latérale et la marge de page. Mica prend la couleur du fond d’écran et ménage le GPU ; l’acrylique floute les fenêtres situées derrière.",
+    "ja": "サイドバーとページの余白から見えるものです。マイカは壁紙の色を取り込み GPU の負荷が軽く、アクリルは背後のウィンドウをぼかします。",
+    "ko": "사이드바와 페이지 여백에 비치는 배경입니다. Mica는 바탕 화면 색을 입히며 GPU 부담이 적고, 아크릴은 뒤의 창을 흐리게 보여 줍니다.",
+    "nl": "Wat er door de zijbalk en de paginamarge schijnt. Mica neemt de kleur van je achtergrond over en belast de GPU minder; acryl vervaagt de vensters erachter.",
+    "zh-Hans": "边栏和页面边距中透出的效果。云母取色自桌面壁纸，对 GPU 负担更小；亚克力会模糊显示后方窗口。",
+    "zh-Hant": "側邊欄和頁面邊距中透出的效果。雲母取色自桌面桌布，對 GPU 負擔更小；壓克力會模糊顯示後方視窗。"
+   }
+  },
+  "settings.appearance.windowMaterial.win10Hint": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, hint under the window-material drop-down before Windows 11 22H2",
+   "en": "Mica needs Windows 11. On this version of Windows the sidebar and page margin use acrylic.",
+   "translations": {
+    "de": "Mica erfordert Windows 11. Unter dieser Windows-Version verwenden Seitenleiste und Seitenrand Acryl.",
+    "es": "Mica requiere Windows 11. En esta versión de Windows, la barra lateral y el margen de página usan acrílico.",
+    "fr": "Mica nécessite Windows 11. Sur cette version de Windows, la barre latérale et la marge de page utilisent l’acrylique.",
+    "ja": "マイカには Windows 11 が必要です。このバージョンの Windows では、サイドバーとページの余白にアクリルを使います。",
+    "ko": "Mica는 Windows 11이 필요합니다. 이 Windows 버전에서는 사이드바와 페이지 여백에 아크릴을 사용합니다.",
+    "nl": "Mica vereist Windows 11. Op deze Windows-versie gebruiken de zijbalk en de paginamarge acryl.",
+    "zh-Hans": "云母需要 Windows 11。在此 Windows 版本上，边栏和页面边距使用亚克力。",
+    "zh-Hant": "雲母需要 Windows 11。在此 Windows 版本上，側邊欄和頁面邊距使用壓克力。"
+   }
+  },
   "settings.approvedAgents": {
    "comment": "settings — used at phi_settings_window.cc:2175",
    "en": "Approved agents",

@@ -4,6 +4,7 @@
 #include "client/phi_settings_window.h"
 
 #include "client/phi_content_blocking_window.h"
+#include "client/phi_legacy_acrylic.h"
 #include "client/phi_pop_animation.h"
 
 #include <shellapi.h>
@@ -1681,6 +1682,25 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
                "translucentframe",
                PhiStr("settings.appearance.translucentFrame.hint"),
                kChipIndent, 0xE737);
+  AddDividerRow(y);
+  // Page margin (GitHub phibrowser/phibrowser-win#13): the page as a card
+  // inset from the window's edges, the backdrop around it, as on the Mac.
+  AddToggleRow(y, PhiStr("settings.appearance.pageMargin.toggle"),
+               prefs_->PageMargin(), /*enabled=*/true, "pagemargin",
+               PhiStr("settings.appearance.pageMargin.hint"), kChipIndent,
+               0xE73F);
+  AddDividerRow(y);
+  // Window material: the DWM backdrop behind the sidebar, the margin and
+  // the transparent toolbars. Mica exists on Windows 11 22H2+ only.
+  AddPopupRow(y, PhiStr("settings.appearance.windowMaterial.title"),
+              PhiStr(prefs_->MicaMaterial() && PhiSystemBackdropSupported()
+                         ? "settings.appearance.windowMaterial.mica"
+                         : "settings.appearance.windowMaterial.acrylic"),
+              "materialmenu",
+              PhiStr(PhiSystemBackdropSupported()
+                         ? "settings.appearance.windowMaterial.hint"
+                         : "settings.appearance.windowMaterial.win10Hint"),
+              kChipIndent, 0xE771);
   // The Mac's "Apply theme to text selection on web pages" is not drawn:
   // Windows has no web-selection tint for it to switch.
   EndSection(y);
@@ -6886,6 +6906,8 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetShowOpenTabIndicators(!item.on);
   } else if (item.action == "translucentframe") {
     host_->SetTranslucentFrame(!item.on);
+  } else if (item.action == "pagemargin") {
+    host_->SetPageMargin(!item.on);
   } else if (item.action == "dimunloaded") {
     host_->SetDimUnloadedTabIcons(!item.on);
   } else if (item.action == "tabswitcherscope") {
@@ -7480,6 +7502,29 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
       InstallSkillForAllAgents(hwnd());
     } else if (chosen >= 2 && chosen < 2 + targets.size()) {
       InstallSkillFor(hwnd(), targets[chosen - 2]);
+    }
+  } else if (item.action == "materialmenu") {
+    // Window material: Acrylic / Mica (greyed before Windows 11 22H2).
+    HMENU menu = ::CreatePopupMenu();
+    if (!menu) {
+      return;
+    }
+    const bool mica_ok = PhiSystemBackdropSupported();
+    const bool mica = prefs_->MicaMaterial() && mica_ok;
+    ::AppendMenuW(menu, MF_STRING | (mica ? 0 : MF_CHECKED), 1,
+                  PhiStr("settings.appearance.windowMaterial.acrylic"));
+    ::AppendMenuW(menu,
+                  MF_STRING | (mica ? MF_CHECKED : 0) |
+                      (mica_ok ? 0 : MF_GRAYED),
+                  2, PhiStr("settings.appearance.windowMaterial.mica"));
+    POINT anchor = {item.bounds.left, item.bounds.bottom};
+    ::ClientToScreen(hwnd(), &anchor);
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
+        menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
+        anchor.y, 0, hwnd(), nullptr));
+    ::DestroyMenu(menu);
+    if (chosen == 1 || chosen == 2) {
+      host_->SetMicaMaterial(chosen == 2);
     }
   } else if (item.action == "appearancemenu") {
     // The Color appearance ComboBox: Use system setting / Light / Dark.

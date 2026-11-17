@@ -23,6 +23,10 @@ bool PhiLegacyAcrylicSupported();
 // when the accent could not be set (then the shell stays opaque).
 bool PhiSetLegacyAcrylic(HWND hwnd, bool enabled, bool dark);
 
+// Windows 11 22H2 (build 22621) or later: DWMWA_SYSTEMBACKDROP_TYPE exists,
+// so Mica (and the system acrylic) can be chosen.
+bool PhiSystemBackdropSupported();
+
 // --phi-legacy-acrylic, dev-hooks builds only: take the accent path even
 // where the system backdrop exists, so a Windows 11 test box can run it.
 bool PhiForceLegacyAcrylic();

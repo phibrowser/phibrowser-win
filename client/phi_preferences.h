@@ -137,6 +137,8 @@ class PhiPreferences : public ChromePrefsHost {
                                 bool collapsed) override;
   int SidebarTransparency() const override;
   bool TranslucentFrame() const override;
+  bool PageMargin() const override;
+  bool MicaMaterial() const override;
   bool NewTabOpensOmnibox() const override;
   int SidebarWidth() const override;
   void RequestSidebarWidth(int dip) override;
@@ -205,6 +207,8 @@ class PhiPreferences : public ChromePrefsHost {
   void SetNewTabsAtTop(bool enabled);
   void SetSidebarTransparency(int percent);
   void SetTranslucentFrame(bool enabled);
+  void SetPageMargin(bool enabled);
+  void SetMicaMaterial(bool mica);
   bool PeekViewEnabled() const { return settings_.peek_view_enabled; }
   void SetPeekViewEnabled(bool enabled);
   bool AutoPeekViewEnabled() const { return settings_.auto_peek_view_enabled; }
