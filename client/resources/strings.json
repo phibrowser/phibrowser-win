@@ -4196,7 +4196,7 @@
   "downloads.item.completedTime.daysAgo.other": {
    "de": "vor {0} Tagen",
    "en": "{0} days ago",
-   "es": "hace {0} días",
+   "es": "Hace {0} días",
    "fr": "Il y a {0} jours",
    "ja": "{0}日前",
    "ko": "{0}일 전",
@@ -4207,7 +4207,7 @@
   "downloads.item.completedTime.hoursAgo.one": {
    "de": "vor {0} Stunde",
    "en": "{0} hour ago",
-   "es": "hace {0} hora",
+   "es": "Hace {0} hora",
    "fr": "Il y a {0} heure",
    "ja": "{0}時間前",
    "ko": "{0}시간 전",
@@ -7724,17 +7724,6 @@
    "zh-Hans": "名称不能为空",
    "zh-Hant": "名稱不能為空白"
   },
-  "settings.account.renameDialog.emptyNameError.title": {
-   "de": "Ungültige Eingabe",
-   "en": "Invalid Input",
-   "es": "Entrada no válida",
-   "fr": "Saisie non valide",
-   "ja": "入力が無効です",
-   "ko": "잘못된 입력",
-   "nl": "Ongeldige invoer",
-   "zh-Hans": "输入无效",
-   "zh-Hant": "輸入無效"
-  },
   "settings.account.renameDialog.nameTooLongError.message": {
    "de": "Der Name darf höchstens {0} Zeichen lang sein",
    "en": "Name cannot exceed {0} characters",
@@ -7756,28 +7745,6 @@
    "nl": "Ongeldige invoer",
    "zh-Hans": "输入无效",
    "zh-Hant": "輸入無效"
-  },
-  "settings.account.renameDialog.saveButton": {
-   "de": "Speichern",
-   "en": "Save",
-   "es": "Guardar",
-   "fr": "Enregistrer",
-   "ja": "保存",
-   "ko": "저장",
-   "nl": "Bewaar",
-   "zh-Hans": "保存",
-   "zh-Hant": "儲存"
-  },
-  "settings.account.renameDialog.title": {
-   "de": "Namen ändern",
-   "en": "Change Name",
-   "es": "Cambiar nombre",
-   "fr": "Modifier le nom",
-   "ja": "名前を変更",
-   "ko": "이름 변경",
-   "nl": "Wijzig naam",
-   "zh-Hans": "更改名称",
-   "zh-Hant": "變更名稱"
   },
   "settings.account.saving": {
    "de": "Dein Konto wird aktualisiert…",
@@ -8071,10 +8038,10 @@
    "es": "Agrupar las pestañas abiertas desde enlaces",
    "fr": "Regrouper les onglets ouverts depuis des liens",
    "ja": "リンクから開いたタブをグループ化",
-   "ko": "링크에서 연 탭 그룹화",
-   "nl": "Groepeer tabbladen die via links zijn geopend",
-   "zh-Hans": "将从链接打开的标签页归入标签组",
-   "zh-Hant": "將從連結開啟的分頁加入群組"
+   "ko": "링크에서 연 탭을 그룹으로 묶기",
+   "nl": "Groepeer tabbladen die vanuit links zijn geopend",
+   "zh-Hans": "为从链接打开的标签页分组",
+   "zh-Hant": "將從連結開啟的分頁加入分頁群組"
   },
   "settings.agentAccessPermissionsAndThe": {
    "de": "Agentenzugriff, Berechtigungen und den Passwortmanager ",
@@ -9100,15 +9067,15 @@
    "zh-Hant": "新分頁行為"
   },
   "settings.general.newTabsAtTop.description": {
-   "de": "In Layouts mit Seitenleiste werden neue Tabs oben in der Tab-Liste platziert. „Komfortabel“ öffnet neue Tabs immer am Ende.",
+   "de": "Platziert neue Tabs in Layouts mit Seitenleiste oben in der Tab-Liste. Im Layout „Komfortabel“ werden neue Tabs immer am Ende geöffnet.",
    "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end.",
-   "es": "En los diseños con barra lateral, coloca las pestañas nuevas al principio de la lista de pestañas. Cómodo siempre abre las pestañas nuevas al final.",
-   "fr": "Dans les dispositions avec barre latérale, place les nouveaux onglets en haut de la liste des onglets. Confortable ouvre toujours les nouveaux onglets à la fin.",
-   "ja": "サイドバーレイアウトでは、新しいタブをタブリストの一番上に配置します。「ゆったり」では、新しいタブは常に末尾に開きます。",
+   "es": "En los diseños con barra lateral, coloca las pestañas nuevas en la parte superior de la lista de pestañas. El diseño Cómodo siempre abre las pestañas nuevas al final.",
+   "fr": "Dans les dispositions avec barre latérale, place les nouveaux onglets en haut de la liste des onglets. La disposition Confortable ouvre toujours les nouveaux onglets à la fin.",
+   "ja": "サイドバーのあるレイアウトでは、新しいタブをタブリストの一番上に配置します。ゆったりレイアウトでは、新しいタブは常に末尾に開きます。",
    "ko": "사이드바 레이아웃에서는 새 탭을 탭 목록 맨 위에 배치해요. 여유 레이아웃에서는 새 탭이 항상 맨 끝에 열려요.",
-   "nl": "Plaats nieuwe tabbladen in lay-outs met een zijbalk boven aan de tabbladenlijst. Comfortabel opent nieuwe tabbladen altijd aan het einde.",
-   "zh-Hans": "在侧边栏布局中，将新标签页放在标签页列表顶部。“舒适”布局始终在末尾打开新标签页。",
-   "zh-Hant": "在側邊欄版面配置中，將新分頁放在分頁列表頂端。「舒適」版面配置一律在最後開啟新分頁。"
+   "nl": "Plaats nieuwe tabbladen in lay-outs met een zijbalk boven aan de tabbladenlijst. In Comfortabel worden nieuwe tabbladen altijd aan het einde geopend.",
+   "zh-Hans": "在侧边栏布局中，将新标签页放在标签页列表顶部。「舒适」布局始终在末尾打开新标签页。",
+   "zh-Hant": "在側邊欄版面配置中，將新分頁放在分頁列表的頂端。「舒適」版面配置一律在尾端開啟新分頁。"
   },
   "settings.general.newTabsAtTop.title": {
    "de": "Neue Tabs oben öffnen",
@@ -9583,6 +9550,28 @@
    "zh-Hans": "启用 Peek 视图",
    "zh-Hant": "啟用 Peek 檢視"
   },
+  "settings.navigations.peek.sameSiteToggle.description": {
+   "de": "Links in einem angehefteten Tab oder Lesezeichen, die einen neuen Tab öffnen würden, öffnen sich in einem Peek-Panel, auch wenn sie auf derselben Website bleiben.",
+   "en": "Links in a pinned tab or bookmark that would open a new tab open in a Peek panel, even when they stay on the same site.",
+   "es": "Los enlaces de una pestaña fijada o de un marcador que se abrirían en una pestaña nueva se abren en un panel Peek, incluso cuando permanecen en el mismo sitio.",
+   "fr": "Les liens d'un onglet épinglé ou d'un favori qui devraient ouvrir un nouvel onglet s'ouvrent dans un panneau Peek, même lorsqu'ils restent sur le même site.",
+   "ja": "固定タブやブックマークで新しいタブに開くはずのリンクは、同じサイト内のリンクでもPeekビューで開きます。",
+   "ko": "고정된 탭이나 북마크에서 새 탭으로 열릴 링크는 같은 사이트 안에 머무는 경우에도 Peek 패널에서 열려요.",
+   "nl": "Links in een vastgezet tabblad of bladwijzer die een nieuw tabblad zouden openen, worden in een Peek-paneel geopend, ook als ze op dezelfde site blijven.",
+   "zh-Hans": "固定的标签页或书签中原本会在新标签页打开的链接，即使仍在同一网站内，也会在 Peek 面板中打开。",
+   "zh-Hant": "釘選分頁或書籤中原本會開啟新分頁的連結，即使仍在同一網站，也會在 Peek 面板中開啟。"
+  },
+  "settings.navigations.peek.sameSiteToggle.title": {
+   "de": "Auch Links zur selben Website in der Peek-Ansicht öffnen",
+   "en": "Also peek links to the same site",
+   "es": "Abrir también en vista Peek los enlaces al mismo sitio",
+   "fr": "Ouvrir aussi dans la vue Peek les liens vers le même site",
+   "ja": "同じサイト内のリンクもPeekビューで開く",
+   "ko": "같은 사이트의 링크도 Peek 뷰에서 열기",
+   "nl": "Open ook links naar dezelfde site in Peek",
+   "zh-Hans": "同一网站的链接也在 Peek 中打开",
+   "zh-Hant": "同網站的連結也以 Peek 開啟"
+  },
   "settings.navigations.peek.sectionDescription": {
    "de": "Zeigt eine Linkvorschau an, ohne den Link in einem neuen Tab zu öffnen.",
    "en": "Preview a link without opening it in a new tab.",
@@ -9604,6 +9593,50 @@
    "nl": "Peek",
    "zh-Hans": "Peek",
    "zh-Hant": "Peek"
+  },
+  "settings.navigations.peek.size.largeOption": {
+   "de": "Groß",
+   "en": "Large",
+   "es": "Grande",
+   "fr": "Grande",
+   "ja": "大",
+   "ko": "크게",
+   "nl": "Groot",
+   "zh-Hans": "大",
+   "zh-Hant": "大"
+  },
+  "settings.navigations.peek.size.mediumOption": {
+   "de": "Mittel",
+   "en": "Medium",
+   "es": "Mediano",
+   "fr": "Moyenne",
+   "ja": "中",
+   "ko": "중간",
+   "nl": "Gemiddeld",
+   "zh-Hans": "中",
+   "zh-Hant": "中"
+  },
+  "settings.navigations.peek.size.smallOption": {
+   "de": "Klein",
+   "en": "Small",
+   "es": "Pequeño",
+   "fr": "Petite",
+   "ja": "小",
+   "ko": "작게",
+   "nl": "Klein",
+   "zh-Hans": "小",
+   "zh-Hant": "小"
+  },
+  "settings.navigations.peek.size.title": {
+   "de": "Größe des Peek-Panels",
+   "en": "Peek panel size",
+   "es": "Tamaño del panel Peek",
+   "fr": "Taille du panneau Peek",
+   "ja": "Peekパネルのサイズ",
+   "ko": "Peek 패널 크기",
+   "nl": "Grootte van Peek-paneel",
+   "zh-Hans": "Peek 面板大小",
+   "zh-Hant": "Peek 面板大小"
   },
   "settings.navigations.urlRules.openButton": {
    "de": "URL-Regeln verwalten…",
@@ -10530,6 +10563,17 @@
    "zh-Hans": "你的数据和设置",
    "zh-Hant": "你的資料與設定"
   },
+  "settings.profiles.dataLinks.unavailableWithoutSpace": {
+   "de": "Kein Space verwendet dieses Profil. Weise es einem Space zu, um seine Daten und Einstellungen zu verwalten.",
+   "en": "No Space uses this profile. Assign it to a Space to manage its data and settings.",
+   "es": "Ningún Espacio usa este perfil. Asígnalo a un Espacio para administrar sus datos y su configuración.",
+   "fr": "Aucun Espace n'utilise ce profil. Attribuez-le à un Espace pour gérer ses données et ses paramètres.",
+   "ja": "このプロファイルを使用しているスペースはありません。データと設定を管理するには、スペースに割り当ててください。",
+   "ko": "이 프로필을 사용하는 스페이스가 없어요. 데이터와 설정을 관리하려면 스페이스에 할당해 주세요.",
+   "nl": "Geen enkele Space gebruikt dit profiel. Wijs het toe aan een Space om de gegevens en instellingen ervan te beheren.",
+   "zh-Hans": "没有空间使用此个人资料。将它分配给一个空间后，即可管理其数据和设置。",
+   "zh-Hant": "沒有空間使用此設定檔。請將它指派給空間，才能管理其資料與設定。"
+  },
   "settings.profiles.dataLinks.yourDataHeading": {
    "de": "Deine Daten",
    "en": "Your data",
@@ -10684,6 +10728,17 @@
    "zh-Hans": "你的个人资料",
    "zh-Hant": "你的設定檔"
   },
+  "settings.profiles.nameField.duplicateError": {
+   "de": "Ein Profil mit diesem Namen existiert bereits.",
+   "en": "A profile with this name already exists.",
+   "es": "Ya existe un perfil con este nombre.",
+   "fr": "Un profil portant ce nom existe déjà.",
+   "ja": "この名前のプロファイルはすでに存在します。",
+   "ko": "같은 이름의 프로필이 이미 있어요.",
+   "nl": "Er bestaat al een profiel met deze naam.",
+   "zh-Hans": "已存在同名的个人资料。",
+   "zh-Hant": "已有同名的設定檔。"
+  },
   "settings.profiles.newButtonTooltip": {
    "de": "Neues Profil",
    "en": "New profile",
@@ -10694,28 +10749,6 @@
    "nl": "Nieuw profiel",
    "zh-Hans": "新建个人资料",
    "zh-Hant": "新增設定檔"
-  },
-  "settings.profiles.renameDialog.message": {
-   "de": "Gib einen neuen Namen für dieses Profil ein.",
-   "en": "Enter a new name for this profile.",
-   "es": "Introduce un nombre nuevo para este perfil.",
-   "fr": "Saisissez un nouveau nom pour ce profil.",
-   "ja": "このプロファイルの新しい名前を入力してください。",
-   "ko": "이 프로필의 새 이름을 입력하세요.",
-   "nl": "Voer een nieuwe naam in voor dit profiel.",
-   "zh-Hans": "输入此个人资料的新名称。",
-   "zh-Hant": "請輸入這個設定檔的新名稱。"
-  },
-  "settings.profiles.renameDialog.title": {
-   "de": "Profil umbenennen",
-   "en": "Rename Profile",
-   "es": "Renombrar perfil",
-   "fr": "Renommer le profil",
-   "ja": "プロファイルの名前を変更",
-   "ko": "프로필 이름 변경",
-   "nl": "Wijzig profielnaam",
-   "zh-Hans": "重命名个人资料",
-   "zh-Hant": "重新命名設定檔"
   },
   "settings.profiles.searchEngine.label": {
    "de": "Suchmaschine",
@@ -12907,15 +12940,15 @@
    "zh-Hant": "新增分頁"
   },
   "sidebar.pinnedTabContextMenu.changeIcon": {
-   "de": "Symbol ändern...",
+   "de": "Symbol ändern…",
    "en": "Change Icon…",
-   "es": "Cambiar icono...",
-   "fr": "Changer l'icône...",
-   "ja": "アイコンを変更...",
-   "ko": "아이콘 변경...",
-   "nl": "Wijzig symbool...",
-   "zh-Hans": "更改图标...",
-   "zh-Hant": "更改圖示..."
+   "es": "Cambiar icono…",
+   "fr": "Modifier l'icône…",
+   "ja": "アイコンを変更…",
+   "ko": "아이콘 변경…",
+   "nl": "Wijzig symbool…",
+   "zh-Hans": "更改图标…",
+   "zh-Hant": "變更圖示…"
   },
   "sidebar.pinnedTabContextMenu.editSubmenu": {
    "de": "Angehefteten Tab bearbeiten",

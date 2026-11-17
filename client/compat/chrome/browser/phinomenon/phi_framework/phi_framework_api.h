@@ -1951,6 +1951,16 @@ class PHI_ABI_INTERFACE PhiFramework {
                                                const char* list_ids_json) = 0;
   // Downloads every downloaded list the profile uses again now.
   virtual int64_t RefreshContentBlockingLists(const char* profile_id) = 0;
+
+  // --- Same-site automatic Peek (ABI 10) -------------------------------------
+  // The Mac's autoPeekSameSiteLinksEnabled (Settings ▸ Navigation "Also peek
+  // links to the same site"): with it on, a link in a pinned tab or Bookmark
+  // Tab that would open a new foreground tab opens in a Peek even when it
+  // stays on the bound tab's site. Off by default; it only widens the
+  // automatic Peek SetPeekPreferences turns on, so with that off it does
+  // nothing. In-place navigations are unchanged: a same-site one stays in
+  // the tab, a cross-site one leaves for a new tab or a Peek as before.
+  virtual void SetAutoPeekSameSiteLinks(bool enabled) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -2021,7 +2031,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 9;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 10;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

@@ -242,6 +242,9 @@ class PhiSidebarDragSession {
   // rows re-place under the zone on the posted rebuild; the release on
   // commit or cancel posts the one that closes it again.
   void ReserveDropZones();
+  // Opens the deferred pinned drop zone once `client_pt` is over the sidebar
+  // header; true when it opened (the rows moved: retarget the slide).
+  bool RevealPinnedDropZone(POINT client_pt);
   void ReleaseDropZones();
   int DragInsertSlot(POINT pt);
   void RetargetDragSlide();  // New targets for the current gap slot.
@@ -355,6 +358,12 @@ class PhiSidebarDragSession {
   // the header and its card slide differently for the two.
   std::string gap_group_;
   bool zones_reserved_ = false;  // ReserveDropZones took a zone.
+  // The empty pinned band's drop zone waits for the pointer to reach the
+  // sidebar header (the Mac's isEmptyDropZoneRevealed), then stays open
+  // until the drag ends.
+  bool pinned_zone_pending_ = false;
+  bool pinned_zone_open_ = false;
+  bool bookmark_zone_ = false;  // The outline's zone, reserved at the lift.
   // The grid preview's rows beyond the real band, in pixels (a phantom
   // that wraps onto a new row): everything under the band slides down by
   // it, and the pinned band's hit region grows by it so the pointer can

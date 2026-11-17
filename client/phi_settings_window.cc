@@ -157,6 +157,10 @@ constexpr UINT kMsgProfileCardFrame = WM_APP + 0x3A1;
 // Posted by HandleKey: Space / Enter on the focused item, run after the
 // key's WM_CHAR has been dispatched (ActivateFocus).
 constexpr UINT kMsgFocusActivate = WM_APP + 0x3A2;
+// Posted by the in-place rename field: Enter (wparam 1) or a cancel
+// (wparam 0: Escape, the focus leaving), run outside the EDIT's own proc.
+constexpr UINT kMsgInlineRenameEnd = WM_APP + 0x3A3;
+constexpr int kInlineRenameFieldId = 0x5E1;
 constexpr int kTitleToCard = 6;
 constexpr int kCardPadding = 16;   // Inner horizontal padding of a card.
 constexpr int kRowPadding = 12;    // Vertical padding around a row's content.
@@ -463,6 +467,10 @@ PhiSettingsWindow::~PhiSettingsWindow() {
   if (measure_dc_) {
     ::DeleteDC(measure_dc_);
     measure_dc_ = nullptr;
+  }
+  if (rename_brush_) {
+    ::DeleteObject(rename_brush_);
+    rename_brush_ = nullptr;
   }
   for (HFONT font :
        {font_, title_font_, small_font_, hint_font_, emoji_font_, mdl2_font_,
@@ -2675,6 +2683,28 @@ void PhiSettingsWindow::BuildNavigation(int* y) {
                prefs_->AutoPeekViewEnabled(), /*enabled=*/peek, "autopeek",
                PhiStr("settings.navigations.peek.autoToggle.description"),
                kChipIndent, 0xE718);
+  AddDividerRow(y);
+  // The Mac's 2fec54f4: under the automatic switch, and dimmed with it.
+  AddToggleRow(y, PhiStr("settings.navigations.peek.sameSiteToggle.title"),
+               prefs_->AutoPeekSameSiteLinks(),
+               /*enabled=*/peek && prefs_->AutoPeekViewEnabled(),
+               "autopeeksamesite",
+               PhiStr("settings.navigations.peek.sameSiteToggle.description"),
+               kChipIndent, 0xE71B);
+  AddDividerRow(y);
+  {
+    const std::string& size = prefs_->PeekPanelSize();
+    const char* label = size == "medium" ? "settings.navigations.peek.size.mediumOption"
+                        : size == "small" ? "settings.navigations.peek.size.smallOption"
+                                          : "settings.navigations.peek.size.largeOption";
+    AddPopupRow(y, PhiStr("settings.navigations.peek.size.title"),
+                PhiStr(label), peek ? "peeksize" : "", nullptr, kChipIndent,
+                0xE740);
+    if (!peek) {
+      // Dimmed and inert while Peek is off, as on the Mac.
+      items_.back().enabled = false;
+    }
+  }
   EndSection(y);
 
   AddUrlRulesSection(y);
@@ -2868,17 +2898,25 @@ void PhiSettingsWindow::AddProfileBody(
     for (const auto& def : kRows) {
       const int top = *y;
       const size_t row_index = items_.size();
+      // Live only while a Space uses the profile: the page opens in a window
+      // of THIS profile, which only a Space can give it (the Mac's b0b3cd4c).
+      const bool live = bound > 0;
       Item row;
       row.kind = ItemKind::kListRow;
-      row.action = "openpage";
-      row.payload = def.url;
-      row.profile = id;  // Opens in THIS profile, never the first window's.
+      if (live) {
+        row.action = "openpage";
+        row.payload = def.url;
+        row.profile = id;  // Opens in THIS profile, never the first window's.
+      }
+      row.a11y = PhiStr(def.title);  // The link reads its title.
+      row.enabled = live;
       items_.push_back(std::move(row));
       const int row_h = Scaled(kRowMinHeight + 2 * kRowPadding);
       const int gutter = nested_left + Scaled(kCardPadding);
       Item glyph;
       glyph.kind = ItemKind::kIconChip;
       glyph.text = std::wstring(1, def.glyph);
+      glyph.enabled = live;
       glyph.bounds = {gutter, top + (row_h - Scaled(kChipSize)) / 2,
                       gutter + Scaled(kChipSize),
                       top + (row_h + Scaled(kChipSize)) / 2};
@@ -2889,6 +2927,7 @@ void PhiSettingsWindow::AddProfileBody(
       Item title;
       title.kind = ItemKind::kRowLabel;
       title.text = PhiStr(def.title);
+      title.enabled = live;
       title.bounds = def.hint
                          ? RECT{text_left, mid - Scaled(19), text_right, mid}
                          : RECT{text_left, top, text_right, top + row_h};
@@ -2905,6 +2944,7 @@ void PhiSettingsWindow::AddProfileBody(
       arrow.kind = ItemKind::kIcon;
       arrow.text = std::wstring(1, wchar_t(0xE76C));
       arrow.value = 12;
+      arrow.enabled = live;
       arrow.bounds = {nested_right - Scaled(40), top, nested_right - Scaled(12),
                       top + row_h};
       items_.push_back(std::move(arrow));
@@ -2921,6 +2961,21 @@ void PhiSettingsWindow::AddProfileBody(
       }
     }
     items_[card_index].bounds.bottom = *y;
+    if (bound == 0) {
+      const std::wstring text =
+          PhiStr("settings.profiles.dataLinks.unavailableWithoutSpace");
+      const int h = std::max(Scaled(kHintHeight),
+                             WrappedHeight(hint_font_, text.c_str(),
+                                           nested_right - nested_left));
+      *y += Scaled(6);
+      Item note;
+      note.kind = ItemKind::kHint;
+      note.text = text;
+      note.wrap = true;
+      note.bounds = {nested_left, *y, nested_right, *y + h};
+      items_.push_back(std::move(note));
+      *y += h;
+    }
   }
   // Delete — Default is permanent; a profile still bound to a Space stays.
   {
@@ -3125,7 +3180,16 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
   *y += Scaled(kSectionGap);
 
   // "Your data": three live links into chrome://settings for this
-  // profile's data pages, each with a chevron.
+  // profile's data pages, each with a chevron. They open in a window of the
+  // profile, which only a Space using it can have: with none they are
+  // greyed and a note says why (the Mac's b0b3cd4c).
+  bool profile_has_space = false;
+  for (const PhiSpaceSummary& space : spaces_->Summaries()) {
+    if (space.profile_id == profile_id) {
+      profile_has_space = true;
+      break;
+    }
+  }
   {
     Item heading;
     heading.kind = ItemKind::kSectionTitle;
@@ -3156,15 +3220,20 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
       // the hover wash does not paint over the label.
       Item row;
       row.kind = ItemKind::kListRow;
-      row.action = "openpage";
-      row.payload = def.url;
-      row.profile = profile_id;  // This profile's page, not the first window's.
+      if (profile_has_space) {
+        row.action = "openpage";
+        row.payload = def.url;
+        row.profile = profile_id;  // This profile's page, not the first window's.
+      }
+      row.a11y = PhiStr(def.title);  // The link reads its title.
+      row.enabled = profile_has_space;
       row.bounds = {left + Scaled(2), top + Scaled(2), right - Scaled(2),
                     top + row_h - Scaled(2)};
       items_.push_back(std::move(row));
-      detail_row(top, def.glyph, PhiStr(def.title), true);
+      detail_row(top, def.glyph, PhiStr(def.title), profile_has_space);
       Item arrow;
       arrow.kind = ItemKind::kIcon;
+      arrow.enabled = profile_has_space;
       arrow.text = std::wstring(1, wchar_t(0xE76C));  // ChevronRight
       arrow.value = 12;
       arrow.bounds = {right - Scaled(40), top, right - Scaled(12),
@@ -3179,6 +3248,21 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
       ++i;
     }
     *y += 3 * row_h;
+  }
+  if (!profile_has_space) {
+    const std::wstring note =
+        PhiStr("settings.profiles.dataLinks.unavailableWithoutSpace");
+    const int height =
+        std::max(Scaled(kHintHeight),
+                 WrappedHeight(hint_font_, note.c_str(), right - left));
+    *y += Scaled(6);
+    Item hint;
+    hint.kind = ItemKind::kHint;
+    hint.text = note;
+    hint.wrap = true;
+    hint.bounds = {left, *y, right, *y + height};
+    items_.push_back(std::move(hint));
+    *y += height;
   }
 }
 
@@ -4118,6 +4202,7 @@ void PhiSettingsWindow::Rebuild() {
     Rebuild();
     return;
   }
+  LayoutInlineRename();
   PublishHits();
   ResolveFocus();
 }
@@ -5047,6 +5132,11 @@ bool PhiSettingsWindow::HandleKey(WPARAM virtual_key, LPARAM lparam,
       activate();
       return true;
     case VK_RETURN:
+      if (focused && !typing && focused->kind == ItemKind::kSpaceRow &&
+          focused->payload == selected_space_) {
+        BeginInlineRename("space", selected_space_);  // The Mac's Return.
+        return true;
+      }
       if (focused && !typing) {
         show_ring();
         activate();
@@ -7199,39 +7289,9 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     }
   } else if (item.action == "cancelsignin") {
     account_->RequestCancelSignIn();
-  } else if (item.action == "rename") {
-    // The Mac's rename dialog: one field, Save, and its two validations.
-    std::string current;
-    account_->AccountInfo(&current, nullptr);
-    std::wstring value = base::UTF8ToWide(current);
-    if (!PhiPromptText(hwnd(), PhiStr("settings.account.renameDialog.title"),
-                       nullptr, &value,
-                       PhiStr("settings.account.renameDialog.saveButton"))) {
-      return;
-    }
-    // Trim; PhiPromptText already refuses an empty entry, a blank one
-    // gets the Mac's empty-name alert.
-    value = PhiTrimWhitespace(value);
-    if (value.empty()) {
-      PhiNotice(hwnd(),
-                PhiStr("settings.account.renameDialog.emptyNameError.title"),
-                PhiStr("settings.account.renameDialog.emptyNameError.message"));
-      return;
-    }
-    // In CODE POINTS, as the onboarding name step and the Mac count: an
-    // emoji is one character, not two UTF-16 units.
-    if (PhiCodePointCount(value) >
-        static_cast<size_t>(PhiAccountProfileService::kMaxNameLength)) {
-      PhiNotice(
-          hwnd(),
-          PhiStr("settings.account.renameDialog.nameTooLongError.title"),
-          PhiStrF("settings.account.renameDialog.nameTooLongError.message",
-                  {PhiFormatNumber(static_cast<long long>(
-                      PhiAccountProfileService::kMaxNameLength))})
-              .c_str());
-      return;
-    }
-    account_->RequestRenameAccount(base::WideToUTF8(value));
+  } else if (item.action == "rename" && !rename_field_) {
+    // In place since the Mac's 5e8905b4.
+    BeginInlineRename("account", std::string());
   } else if (item.action == "avatar") {
     account_->RequestEditAvatar();
   } else if (item.action == "downloadcard") {
@@ -7249,6 +7309,34 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     Invalidate();
   } else if (item.action == "card") {
     // The card only follows the pointer (WM_MOUSEMOVE); nothing on click.
+  } else if (item.action == "autopeeksamesite") {
+    host_->SetAutoPeekSameSiteLinks(!item.on);
+    ScheduleRebuild();
+  } else if (item.action == "peeksize") {
+    HMENU menu = ::CreatePopupMenu();
+    if (!menu) {
+      return;
+    }
+    constexpr std::array<const char*, 3> sizes = {"large", "medium", "small"};
+    constexpr std::array<const char*, 3> labels = {
+        "settings.navigations.peek.size.largeOption",
+        "settings.navigations.peek.size.mediumOption",
+        "settings.navigations.peek.size.smallOption"};
+    const std::string current = prefs_->PeekPanelSize();
+    for (UINT i = 0; i < 3; ++i) {
+      ::AppendMenuW(menu, MF_STRING | (current == sizes[i] ? MF_CHECKED : 0),
+                    i + 1, PhiStr(labels[i]));
+    }
+    POINT anchor = {item.bounds.left, item.bounds.bottom};
+    ::ClientToScreen(hwnd(), &anchor);
+    const UINT chosen = static_cast<UINT>(PhiTrackPopupMenu(
+        menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN, anchor.x,
+        anchor.y, 0, hwnd(), nullptr));
+    ::DestroyMenu(menu);
+    if (chosen >= 1 && chosen <= 3) {
+      host_->SetPeekPanelSize(sizes[chosen - 1]);
+      ScheduleRebuild();
+    }
   } else if (item.action == "autopip") {
     HMENU menu = ::CreatePopupMenu();
     if (!menu) {
@@ -7548,18 +7636,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
       }
     }
   } else if (item.action == "renspace") {
-    std::wstring name;
-    for (const PhiSpaceSummary& space : spaces_->Summaries()) {
-      if (space.id == selected_space_) {
-        name = base::UTF8ToWide(space.name);
-        break;
-      }
-    }
-    if (PhiPromptText(hwnd(), PhiStr("app.renameSpaceDialog.title"),
-                      PhiStr("app.renameSpaceDialog.message"), &name, nullptr,
-                      kPhiNameRules)) {
-      host_->RenameSpace(selected_space_, base::WideToUTF8(name));
-    }
+    BeginInlineRename("space", selected_space_);
   } else if (item.action == "delspace") {
     if (PhiConfirm(hwnd(), PhiStr("dialog.deleteSpace.title"),
                    PhiStr("menuBar.deleteSpaceConfirmBody"),
@@ -7568,18 +7645,7 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
       selected_space_.clear();
     }
   } else if (item.action == "renprofile") {
-    std::wstring name;
-    for (const PhiProfileSummary& profile : profiles_->Profiles()) {
-      if (profile.id == selected_profile_) {
-        name = base::UTF8ToWide(profile.name);
-        break;
-      }
-    }
-    if (PhiPromptText(hwnd(), PhiStr("settings.profiles.renameDialog.title"),
-                      PhiStr("settings.profiles.renameDialog.message"), &name,
-                      nullptr, kPhiNameRules)) {
-      host_->RenameProfileById(selected_profile_, base::WideToUTF8(name));
-    }
+    BeginInlineRename("profile", item.payload);
   } else if (item.action == "delprofile") {
     if (PhiConfirm(
             hwnd(), PhiStr("dialog.deleteProfile.title"),
@@ -7601,7 +7667,33 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
 void PhiSettingsWindow::OnMouseDown(int hit, POINT client_pt) {
   pressed_ = -1;
   dragging_ = false;
+  // A press anywhere but in the field cancels an in-place rename, and the
+  // press goes on to what it landed on (the Mac's click-outside).
+  if (rename_field_) {
+    EndInlineRename(/*commit=*/false);
+  }
   const int index = ItemOfHit(hit);
+  if (index >= 0 &&
+      items_[static_cast<size_t>(index)].kind == ItemKind::kSpaceRow) {
+    const std::string& id = items_[static_cast<size_t>(index)].payload;
+    const DWORD now = ::GetTickCount();
+    if (id == last_row_press_ &&
+        now - last_row_press_at_ <= ::GetDoubleClickTime() &&
+        std::abs(client_pt.x - last_row_press_pt_.x) <=
+            ::GetSystemMetrics(SM_CXDOUBLECLK) &&
+        std::abs(client_pt.y - last_row_press_pt_.y) <=
+            ::GetSystemMetrics(SM_CYDOUBLECLK)) {
+      last_row_press_.clear();
+      SelectSpace(id, /*reveal=*/false);
+      BeginInlineRename("space", id);
+      return;
+    }
+    last_row_press_ = id;
+    last_row_press_at_ = now;
+    last_row_press_pt_ = client_pt;
+  } else {
+    last_row_press_.clear();
+  }
   if (index < 0 || !items_[static_cast<size_t>(index)].enabled) {
     return;
   }
@@ -7887,6 +7979,31 @@ LRESULT PhiSettingsWindow::OnWindowMessage(UINT msg,
         }
       }
       break;
+    case kMsgInlineRenameEnd:
+      if (lparam == rename_generation_) {
+        EndInlineRename(/*commit=*/wparam != 0);
+      }
+      *handled = true;
+      return 0;
+    case WM_COMMAND:
+      if (rename_field_ && LOWORD(wparam) == kInlineRenameFieldId &&
+          HIWORD(wparam) == EN_CHANGE) {
+        ValidateInlineRename();
+        *handled = true;
+        return 0;
+      }
+      break;
+    case WM_CTLCOLOREDIT:
+      if (rename_field_ && reinterpret_cast<HWND>(lparam) == rename_field_) {
+        const bool dark = prefs_->Palette().dark;
+        HDC field_dc = reinterpret_cast<HDC>(wparam);
+        ::SetTextColor(field_dc, dark ? RGB(0xEB, 0xEB, 0xEB)
+                                      : RGB(0x1C, 0x1C, 0x1C));
+        ::SetBkColor(field_dc, rename_fill_);
+        *handled = true;
+        return reinterpret_cast<LRESULT>(rename_brush_);
+      }
+      break;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
       // The focus model (HandleKey). Esc is not one of its keys: it falls
@@ -8073,6 +8190,320 @@ void PhiSettingsWindow::OnNcDestroy() {
   profile_poll_.Stop();
   card_timer_.Stop();
   PhiSecondaryWindow::OnNcDestroy();
+}
+
+// --- In-place rename (the Mac's 5e8905b4) ------------------------------------
+
+void PhiSettingsWindow::BeginInlineRename(const std::string& kind,
+                                          const std::string& id) {
+  if (!alive()) {
+    return;
+  }
+  if (rename_field_) {
+    EndInlineRename(/*commit=*/false);
+  }
+  std::wstring text;
+  if (kind == "space") {
+    for (const PhiSpaceSummary& space : spaces_->Summaries()) {
+      if (space.id == id) {
+        text = base::UTF8ToWide(space.name);
+      }
+    }
+    if (id.empty()) {
+      return;
+    }
+  } else if (kind == "profile") {
+    for (const PhiProfileSummary& profile : profiles_->Profiles()) {
+      if (profile.id == id) {
+        text = base::UTF8ToWide(profile.name);
+      }
+    }
+  } else if (kind == "account") {
+    std::string current;
+    account_->AccountInfo(&current, nullptr);
+    text = base::UTF8ToWide(current);
+  } else {
+    return;
+  }
+  const bool dark = prefs_->Palette().dark;
+  rename_fill_ = dark ? RGB(0x2B, 0x2B, 0x2B) : RGB(0xFF, 0xFF, 0xFF);
+  if (rename_brush_) {
+    ::DeleteObject(rename_brush_);
+  }
+  rename_brush_ = ::CreateSolidBrush(rename_fill_);
+  // The pane paints itself: keep it off the field.
+  ::SetWindowLongPtrW(hwnd(), GWL_STYLE,
+                      ::GetWindowLongPtrW(hwnd(), GWL_STYLE) | WS_CLIPCHILDREN);
+  rename_field_ = ::CreateWindowExW(
+      0, L"EDIT", text.c_str(),
+      WS_CHILD | ES_LEFT | ES_AUTOHSCROLL, 0, 0, 10, 10, hwnd(),
+      reinterpret_cast<HMENU>(static_cast<INT_PTR>(kInlineRenameFieldId)),
+      ::GetModuleHandleW(nullptr), nullptr);
+  if (!rename_field_) {
+    return;
+  }
+  rename_kind_ = kind;
+  rename_id_ = id;
+  rename_error_.clear();
+  ++rename_generation_;
+  ::SendMessageW(rename_field_, WM_SETFONT,
+                 reinterpret_cast<WPARAM>(kind == "account" ? title_font_
+                                                            : body_font_),
+                 FALSE);
+  ::SendMessageW(rename_field_, EM_SETLIMITTEXT, kPhiMaxNameCodePoints * 2, 0);
+  ::SetWindowLongPtrW(rename_field_, GWLP_USERDATA,
+                      reinterpret_cast<LONG_PTR>(this));
+  rename_base_proc_ = reinterpret_cast<WNDPROC>(::SetWindowLongPtrW(
+      rename_field_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&RenameFieldProc)));
+  Rebuild();  // Lays the field over its row (LayoutInlineRename).
+  if (!rename_field_) {
+    return;  // Its row is not on this page.
+  }
+  ::ShowWindow(rename_field_, SW_SHOW);
+  ::SetFocus(rename_field_);
+  ::SendMessageW(rename_field_, EM_SETSEL, 0, -1);
+  Invalidate();
+}
+
+std::wstring PhiSettingsWindow::InlineRenameError(
+    const std::wstring& raw) const {
+  const std::wstring text = PhiTrimWhitespace(raw);
+  if (rename_kind_ == "account") {
+    if (text.empty()) {
+      return PhiStr("settings.account.renameDialog.emptyNameError.message");
+    }
+    if (PhiCodePointCount(text) >
+        static_cast<size_t>(PhiAccountProfileService::kMaxNameLength)) {
+      return PhiStrF("settings.account.renameDialog.nameTooLongError.message",
+                     {PhiFormatNumber(static_cast<long long>(
+                         PhiAccountProfileService::kMaxNameLength))});
+    }
+    return std::wstring();
+  }
+  if (PhiCodePointCount(text) > kPhiMaxNameCodePoints) {
+    return PhiStrF("settings.account.renameDialog.nameTooLongError.message",
+                   {PhiFormatNumber(
+                       static_cast<long long>(kPhiMaxNameCodePoints))});
+  }
+  if (rename_kind_ == "profile" && !text.empty()) {
+    // The Mac's displayNameExists: another profile's name, any case.
+    for (const PhiProfileSummary& profile : profiles_->Profiles()) {
+      if (profile.id != rename_id_ &&
+          ::CompareStringOrdinal(base::UTF8ToWide(profile.name).c_str(), -1,
+                                 text.c_str(), -1, TRUE) == CSTR_EQUAL) {
+        return PhiStr("settings.profiles.nameField.duplicateError");
+      }
+    }
+  }
+  return std::wstring();
+}
+
+void PhiSettingsWindow::ValidateInlineRename() {
+  if (!rename_field_) {
+    return;
+  }
+  const int length = ::GetWindowTextLengthW(rename_field_);
+  std::wstring value(static_cast<size_t>(length) + 1, L'\0');
+  ::GetWindowTextW(rename_field_, value.data(), length + 1);
+  value.resize(static_cast<size_t>(length));
+  // The account's empty-name message waits for Enter; a profile shows only
+  // a duplicate while typing (the Mac's renameError).
+  std::wstring error = InlineRenameError(value);
+  if (PhiTrimWhitespace(value).empty()) {
+    error.clear();
+  }
+  if (error != rename_error_) {
+    rename_error_ = error;
+    ScheduleRebuild();
+  }
+}
+
+bool PhiSettingsWindow::EndInlineRename(bool commit) {
+  if (!rename_field_) {
+    return true;
+  }
+  const int length = ::GetWindowTextLengthW(rename_field_);
+  std::wstring value(static_cast<size_t>(length) + 1, L'\0');
+  ::GetWindowTextW(rename_field_, value.data(), length + 1);
+  value.resize(static_cast<size_t>(length));
+  value = PhiTrimWhitespace(value);
+  if (commit) {
+    const std::wstring error = InlineRenameError(value);
+    // An empty Space name just ends the edit (the Mac's commitRename); an
+    // empty profile name, a duplicate or an over-long name keeps the field.
+    if (!error.empty() || (value.empty() && rename_kind_ == "profile")) {
+      rename_error_ = error;
+      ScheduleRebuild();
+      return false;
+    }
+  }
+  HWND field = rename_field_;
+  rename_field_ = nullptr;  // Re-entrancy: the destroy's WM_KILLFOCUS.
+  const std::string kind = std::exchange(rename_kind_, std::string());
+  const std::string id = std::exchange(rename_id_, std::string());
+  rename_error_.clear();
+  if (rename_base_proc_) {
+    ::SetWindowLongPtrW(field, GWLP_WNDPROC,
+                        reinterpret_cast<LONG_PTR>(rename_base_proc_));
+    rename_base_proc_ = nullptr;
+  }
+  ::SetWindowLongPtrW(field, GWLP_USERDATA, 0);
+  ::DestroyWindow(field);
+  if (alive() && ::GetFocus() == nullptr) {
+    ::SetFocus(hwnd());
+  }
+  if (commit && !value.empty()) {
+    const std::string name = base::WideToUTF8(value);
+    if (kind == "space") {
+      for (const PhiSpaceSummary& space : spaces_->Summaries()) {
+        if (space.id == id && space.name != name) {
+          host_->RenameSpace(id, name);
+        }
+      }
+    } else if (kind == "profile") {
+      for (const PhiProfileSummary& profile : profiles_->Profiles()) {
+        if (profile.id == id && profile.name != name) {
+          host_->RenameProfileById(id, name);
+        }
+      }
+    } else if (kind == "account") {
+      std::string current;
+      account_->AccountInfo(&current, nullptr);
+      if (current != name) {
+        account_->RequestRenameAccount(name);
+      }
+    }
+  }
+  if (alive()) {
+    ScheduleRebuild();
+  }
+  return true;
+}
+
+void PhiSettingsWindow::LayoutInlineRename() {
+  if (!rename_field_) {
+    return;
+  }
+  RECT frame = {};
+  bool found = false;
+  for (Item& item : items_) {
+    if (rename_kind_ == "space" && item.kind == ItemKind::kSpaceRow &&
+        item.payload == rename_id_) {
+      const int mid = (item.bounds.top + item.bounds.bottom) / 2;
+      const int left = item.bounds.left + Scaled(kSpaceRowInset) +
+                       Scaled(kSpaceIcon) + Scaled(kSpaceIconGap) - Scaled(4);
+      frame = {left, mid - Scaled(13), item.value - Scaled(4),
+               mid + Scaled(13)};
+      item.text.clear();  // The field stands for the name.
+      found = true;
+      break;
+    }
+    if (rename_kind_ == "profile" && item.kind == ItemKind::kSearchField &&
+        item.action == "renprofile" && item.payload == rename_id_) {
+      frame = item.bounds;
+      item.text.clear();
+      item.action.clear();
+      found = true;
+      break;
+    }
+    if (rename_kind_ == "account" && item.kind == ItemKind::kEditableLabel &&
+        item.action == "rename") {
+      frame = {item.bounds.left - Scaled(6), item.bounds.top,
+               item.bounds.right, item.bounds.bottom};
+      item.text.clear();
+      item.action.clear();
+      found = true;
+      break;
+    }
+  }
+  RECT client = {};
+  ::GetClientRect(hwnd(), &client);
+  if (!found || frame.bottom <= Scaled(kChromeTop) || frame.top >= client.bottom ||
+      frame.right - frame.left < Scaled(40)) {
+    // The row left the page (another pane, a filter, a scroll): cancel.
+    HWND field = rename_field_;
+    rename_field_ = nullptr;
+    rename_kind_.clear();
+    rename_id_.clear();
+    rename_error_.clear();
+    if (rename_base_proc_) {
+      ::SetWindowLongPtrW(field, GWLP_WNDPROC,
+                          reinterpret_cast<LONG_PTR>(rename_base_proc_));
+      rename_base_proc_ = nullptr;
+    }
+    ::SetWindowLongPtrW(field, GWLP_USERDATA, 0);
+    ::DestroyWindow(field);
+    return;
+  }
+  if (rename_kind_ != "profile") {
+    // The design's TextBox behind the EDIT (the profile's Name field is one
+    // already).
+    Item box;
+    box.kind = ItemKind::kSearchField;
+    box.value = 1;
+    box.bounds = frame;
+    items_.push_back(std::move(box));
+  }
+  if (!rename_error_.empty()) {
+    Item error;
+    error.kind = ItemKind::kHint;
+    error.danger = true;
+    error.wrap = true;
+    error.text = rename_error_;
+    const int width = std::max<int>(frame.right - frame.left, Scaled(220));
+    const int h = WrappedHeight(hint_font_, error.text.c_str(), width);
+    error.bounds = {frame.left, frame.bottom + Scaled(2), frame.left + width,
+                    frame.bottom + Scaled(2) + h};
+    items_.push_back(std::move(error));
+  }
+  // The EDIT sits inside the box's 1 px stroke, its text 12 dip in like
+  // the Name field's value.
+  const int inset_x = Scaled(10);
+  const int font_h = Scaled(rename_kind_ == "account" ? 22 : 18);
+  const int top = (frame.top + frame.bottom - font_h) / 2;
+  ::SetWindowPos(rename_field_, HWND_TOP, frame.left + inset_x, top,
+                 std::max(1, static_cast<int>(frame.right - frame.left) -
+                                 2 * inset_x),
+                 font_h, SWP_NOACTIVATE);
+  ::InvalidateRect(rename_field_, nullptr, TRUE);
+}
+
+// static
+LRESULT CALLBACK PhiSettingsWindow::RenameFieldProc(HWND hwnd,
+                                                    UINT msg,
+                                                    WPARAM wparam,
+                                                    LPARAM lparam) {
+  auto* self = reinterpret_cast<PhiSettingsWindow*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  if (!self || !self->rename_base_proc_) {
+    return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+  }
+  const WNDPROC base = self->rename_base_proc_;
+  switch (msg) {
+    case WM_GETDLGCODE:
+      return DLGC_WANTALLKEYS | ::CallWindowProcW(base, hwnd, msg, wparam,
+                                                  lparam);
+    case WM_KEYDOWN:
+      if (wparam == VK_RETURN || wparam == VK_ESCAPE) {
+        ::PostMessageW(self->hwnd(), kMsgInlineRenameEnd,
+                       wparam == VK_RETURN ? 1 : 0, self->rename_generation_);
+        return 0;
+      }
+      break;
+    case WM_CHAR:
+      if (wparam == VK_RETURN || wparam == VK_ESCAPE || wparam == L'\n') {
+        return 0;  // No beep.
+      }
+      break;
+    case WM_KILLFOCUS:
+      // The focus leaving the field cancels, as on the Mac.
+      ::PostMessageW(self->hwnd(), kMsgInlineRenameEnd, 0,
+                     self->rename_generation_);
+      break;
+    default:
+      break;
+  }
+  return ::CallWindowProcW(base, hwnd, msg, wparam, lparam);
 }
 
 }  // namespace phi_client

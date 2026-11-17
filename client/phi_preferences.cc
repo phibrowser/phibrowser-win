@@ -665,6 +665,25 @@ void PhiPreferences::SetAutoPeekViewEnabled(bool enabled) {
   Notify(PreferenceChange::kPeek);
 }
 
+void PhiPreferences::SetAutoPeekSameSiteLinks(bool enabled) {
+  if (enabled == settings_.auto_peek_same_site_links) {
+    return;
+  }
+  settings_.auto_peek_same_site_links = enabled;
+  MarkDirty();
+  Notify(PreferenceChange::kPeek);
+}
+
+void PhiPreferences::SetPeekPanelSize(const std::string& size) {
+  if ((size != "large" && size != "medium" && size != "small") ||
+      size == settings_.peek_panel_size) {
+    return;
+  }
+  settings_.peek_panel_size = size;
+  MarkDirty();
+  Notify(PreferenceChange::kPeekPanelSize);
+}
+
 void PhiPreferences::SetOpenKioskOnCtrlAltClick(bool enabled) {
   if (enabled == settings_.open_kiosk_on_ctrl_alt_click) {
     return;

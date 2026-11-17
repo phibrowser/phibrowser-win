@@ -253,6 +253,13 @@ struct PhiSettings {
   bool translucent_frame = true;
   bool peek_view_enabled = true;
   bool auto_peek_view_enabled = true;
+  // The Mac's autoPeekSameSiteLinksEnabled (2fec54f4): a pinned tab's or
+  // Bookmark Tab's link that would open a new tab peeks even when it stays
+  // on the same site. Off by default; under the automatic Peek switch.
+  bool auto_peek_same_site_links = false;
+  // The Mac's peekPanelSize: "large" (default), "medium" or "small", the
+  // share of the page's width the Peek panel takes. This device only.
+  std::string peek_panel_size = "large";
   // The Mac's GeneralSettings.openKioskOnCommandOptionClick: a link clicked
   // with Ctrl+Alt held (the Mac's Cmd+Opt) opens in a Kiosk window. On by
   // default, as on Mac.

@@ -45,6 +45,7 @@
 #include "client/phi_menu_paint.h"
 #include "client/phi_modal_scope.h"
 #include "client/phi_new_tab_page.h"
+#include "client/phi_peek_panel.h"
 #include "client/phi_popup_chrome.h"
 #include "client/phi_prompt.h"
 #include "client/phi_space_theme_panel.h"
@@ -681,6 +682,7 @@ void PhiCoordinator::OnProfileLoaded(const char* profile_id) {
   // edited while the browser was closed — Chromium read its own locale pref
   // long before this, and the first window is still to come, so it comes up
   // in the chosen language rather than flashing the old one.
+  PhiPeekPanel::SetPanelSize(preferences_.PeekPanelSize());
   PushPeekPreferences();
   PushKioskPreferences();
   PushNewTabPreferences();
@@ -4034,10 +4036,19 @@ void PhiCoordinator::SetAutoPeekViewEnabled(bool enabled) {
   preferences_.SetAutoPeekViewEnabled(enabled);
 }
 
+void PhiCoordinator::SetAutoPeekSameSiteLinks(bool enabled) {
+  preferences_.SetAutoPeekSameSiteLinks(enabled);
+}
+
+void PhiCoordinator::SetPeekPanelSize(const std::string& size) {
+  preferences_.SetPeekPanelSize(size);
+}
+
 void PhiCoordinator::PushPeekPreferences() {
   if (framework_) {
     framework_->SetPeekPreferences(preferences_.PeekViewEnabled(),
                                    preferences_.AutoPeekViewEnabled());
+    framework_->SetAutoPeekSameSiteLinks(preferences_.AutoPeekSameSiteLinks());
   }
 }
 
@@ -4592,6 +4603,10 @@ void PhiCoordinator::OnPreferencesChanged(
       break;
     case PreferenceChange::kPeek:
       PushPeekPreferences();  // The framework owns both decisions it gates.
+      break;
+    case PreferenceChange::kPeekPanelSize:
+      PhiPeekPanel::SetPanelSize(preferences_.PeekPanelSize());
+      surface_coordinator_.RepositionPeeks();
       break;
     case PreferenceChange::kKiosk:
       PushKioskPreferences();  // Likewise: the click is remapped there.

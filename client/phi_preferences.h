@@ -61,7 +61,8 @@ class PhiPreferences : public ChromePrefsHost {
     kBottomBar,       // A bottom-bar button came or went: every slot re-fits.
     kBookmarkRoot,    // A Space's bookmark root: every sidebar rebuilds.
     kSidebarTransparency,  // The acrylic slider: every slot re-applies it.
-    kPeek,           // Both peek switches: the framework mirror is due.
+    kPeek,           // The peek switches: the framework mirror is due.
+    kPeekPanelSize,  // Open Peek panels re-fit to the new width.
     kKiosk,          // The Ctrl+Alt-click switch: the framework mirror is due.
     kRestore,        // The per-profile framework mirror is due.
     kBookmarkBar,    // Either bar flag: every slot re-fits its content.
@@ -208,6 +209,14 @@ class PhiPreferences : public ChromePrefsHost {
   void SetPeekViewEnabled(bool enabled);
   bool AutoPeekViewEnabled() const { return settings_.auto_peek_view_enabled; }
   void SetAutoPeekViewEnabled(bool enabled);
+  bool AutoPeekSameSiteLinks() const {
+    return settings_.auto_peek_same_site_links;
+  }
+  void SetAutoPeekSameSiteLinks(bool enabled);
+  const std::string& PeekPanelSize() const {
+    return settings_.peek_panel_size;
+  }
+  void SetPeekPanelSize(const std::string& size);
   bool OpenKioskOnCtrlAltClick() const {
     return settings_.open_kiosk_on_ctrl_alt_click;
   }

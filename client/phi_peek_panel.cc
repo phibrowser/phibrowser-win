@@ -44,6 +44,13 @@ constexpr int kPaneInsetWide = 40;
 constexpr int kPaneInsetNarrow = 24;
 constexpr int kNarrowContentDip = 900;
 constexpr int kPaneVerticalInset = 24;
+// The Mac's PeekPanelSize (2fec54f4): the share of the page's width a
+// medium or small panel takes, and the narrowest such a panel shrinks to
+// before its margins give way.
+constexpr double kMediumWidthFraction = 0.8;
+constexpr double kSmallWidthFraction = 0.68;
+constexpr int kMinReducedPaneDip = 480;
+std::string g_panel_size = "large";
 constexpr int kHeaderHeight = 36;
 constexpr int kHeaderPad = 12;
 constexpr int kFaviconSize = 16;
@@ -495,6 +502,32 @@ PhiPeekPanel::~PhiPeekPanel() {
   Destroy();
 }
 
+// static
+void PhiPeekPanel::SetPanelSize(const std::string& size) {
+  g_panel_size = size;
+}
+
+// static
+int PhiPeekPanel::PaneInsetX(int width, double scale, const std::string& size) {
+  const auto px = [scale](int dip) {
+    return static_cast<int>(dip * scale + 0.5);
+  };
+  const int base = px(width < px(kNarrowContentDip) ? kPaneInsetNarrow
+                                                    : kPaneInsetWide);
+  const double fraction = size == "medium" ? kMediumWidthFraction
+                          : size == "small" ? kSmallWidthFraction
+                                            : 0.0;
+  if (fraction <= 0.0) {
+    return base;
+  }
+  // The Mac's paneInsetX: proportional margins, but never a panel under
+  // 480 dip while the page is wide enough to hold one.
+  const int proportional = static_cast<int>(width * (1.0 - fraction) / 2.0);
+  const int widest_for_minimum = (width - px(kMinReducedPaneDip)) / 2;
+  return std::max(px(kPaneInsetNarrow),
+                  std::max(base, std::min(proportional, widest_for_minimum)));
+}
+
 void PhiPeekPanel::Reposition() {
   if (!alive() || !opener_) {
     return;
@@ -507,10 +540,9 @@ void PhiPeekPanel::Reposition() {
     return;
   }
   // The sheet sits centred in the page card (§5.7): 40 dip in from the
-  // sides (24 in a narrow window), 24 top and bottom.
-  const int inset_x =
-      Scaled(width < Scaled(kNarrowContentDip) ? kPaneInsetNarrow
-                                               : kPaneInsetWide);
+  // sides (24 in a narrow window), 24 top and bottom; a medium or small
+  // size widens the side margins.
+  const int inset_x = PaneInsetX(width, Scaled(1000) / 1000.0, g_panel_size);
   const int inset_y = Scaled(kPaneVerticalInset);
   const RECT bounds = {content.left + inset_x, content.top + inset_y,
                        content.left + inset_x + std::max(0, width - inset_x * 2),

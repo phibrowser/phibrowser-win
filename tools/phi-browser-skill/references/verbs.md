@@ -2041,6 +2041,8 @@ Changes app settings. developerMode / allowAgentUserSpaces / testRig / analytics
 | `restoreLastSession` | boolean | no | — | Session restore. |
 | `peekViewEnabled` | boolean | no | — | Peek's master switch. |
 | `autoPeekViewEnabled` | boolean | no | — | Automatic peek. |
+| `autoPeekSameSiteLinksEnabled` | boolean | no | — | Automatic peek for same-site links too. |
+| `peekPanelSize` | string | no | — | Peek panel width: large, medium or small. |
 | `openKioskOnCtrlAltClick` | boolean | no | — | Ctrl+Alt-click a link opens a Kiosk. |
 | `newTabBehavior` | string | no | — | omnibox or newTabPage. |
 | `developerMode` | boolean | no | — | Never agent-settable. |

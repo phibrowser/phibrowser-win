@@ -151,6 +151,13 @@ void DecodePreferences(const base::DictValue& dict, PhiSettings* out) {
       dict.FindBool("peekViewEnabled").value_or(out->peek_view_enabled);
   out->auto_peek_view_enabled = dict.FindBool("autoPeekViewEnabled")
                                     .value_or(out->auto_peek_view_enabled);
+  out->auto_peek_same_site_links =
+      dict.FindBool("autoPeekSameSiteLinksEnabled")
+          .value_or(out->auto_peek_same_site_links);
+  if (const std::string* size = dict.FindString("peekPanelSize");
+      size && (*size == "large" || *size == "medium" || *size == "small")) {
+    out->peek_panel_size = *size;
+  }
   out->open_kiosk_on_ctrl_alt_click =
       dict.FindBool("openKioskOnCommandOptionClick")
           .value_or(out->open_kiosk_on_ctrl_alt_click);
@@ -367,6 +374,8 @@ base::DictValue PhiStoreTraits<PhiSettings>::Encode(const PhiSettings& value) {
   root.Set("PhiAgentSpaceAutoView", value.agent_auto_view);
   root.Set("peekViewEnabled", value.peek_view_enabled);
   root.Set("autoPeekViewEnabled", value.auto_peek_view_enabled);
+  root.Set("autoPeekSameSiteLinksEnabled", value.auto_peek_same_site_links);
+  root.Set("peekPanelSize", value.peek_panel_size);
   root.Set("openKioskOnCommandOptionClick", value.open_kiosk_on_ctrl_alt_click);
   if (!value.folio_folder.empty()) {
     root.Set("PhiSaveForLaterFolder", value.folio_folder);

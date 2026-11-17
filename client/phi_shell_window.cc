@@ -1925,6 +1925,49 @@ void PhiShellWindow::MenuSwitchSpace(const std::string& space_id) {
   SwitchToSpace(space_id);
 }
 
+bool PhiShellWindow::InDockedSidebar(POINT client_pt) {
+  if (layout_mode_ == PhiLayoutMode::kComfortable) {
+    return false;
+  }
+  const Layout layout = ComputeLayout(/*include_floating=*/false);
+  return ::PtInRect(&layout.sidebar, client_pt) != FALSE;
+}
+
+bool PhiShellWindow::SideButtonSwitchSpace(POINT client_pt, bool forward,
+                                           bool in_floating_panel) {
+  // The Mac's 711f8a61: the mouse's back / forward side buttons over a
+  // sidebar (docked or floating) step to the previous / next Space; over
+  // the page they still navigate, which Chromium's own window handles.
+  if (layout_mode_ == PhiLayoutMode::kComfortable || agent_ ||
+      ShowsIncognito()) {
+    return false;
+  }
+  if (!in_floating_panel && !InDockedSidebar(client_pt)) {
+    return false;
+  }
+  // The window's own Spaces in strip order, then its agent Spaces (the
+  // Mac's presentedSpaces; Next / Previous Space walks the same list).
+  std::vector<std::string> ids;
+  if (const SpacesHost* host = MenuSpacesHost()) {
+    for (const PhiSpaceView& space : host->Spaces()) {
+      ids.push_back(space.id);
+    }
+  }
+  for (const PhiAgentPipView& pip : MenuAgentSpaces()) {
+    ids.push_back(pip.space_id);
+  }
+  const auto at = std::find(ids.begin(), ids.end(), active_space());
+  if (at == ids.end()) {
+    return true;
+  }
+  // No wrap at either end: the Mac bounces there; the click is still taken.
+  const ptrdiff_t index = (at - ids.begin()) + (forward ? 1 : -1);
+  if (index >= 0 && index < static_cast<ptrdiff_t>(ids.size())) {
+    SwitchToSpace(ids[static_cast<size_t>(index)]);
+  }
+  return true;
+}
+
 void PhiShellWindow::MenuNewTab() {
   StartNewTab();  // Honors the "New tab behavior" setting.
 }
@@ -9411,6 +9454,7 @@ void PhiShellWindow::HideFloatingSidebar(bool animated) {
   if (!floating_sidebar_) {
     return;
   }
+  floating_flyout_ = nullptr;
   SlideFloatingPanel(/*expanded=*/false);
   if (!animated) {
     PositionFloatingPanel();
@@ -9528,8 +9572,15 @@ void PhiShellWindow::FloatingSidebarTick() {
   // Slid in: it stays while the pointer is on it, a drag is in flight or a
   // menu is up from it; otherwise 150 ms after the pointer leaves (and at
   // least 500 ms after it came up) it tucks itself away.
-  const bool held =
-      inside || sidebar_->drag_armed() || PhiModalDepthFor(shell_hwnd_) > 0;
+  // A flyout shown from the panel holds it until the flyout closes; then
+  // the usual 150 ms countdown runs from there.
+  if (floating_flyout_ && (!::IsWindow(floating_flyout_) ||
+                           !::IsWindowVisible(floating_flyout_))) {
+    floating_flyout_ = nullptr;
+  }
+  const bool held = inside || sidebar_->drag_armed() ||
+                    PhiModalDepthFor(shell_hwnd_) > 0 ||
+                    floating_flyout_ != nullptr;
   if (held) {
     floating_outside_tick_ = 0;
     return;
@@ -9810,6 +9861,25 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       if (self && self->floating_drag_) {
         forward([&] { self->sidebar_->AbortDrag(); });
         return 0;
+      }
+      break;
+    case WM_XBUTTONDOWN:
+    case WM_XBUTTONDBLCLK:
+      if (self && self->floating_expanded_) {
+        const bool forward_button = GET_XBUTTON_WPARAM(wparam) == XBUTTON2;
+        forward([&] {
+          self->SideButtonSwitchSpace({GET_X_LPARAM(lparam),
+                                       GET_Y_LPARAM(lparam) +
+                                           self->floating_offset_y_},
+                                      forward_button,
+                                      /*in_floating_panel=*/true);
+        });
+        return TRUE;
+      }
+      break;
+    case WM_XBUTTONUP:
+      if (self && self->floating_expanded_) {
+        return TRUE;  // No WM_APPCOMMAND back / forward from the panel.
       }
       break;
     case WM_RBUTTONUP:
@@ -10792,11 +10862,21 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
             : self->sidebar_ && self->sidebar_->keyboard_focused()
                 ? KeyboardHome::kSidebar
                 : KeyboardHome::kPage;
-        self->HideFloatingSidebar(/*animated=*/true);  // Tucks on deactivate.
-        self->UpdateChromeTip(std::wstring());
         // An owned popup retains this Browser's activation tree. A different
         // shell/application does not; WS_CHILD never receives this edge itself.
         const HWND next = reinterpret_cast<HWND>(lparam);
+        // Tucks on deactivate, unless the keyboard went to one of this
+        // window's own flyouts (an icon picker, the create-Space form) while
+        // the floating sidebar is out: the flyout was shown from the panel,
+        // which stays until it closes (the Mac's 57f08e2a).
+        if (self->floating_expanded_ && next &&
+            ::GetAncestor(next, GA_ROOTOWNER) == hwnd &&
+            (::GetWindowLongPtrW(next, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)) {
+          self->floating_flyout_ = next;
+        } else {
+          self->HideFloatingSidebar(/*animated=*/true);
+        }
+        self->UpdateChromeTip(std::wstring());
         if (next && ::GetAncestor(next, GA_ROOTOWNER) == hwnd) {
           // One of this window's own flyouts (Set theme, the icon picker,
           // a popover — the WS_EX_TOOLWINDOW family) took the keyboard: the
@@ -11182,6 +11262,22 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       if (self) {
         self->OnChromeMiddleClick(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
         return 0;
+      }
+      return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+    case WM_XBUTTONDOWN:
+    case WM_XBUTTONUP:
+    case WM_XBUTTONDBLCLK:
+      if (self) {
+        const POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        // Taken on the press; the release and a double press over the
+        // sidebar are swallowed too, so DefWindowProc sends no
+        // WM_APPCOMMAND back / forward for them.
+        if (msg == WM_XBUTTONDOWN || msg == WM_XBUTTONDBLCLK
+                ? self->SideButtonSwitchSpace(
+                      pt, GET_XBUTTON_WPARAM(wparam) == XBUTTON2, false)
+                : self->InDockedSidebar(pt)) {
+          return TRUE;
+        }
       }
       return ::DefWindowProcW(hwnd, msg, wparam, lparam);
     case WM_LBUTTONDBLCLK:

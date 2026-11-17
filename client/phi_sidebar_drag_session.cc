@@ -802,15 +802,42 @@ void PhiSidebarDragSession::ReserveDropZones() {
     case PhiDragKind::kNone:
       break;
   }
-  if (!pinned && !bookmark) {
+  // The Mac's 8eca5e62: with nothing pinned the band stays shut at the lift,
+  // so the rows under the pointer keep their place; it opens once the drag
+  // is carried above it, over the sidebar header (RevealPinnedDropZone).
+  pinned_zone_pending_ = pinned;
+  pinned_zone_open_ = false;
+  bookmark_zone_ = bookmark;
+  if (!bookmark) {
     return;
   }
   zones_reserved_ = true;
-  shell_->SidebarSetDropZones(pinned, bookmark);
+  shell_->SidebarSetDropZones(false, bookmark);
   shell_->SidebarScheduleRefresh();
 }
 
+bool PhiSidebarDragSession::RevealPinnedDropZone(POINT client_pt) {
+  if (!pinned_zone_pending_ || pinned_zone_open_) {
+    return false;
+  }
+  const PhiSidebarRects layout = shell_->SidebarRects();
+  // Above the (empty) band's top edge and within its width: the header.
+  if (layout.favorites.right <= layout.favorites.left ||
+      client_pt.x < layout.favorites.left ||
+      client_pt.x >= layout.favorites.right ||
+      client_pt.y >= layout.favorites.top || client_pt.y < 0) {
+    return false;
+  }
+  pinned_zone_open_ = true;
+  zones_reserved_ = true;
+  shell_->SidebarSetDropZones(true, bookmark_zone_);
+  shell_->SidebarScheduleRefresh();
+  return true;
+}
+
 void PhiSidebarDragSession::ReleaseDropZones() {
+  pinned_zone_pending_ = false;
+  pinned_zone_open_ = false;
   if (!zones_reserved_) {
     return;
   }
@@ -845,6 +872,7 @@ void PhiSidebarDragSession::Update(POINT pt) {
   // toNormalTabs:)) — a FOLDER cannot become a pin or a tab, so it stays
   // in the outline wherever it hovers inside the sidebar.
   point_ = pt;
+  RevealPinnedDropZone(pt);
   PhiDropBand band = DropBandAt(pt);
   if (kind_ == PhiDragKind::kBookmark) {
     const bool folder =

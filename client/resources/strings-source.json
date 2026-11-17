@@ -3121,11 +3121,23 @@
   },
   "downloads.item.completedTime.daysAgo.other": {
    "comment": "downloads — relative completion time, plural; the count is {0}. Used at phi_downloads_popover.cc",
-   "en": "{0} days ago"
+   "en": "{0} days ago",
+   "interim": {
+    "ja": "{0}日前",
+    "ko": "{0}일 전",
+    "zh-Hans": "{0} 天前",
+    "zh-Hant": "{0} 天前"
+   }
   },
   "downloads.item.completedTime.hoursAgo.one": {
    "comment": "downloads — relative completion time, singular; the count is {0}. Used at phi_downloads_popover.cc",
-   "en": "{0} hour ago"
+   "en": "{0} hour ago",
+   "interim": {
+    "ja": "{0}時間前",
+    "ko": "{0}시간 전",
+    "zh-Hans": "{0} 小时前",
+    "zh-Hant": "{0} 小時前"
+   }
   },
   "downloads.item.completedTime.hoursAgo.other": {
    "comment": "downloads — relative completion time, plural; the count is {0}. Used at phi_downloads_popover.cc",
@@ -5891,25 +5903,23 @@
    "comment": "account — Mac key (translations by key)",
    "en": "Name cannot be empty"
   },
-  "settings.account.renameDialog.emptyNameError.title": {
-   "comment": "account — Mac key (translations by key)",
-   "en": "Invalid Input"
-  },
   "settings.account.renameDialog.nameTooLongError.message": {
    "comment": "account — Mac key (translations by key)",
    "en": "Name cannot exceed {0} characters"
   },
   "settings.account.renameDialog.nameTooLongError.title": {
    "comment": "account — Mac key (translations by key)",
-   "en": "Invalid Input"
-  },
-  "settings.account.renameDialog.saveButton": {
-   "comment": "account — Mac key (translations by key)",
-   "en": "Save"
-  },
-  "settings.account.renameDialog.title": {
-   "comment": "account — Mac key (translations by key)",
-   "en": "Change Name"
+   "en": "Invalid Input",
+   "interim": {
+    "de": "Ungültige Eingabe",
+    "es": "Entrada no válida",
+    "fr": "Saisie non valide",
+    "ja": "入力が無効です",
+    "ko": "잘못된 입력",
+    "nl": "Ongeldige invoer",
+    "zh-Hans": "输入无效",
+    "zh-Hant": "輸入無效"
+   }
   },
   "settings.account.saving": {
    "comment": "account — Windows-only",
@@ -7669,14 +7679,6 @@
   "settings.profiles.newButtonTooltip": {
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc): the \"+ New profile\" button",
    "en": "New profile"
-  },
-  "settings.profiles.renameDialog.message": {
-   "comment": "settings — used at phi_settings_window.cc:3309",
-   "en": "Enter a new name for this profile."
-  },
-  "settings.profiles.renameDialog.title": {
-   "comment": "settings — used at phi_settings_window.cc:3308",
-   "en": "Rename Profile"
   },
   "settings.profiles.searchEngine.label": {
    "comment": "settings — Settings window (phi_settings_window.cc): profile row label",
@@ -10433,6 +10435,38 @@
   "sidebar.media.unmute": {
    "comment": "Tab mute — the Unmute tab row of the tab-row, pinned-cell and bookmark-row context menus, and the speaker button tooltip on a muted tab (the Mac's sidebar.media.unmute), phi_shell_menus.cc.",
    "en": "Unmute tab"
+  },
+  "settings.profiles.dataLinks.unavailableWithoutSpace": {
+   "comment": "settings — profile detail note when no Space uses the profile",
+   "en": "No Space uses this profile. Assign it to a Space to manage its data and settings."
+  },
+  "settings.navigations.peek.sameSiteToggle.title": {
+   "comment": "settings — Navigation › Peek same-site toggle",
+   "en": "Also peek links to the same site"
+  },
+  "settings.navigations.peek.sameSiteToggle.description": {
+   "comment": "settings — Navigation › Peek same-site toggle description",
+   "en": "Links in a pinned tab or bookmark that would open a new tab open in a Peek panel, even when they stay on the same site."
+  },
+  "settings.navigations.peek.size.title": {
+   "comment": "settings — Navigation › Peek panel size row",
+   "en": "Peek panel size"
+  },
+  "settings.navigations.peek.size.largeOption": {
+   "comment": "settings — Peek panel size option",
+   "en": "Large"
+  },
+  "settings.navigations.peek.size.mediumOption": {
+   "comment": "settings — Peek panel size option",
+   "en": "Medium"
+  },
+  "settings.navigations.peek.size.smallOption": {
+   "comment": "settings — Peek panel size option",
+   "en": "Small"
+  },
+  "settings.profiles.nameField.duplicateError": {
+   "comment": "settings — in-place profile rename duplicate name",
+   "en": "A profile with this name already exists."
   }
  }
 }

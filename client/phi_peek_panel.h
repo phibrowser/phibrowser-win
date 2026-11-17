@@ -65,6 +65,14 @@ class PhiPeekPanel : public PhiSurfacePanel, public PhiPanel {
                PhiCoordinator* coordinator);
   ~PhiPeekPanel() override;
 
+  // Settings ▸ Navigation "Peek panel size" (the Mac's peekPanelSize):
+  // "large" (the default inset), "medium" or "small". Process-wide; open
+  // panels re-fit on their next Reposition.
+  static void SetPanelSize(const std::string& size);
+  // The side margin of a panel in a page `width` px wide at `scale` px per
+  // dip, for `size`. Pure, for the size rule's test cases.
+  static int PaneInsetX(int width, double scale, const std::string& size);
+
   PhiPeekPanel(const PhiPeekPanel&) = delete;
   PhiPeekPanel& operator=(const PhiPeekPanel&) = delete;
 

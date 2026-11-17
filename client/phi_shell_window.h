@@ -2064,6 +2064,12 @@ class PhiShellWindow : public PhiHitSource,
   bool MenuLeaveReaderForNavigation() override;
   std::vector<PhiAgentPipView> MenuAgentSpaces() const override;
   void MenuSwitchSpace(const std::string& space_id) override;
+  // The mouse's back (XBUTTON1) / forward (XBUTTON2) button over the docked
+  // sidebar or the floating panel: the previous / next Space, no wrap.
+  // False when the press is not the sidebar's (the page navigates instead).
+  bool SideButtonSwitchSpace(POINT client_pt, bool forward,
+                             bool in_floating_panel);
+  bool InDockedSidebar(POINT client_pt);
   void MenuNewTab() override;
   void PairPendingSplit();
   TabId pending_split_anchor_;
@@ -2542,6 +2548,9 @@ class PhiShellWindow : public PhiHitSource,
   int floating_offset_y_ = 0;
   ULONGLONG floating_shown_tick_ = 0;
   ULONGLONG floating_outside_tick_ = 0;
+  // An owned flyout (WS_EX_TOOLWINDOW) that took the keyboard while the
+  // floating sidebar was out: the panel is held until it closes.
+  HWND floating_flyout_ = nullptr;
   // The pointer entered the invisible edge zone (the 300 ms dwell).
   ULONGLONG floating_hover_tick_ = 0;
   // The band (chips, pinned grid, outline, tab rows) belongs to this

@@ -1119,6 +1119,9 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsGet(
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
   out.Set("autoPeekViewEnabled",
           coordinator_->settings().auto_peek_view_enabled);
+  out.Set("autoPeekSameSiteLinksEnabled",
+          coordinator_->settings().auto_peek_same_site_links);
+  out.Set("peekPanelSize", coordinator_->settings().peek_panel_size);
   out.Set("openKioskOnCtrlAltClick",
           coordinator_->settings().open_kiosk_on_ctrl_alt_click);
   out.Set("pinScope", PhiPinScopeName(coordinator_->tab_store().pin_scope()));
@@ -1234,6 +1237,15 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
     coordinator_->SetAutoPeekViewEnabled(*auto_peek);
     ok = true;
   }
+  if (std::optional<bool> same_site =
+          ctx.params.FindBool("autoPeekSameSiteLinksEnabled")) {
+    coordinator_->SetAutoPeekSameSiteLinks(*same_site);
+    ok = true;
+  }
+  if (const std::string* size = ctx.params.FindString("peekPanelSize")) {
+    coordinator_->SetPeekPanelSize(*size);
+    ok = true;
+  }
   if (std::optional<bool> kiosk =
           ctx.params.FindBool("openKioskOnCtrlAltClick")) {
     coordinator_->SetOpenKioskOnCtrlAltClick(*kiosk);
@@ -1297,6 +1309,9 @@ PhiVerbResult PhiControlDispatcher::VerbSettingsSet(
   out.Set("peekViewEnabled", coordinator_->settings().peek_view_enabled);
   out.Set("autoPeekViewEnabled",
           coordinator_->settings().auto_peek_view_enabled);
+  out.Set("autoPeekSameSiteLinksEnabled",
+          coordinator_->settings().auto_peek_same_site_links);
+  out.Set("peekPanelSize", coordinator_->settings().peek_panel_size);
   out.Set("openKioskOnCtrlAltClick",
           coordinator_->settings().open_kiosk_on_ctrl_alt_click);
   out.Set("newTabBehavior",

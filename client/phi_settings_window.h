@@ -260,6 +260,9 @@ class PhiSettingsHost {
   // framework, which is where both decisions are actually made.
   virtual void SetPeekViewEnabled(bool enabled) = 0;
   virtual void SetAutoPeekViewEnabled(bool enabled) = 0;
+  // The Mac's autoPeekSameSiteLinksEnabled and peekPanelSize (2fec54f4).
+  virtual void SetAutoPeekSameSiteLinks(bool enabled) = 0;
+  virtual void SetPeekPanelSize(const std::string& size) = 0;
   // Kiosk, the Mac's openKioskOnCommandOptionClick: a link clicked with
   // Ctrl+Alt held opens in a Kiosk window. Pushed into the framework too —
   // Browser::OpenURLFromTab is where the click is remapped.
@@ -635,6 +638,23 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   void OnClick(int hit, POINT client_pt) override;
   void OnWheel(int delta, POINT client_pt) override;
   void OnEscape() override;
+  // The Mac's in-place rename (5e8905b4): a Space's row, a profile's Name
+  // field or the account name turns into a text field with the name
+  // selected. Enter saves (an invalid name keeps the field open with the
+  // reason in red under it), Escape, a click elsewhere or losing the focus
+  // cancels. `kind` is "space", "profile" or "account".
+  void BeginInlineRename(const std::string& kind, const std::string& id);
+  // Ends the edit; with `commit` it saves a valid changed name and returns
+  // false (field kept) for an invalid one.
+  bool EndInlineRename(bool commit);
+  // Re-validates the field's text (EN_CHANGE) for the live red message.
+  void ValidateInlineRename();
+  std::wstring InlineRenameError(const std::wstring& text) const;
+  // Rebuild's tail: the renamed item's rect, the field's frame and its
+  // error line; places the EDIT there (or cancels when it left the page).
+  void LayoutInlineRename();
+  static LRESULT CALLBACK RenameFieldProc(HWND hwnd, UINT msg, WPARAM wparam,
+                                          LPARAM lparam);
   // UIA's Invoke. A row scrolled out of the page is published with an
   // empty rect (PublishHits), which no synthesized click can land on, so
   // the row is scrolled into view first and THEN clicked through the base.
@@ -721,6 +741,22 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   HFONT IconFont(int size);
   // The window title follows the selected pane, as the Mac library does.
   void SyncTitle();
+
+  // The in-place rename's EDIT and what it renames (BeginInlineRename).
+  HWND rename_field_ = nullptr;
+  // Bumped per field: a posted end for an earlier field is dropped.
+  LPARAM rename_generation_ = 0;
+  WNDPROC rename_base_proc_ = nullptr;
+  std::string rename_kind_;
+  std::string rename_id_;
+  std::wstring rename_error_;
+  HBRUSH rename_brush_ = nullptr;
+  COLORREF rename_fill_ = 0;
+  // A second press on the same Space row within the double-click time
+  // renames it (the window takes no CS_DBLCLKS).
+  std::string last_row_press_;
+  DWORD last_row_press_at_ = 0;
+  POINT last_row_press_pt_{};
 
   RAW_PTR_EXCLUSION PhiSettingsHost* host_;
   // The services the panes read straight out of (see PhiSettingsHost).

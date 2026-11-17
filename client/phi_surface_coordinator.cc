@@ -831,4 +831,12 @@ bool PhiSurfaceCoordinator::DismissPeeksForShell(HWND shell,
   return !to_dismiss.empty();
 }
 
+void PhiSurfaceCoordinator::RepositionPeeks() {
+  surfaces_.ForEach([](PhiSurfacePanel& panel) {
+    if (panel.kind() == SidebarSurface::kPeek) {
+      panel.Reposition();
+    }
+  });
+}
+
 }  // namespace phi_client

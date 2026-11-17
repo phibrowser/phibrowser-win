@@ -226,6 +226,9 @@ class PhiSurfaceCoordinator {
   // --- Layout and dismissal -------------------------------------------------
   void RaiseReaderPanels(SlotId slot);
   void NoteContentLayoutChanged(SlotId slot);
+  // Settings ▸ Navigation changed the Peek panel size: every open Peek
+  // re-fits to its page in place.
+  void RepositionPeeks();
   // Whether any Peek card is up (the click-outside hook's cheap guard).
   bool HasPeek() const;
   // Whether any surface at all is attached (the press hook's guard).

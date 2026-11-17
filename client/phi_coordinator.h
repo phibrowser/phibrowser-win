@@ -516,6 +516,8 @@ class PhiCoordinator : public SidebarHost,
   void SetPeekViewEnabled(bool enabled) override;
   bool AutoPeekViewEnabled() const;
   void SetAutoPeekViewEnabled(bool enabled) override;
+  void SetAutoPeekSameSiteLinks(bool enabled) override;
+  void SetPeekPanelSize(const std::string& size) override;
   // Pushes both Peek switches into the framework, which owns the two
   // decisions they gate (the context-menu item and the cross-domain
   // throttle's diversion). Run on the first profile load and on every change.
