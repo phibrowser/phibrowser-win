@@ -300,8 +300,19 @@ void PhiUrlRouter::RouteUrlToSpace(const std::string& space_id,
   // re-homed, and re-matching it would loop. User shells only: an incognito
   // window and a hidden agent shell nominally hold the DEFAULT Space (their
   // first browser is adopted under it) but are never its window.
+  //
+  // The link stays in the window it came from (the Mac's routeAskedURL, which
+  // activates the Space in the SOURCE window's slot): only the source's own
+  // slot counts here, and when it does not hold the Space yet the cold path
+  // below brings the Space up in it, even if another window already shows
+  // that Space. An incognito window or an agent shell holds no Spaces, so as
+  // a source it takes whichever user window holds one.
+  PhiShellWindow* source_shell = registry_.ControllerForBrowser(source_window);
+  const bool source_keeps_link = source_shell && !source_shell->is_agent() &&
+                                 !source_shell->is_incognito();
   for (PhiShellWindow* controller : registry_.UserControllers()) {
-    if (!controller->HasSpace(space_id)) {
+    if (!controller->HasSpace(space_id) ||
+        (source_keeps_link && controller != source_shell)) {
       continue;
     }
     controller->ShowSpace(space_id);
@@ -384,10 +395,14 @@ void PhiUrlRouter::PushRoutingTableNow() {
     rules.Append(std::move(d));
   }
   root.Set("rules", std::move(rules));
-  // Each Space's VISIBLE browser only — a Space hidden behind a slot's
-  // active sibling is deliberately absent, so a match on it resolves to
-  // OnRouteURLToSpace (which re-enters ShowSpace) instead of a direct open
-  // into an off-screen browser.
+  // The fork opens a routed URL straight into any browser listed here,
+  // whichever window it is in. No Space is listed, so a match for another
+  // Space always comes back through OnRouteURLToSpace, which keeps the link
+  // in the window it came from (RouteUrlToSpace); the fork knows a browser is
+  // already in the target Space from SetWindowSpace. Only the generic
+  // Incognito target is listed, because no browser carries that id as its
+  // Space: an Incognito Space on screen stands in for it (the first one
+  // wins, the Mac's strip-order alias).
   base::DictValue map;
   for (PhiShellWindow* controller : registry_.Controllers()) {
     if (controller->is_agent()) {
@@ -400,16 +415,11 @@ void PhiUrlRouter::PushRoutingTableNow() {
     }
     const std::string& space_id = controller->active_space();
     const BrowserId browser_id = controller->active_browser_id();
-    if (space_id.empty() || !browser_id.valid() || map.Find(space_id)) {
+    if (!model::IsIncognitoSpaceId(space_id) || !browser_id.valid() ||
+        map.Find(kPhiIncognitoRuleTargetId)) {
       continue;
     }
-    map.Set(space_id, static_cast<double>(browser_id.value));
-    // An Incognito Space on screen also stands in for the generic target
-    // (the first one wins, the Mac's strip-order alias).
-    if (model::IsIncognitoSpaceId(space_id) &&
-        !map.Find(kPhiIncognitoRuleTargetId)) {
-      map.Set(kPhiIncognitoRuleTargetId, static_cast<double>(browser_id.value));
-    }
+    map.Set(kPhiIncognitoRuleTargetId, static_cast<double>(browser_id.value));
   }
   root.Set("spaceWindows", std::move(map));
   std::string json;

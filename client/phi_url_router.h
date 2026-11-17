@@ -536,7 +536,7 @@ class PhiUrlRouter {
   void OnOpenLinkInSpace(int64_t source_window_id,
                          const char* space_id,
                          const char* url);
-  // A silent rule matched but the target Space had no visible browser; the
+  // A silent rule matched a Space the source window is not in; the
   // navigation is already cancelled, so surface the Space and re-open the
   // URL there (never silently dropped).
   void OnRouteURLToSpace(const char* space_id,
@@ -553,8 +553,9 @@ class PhiUrlRouter {
   // and answers it — the chosen Space through RouteUrlToSpace, "keep it
   // here" through a routing-bypassing open in the source window.
   void RunPendingAsk();
-  // Surfaces `space_id` (cold-spawning its browser if needed) and opens
-  // `url` there with a one-shot routing bypass — the shared tail of the
+  // Surfaces `space_id` in the source window's slot (cold-spawning its
+  // browser there if needed) and opens `url` there with a one-shot routing
+  // bypass — the shared tail of the
   // context menu's "Open Link in Space", the silent auto-route into a
   // hidden/cold Space, the "ask first" prompt's pick and a tab's move to a
   // cold Space. The two ACTION targets take their own exits: Incognito
@@ -569,12 +570,13 @@ class PhiUrlRouter {
                        BrowserId moving_kiosk = BrowserId());
 
   // --- The framework's copy -------------------------------------------------
-  // Compiles the live rules plus the Space -> VISIBLE browser map into the
-  // framework's PhiURLRouter table — the body; the coordinator coalesces
-  // the calls to one per turn. The Incognito target is aliased to the first
-  // open Incognito shell's browser (the Mac's currentSpaceWindowMap alias)
-  // so the fork routes straight into it; with none open the id stays
-  // unmapped and the match comes back through OnRouteURLToSpace.
+  // Compiles the live rules into the framework's PhiURLRouter table — the
+  // body; the coordinator coalesces the calls to one per turn. The table's
+  // window map lists no Space, so every match for another Space comes back
+  // through OnRouteURLToSpace. It lists only the Incognito target, aliased
+  // to the browser of the first Incognito Space on screen (the Mac's
+  // currentSpaceWindowMap alias) so the fork routes straight into it; with
+  // none on screen the id stays unmapped and that match comes back too.
   void PushRoutingTableNow();
 
  private:
