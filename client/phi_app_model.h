@@ -248,8 +248,9 @@ struct PhiSettings {
   // Appearance ▸ "Transparent toolbars" (GitHub phibrowser/phibrowser-win#10):
   // the address row, the bookmark bar and comfortable's tab strip show the
   // same backdrop as the sidebar, at its transparency. Pages stay opaque.
-  // Windows only; off by default.
-  bool translucent_frame = false;
+  // Windows only; on by default. Every save writes the key, so a profile
+  // saved while the default was off keeps its explicit false.
+  bool translucent_frame = true;
   bool peek_view_enabled = true;
   bool auto_peek_view_enabled = true;
   // The Mac's GeneralSettings.openKioskOnCommandOptionClick: a link clicked
