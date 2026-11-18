@@ -2296,7 +2296,30 @@ void PhiShellWindow::ShowAppMenu() {
   hover_index_ = 5;
   ::InvalidateRect(shell_hwnd_, &layout.app_menu, FALSE);
   app_menu_->Show(anchor.x, anchor.y, /*right_align=*/true);
+  // However it opened (click, Alt+F), a press on ⋯ that closed it must not
+  // open it again.
+  NoteButtonMenuClosed(layout.app_menu);
   ClearHover();
+}
+
+void PhiShellWindow::NoteButtonMenuClosed(const RECT& button) {
+  menu_button_ = button;
+  menu_button_closed_ = ::GetTickCount();
+  menu_button_armed_ = true;
+}
+
+bool PhiShellWindow::PressClosedButtonMenu(const POINT& pt) {
+  if (!menu_button_armed_) {
+    return false;
+  }
+  menu_button_armed_ = false;  // Only the first press after the menu.
+  // The press that ended the menu loop happened before the loop returned;
+  // any later press is the user's next click (at least a click's length
+  // after it), which opens the menu as usual.
+  constexpr LONG kSlackMs = 50;
+  const LONG after = static_cast<LONG>(
+      static_cast<DWORD>(::GetMessageTime()) - menu_button_closed_);
+  return after <= kSlackMs && ::PtInRect(&menu_button_, pt);
 }
 
 // --- PhiBrowserHostShell: what the content host asks of its shell ---------
@@ -6330,6 +6353,9 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   }
   const Layout layout = ComputeLayout();
   POINT pt = {x, y};
+  if (PressClosedButtonMenu(pt)) {
+    return;  // This press closed the button's own menu: it stays closed.
+  }
   if (mini_player_ &&
       mini_player_->OnButtonDown(layout.media_card, pt,
                                  ::GetKeyState(VK_MENU) < 0)) {
@@ -6371,6 +6397,7 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
       SwitchToSpace(agent_chip_space_);
     } else {
       ShowAgentChipMenu(pt, agent_chip_task_);
+      NoteButtonMenuClosed(layout.agent_chip);
     }
     return;
   }
@@ -6462,6 +6489,7 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   }
   if (FieldToolsShown() && ::PtInRect(&layout.site_menu, pt)) {
     ShowSiteMenu(layout.site_menu);
+    NoteButtonMenuClosed(layout.site_menu);
     return;
   }
   for (const BarItem& item : bar_items_) {
@@ -6472,12 +6500,14 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
       // Skip the pills already on the bar; the menu takes the rest.
       ShowBookmarkBarMenu(item.bounds, std::string(),
                           static_cast<size_t>(item.bookmark));
+      NoteButtonMenuClosed(item.bounds);
     } else if (item.bookmark >= 0 &&
                item.bookmark < static_cast<int>(sidebar_->bookmarks().size())) {
       const ShortcutRow& row =
           sidebar_->bookmarks()[static_cast<size_t>(item.bookmark)];
       if (row.folder) {
         ShowBookmarkBarMenu(item.bounds, row.guid, 0);
+        NoteButtonMenuClosed(item.bounds);
       } else if (!row.url.empty()) {
         OpenOrFocusPinned(row.guid, row.url);
       }
@@ -6541,6 +6571,7 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
       // opens the switcher popup over the FULL Space list with "New Space…"
       // after a rule, the Mac's spaceSwitcherMenu on its compact chip.
       ShowSpaceSwitcherMenu(pt, /*overflow=*/false);
+      NoteButtonMenuClosed(chip.bounds);
       return;
     }
     if (spaces_->creating()) {
@@ -6568,6 +6599,7 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
     // button, not at the pointer.
     const POINT anchor = {layout.add_space.left, layout.add_space.bottom};
     ShowSpaceSwitcherMenu(anchor, /*overflow=*/true);
+    NoteButtonMenuClosed(layout.add_space);
     return;
   }
   // The content rows last, as the pixels stack: a group header or a tab row.
@@ -7889,6 +7921,7 @@ void PhiShellWindow::ShowProfileMenu() {
       PhiBuildProfileMenu(in),
       PopupAt(POINT{button.left, button.top - Scaled(5)},
               TPM_LEFTALIGN | TPM_BOTTOMALIGN));
+  NoteButtonMenuClosed(button);
   if (action.is("profile.downloads")) {
     // "Download List" is the Library's Downloads section (the Mac's
     // showLibrary(section: .downloads)), not the bar button's popover.

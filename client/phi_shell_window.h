@@ -1495,6 +1495,15 @@ class PhiShellWindow : public PhiHitSource,
                    bool include_child_controls);
   // Handles a click in the chrome (tab rows, close boxes, buttons, toolbar).
   void OnChromeClick(int x, int y);
+  // The reopen guard for a menu that drops from a chrome button (⋯, the
+  // profile button, a bookmark-bar folder…). A press on that button while
+  // its menu is up ends the menu loop, and Windows then hands the same
+  // press to the button: without the guard it opened the menu again, so
+  // the button could never close it (GitHub phibrowser/phibrowser-win#9
+  // follow-up). NoteButtonMenuClosed() runs when such a menu returns;
+  // PressClosedButtonMenu() is true for the one press that closed it.
+  void NoteButtonMenuClosed(const RECT& button);
+  bool PressClosedButtonMenu(const POINT& pt);
   // Middle-click in the chrome: closes the tab row under the pointer (the
   // Mac tab list's otherMouseDown). Pins/bookmarks deliberately ignore it.
   void OnChromeMiddleClick(int x, int y);
@@ -1749,6 +1758,12 @@ class PhiShellWindow : public PhiHitSource,
   // kAddSpace: the Spaces strip's trailing slot — the "+" or, on overflow,
   // the "…" switcher standing in for it.
   using HoverKind = PhiChromeHover;
+  // The last button menu's button (layout px) and when it closed
+  // (GetTickCount, the clock GetMessageTime uses); armed until the next
+  // press. See NoteButtonMenuClosed().
+  RECT menu_button_ = {};
+  DWORD menu_button_closed_ = 0;
+  bool menu_button_armed_ = false;
   HoverKind hover_kind_ = HoverKind::kNone;
   int hover_index_ = -1;
   // §5.8: the pointer is on the hovered row's surface tile.
