@@ -75,6 +75,8 @@ jobs:
           version: ${{ steps.rel.outputs.version }}
           name: ${{ steps.rel.outputs.name }}
           base_ref: ${{ steps.rel.outputs.prev && format('refs/tags/{0}', steps.rel.outputs.prev) || '' }}
+          # Our subjects name issues bare, e.g. "(PHI-2037)", with no magic word.
+          issue_pattern: '\b(PHI-\d+)\b'
           links: |
             GitHub release=${{ steps.rel.outputs.url }}
           dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
