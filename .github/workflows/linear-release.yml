@@ -58,7 +58,7 @@ jobs:
             echo "tag=$TAG"
             echo "prev=$prev"
             echo "version=${build:-$tagver}"
-            echo "name=$(jq -r .name release.json)"
+            echo "name=$tagver"   # e.g. 0.6.0, as the Mac pipelines name theirs
             echo "url=$(jq -r .url release.json)"
           } >> "$GITHUB_OUTPUT"
           echo "Release $TAG (version ${build:-$tagver}), scanning from ${prev:-the tag commit only}"
