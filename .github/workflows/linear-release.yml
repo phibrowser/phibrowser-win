@@ -1,0 +1,81 @@
+# Records each published Phi for Windows release in Linear's
+# "Phi Windows [GitHub Preview]" pipeline (continuous). The release covers
+# the commits since the previous published release, and every Linear issue
+# (PHI-####) those commits name is attached to it.
+#
+# Runs when a release is published on this repository. Run it by hand to
+# backfill an older release or to check a run first with dry_run.
+name: Linear release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to record (e.g. v0.6.0)
+        required: true
+        type: string
+      dry_run:
+        description: Scan and log only; create nothing in Linear
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linear-release
+  cancel-in-progress: false
+
+jobs:
+  linear-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.draft
+    steps:
+      - name: Resolve the release and the one before it
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" \
+            --json tagName,name,url,body,publishedAt,isDraft > release.json
+          [[ $(jq -r .isDraft release.json) == false ]] || { echo "$TAG is a draft"; exit 1; }
+          published=$(jq -r .publishedAt release.json)
+          # The previous published release, by publish time; empty for the first.
+          prev=$(gh release list -R "$GITHUB_REPOSITORY" --limit 100 \
+                   --json tagName,publishedAt,isDraft \
+                   --jq "[.[] | select(.isDraft | not) | select(.publishedAt < \"$published\")]
+                         | sort_by(.publishedAt) | last | .tagName // empty")
+          # Version: the official build number named in the notes (0.6.0.19),
+          # else the tag without its v.
+          tagver=${TAG#v}
+          build=$(jq -r .body release.json | grep -oE "${tagver//./\\.}\.[0-9]+" | head -n1 || true)
+          {
+            echo "tag=$TAG"
+            echo "prev=$prev"
+            echo "version=${build:-$tagver}"
+            echo "name=$(jq -r .name release.json)"
+            echo "url=$(jq -r .url release.json)"
+          } >> "$GITHUB_OUTPUT"
+          echo "Release $TAG (version ${build:-$tagver}), scanning from ${prev:-the tag commit only}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.rel.outputs.tag }}
+          fetch-depth: 0 # the scan needs the history back to the previous release
+
+      - uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          command: sync
+          version: ${{ steps.rel.outputs.version }}
+          name: ${{ steps.rel.outputs.name }}
+          base_ref: ${{ steps.rel.outputs.prev && format('refs/tags/{0}', steps.rel.outputs.prev) || '' }}
+          links: |
+            GitHub release=${{ steps.rel.outputs.url }}
+          dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          log_level: verbose
