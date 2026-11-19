@@ -1558,24 +1558,26 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
   const bool locked = spaces_->Summaries().size() > 1;
 
   BeginSection(y, PhiStr("appMenu.layout"));
-  // The two cards' captions are what the results page searches (a haystack,
+  // The layout cards' captions are what the results page searches (a haystack,
   // never shown).
   const std::wstring layout_words =
       std::wstring(PhiStr("appMenu.horizontalTabs")) + L" " +
-      PhiStr("appMenu.verticalTabs");
+      PhiStr("appMenu.verticalTabs") + std::wstring(L" ") +
+      PhiStr("oobe.layoutSelection.performanceOption");
   if (SearchMatches(PhiStr("appMenu.layout"), layout_words.c_str())) {
-    // The design's picker: the card split in two, each half a 110 preview
-    // of the layout (2 dip accent ring when chosen) over its radio and
+    // The layout picker: three previews
+    // with a 2 dip accent ring when chosen, above the radio and
     // label. Balanced is "Vertical tabs", Comfortable "Horizontal tabs".
     ++filter_hits_;
     const int left = content_left_ + Scaled(kCardPadding);
     const int right = content_right_ - Scaled(kCardPadding);
-    const int half = (right - left - Scaled(kLayoutCardGap)) / 2;
+    const int half = (right - left - 2 * Scaled(kLayoutCardGap)) / 3;
     const struct {
       const char* title;  // A string-catalog key.
       PhiLayoutMode mode;
       const char* sketch;
     } kCards[] = {
+        {"oobe.layoutSelection.performanceOption", PhiLayoutMode::kPerformance, "performance"},
         {"appMenu.horizontalTabs", PhiLayoutMode::kComfortable, "comfortable"},
         {"appMenu.verticalTabs", PhiLayoutMode::kBalanced, "balanced"},
     };
@@ -5601,6 +5603,7 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
           if (item.payload == "performance") {
             rr(4, 9, 27, 8, chrome6, 4);        // Sidebar address bar.
             rr(32, 1, 1, 70, chrome10, 0);      // Sidebar divider.
+            rr(97, 0, 24, 8, chrome10, 3);     // Caption island.
             rr(15, 59, 14, 8, kAgentPill, 8);   // Agent pill, bottom.
           } else if (item.payload == "balanced") {
             rr(32, 1, 1, 70, chrome10, 0);

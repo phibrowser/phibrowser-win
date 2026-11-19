@@ -23,9 +23,7 @@ const char* PhiLayoutModeName(PhiLayoutMode mode) {
 
 bool PhiLayoutModeFromName(const std::string& name, PhiLayoutMode* out) {
   if (name == "performance") {
-    // Retired on Windows (impl log D9): a stored Performance setting lands
-    // on the vertical layout.
-    *out = PhiLayoutMode::kBalanced;
+    *out = PhiLayoutMode::kPerformance;
   } else if (name == "balanced") {
     *out = PhiLayoutMode::kBalanced;
   } else if (name == "comfortable") {
@@ -46,10 +44,8 @@ int ShellScaled(int design_units, int dpi) {
 ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   const auto scaled = [&](int design) { return ShellScaled(design, in.dpi); };
   ShellLayout out;
-  // Performance is retired (impl log D9): a caller still holding the enum
-  // value lays out the vertical layout.
-  out.mode = in.mode == PhiLayoutMode::kComfortable ? PhiLayoutMode::kComfortable
-                                                    : PhiLayoutMode::kBalanced;
+  out.mode = in.mode;
+  const bool performance = out.mode == PhiLayoutMode::kPerformance;
   const bool horizontal = out.mode == PhiLayoutMode::kComfortable;
   out.chip_size = kSpaceChip;
   out.client = {0, 0, in.client_width, in.client_height};
@@ -243,6 +239,33 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     return out;
   }
 
+  // Performance keeps browser chrome in the sidebar and overlays only the
+  // caption island at the page's top-right corner.
+  if (performance) {
+    out.sidebar = {0, 0, sidebar, h};
+    const int pane_left = hide_sidebar ? margin : sidebar;
+    out.pane = out.content = {pane_left, margin, card_right, h - margin};
+    carve_bookmark_bar(&out);
+    const int island_h = scaled(36);
+    out.caption_min = {w - 3 * cap, 0, w - 2 * cap, island_h};
+    out.caption_max = {w - 2 * cap, 0, w - cap, island_h};
+    out.caption_close = {w - cap, 0, w, island_h};
+    const int mid = row_top + tb / 2;
+    if (!hide_sidebar) {
+      out.sidebar_toggle = control_l(inset, mid);
+      out.back = control_l(out.sidebar_toggle.right + btn_gap, mid);
+      out.forward = control_l(out.back.right + btn_gap, mid);
+      out.reload = control_l(out.forward.right + btn_gap, mid);
+      place_cluster(sidebar - inset, mid, false);
+      // At the minimum sidebar width, Extensions remains in the app menu.
+      if (out.extensions.left < out.reload.right + btn_gap) {
+        out.extensions = {};
+      }
+      const int address_top = row_top + tb +
+          ((in.spaces_switch || in.floating_panel) ? tb : 0);
+      place_omnibox(inset, sidebar - inset, address_top + tb / 2);
+    }
+  } else {
   // The vertical layout (§4.2): the sidebar stands on the tint with its
   // own header row; the page pane runs flush to the window's top, right
   // and bottom (or stands the page margin in from them) and carries the
@@ -317,6 +340,8 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     place_omnibox(field_left, field_right, mid);
   }
 
+  }
+
   // The persistent app header sits above the optional Space strip, then
   // pins, bookmarks, new tab, tabs and the bottom bar.
   const bool header_row = in.spaces_switch || in.floating_panel;
@@ -328,7 +353,8 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   const int label_h = scaled(kSectionLabelHeight);
   const int label_inset = scaled(kSectionLabelInset);
   const int gap = scaled(kSectionGap);
-  const int sidebar_header_bottom = row_top + tb + (header_row ? tb : 0);
+  const int sidebar_header_bottom = row_top + tb + (header_row ? tb : 0) +
+                                    (performance ? tb : 0);
   // The bottom bar's top, up front: the stored bands' cap is a share of the
   // room between the header and it.
   const int bar_h = scaled(kBottomBarHeight);

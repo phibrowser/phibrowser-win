@@ -37,7 +37,9 @@ bool HasAutoHideAppBar(UINT edge, const RECT& monitor) {
 
 PhiCaptionBand::PhiCaptionBand(PhiCaptionShell* shell) : shell_(shell) {}
 
-PhiCaptionBand::~PhiCaptionBand() = default;
+PhiCaptionBand::~PhiCaptionBand() {
+  if (::IsWindow(island_)) ::DestroyWindow(island_);
+}
 
 void PhiCaptionBand::Install(HWND shell_hwnd) {
   shell_hwnd_ = shell_hwnd;
@@ -49,6 +51,7 @@ void PhiCaptionBand::InvalidateBand() {
   }
   const RECT band = shell_->CaptionRects().title_bar;
   ::InvalidateRect(shell_hwnd_, &band, FALSE);
+  if (island_ && ::IsWindowVisible(island_)) PaintIsland();
 }
 
 void PhiCaptionBand::SetCaptionHot(int code) {
@@ -57,6 +60,96 @@ void PhiCaptionBand::SetCaptionHot(int code) {
   }
   hot_caption_ = code;
   InvalidateBand();
+}
+
+void PhiCaptionBand::SyncIsland() {
+  const auto rects = shell_->CaptionRects();
+  if (rects.mode != PhiLayoutMode::kPerformance ||
+      ::IsRectEmpty(&rects.caption_close) || shell_->CaptionShellFullscreen()) {
+    if (island_) ::ShowWindow(island_, SW_HIDE);
+    return;
+  }
+  if (!island_) {
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = IslandProc;
+    wc.hInstance = ::GetModuleHandleW(nullptr);
+    wc.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
+    wc.lpszClassName = L"PhiCaptionIsland";
+    ::RegisterClassW(&wc);
+    island_ = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_NOACTIVATE,
+        wc.lpszClassName, L"Window controls", WS_CHILD,
+        0, 0, 0, 0, shell_hwnd_, nullptr, wc.hInstance, this);
+  }
+  if (!island_) return;
+  const RECT r = {rects.caption_min.left, rects.caption_min.top,
+                  rects.caption_close.right, rects.caption_close.bottom};
+  ::SetWindowPos(island_, HWND_TOP, r.left, r.top, r.right - r.left,
+                 r.bottom - r.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+  PaintIsland();
+}
+
+void PhiCaptionBand::PaintIsland() {
+  if (!island_) return;
+  const auto rects = shell_->CaptionRects();
+  const int left = rects.caption_min.left, top = rects.caption_min.top;
+  const int width = rects.caption_close.right - left;
+  const int height = rects.caption_close.bottom - top;
+  const auto p = shell_->CaptionPalette();
+  PhiCommitShapedLayer(island_, width, height, [&](HDC dc) {
+    RECT r = {0, 0, width, height};
+    HBRUSH brush = ::CreateSolidBrush(p.ground_top);
+    ::FillRect(dc, &r, brush);
+    ::DeleteObject(brush);
+    ::SetBkMode(dc, TRANSPARENT);
+    ::SetViewportOrgEx(dc, -left, -top, nullptr);
+    PaintButtons(dc);
+  }, [&](double x, double y) {
+    return PhiRoundRectCoverage(x, y, width, height,
+                                shell_->CaptionScaled(12), 4);
+  });
+}
+
+LRESULT CALLBACK PhiCaptionBand::IslandProc(HWND hwnd, UINT msg,
+                                            WPARAM wp, LPARAM lp) {
+  auto* self = reinterpret_cast<PhiCaptionBand*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  if (msg == WM_NCCREATE) {
+    self = static_cast<PhiCaptionBand*>(
+        reinterpret_cast<CREATESTRUCTW*>(lp)->lpCreateParams);
+    ::SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+  }
+  if (!self) return ::DefWindowProcW(hwnd, msg, wp, lp);
+  switch (msg) {
+    case WM_NCHITTEST:
+      return ::SendMessageW(self->shell_hwnd_, msg, wp, lp);
+    case WM_MOUSEACTIVATE:
+      return MA_NOACTIVATE;
+    case WM_MOUSEMOVE:
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP: {
+      POINT pt = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+      ::MapWindowPoints(hwnd, self->shell_hwnd_, &pt, 1);
+      if (msg == WM_MOUSEMOVE) {
+        TRACKMOUSEEVENT track = {sizeof(track), TME_LEAVE, hwnd, 0};
+        ::TrackMouseEvent(&track);
+      }
+      return ::SendMessageW(self->shell_hwnd_, msg, wp, MAKELPARAM(pt.x, pt.y));
+    }
+    case WM_NCMOUSEMOVE: {
+      TRACKMOUSEEVENT track = {sizeof(track), TME_LEAVE | TME_NONCLIENT, hwnd, 0};
+      ::TrackMouseEvent(&track);
+      return ::SendMessageW(self->shell_hwnd_, msg, wp, lp);
+    }
+    case WM_NCLBUTTONDOWN:
+    case WM_NCLBUTTONUP:
+    case WM_NCLBUTTONDBLCLK:
+    case WM_NCMOUSELEAVE:
+    case WM_MOUSELEAVE:
+      return ::SendMessageW(self->shell_hwnd_, msg, wp, lp);
+    case WM_ERASEBKGND:
+      return 1;
+  }
+  return ::DefWindowProcW(hwnd, msg, wp, lp);
 }
 
 // --- Hit-testing -----------------------------------------------------------
@@ -83,6 +176,8 @@ int PhiCaptionBand::HitTest(POINT client_pt) {
   if (::PtInRect(&rects.caption_min, client_pt)) {
     return HTMINBUTTON;
   }
+  if (rects.mode == PhiLayoutMode::kPerformance &&
+      client_pt.x >= rects.sidebar.right) return HTCLIENT;
   // The band's own controls take their own clicks — without this the band
   // would drag the window out from under the pointer instead.
   if (::PtInRect(&rects.back, client_pt) ||
@@ -329,7 +424,7 @@ void PhiCaptionBand::Paint(HDC dc, bool with_buttons) {
     ::FillRect(dc, &rects.band_divider, divider_brush);
     ::DeleteObject(divider_brush);
   }
-  if (with_buttons) {
+  if (with_buttons && shell_->CaptionRects().mode != PhiLayoutMode::kPerformance) {
     PaintButtons(dc);
   }
 }

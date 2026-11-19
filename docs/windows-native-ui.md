@@ -56,7 +56,7 @@ that is why Phi's Performance layout is removed on Windows (§4.3).
 4. **The address row carries the caption buttons.** Vertical: at the
    trailing end of the pane's address row; Horizontal: in the tab-strip
    row (Chrome). There is never a caption-only band — which is why there
-   are two layouts, not three.
+   Performance instead overlays the Corner island described in §4.3.
 5. **Density is Windows density.** Tab titles and sidebar rows at 12 dip,
    menus and dialogs at 14, page titles at 20/28 (§2.2). The current 13 pt
    rows are Mac-sized.
@@ -395,7 +395,7 @@ the owner-draw path from P1 paints them; the pip hit in
 vertical caption run is left to `DefWindowProc`; `shell_menus_test.cc`
 pins the new orders.
 
-## 4. The two layouts
+## 4. The layouts
 
 The Settings labels become **Horizontal tabs** and **Vertical tabs**
 (Edge's words); the wire names `comfortable` / `balanced` do not change,
@@ -534,27 +534,19 @@ page pane, left and right is ok").
   hover ink 4.5 %; close box 20 on hover / active; dimmed rows at 62 %.
 * Hidden sidebar: §4.4.
 
-### 4.3 Performance is removed
+### 4.3 Performance with Corner island (2026-11-19)
 
-The Mac's Performance layout exists to give the page every vertical
-pixel: no toolbar above it, the address bar in the sidebar. On Windows the
-caption buttons have to sit in a row at the window's top-right, so the
-page gets a 40 dip band above it in every layout and Performance would
-only move the address field into the sidebar for no gain. It goes:
+Performance is a separate Windows layout again. Navigation, Extensions, the app
+menu and the address field live in the sidebar; the page reaches the top edge.
+The three 46 by 36 DIP caption buttons stay visible in a top-right island with a
+12 DIP bottom-left corner. The island is a shaped layered child above the page,
+using the shared caption hit testing, capture, hover and window commands.
 
-* `PhiLayoutMode` keeps `kPerformance` in the enum for one release so the
-  wire name still parses; `PhiPreferences::RequestLayoutMode` and the
-  loader map it to `kBalanced` (and write `balanced` back), the Settings
-  page and the Layout ▸ submenu show two choices, the onboarding step
-  shows two cards, the `layout.set` verb refuses `performance`. The Mac
-  keeps its three; a profile moving from a Mac loads as Vertical tabs.
-* `ComputeShellLayout` loses its performance branch, the sidebar address
-  bar (`SideAddressBar`, `kAddressBarTop`, `kHeaderHeight`), the copy-link
-  in-field button (Ctrl+Shift+C stays), `PhiOmniboxSession::HostField /
-  UnhostField` (the field no longer lives in the sidebar), the
-  performance-only nav trio on the band and the `top_caps` corner mode.
-* `test/suite-layout.mjs`, `fs-mode.mjs` and the PhiCap layout cycle drop
-  their performance step.
+The layout menu, Appearance picker, saved preferences and cross-platform sync
+accept `performance`. Balanced and Comfortable keep their existing geometry.
+When the sidebar is collapsed, Ctrl+L opens the floating address field for the
+current tab. Fullscreen hides the island. A page margin still insets the page;
+the island remains attached to the window corner.
 
 ### 4.4 The floating sidebar (Vertical tabs, sidebar hidden)
 

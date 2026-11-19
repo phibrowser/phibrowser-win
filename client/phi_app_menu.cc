@@ -284,7 +284,7 @@ void PhiAppMenu::BuildStatic() {
       fluent::kHistory, false);
 
   // Layout ▸: the colour appearance (the Mac's View ▸ Appearance, above its
-  // layout section), the two layouts (radio), the sidebar, the bookmarks bar.
+  // layout section), the three layouts (radio), the sidebar, the bookmarks bar.
   sub(layout_, appearance_, "app.viewMenu.appearance", nullptr);
   row(appearance_, kCmdAppearanceSystem,
       "settings.general.appearance.useSystemOption", nullptr)
@@ -295,6 +295,8 @@ void PhiAppMenu::BuildStatic() {
   row(appearance_, kCmdAppearanceDark, "themes.appearance.darkOption", nullptr)
       ->radio = true;
   rows_.AppendSeparator(layout_);
+  row(layout_, kCmdLayoutPerformance, "oobe.layoutSelection.performanceOption",
+      nullptr)->radio = true;
   row(layout_, kCmdLayoutComfortable, "appMenu.horizontalTabs", nullptr)
       ->radio = true;
   row(layout_, kCmdLayoutBalanced, "appMenu.verticalTabs", nullptr)->radio =
@@ -422,7 +424,8 @@ void PhiAppMenu::RefreshLayout() {
              appearance == PhiAppearance::kDark);
   const bool horizontal = mode == PhiLayoutMode::kComfortable;
   SetChecked(layout_, kCmdLayoutComfortable, horizontal);
-  SetChecked(layout_, kCmdLayoutBalanced, !horizontal);
+  SetChecked(layout_, kCmdLayoutBalanced, mode == PhiLayoutMode::kBalanced);
+  SetChecked(layout_, kCmdLayoutPerformance, mode == PhiLayoutMode::kPerformance);
   // The sidebar exists in the vertical layout only; the bookmarks bar in
   // the horizontal one (the vertical keeps bookmarks in the sidebar).
   SetEnabled(layout_, kCmdToggleSidebar, !horizontal);
@@ -1202,12 +1205,13 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       }
       return true;
     case kCmdLayoutBalanced:
-    case kCmdLayoutPerformance:  // Retired (impl log D9): lands on balanced.
+    case kCmdLayoutPerformance:
     case kCmdLayoutComfortable:
       if (c->MenuPrefsHost()) {
         c->MenuPrefsHost()->RequestLayoutMode(
             id == kCmdLayoutComfortable ? PhiLayoutMode::kComfortable
-                                        : PhiLayoutMode::kBalanced);
+                : id == kCmdLayoutPerformance ? PhiLayoutMode::kPerformance
+                                              : PhiLayoutMode::kBalanced);
       }
       return true;
     case kCmdManageExtensions:

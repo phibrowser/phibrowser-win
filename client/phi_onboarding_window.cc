@@ -841,10 +841,11 @@ void PhiOnboardingWindow::Layout() {
       break;
     }
     case Page::kLayout: {
-      // Two layouts (impl log D9), Edge's words.
-      const int container_h = 8 + 2 * kLayoutRowHeight + 8 + 8;
+      // The same three layouts exposed by Appearance and the app menu.
+      const int container_h = 8 + 3 * kLayoutRowHeight + 2 * 8 + 8;
       const int container_top = (kHeight - container_h) / 2;
-      const std::array<std::pair<PhiLayoutMode, const char*>, 2> rows = {{
+      const std::array<std::pair<PhiLayoutMode, const char*>, 3> rows = {{
+          {PhiLayoutMode::kPerformance, "oobe.layoutSelection.performanceOption"},
           {PhiLayoutMode::kBalanced, "appMenu.verticalTabs"},
           {PhiLayoutMode::kComfortable, "appMenu.horizontalTabs"},
       }};
@@ -1735,6 +1736,8 @@ void PhiOnboardingWindow::PaintLayout(HDC dc, const RECT& content) {
       const char* key =
           hit.key == static_cast<int>(PhiLayoutMode::kComfortable)
               ? "appMenu.horizontalTabs"
+          : hit.key == static_cast<int>(PhiLayoutMode::kPerformance)
+              ? "oobe.layoutSelection.performanceOption"
               : "appMenu.verticalTabs";
       HGDIOBJ old_font = ::SelectObject(dc, fonts().Get(18, FW_NORMAL));
       ::SetTextColor(dc, RGB(255, 255, 255));
@@ -1826,10 +1829,8 @@ void PhiOnboardingWindow::MoveKeyboardFocus(bool backward) {
 bool PhiOnboardingWindow::OnKey(WPARAM virtual_key) {
   if (page_ == Page::kLayout &&
       (virtual_key == VK_UP || virtual_key == VK_DOWN)) {
-    // The two rows, as the Mac's arrow keys walk its selection.
-    layout_choice_ = static_cast<int>(virtual_key == VK_UP
-                                          ? PhiLayoutMode::kBalanced
-                                          : PhiLayoutMode::kComfortable);
+    // The enum order matches the three displayed rows.
+    layout_choice_ = (layout_choice_ + (virtual_key == VK_UP ? 2 : 1)) % 3;
     Layout();
     Invalidate();
     return true;

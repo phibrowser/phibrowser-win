@@ -26,12 +26,11 @@ using PhiRunOnUi = std::function<bool(const std::function<void()>& work)>;
 // thread through `run_on_ui` (the engine runs on the key worker).
 //
 // All twelve of the Mac's keys are registered.
-// Two keys carry a peer's value this platform cannot show as is — the
-// Mac's "performance" layout (retired here) and a theme id that is not a
+// A theme key may carry a peer value this platform cannot show: one outside the
 // catalog theme ("default", a newer build's theme). Refusing them would get
 // the local value re-published over the peer's (a refused write leaves the
 // sidecars alone), so they are HELD instead: the preference takes the local
-// stand-in (balanced / the current theme), and the key keeps reading back
+// stand-in (the current theme), and the key keeps reading back
 // the held value until the user changes that preference here.
 //
 // PhiPinnedTabScope (the Mac's PinnedTabScopeMirror) reads the store's

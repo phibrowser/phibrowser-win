@@ -241,6 +241,16 @@ constexpr ULONGLONG kDownloadQuickWatchMs = 1500;
 constexpr double kPageColorFadeMs = 250.0;
 constexpr double kFloatingSlideMs = 150.0;
 
+// The native address EDIT is opaque. Keep its entire rounded capsule opaque
+// too, including when Performance puts it over the sidebar's glass.
+int OpaqueFieldCoverage(const RECT& field, int radius, int x, int y) {
+  if (x < field.left || x >= field.right || y < field.top || y >= field.bottom)
+    return 0;
+  return static_cast<int>(255 * PhiRoundRectCoverage(
+      x + 0.5 - field.left, y + 0.5 - field.top,
+      field.right - field.left, field.bottom - field.top, radius));
+}
+
 double PerformanceMs() {
   LARGE_INTEGER frequency = {};
   LARGE_INTEGER counter = {};
@@ -1135,6 +1145,7 @@ void PhiShellWindow::ApplyPalette() {
   UpdateSidebarBackdrop();
   PlaceContentChildren(ComputeWindowLayout());
   RefreshTabs();  // Every colour is read from the host at paint time.
+  omnibox_->Repaint();  // The native EDIT is not repainted by the shell's paint.
   PushSplitViewStyle();  // The framework paints the split's chrome itself.
 }
 
@@ -1661,8 +1672,8 @@ PhiPalette PhiShellWindow::OmniboxPalette() const {
 }
 
 PhiPalette PhiShellWindow::OmniboxFieldPalette() const {
-  // The field sits in the address row, which follows the page.
-  return BarPalette();
+  return layout_mode_ == PhiLayoutMode::kPerformance ? CurrentPalette()
+                                                    : BarPalette();
 }
 
 PhiLayoutMode PhiShellWindow::OmniboxLayoutMode() const {
@@ -1722,7 +1733,7 @@ HFONT PhiShellWindow::CaptionGlyphFont() const {
 PhiPalette PhiShellWindow::CaptionPalette() const {
   // The caption buttons share the address row in the vertical layout, which
   // follows the page; in comfortable they sit on the strip's tint.
-  return layout_mode_ == PhiLayoutMode::kComfortable ? CurrentPalette()
+  return layout_mode_ != PhiLayoutMode::kBalanced ? CurrentPalette()
                                                     : BarPalette();
 }
 
@@ -3275,23 +3286,20 @@ bool PhiShellWindow::OmniboxFieldHidden() const {
   // While the comfortable Space slide runs the EDIT is down and the frame
   // paints the address itself (include_child_controls): a real child window
   // moves a frame apart from the parent's paint and would ghost.
-  // The collapsed performance shell has no address bar of its own — but
-  // the floating panel shows the sidebar's, and while the EDIT is hosted
-  // there (ShowFloatingSidebar) it is that panel's live field.
-  // The address row is the pane's in every layout now: a collapsed
-  // sidebar never takes the field with it (the Performance layout, which
-  // kept the field in the sidebar, is retired — impl log D9).
+  // Performance hides its sidebar address field while collapsed. Ctrl+L
+  // uses the floating omnibox in that state.
   return browsers_->content_fullscreen() || spaces_->creating() ||
+         (layout_mode_ == PhiLayoutMode::kPerformance && sidebar_collapsed_) ||
          (content_slide_ && content_slide_->running());
 }
 
 void PhiShellWindow::FocusAddressField() {
-  // Ctrl+L / Open Location / placeholder mode's way in. The collapsed
-  // performance shell has no field of its own: the floating panel's is the
-  // one to focus, so the panel comes up first (the Mac's Cmd+L raises its
-  // omnibox overlay wherever the sidebar is; this is the panel's turn at
-  // that). The focused field pins the panel open (FloatingSidebarTick).
-  omnibox_->FocusFieldIfVisible();
+  // A collapsed Performance sidebar uses the floating omnibox for Ctrl+L.
+  if (layout_mode_ == PhiLayoutMode::kPerformance && sidebar_collapsed_) {
+    omnibox_->ShowFloating(/*toggle=*/false, /*new_tab=*/false);
+  } else {
+    omnibox_->FocusFieldIfVisible();
+  }
 }
 
 void PhiShellWindow::SpacesRevealSwappedContent() {
@@ -3701,7 +3709,7 @@ void PhiShellWindow::PlaceContentChildren(const Layout& layout) {
   // The address row owns the pane's top corners; the bottom-left cap
   // rounds the pane against the tint, and the bottom-right only when the
   // pane is not flush with the window's edge (DWM rounds the window there).
-  content.top_caps = false;
+  content.top_caps = layout.mode == PhiLayoutMode::kPerformance;
   content.right_caps = layout.content.right < layout.client.right;
   // Compositor clipping exposes the actual backdrop. Opaque sibling caps
   // would cover it again; retain them only for the opaque fallback. A split
@@ -3716,6 +3724,7 @@ void PhiShellWindow::PlaceContentChildren(const Layout& layout) {
   PhiAgentOverlay::Reposition();
 
   browsers_->PositionCornerCaps(content);
+  caption_band_->SyncIsland();
 }
 
 // --- The comfortable layout's Space switch (phi_content_slide.h) ------------
@@ -5568,7 +5577,10 @@ void PhiShellWindow::PrepareBackdropPixels(const PhiPalette& palette) {
         row[x] = (row[x] & 0xFFFFFF) == rgb
                      ? ground
                      : PhiBackdropPixelOver(row[x], rgb, ground,
-                                            DiscCoverage(avatar_disc_, x, y));
+                                            std::max(DiscCoverage(avatar_disc_, x, y),
+                                                layout.mode == PhiLayoutMode::kPerformance
+                                                    ? OpaqueFieldCoverage(layout.url_field,
+                                                        Scaled(kOmniboxRadius), x, y) : 0));
       }
     }
     return;
@@ -5620,7 +5632,10 @@ void PhiShellWindow::PrepareCardBackdrop(const PhiPalette& palette,
       row[x] = (row[x] & 0xFFFFFF) == rgb
                    ? tint
                    : PhiBackdropPixelOver(row[x], rgb, tint,
-                                          DiscCoverage(avatar_disc_, x, y));
+                                          std::max(DiscCoverage(avatar_disc_, x, y),
+                                                layout.mode == PhiLayoutMode::kPerformance
+                                                    ? OpaqueFieldCoverage(layout.url_field,
+                                                        Scaled(kOmniboxRadius), x, y) : 0));
     }
     // Chromium supplies the ground tint and clipped opaque page layers.
     // Leave the shell underneath clear so its tint is not applied twice.
@@ -5691,7 +5706,7 @@ void PhiShellWindow::PrepareFrameGlass(const PhiPalette& palette,
   const RECT& field = layout.url_field;
   const int radius = Scaled(kContentRadius);
   const double field_radius = Scaled(kOmniboxRadius);
-  const bool field_here = field.right > field.left && field.left >= sidebar;
+  const bool field_here = field.right > field.left;
   const auto in = [](const RECT& r, int x, int y) {
     return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
   };
@@ -5727,7 +5742,8 @@ void PhiShellWindow::PrepareFrameGlass(const PhiPalette& palette,
     const uint32_t tint =
         gradient ? grounds[static_cast<size_t>(y)] : flat_tint;
     for (int x = 0; x < sidebar; ++x) {
-      row[x] = over(row[x], rgb, tint, DiscCoverage(avatar_disc_, x, y));
+      row[x] = over(row[x], rgb, tint,
+                    std::max(DiscCoverage(avatar_disc_, x, y), field_coverage(x, y)));
     }
     for (int x = sidebar; x < width; ++x) {
       uint32_t& pixel = row[x];
@@ -10402,7 +10418,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
   // palette of the row it stands in -- the comfortable strip row keeps the
   // tint.
   const std::optional<PhiColor> page = ActivePageColor();
-  const PhiPalette bar = page ? PhiPageBarPalette(palette, *page) : palette;
+  const PhiPalette bar = page && layout.mode != PhiLayoutMode::kPerformance
+                             ? PhiPageBarPalette(palette, *page) : palette;
   painted_page_color_ = page;  // For PrepareBackdropPixels' glass pass.
   painted_page_weight_ = page ? PageColorWeight() : 0.0;
   const auto row_palette = [&](const RECT& r) -> const PhiPalette& {
@@ -10526,6 +10543,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
   // painted AFTER the row's ground so the fill cannot cover them
   // (phi_caption_band.h owns their hot states).
   caption_band_->Paint(dc, /*with_buttons=*/!caption_buttons_suppressed_);
+  if (!floating_layout_) caption_band_->SyncIsland();
 
   if (layout.app_icon.right > layout.app_icon.left) {
     const auto& logo = PhiLogoBgra256();
@@ -11521,6 +11539,7 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           self->services_.sidebar->RaiseReaderPanels(self->slot_.value);
         }
         self->browsers_->RaiseOverlays();
+        self->caption_band_->SyncIsland();
         // The Library covers the client area, caps included (the Mac's
         // panel sits over the whole content view): last, so the next raise
         // never drops it under the browser child.

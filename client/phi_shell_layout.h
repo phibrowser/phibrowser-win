@@ -21,17 +21,13 @@ namespace phi_client {
 // and same meanings (PhiPreferences.swift), so a user moving between platforms
 // gets the same three choices:
 //
-//   kPerformance  RETIRED on Windows (docs/windows-native-ui.md §4.3, impl
-//                 log D9): the enum value stays so the Mac's stored setting
-//                 still parses, but FromName answers kBalanced for it and
-//                 nothing lays it out.
+//   kPerformance  sidebar navigation and address, with a top-right caption island
 //   kBalanced     vertical tabs, address bar across the TOP of the web content
 //   kComfortable  horizontal tabs — the traditional stacked layout, no sidebar
 enum class PhiLayoutMode { kPerformance, kBalanced, kComfortable };
 
 // Wire names, matching the Mac enum's raw values so the two clients can share
-// a stored setting: "balanced", "comfortable" ("performance" reads as
-// balanced).
+// a stored setting: "performance", "balanced", "comfortable".
 const char* PhiLayoutModeName(PhiLayoutMode mode);
 bool PhiLayoutModeFromName(const std::string& name, PhiLayoutMode* out);
 

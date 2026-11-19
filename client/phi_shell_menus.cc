@@ -553,7 +553,7 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
     PhiLayoutMode mode;
     const wchar_t* label;
   } kLayouts[] = {
-      // Performance is retired on Windows (impl log D9): two layouts.
+      {"performance", PhiLayoutMode::kPerformance, PhiStr("oobe.layoutSelection.performanceOption")},
       {"comfortable", PhiLayoutMode::kComfortable, PhiStr("contextMenu.horizontalTabs")},
       {"balanced", PhiLayoutMode::kBalanced, PhiStr("contextMenu.verticalTabs")},
   };

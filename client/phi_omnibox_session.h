@@ -712,7 +712,7 @@ class PhiOmniboxSession {
   // so everything below — suggestions, inline completion, the chip — works
   // in it as in the address field; a commit opens a NEW tab.
   // `toggle`: an open card closes instead (Ctrl+T again).
-  void ShowFloating(bool toggle);
+  void ShowFloating(bool toggle, bool new_tab = true);
   // The Mac's Split with New Tab under the Omnibox behaviour: the card opens,
   // and what it commits becomes `anchor`'s split pane; a row's open tab, with
   // Ctrl held, pairs that tab. False under the New Tab Page behaviour.

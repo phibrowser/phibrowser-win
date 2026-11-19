@@ -187,9 +187,7 @@ std::vector<SyncableSetting> PhiSyncableSettings(
       [prefs] { return prefs->SuppressCloseIncognitoSpaceWarning(); },
       [prefs](bool on) { prefs->SetSuppressCloseIncognitoSpaceWarning(on); }));
 
-  // Layout (String). Windows has no Performance layout: a peer's
-  // "performance" does not fit and is refused (the local value is kept and
-  // not marked synced).
+  // Layout (String): all three layouts are supported on Windows.
   const Held layout{held_store, "layoutMode"};
   out.push_back(
       {"layoutMode",
@@ -206,12 +204,6 @@ std::vector<SyncableSetting> PhiSyncableSettings(
            return;  // not a layout at all: refused
          }
          run_on_ui([prefs, raw, layout] {
-           if (raw == "performance") {
-             // Retired here: shown as Balanced, held as the Mac's value.
-             prefs->RequestLayoutMode(PhiLayoutMode::kBalanced);
-             layout.Hold(raw, "balanced");
-             return;
-           }
            PhiLayoutMode mode = PhiLayoutMode::kBalanced;
            if (PhiLayoutModeFromName(raw, &mode)) {
              layout.Clear();

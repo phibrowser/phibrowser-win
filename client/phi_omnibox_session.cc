@@ -501,7 +501,7 @@ bool PhiOmniboxSession::floating_visible() const {
   return floating_ && ::IsWindowVisible(floating_->hwnd());
 }
 
-void PhiOmniboxSession::ShowFloating(bool toggle) {
+void PhiOmniboxSession::ShowFloating(bool toggle, bool new_tab) {
   if (floating_visible()) {
     if (toggle) {
       HideFloating(/*focus_content=*/true);
@@ -527,7 +527,7 @@ void PhiOmniboxSession::ShowFloating(bool toggle) {
   floating_ = PhiFloatingOmnibox::Open(this, shell_hwnd, content);
   // Under the Omnibox behaviour the card IS the new tab: what it commits
   // opens in a fresh one (or births the empty window's first).
-  new_tab_pending_ = floating_ != nullptr;
+  new_tab_pending_ = new_tab && floating_ != nullptr;
 }
 
 void PhiOmniboxSession::OpenFloatingSoon() {
