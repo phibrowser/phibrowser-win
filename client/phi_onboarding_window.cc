@@ -846,8 +846,8 @@ void PhiOnboardingWindow::Layout() {
       const int container_top = (kHeight - container_h) / 2;
       const std::array<std::pair<PhiLayoutMode, const char*>, 3> rows = {{
           {PhiLayoutMode::kPerformance, "oobe.layoutSelection.performanceOption"},
-          {PhiLayoutMode::kBalanced, "appMenu.verticalTabs"},
-          {PhiLayoutMode::kComfortable, "appMenu.horizontalTabs"},
+          {PhiLayoutMode::kBalanced, "oobe.layoutSelection.balancedOption"},
+          {PhiLayoutMode::kComfortable, "oobe.layoutSelection.comfortableOption"},
       }};
       for (size_t i = 0; i < rows.size(); ++i) {
         const int top = container_top + 8 + static_cast<int>(i) * (kLayoutRowHeight + 8);
@@ -1735,10 +1735,10 @@ void PhiOnboardingWindow::PaintLayout(HDC dc, const RECT& content) {
               : L"layout-comfortable.png";
       const char* key =
           hit.key == static_cast<int>(PhiLayoutMode::kComfortable)
-              ? "appMenu.horizontalTabs"
+              ? "oobe.layoutSelection.comfortableOption"
           : hit.key == static_cast<int>(PhiLayoutMode::kPerformance)
               ? "oobe.layoutSelection.performanceOption"
-              : "appMenu.verticalTabs";
+              : "oobe.layoutSelection.balancedOption";
       HGDIOBJ old_font = ::SelectObject(dc, fonts().Get(18, FW_NORMAL));
       ::SetTextColor(dc, RGB(255, 255, 255));
       RECT label = {hit.bounds.left + Scaled(18), hit.bounds.top,

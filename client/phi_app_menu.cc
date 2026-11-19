@@ -297,9 +297,9 @@ void PhiAppMenu::BuildStatic() {
   rows_.AppendSeparator(layout_);
   row(layout_, kCmdLayoutPerformance, "oobe.layoutSelection.performanceOption",
       nullptr)->radio = true;
-  row(layout_, kCmdLayoutComfortable, "appMenu.horizontalTabs", nullptr)
+  row(layout_, kCmdLayoutComfortable, "oobe.layoutSelection.comfortableOption", nullptr)
       ->radio = true;
-  row(layout_, kCmdLayoutBalanced, "appMenu.verticalTabs", nullptr)->radio =
+  row(layout_, kCmdLayoutBalanced, "oobe.layoutSelection.balancedOption", nullptr)->radio =
       true;
   rows_.AppendSeparator(layout_);
   row(layout_, kCmdToggleSidebar, "appMenu.showSidebar", fluent::kClosePane);

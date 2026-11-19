@@ -133,6 +133,10 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     out.page_icon = {left + slot_inset, mid - slot / 2, left + slot_inset + slot,
                      mid + slot / 2};
     int r = right - slot_inset;
+    if (performance) {
+      out.extensions = {r - slot, mid - slot / 2, r, mid + slot / 2};
+      r = out.extensions.left - scaled(2);
+    }
     out.site_menu = {r - slot, mid - slot / 2, r, mid + slot / 2};
     r = out.site_menu.left - scaled(2);
     out.copy_link = {r - slot, mid - slot / 2, r, mid + slot / 2};
@@ -256,11 +260,7 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
       out.back = control_l(out.sidebar_toggle.right + btn_gap, mid);
       out.forward = control_l(out.back.right + btn_gap, mid);
       out.reload = control_l(out.forward.right + btn_gap, mid);
-      place_cluster(sidebar - inset, mid, false);
-      // At the minimum sidebar width, Extensions remains in the app menu.
-      if (out.extensions.left < out.reload.right + btn_gap) {
-        out.extensions = {};
-      }
+      out.app_menu = control_r(sidebar - inset, mid);
       const int address_top = row_top + tb +
           ((in.spaces_switch || in.floating_panel) ? tb : 0);
       place_omnibox(inset, sidebar - inset, address_top + tb / 2);

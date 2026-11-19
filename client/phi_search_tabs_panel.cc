@@ -104,7 +104,6 @@ class Panel : public PhiPopover {
     spec.cursor = nullptr;
 
     Options options;  // Activating, dismiss on inactive, 500 ms grace.
-    options.dwm_round = false;  // The panel draws its own square rim.
 
     // Centred over the shell's upper fifth, then clamped into the work
     // area of the owner's monitor: a shell dragged half off screen (or
@@ -478,7 +477,9 @@ class Panel : public PhiPopover {
     HPEN pen = ::CreatePen(PS_SOLID, 1, palette.border);
     HGDIOBJ old_pen = ::SelectObject(dc, pen);
     HGDIOBJ old_brush = ::SelectObject(dc, ::GetStockObject(NULL_BRUSH));
-    ::Rectangle(dc, rc.left, rc.top, rc.right, rc.bottom);
+    if (!dwm_rounded()) {
+      ::Rectangle(dc, rc.left, rc.top, rc.right, rc.bottom);
+    }
     // A hairline under the search field.
     ::MoveToEx(dc, rc.left,
                rc.top + Scaled(kPad) + Scaled(kFieldHeight) - Scaled(4),

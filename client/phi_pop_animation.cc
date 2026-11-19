@@ -232,11 +232,13 @@ HWND g_menu_popped = nullptr;
 // with owner-drawn rows (every menu PhiMenuApplyTheme dresses) is left at
 // DWMWCP_DEFAULT and comes up square, with the old flat frame and a square
 // drop shadow (PHI-2138, feedback 386: the tab area's menu). Ask for the
-// small rounding Windows gives its own menus; it holds for a layered
-// window too, so the pop-in keeps it. Windows 10 refuses the attribute and
+// same 8 dip rounding as PhiPopover, including submenus. Using ROUNDSMALL
+// here made menus look square beside the Extensions/Downloads popovers.
+// It holds for a layered window too, so the pop-in keeps it.
+// Windows 10 refuses the attribute and
 // the menu stays as it was.
 void RoundMenuCorners(HWND menu_window) {
-  const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUNDSMALL;
+  const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
   ::DwmSetWindowAttribute(menu_window, DWMWA_WINDOW_CORNER_PREFERENCE, &corner,
                           sizeof(corner));
 }

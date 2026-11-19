@@ -554,8 +554,8 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
     const wchar_t* label;
   } kLayouts[] = {
       {"performance", PhiLayoutMode::kPerformance, PhiStr("oobe.layoutSelection.performanceOption")},
-      {"comfortable", PhiLayoutMode::kComfortable, PhiStr("contextMenu.horizontalTabs")},
-      {"balanced", PhiLayoutMode::kBalanced, PhiStr("contextMenu.verticalTabs")},
+      {"comfortable", PhiLayoutMode::kComfortable, PhiStr("oobe.layoutSelection.comfortableOption")},
+      {"balanced", PhiLayoutMode::kBalanced, PhiStr("oobe.layoutSelection.balancedOption")},
   };
   std::vector<PhiMenuItem> layouts;
   for (const auto& entry : kLayouts) {

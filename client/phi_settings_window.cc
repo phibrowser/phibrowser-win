@@ -1561,13 +1561,13 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
   // The layout cards' captions are what the results page searches (a haystack,
   // never shown).
   const std::wstring layout_words =
-      std::wstring(PhiStr("appMenu.horizontalTabs")) + L" " +
-      PhiStr("appMenu.verticalTabs") + std::wstring(L" ") +
+      std::wstring(PhiStr("oobe.layoutSelection.comfortableOption")) + L" " +
+      PhiStr("oobe.layoutSelection.balancedOption") + std::wstring(L" ") +
       PhiStr("oobe.layoutSelection.performanceOption");
   if (SearchMatches(PhiStr("appMenu.layout"), layout_words.c_str())) {
     // The layout picker: three previews
     // with a 2 dip accent ring when chosen, above the radio and
-    // label. Balanced is "Vertical tabs", Comfortable "Horizontal tabs".
+    // label. Layout names match the macOS picker.
     ++filter_hits_;
     const int left = content_left_ + Scaled(kCardPadding);
     const int right = content_right_ - Scaled(kCardPadding);
@@ -1578,8 +1578,8 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
       const char* sketch;
     } kCards[] = {
         {"oobe.layoutSelection.performanceOption", PhiLayoutMode::kPerformance, "performance"},
-        {"appMenu.horizontalTabs", PhiLayoutMode::kComfortable, "comfortable"},
-        {"appMenu.verticalTabs", PhiLayoutMode::kBalanced, "balanced"},
+        {"oobe.layoutSelection.comfortableOption", PhiLayoutMode::kComfortable, "comfortable"},
+        {"oobe.layoutSelection.balancedOption", PhiLayoutMode::kBalanced, "balanced"},
     };
     int i = 0;
     for (const auto& definition : kCards) {
