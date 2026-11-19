@@ -57,6 +57,10 @@ struct PhiMenuRow {
   bool header = false;   // A section label: tertiary, no wash.
   bool radio = false;    // A checked state draws a dot, not a check mark.
   int height_dip = 34;   // The row's height (separators use their own).
+  // The shorter height PhiMenuFitToWorkArea gives the row (a separator too)
+  // while its menu would not fit the screen at the rows' own heights.
+  // 0 = the row's own height.
+  int fit_height_dip = 0;
   // The menu's minimum width when this row is in it (the app menu's root
   // asks for 320). Only the widest row's value matters.
   int min_width_dip = 0;
@@ -142,6 +146,20 @@ void PhiMenuApplyTheme(HMENU root, const PhiPalette& palette);
 void PhiMenuApplyFrameMode(bool dark);
 // True when PhiMenuApplyTheme has given `menu` its flyout ground.
 bool PhiMenuIsThemed(HMENU menu);
+
+// Fits `menu` into the work area of `monitor` at `dpi` (the owner's, which
+// WM_MEASUREITEM uses): when the menu at its rows' own heights is taller than
+// the work area (the ⋯ menu's 23 rows on a 720 dip screen at 300 %,
+// PHI-2095), every row and separator gets a shorter fit height, not below a
+// floor; a menu that fits again gets its own heights back. Changed items are
+// re-measured. For WM_INITMENUPOPUP, after the owner filled the menu and
+// before Windows sizes it; PhiTrackPopupMenu calls it for every menu of its
+// loop. A menu holding an item that is not ours is left alone.
+void PhiMenuFitToWorkArea(HMENU menu, HMONITOR monitor, UINT dpi);
+// Home / End inside a menu loop of this thread (Windows' menus ignore both):
+// selects the first / last row of the deepest open menu that has a
+// selection, or of the root menu when none has. True when it selected one.
+bool PhiMenuSelectEdge(bool last);
 
 // The owner's message handlers. Each returns true when the message was one
 // of our menu rows (the owner then returns TRUE from the message).

@@ -50,6 +50,11 @@ std::map<HWND, POINT>& Sources() {
 UINT_PTR g_timer = 0;
 HHOOK g_menu_hook = nullptr;
 int g_menu_depth = 0;
+// The fit and keyboard hooks of the outermost PhiTrackPopupMenu (PHI-2095),
+// and the monitor its menus open on.
+HHOOK g_menu_fit_hook = nullptr;
+HHOOK g_menu_key_hook = nullptr;
+HMONITOR g_menu_monitor = nullptr;
 
 int DipToPx(HWND hwnd, int dip) {
   const int dpi = static_cast<int>(::GetDpiForWindow(hwnd));
@@ -233,12 +238,98 @@ void RoundMenuCorners(HWND menu_window) {
                           sizeof(corner));
 }
 
+// A menu window about to be placed stays inside its monitor's WORK area:
+// Windows keeps a popup menu on the monitor but lets it cover the taskbar
+// (PHI-2095). Only moves it, and only when it fits.
+void KeepMenuInWorkArea(HWND hwnd, WINDOWPOS* pos) {
+  if ((pos->flags & SWP_NOMOVE) && (pos->flags & SWP_NOSIZE) &&
+      !(pos->flags & SWP_SHOWWINDOW)) {
+    return;
+  }
+  RECT now = {};
+  ::GetWindowRect(hwnd, &now);
+  const int x = (pos->flags & SWP_NOMOVE) ? now.left : pos->x;
+  const int y = (pos->flags & SWP_NOMOVE) ? now.top : pos->y;
+  const int cx = (pos->flags & SWP_NOSIZE) ? now.right - now.left : pos->cx;
+  const int cy = (pos->flags & SWP_NOSIZE) ? now.bottom - now.top : pos->cy;
+  if (cx <= 0 || cy <= 0) {
+    return;
+  }
+  const RECT rect = {x, y, x + cx, y + cy};
+  MONITORINFO info = {sizeof(info)};
+  if (!::GetMonitorInfoW(::MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST),
+                         &info)) {
+    return;
+  }
+  const RECT& work = info.rcWork;
+  int nx = x;
+  int ny = y;
+  if (cy <= work.bottom - work.top) {
+    ny = std::max(static_cast<int>(work.top),
+                  std::min(y, static_cast<int>(work.bottom) - cy));
+  }
+  if (cx <= work.right - work.left) {
+    nx = std::max(static_cast<int>(work.left),
+                  std::min(x, static_cast<int>(work.right) - cx));
+  }
+  if (nx != x || ny != y) {
+    pos->x = nx;
+    pos->y = ny;
+    pos->flags &= ~static_cast<UINT>(SWP_NOMOVE);
+  }
+}
+
+bool IsMenuWindow(HWND hwnd) {
+  wchar_t cls[16] = {};
+  return ::GetClassNameW(hwnd, cls, 16) > 0 &&
+         ::lstrcmpW(cls, kMenuWindowClass) == 0;
+}
+
+// After the owner has filled a menu (WM_INITMENUPOPUP returned) and before
+// Windows sizes it: shorten its rows when it would not fit the screen.
+LRESULT CALLBACK MenuFitHook(int code, WPARAM wparam, LPARAM lparam) {
+  if (code == HC_ACTION) {
+    const CWPRETSTRUCT* message =
+        reinterpret_cast<const CWPRETSTRUCT*>(lparam);
+    if (message && message->message == WM_INITMENUPOPUP) {
+      const HMENU menu = reinterpret_cast<HMENU>(message->wParam);
+      const UINT dpi = message->hwnd ? ::GetDpiForWindow(message->hwnd) : 0;
+      HMONITOR monitor = g_menu_monitor;
+      if (!monitor && message->hwnd) {
+        monitor = ::MonitorFromWindow(message->hwnd, MONITOR_DEFAULTTONEAREST);
+      }
+      PhiMenuFitToWorkArea(menu, monitor, dpi);
+    }
+  }
+  return ::CallNextHookEx(nullptr, code, wparam, lparam);
+}
+
+// Home and End inside the menu loop; Windows' menus ignore both.
+LRESULT CALLBACK MenuKeyHook(int code, WPARAM wparam, LPARAM lparam) {
+  if (code == MSGF_MENU) {
+    const MSG* msg = reinterpret_cast<const MSG*>(lparam);
+    if (msg && msg->message == WM_KEYDOWN &&
+        (msg->wParam == VK_HOME || msg->wParam == VK_END) &&
+        PhiMenuSelectEdge(msg->wParam == VK_END)) {
+      return TRUE;
+    }
+  }
+  return ::CallNextHookEx(nullptr, code, wparam, lparam);
+}
+
 // Sees every message SENT on this thread while a menu is up: a menu window
 // about to be shown is rounded and armed before its first frame, and one
-// about to be hidden leaves its picture behind.
+// about to be hidden leaves its picture behind; every menu window is kept
+// inside the work area.
 LRESULT CALLBACK MenuHook(int code, WPARAM wparam, LPARAM lparam) {
   if (code == HC_ACTION) {
     const CWPSTRUCT* message = reinterpret_cast<const CWPSTRUCT*>(lparam);
+    if (message && message->message == WM_WINDOWPOSCHANGING &&
+        message->lParam && IsMenuWindow(message->hwnd)) {
+      // The same WINDOWPOS the menu window's procedure gets next.
+      KeepMenuInWorkArea(message->hwnd,
+                         reinterpret_cast<WINDOWPOS*>(message->lParam));
+    }
     if (message && message->message == WM_WINDOWPOSCHANGING) {
       const WINDOWPOS* pos = reinterpret_cast<const WINDOWPOS*>(message->lParam);
       wchar_t cls[16] = {};
@@ -362,21 +453,34 @@ BOOL PhiTrackPopupMenu(HMENU menu,
   // A menu opened from inside another's loop gets its own pop-in.
   const HWND outer_popped = g_menu_popped;
   g_menu_popped = nullptr;
-  // The hook rounds the menu's windows, and pops them in when animating
-  // (PhiPopIn and PhiPopOut do nothing otherwise).
+  // The hook rounds the menu's windows and pops them in when animating
+  // (PhiPopIn and PhiPopOut do nothing otherwise); the menu fits the work
+  // area of the monitor it opens on (PHI-2095).
+  const HMONITOR outer_monitor = g_menu_monitor;
+  g_menu_monitor = ::MonitorFromPoint(POINT{x, y}, MONITOR_DEFAULTTONEAREST);
   if (g_menu_depth++ == 0) {
-    g_menu_hook = ::SetWindowsHookExW(WH_CALLWNDPROC, &MenuHook, nullptr,
-                                      ::GetCurrentThreadId());
+    const DWORD thread = ::GetCurrentThreadId();
+    g_menu_hook =
+        ::SetWindowsHookExW(WH_CALLWNDPROC, &MenuHook, nullptr, thread);
+    g_menu_fit_hook = ::SetWindowsHookExW(WH_CALLWNDPROCRET, &MenuFitHook,
+                                          nullptr, thread);
+    g_menu_key_hook =
+        ::SetWindowsHookExW(WH_MSGFILTER, &MenuKeyHook, nullptr, thread);
   }
   // With our pop-in the system's fade or slide would run first and delay
   // the menu; without it the flags stay the caller's.
   const BOOL result = ::TrackPopupMenu(
       menu, animate ? (flags | TPM_NOANIMATION) : flags, x, y, reserved, owner,
       rect);
-  if (--g_menu_depth == 0 && g_menu_hook) {
-    ::UnhookWindowsHookEx(g_menu_hook);
-    g_menu_hook = nullptr;
+  if (--g_menu_depth == 0) {
+    for (HHOOK* hook : {&g_menu_hook, &g_menu_fit_hook, &g_menu_key_hook}) {
+      if (*hook) {
+        ::UnhookWindowsHookEx(*hook);
+        *hook = nullptr;
+      }
+    }
   }
+  g_menu_monitor = outer_monitor;
   g_menu_popped = outer_popped;
   return result;
 }

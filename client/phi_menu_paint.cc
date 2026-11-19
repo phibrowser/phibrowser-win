@@ -25,6 +25,17 @@ constexpr int kIconColumn = 16;
 constexpr int kIconGap = 12;
 constexpr int kShortcutGap = 28;
 constexpr int kSeparatorHeight = 9;
+// PhiMenuFitToWorkArea's floors: a row keeps room for its 16 dip icon and
+// 14 dip label with the highlight's 2 dip insets; a separator its line.
+constexpr int kMinFitRowHeight = 24;
+constexpr int kMinFitSeparatorHeight = 5;
+// The popup's own frame and padding above and below the rows (Windows 11
+// draws about 4 dip each side at every scale), with a little to spare.
+constexpr int kMenuFrameAllowance = 12;
+// Menu-window messages Windows does not declare (winuser.h leaves them out;
+// stable since Windows 2000, used by every app that drives a menu window).
+constexpr UINT kMnGetHMenu = 0x01E1;
+constexpr UINT kMnSelectItem = 0x01E5;
 constexpr int kSeparatorInset = 12;
 constexpr int kArrowRoom = 20;  // The system's submenu arrow at the right.
 constexpr int kHighlightRadius = 4;
@@ -388,6 +399,201 @@ bool PhiMenuIsThemed(HMENU menu) {
   return menu && ::GetMenuInfo(menu, &info) && info.hbrBack;
 }
 
+// --- Fit / keyboard ------------------------------------------------------
+
+void PhiMenuFitToWorkArea(HMENU menu, HMONITOR monitor, UINT dpi) {
+  MONITORINFO info = {sizeof(info)};
+  if (!menu || !monitor || !dpi || !::GetMonitorInfoW(monitor, &info)) {
+    return;
+  }
+  const int count = ::GetMenuItemCount(menu);
+  std::vector<PhiMenuRow*> rows;
+  rows.reserve(count > 0 ? count : 0);
+  for (int i = 0; i < count; ++i) {
+    MENUITEMINFOW item = {sizeof(item)};
+    item.fMask = MIIM_FTYPE | MIIM_DATA;
+    if (!::GetMenuItemInfoW(menu, i, TRUE, &item) ||
+        !(item.fType & MFT_OWNERDRAW)) {
+      return;  // Not ours: Windows measures it, we cannot shorten it.
+    }
+    PhiMenuRow* row =
+        const_cast<PhiMenuRow*>(RowFromData(item.dwItemData));
+    if (!row) {
+      return;
+    }
+    rows.push_back(row);
+  }
+  // Pixels at the rows' own heights, as WM_MEASUREITEM reports them.
+  int rows_px = 0;
+  int separators_px = 0;
+  int separators = 0;
+  for (const PhiMenuRow* row : rows) {
+    if (row->separator) {
+      separators_px += Scale(kSeparatorHeight, dpi);
+      ++separators;
+    } else {
+      rows_px += Scale(row->height_dip, dpi);
+    }
+  }
+  const int available =
+      static_cast<int>(info.rcWork.bottom - info.rcWork.top) -
+      Scale(kMenuFrameAllowance, dpi);
+  const int over = rows_px + separators_px - available;
+  // The separators give up their spare height first, then every row the
+  // same share of its own.
+  const int separator_fit =
+      over > 0 ? kMinFitSeparatorHeight : 0;
+  const int row_room =
+      available - separators * Scale(separator_fit > 0 ? separator_fit
+                                                       : kSeparatorHeight,
+                                     dpi);
+  bool changed = false;
+  for (int i = 0; i < static_cast<int>(rows.size()); ++i) {
+    PhiMenuRow* row = rows[i];
+    int fit = 0;
+    if (over > 0) {
+      if (row->separator) {
+        fit = separator_fit;
+      } else if (rows_px > 0) {
+        // Floored in dip, so the scaled sum never exceeds the room.
+        fit = std::max(kMinFitRowHeight,
+                       static_cast<int>((static_cast<long long>(
+                                             row->height_dip) *
+                                         std::max(row_room, 0)) /
+                                        rows_px));
+        if (fit >= row->height_dip) {
+          fit = 0;
+        }
+      }
+    }
+    if (fit == row->fit_height_dip) {
+      continue;
+    }
+    row->fit_height_dip = fit;
+    changed = true;
+  }
+  if (!changed) {
+    return;
+  }
+  // Setting an item's type again drops the size Windows cached for it, so
+  // the next layout of the menu asks WM_MEASUREITEM again.
+  for (int i = 0; i < count; ++i) {
+    MENUITEMINFOW item = {sizeof(item)};
+    item.fMask = MIIM_FTYPE;
+    if (::GetMenuItemInfoW(menu, i, TRUE, &item)) {
+      ::SetMenuItemInfoW(menu, i, TRUE, &item);
+    }
+  }
+}
+
+namespace {
+
+struct OpenMenus {
+  std::vector<std::pair<HWND, HMENU>> windows;
+};
+
+BOOL CALLBACK CollectMenuWindow(HWND hwnd, LPARAM data) {
+  wchar_t cls[16] = {};
+  if (::IsWindowVisible(hwnd) && ::GetClassNameW(hwnd, cls, 16) > 0 &&
+      ::lstrcmpW(cls, L"#32768") == 0) {
+    const HMENU menu = reinterpret_cast<HMENU>(
+        ::SendMessageW(hwnd, kMnGetHMenu, 0, 0));
+    if (menu) {
+      reinterpret_cast<OpenMenus*>(data)->windows.emplace_back(hwnd, menu);
+    }
+  }
+  return TRUE;
+}
+
+bool HasSubmenu(HMENU menu, HMENU sub) {
+  const int count = ::GetMenuItemCount(menu);
+  for (int i = 0; i < count; ++i) {
+    if (::GetSubMenu(menu, i) == sub) {
+      return true;
+    }
+  }
+  return false;
+}
+
+int HilitedItem(HMENU menu) {
+  const int count = ::GetMenuItemCount(menu);
+  for (int i = 0; i < count; ++i) {
+    if (::GetMenuState(menu, i, MF_BYPOSITION) & MF_HILITE) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+}  // namespace
+
+bool PhiMenuSelectEdge(bool last) {
+  OpenMenus open;
+  ::EnumThreadWindows(::GetCurrentThreadId(), &CollectMenuWindow,
+                      reinterpret_cast<LPARAM>(&open));
+  if (open.windows.empty()) {
+    return false;
+  }
+  // The open menus form one chain, root to deepest: order them by which
+  // one holds which as a submenu.
+  std::vector<std::pair<HWND, HMENU>> chain;
+  for (const auto& candidate : open.windows) {
+    bool is_child = false;
+    for (const auto& other : open.windows) {
+      if (other.second != candidate.second &&
+          HasSubmenu(other.second, candidate.second)) {
+        is_child = true;
+        break;
+      }
+    }
+    if (!is_child) {
+      chain.push_back(candidate);
+      break;
+    }
+  }
+  while (!chain.empty() && chain.size() < open.windows.size()) {
+    const HMENU parent = chain.back().second;
+    bool found = false;
+    for (const auto& other : open.windows) {
+      if (HasSubmenu(parent, other.second)) {
+        chain.push_back(other);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      break;
+    }
+  }
+  if (chain.empty()) {
+    return false;
+  }
+  // The keys act where the selection is: the deepest menu with one (a
+  // submenu that a hover opened has none until the keyboard enters it).
+  auto target = chain.front();
+  for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+    if (HilitedItem(it->second) >= 0) {
+      target = *it;
+      break;
+    }
+  }
+  const int count = ::GetMenuItemCount(target.second);
+  for (int step = 0; step < count; ++step) {
+    const int i = last ? count - 1 - step : step;
+    const PhiMenuRow* row = PhiMenuRowAt(target.second, i);
+    MENUITEMINFOW item = {sizeof(item)};
+    item.fMask = MIIM_FTYPE;
+    if (!::GetMenuItemInfoW(target.second, i, TRUE, &item) ||
+        (item.fType & MFT_SEPARATOR) || (row && (row->separator ||
+                                                 row->header))) {
+      continue;
+    }
+    ::SendMessageW(target.first, kMnSelectItem, static_cast<WPARAM>(i), 0);
+    return true;
+  }
+  return false;
+}
+
 // --- Measure / draw --------------------------------------------------------
 
 bool PhiMenuOnMeasureItem(HWND owner, MEASUREITEMSTRUCT* measure) {
@@ -400,7 +606,9 @@ bool PhiMenuOnMeasureItem(HWND owner, MEASUREITEMSTRUCT* measure) {
   }
   const UINT dpi = owner ? ::GetDpiForWindow(owner) : 96;
   if (row->separator) {
-    measure->itemHeight = static_cast<UINT>(Scale(kSeparatorHeight, dpi));
+    measure->itemHeight = static_cast<UINT>(Scale(
+        row->fit_height_dip > 0 ? row->fit_height_dip : kSeparatorHeight,
+        dpi));
     measure->itemWidth = 0;
     return true;
   }
@@ -424,7 +632,8 @@ bool PhiMenuOnMeasureItem(HWND owner, MEASUREITEMSTRUCT* measure) {
   // popup is the width we measured (Chromium's NativeMenuWin does the same).
   width -= ::GetSystemMetricsForDpi(SM_CXMENUCHECK, dpi);
   measure->itemWidth = static_cast<UINT>(std::max(width, 0));
-  measure->itemHeight = static_cast<UINT>(Scale(row->height_dip, dpi));
+  measure->itemHeight = static_cast<UINT>(Scale(
+      row->fit_height_dip > 0 ? row->fit_height_dip : row->height_dip, dpi));
   return true;
 }
 
