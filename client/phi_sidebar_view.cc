@@ -21,6 +21,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "client/phi_animator.h"
 #include "client/phi_bookmark_manager.h"
+#include "client/phi_clear_tabs_icon.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_emoji.h"
 #include "client/phi_fluent.h"
@@ -914,6 +915,24 @@ void PhiSidebarView::CancelStripLanding() {
   landing_dx_ = 0.0;
 }
 
+void PhiSidebarView::SetClearTabsShown(bool shown) {
+  if (shown == clear_tabs_shown_) {
+    return;
+  }
+  clear_tabs_shown_ = shown;
+  PublishHits(shell_->SidebarRects());
+}
+
+RECT PhiSidebarView::clear_tabs_button() const {
+  if (!clear_tabs_shown_ || tabs_separator_.right <= tabs_separator_.left) {
+    return RECT{};
+  }
+  const int size = Scaled(shell_metrics::kClearTabsButton);
+  const int right = tabs_separator_.right - Scaled(shell_metrics::kClearTabsButtonInset);
+  const int top = (tabs_separator_.top + tabs_separator_.bottom - size) / 2;
+  return {right - size, top, right, top + size};
+}
+
 RECT PhiSidebarView::RowHoverRect(HoverKind kind, int index) const {
   const auto at = [&](const auto& rows) {
     return index >= 0 && index < static_cast<int>(rows.size())
@@ -1055,6 +1074,9 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
     add(new_tab_row_, kTabKey - 1, PhiStr("app.newTab"),
         PhiHitRole::kButton, false);
   }
+  add(clear_tabs_button(), kTabKey - 3,
+      PhiStr("sidebar.separator.clearTabsTooltip"), PhiHitRole::kButton,
+      false);
   // Comfortable's overflow chevron (empty unless the strip overflows).
   const size_t before_chevron = hits_.size();
   add(strip_overflow_button_, kTabKey - 2, PhiStr("tabs.strip.overflowButton"),
@@ -1581,6 +1603,7 @@ void PhiSidebarView::Rebuild() {
   int list_scroll_max = 0;
   strip_overflow_button_ = RECT{};
   new_tab_row_ = layout.new_tab_row;
+  tabs_separator_ = layout.tabs_separator;
   new_tab_row_separator_ = false;
   rows_clip_bottom_ = layout.tabs_limit;
   if (layout.horizontal_tabs) {
@@ -4344,16 +4367,31 @@ void PhiSidebarView::PaintBand(HDC dc,
   // Mac cell's radius-8 wash on the 2pt-inset pill.
   // Everything from here down to the tab rows rides the band shift (read
   // above).
-  // The separator row: a 1pt `separator` hairline centred in its 16pt row,
-  // spanning the rows' width (SeparatorCellView).
-  if (layout.bookmark_separator.right > layout.bookmark_separator.left) {
-    RECT sep = layout.bookmark_separator;
+  // The separator row: a 1pt `separator` hairline centred in its 28pt row,
+  // spanning the rows' width, and while shown the Clear button at its
+  // trailing end, the hairline stopping 36pt short (SeparatorCellView).
+  if (layout.tabs_separator.right > layout.tabs_separator.left) {
+    RECT sep = layout.tabs_separator;
     ::OffsetRect(&sep, 0, band_shift);
+    RECT button = clear_tabs_button();
+    const bool shown = button.right > button.left;
     const int line_y = (sep.top + sep.bottom) / 2;
-    const RECT line = {sep.left, line_y, sep.right, line_y + Scaled(1)};
+    const RECT line = {sep.left, line_y,
+                       sep.right - (shown ? Scaled(shell_metrics::kClearTabsLineGap) : 0),
+                       line_y + Scaled(1)};
     HBRUSH sep_brush = ::CreateSolidBrush(palette.separator);
     ::FillRect(dc, &line, sep_brush);
     ::DeleteObject(sep_brush);
+    if (shown) {
+      ::OffsetRect(&button, 0, band_shift);
+      // SidebarCleanupButton: a radius-4 sidebarTabHovered wash under the
+      // pointer, the bin in textMuted.
+      if (hover_kind == HoverKind::kClearTabs) {
+        PhiFillRounded(dc, button, palette.hover, Scaled(4));
+      }
+      PhiPaintClearTabsIcon(dc, button, FadeInk(kLabel, kTintTop, 0.55f),
+                            clear_tabs_t_);
+    }
   }
   if (new_tab_row_.right > new_tab_row_.left) {
     RECT row = new_tab_row_;

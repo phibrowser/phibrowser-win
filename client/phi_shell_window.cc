@@ -38,6 +38,7 @@
 #include "client/phi_agent_overlay.h"
 #include "client/phi_agent_spaces.h"
 #include "client/phi_animator.h"
+#include "client/phi_clear_tabs_icon.h"
 #include "client/phi_downloads_model.h"
 #include "client/phi_downloads_popover.h"
 #include "client/phi_library.h"
@@ -673,7 +674,7 @@ PhiShellWindow::Layout PhiShellWindow::ToLayout(
   out.favorites = PhiToRect(shell.favorites);
   out.bookmarks = PhiToRect(shell.bookmarks);
   out.stored_band = PhiToRect(shell.stored_band);
-  out.bookmark_separator = PhiToRect(shell.bookmark_separator);
+  out.tabs_separator = PhiToRect(shell.tabs_separator);
   out.new_tab_row = PhiToRect(shell.new_tab_row);
   out.new_tab_row_at_bottom = shell.new_tab_row_at_bottom;
   out.bottom_bar = PhiToRect(shell.bottom_bar);
@@ -1051,6 +1052,14 @@ RECT PhiShellWindow::new_tab_row_rect() const {
 
 bool PhiShellWindow::new_tab_row_separator() const {
   return sidebar_->new_tab_row_separator();
+}
+
+RECT PhiShellWindow::tabs_separator_rect() const {
+  return sidebar_->tabs_separator();
+}
+
+RECT PhiShellWindow::clear_tabs_button_rect() const {
+  return sidebar_->clear_tabs_button();
 }
 
 bool PhiShellWindow::ActiveTabExtensionOfferable() const {
@@ -1519,6 +1528,7 @@ PhiShellWindow::~PhiShellWindow() {
   mini_player_.reset();  // Its timers call back into this shell.
   PhiAnimator::ForThread().Cancel(download_cue_animation_);
   PhiAnimator::ForThread().Cancel(download_fade_animation_);
+  PhiAnimator::ForThread().Cancel(clear_tabs_animation_);
   DropFloatingCache();  // The panel's WM_DESTROY no longer reaches us.
   EndSidebarResize();
   // A hosted agent Space goes back to its own shell first, whole: the
@@ -2063,6 +2073,16 @@ bool PhiShellWindow::MenuCanSplitWithNewTab() const {
 bool PhiShellWindow::MenuCanClearAllTabs() const {
   return !AgentHoldsInput() && services_.window &&
          services_.window->CanClearAllTabs(MenuActiveBrowser());
+}
+
+bool PhiShellWindow::MenuCanUndoClearTabs() const {
+  return !AgentHoldsInput() && services_.window &&
+         services_.window->CanUndoClearTabs(MenuActiveBrowser());
+}
+
+bool PhiShellWindow::MenuCanRedoClearTabs() const {
+  return !AgentHoldsInput() && services_.window &&
+         services_.window->CanRedoClearTabs(MenuActiveBrowser());
 }
 
 void PhiShellWindow::MenuSplitWithNewTab() {
@@ -2912,7 +2932,7 @@ PhiSidebarRects PhiShellWindow::BandRects(const Layout& layout) const {
   rects.favorites = layout.favorites;
   rects.bookmarks = layout.bookmarks;
   rects.stored_band = layout.stored_band;
-  rects.bookmark_separator = layout.bookmark_separator;
+  rects.tabs_separator = layout.tabs_separator;
   rects.new_tab_row = layout.new_tab_row;
   rects.new_tab_row_at_bottom = layout.new_tab_row_at_bottom;
   rects.bottom_bar = layout.bottom_bar;
@@ -4036,6 +4056,9 @@ RECT PhiShellWindow::HoverRect(HoverKind kind, int index) {
     case HoverKind::kNewTabRow:
       r = sidebar_->new_tab_row();
       break;
+    case HoverKind::kClearTabs:
+      r = sidebar_->clear_tabs_button();
+      break;
     case HoverKind::kFieldExt:
       r = FieldExtRect(ComputeLayout(),
                        static_cast<size_t>(std::max(index, 0)));
@@ -4158,6 +4181,20 @@ void PhiShellWindow::OnChromeMouseMove(POINT client_pt) {
       index = static_cast<int>(i);
     }
   }
+  {
+    // The whole sidebar is the Clear button's reveal region (the Mac's
+    // sidebar tracking area, setCleanupButtonsVisible).
+    const RECT sidebar = SidebarRects().sidebar;
+    pointer_in_sidebar_ = band && ::PtInRect(&sidebar, client_pt) != FALSE;
+    RefreshClearTabsButton();
+  }
+  if (band && kind == HoverKind::kNone) {
+    const RECT clear = sidebar_->clear_tabs_button();
+    if (::PtInRect(&clear, client_pt)) {
+      kind = HoverKind::kClearTabs;
+      index = 0;
+    }
+  }
   if (band && kind == HoverKind::kNone) {
     const RECT new_tab = sidebar_->new_tab_row();
     if (::PtInRect(&new_tab, client_pt)) {
@@ -4228,6 +4265,19 @@ void PhiShellWindow::ClearHover() {
     tab_preview_->PointerExited();
   }
   SetHover(HoverKind::kNone, -1);
+  // The pointer left the chrome, unless it only crossed onto a child window
+  // inside the sidebar (the address field): the Clear button stays then.
+  bool in_sidebar = false;
+  POINT cursor = {};
+  if (shell_hwnd_ && BandOnShell() && ::GetCursorPos(&cursor)) {
+    const HWND under = ::WindowFromPoint(cursor);
+    ::ScreenToClient(shell_hwnd_, &cursor);
+    const RECT sidebar = SidebarRects().sidebar;
+    in_sidebar = under && ::GetAncestor(under, GA_ROOT) == shell_hwnd_ &&
+                 ::PtInRect(&sidebar, cursor) != FALSE;
+  }
+  pointer_in_sidebar_ = in_sidebar;
+  RefreshClearTabsButton();
   // The capsule's hover too: it gates the in-field Copy link / site-menu
   // pair. SetFieldHover re-checks the cursor, so a leave onto the EDIT
   // child keeps the field lit.
@@ -6298,6 +6348,9 @@ void PhiShellWindow::RebuildTabs() {
     laid_out_spaces_switch_ = spaces_switch;
     LayoutContents();
   }
+  // The tabs changed: the Clear button comes and goes with what there is
+  // to clear (the Mac follows $normalTabs).
+  RefreshClearTabsButton();
   RetitleShell();
 }
 
@@ -6683,6 +6736,11 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   if (sidebar_->OnStoredRowClick(pt)) {
     return;
   }
+  if (const RECT clear = sidebar_->clear_tabs_button();
+      ::PtInRect(&clear, pt)) {
+    PlayClearTabs();
+    return;
+  }
   if (framework_ && (::PtInRect(&sidebar_->new_tab_row(), pt) ||
                      ::PtInRect(&sidebar_->add_tab_button(), pt))) {
     if (!AgentHoldsInput()) {  // The Mac refuses New Tab under the agent.
@@ -6935,6 +6993,58 @@ void PhiShellWindow::InvalidateDownloadsButton() {
   if (const HWND panel = SpacesFloatingPanel(nullptr)) {
     ::InvalidateRect(panel, nullptr, FALSE);
   }
+}
+
+void PhiShellWindow::InvalidateClearTabsButton() {
+  RECT row = sidebar_->tabs_separator();
+  if (shell_hwnd_ && row.right > row.left) {
+    ::InflateRect(&row, Scaled(2), Scaled(2));
+    ::InvalidateRect(shell_hwnd_, &row, FALSE);
+  }
+  if (const HWND panel = SpacesFloatingPanel(nullptr)) {
+    ::InvalidateRect(panel, nullptr, FALSE);
+  }
+}
+
+void PhiShellWindow::RefreshClearTabsButton() {
+  if (destroying_) {
+    return;
+  }
+  const BrowserId browser = active_browser_id();
+  // A playing bin finishes where it is, as the Mac's does once clicked.
+  const bool shown =
+      clear_tabs_animation_ != 0 ||
+      (pointer_in_sidebar_ && !AgentHoldsInput() && services_.window &&
+       browser.valid() && services_.window->CanClearAllTabs(browser));
+  if (shown != sidebar_->clear_tabs_shown()) {
+    sidebar_->SetClearTabsShown(shown);
+    InvalidateClearTabsButton();
+  }
+}
+
+void PhiShellWindow::PlayClearTabs() {
+  const BrowserId browser = active_browser_id();
+  if (clear_tabs_animation_ != 0 || !shell_hwnd_ || !browser.valid()) {
+    return;  // One playback at a time (clearPlaybackID).
+  }
+  // The cleanup waits for one complete playback; the menu row and the
+  // chord stay immediate. It runs on the Space the click was in.
+  clear_tabs_animation_ = PhiAnimator::ForThread().Animate(
+      shell_hwnd_, kClearTabsAnimationMs, PhiEasing::kLinear,
+      [this](double t, RECT*) {
+        sidebar_->SetClearTabsPlayback(t < 1 ? t : -1);
+        InvalidateClearTabsButton();
+      },
+      [this, browser] {
+        clear_tabs_animation_ = 0;
+        sidebar_->SetClearTabsPlayback(-1);
+        if (!destroying_ && !AgentHoldsInput() && services_.window &&
+            services_.window->CanClearAllTabs(browser)) {
+          services_.window->ClearAllTabs(browser);
+        }
+        RefreshClearTabsButton();
+        InvalidateClearTabsButton();
+      });
 }
 
 void PhiShellWindow::DownloadWatchTick() {

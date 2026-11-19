@@ -359,16 +359,11 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     y += gap;
   }
   const int bookmarks_top = y;
-  // The outline's trailing separator row is gone: the Tabs label parts
-  // the outline from the tab list.
-  const int separator_h = 0;
-  const int separator_top = bookmarks_top + bookmarks_height;
-  out.bookmark_separator = SidebarRect{};
   out.bookmarks =
       bookmark_rows > 0 ? SidebarRect{inset, bookmarks_top, sidebar - inset,
-                                      separator_top + separator_h}
+                                      bookmarks_top + bookmarks_height}
                         : SidebarRect{};
-  y = separator_top + separator_h;
+  y = bookmarks_top + bookmarks_height;
   // The cap: the two stored bands scroll inside one viewport once they
   // would take the tab list's minimum room ("+ New Tab" and
   // kMinTabListRows rows) — but never shrink below 2/5 of the sidebar's
@@ -376,7 +371,8 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   out.stored_band = SidebarRect{};
   if (y > sidebar_header_bottom) {
     const int room = media_top - scaled(kFavoritesSpacer) - sidebar_header_bottom;
-    const int list_floor = gap + (in.owned_tabs_label ? label_h : 0) +
+    const int list_floor = scaled(kTabsSeparatorHeight) +
+                           (in.owned_tabs_label ? label_h : 0) +
                            scaled(kNewTabRowHeight) +
                            kMinTabListRows * scaled(kTabRowHeight + kTabRowGap);
     const int stored_cap =
@@ -386,9 +382,12 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
                        sidebar_header_bottom + visible};
     y = out.stored_band.bottom;
   }
-  if (y > sidebar_header_bottom) {
-    y += gap;
-  }
+  // The separator row heads the tab list, stored bands or not (the Mac's
+  // outline puts SeparatorCellView before its first tab item): it stands
+  // where the band gap was.
+  out.tabs_separator = {inset, y, sidebar - inset,
+                        y + scaled(kTabsSeparatorHeight)};
+  y = out.tabs_separator.bottom;
   if (in.owned_tabs_label) {
     out.tabs_label = {label_inset, y, sidebar - label_inset, y + label_h};
     y += label_h;
@@ -456,7 +455,7 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     out.favorites = zero;
     out.bookmarks = zero;
     out.stored_band = zero;
-    out.bookmark_separator = zero;
+    out.tabs_separator = zero;
     out.pinned_label = zero;
     out.bookmarks_label = zero;
     out.tabs_label = zero;

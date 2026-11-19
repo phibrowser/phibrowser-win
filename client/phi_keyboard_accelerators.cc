@@ -4,6 +4,8 @@
 #include "client/phi_keyboard_accelerators.h"
 
 #include <array>
+#include <cwchar>
+#include <iterator>
 
 namespace phi_client {
 PhiKeyboardCommandQueue::PhiKeyboardCommandQueue() = default;
@@ -28,8 +30,10 @@ PhiKeyboardAccelerators* g_accelerators = nullptr;
 // The FIXED shortcuts: Quit (the Mac locks ⌘Q the same way), F5, the app
 // menu's keys and the Ctrl+1..9 Space switch. IsReservedCommand says which
 // of these fire even while a page has focus.
-// Edit keys (Ctrl+C/V/X/Z/A...) stay with the web content; everything a
-// user can rebind — Open File, Print, Find, zoom, View Source, DevTools,
+// Edit keys (Ctrl+C/V/X/Z/A...) stay with the web content and the text
+// fields: Ctrl+Z / Ctrl+Shift+Z reach Clear All Tabs' Undo / Redo only when
+// neither takes them (page-first, and never with a text field focused);
+// everything a user can rebind — Open File, Print, Find, zoom, View Source, DevTools,
 // Back / Forward / Home, Settings and the rest — lives in the preferences'
 // rebindable table, not here.
 constexpr PhiKeyboardAccelerators::Accelerator kAccelerators[] = {
@@ -58,7 +62,27 @@ constexpr PhiKeyboardAccelerators::Accelerator kAccelerators[] = {
     {'7', true, false, false, kCmdSpace7},
     {'8', true, false, false, kCmdSpace8},
     {'9', true, false, false, kCmdSpace9},
+    // The Mac's Edit ▸ Undo / Redo (⌘Z / ⇧⌘Z) for Clear All Tabs.
+    {'Z', true, false, false, kCmdUndoClearTabs},
+    {'Z', true, true, false, kCmdRedoClearTabs},
 };
+
+// A native text field (the address field, an inline rename, the find bar)
+// has the keyboard: it keeps its own Undo, as the Mac's NSTextView does.
+bool TextFieldFocused() {
+  const HWND focus = ::GetFocus();
+  if (!focus) {
+    return false;
+  }
+  wchar_t name[32] = {};
+  ::GetClassNameW(focus, name, static_cast<int>(std::size(name)));
+  return ::_wcsicmp(name, L"Edit") == 0 ||
+         ::_wcsnicmp(name, L"RichEdit", 8) == 0;
+}
+
+bool IsClearTabsHistoryCommand(UINT command) {
+  return command == kCmdUndoClearTabs || command == kCmdRedoClearTabs;
+}
 
 // AltGr reaches the app as LEFT Ctrl + RIGHT Alt, so Polish AltGr+N (ń) or
 // US-International AltGr+R (®) reads as the Ctrl+Alt+N / Ctrl+Alt+R chords.
@@ -310,6 +334,9 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   UINT command = preferences_.MatchRebindableChord(vk, ctrl, shift, alt);
   if (!command) {
     command = MatchFixedAccelerator(vk, ctrl, shift, alt);
+  }
+  if (command && IsClearTabsHistoryCommand(command) && TextFieldFocused()) {
+    return 0;  // The field's own Undo / Redo.
   }
   if (command) {
     if (HWND shell = host_.FocusedShellHwnd()) {

@@ -223,6 +223,22 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   // edge, with its hairline while rows scroll under it (newTabsAtTop).
   out.Set("newTabRow", RectDict(shell->new_tab_row_rect()));
   out.Set("newTabRowSeparator", shell->new_tab_row_separator());
+  // The separator row heading the tab list, its Clear button (empty while
+  // hidden: the pointer off the sidebar, or nothing to clear), the bin's
+  // playback, and the Space's cleanup history (Undo and Redo steps).
+  out.Set("tabsSeparator", RectDict(shell->tabs_separator_rect()));
+  out.Set("clearTabsButton", RectDict(shell->clear_tabs_button_rect()));
+  out.Set("clearTabsPlaying", shell->clear_tabs_playing());
+  {
+    // Through the interface: the coordinator keeps its overrides private.
+    const WindowHost& host = *coordinator_;
+    const std::pair<int, int> depth =
+        host.ClearTabsHistoryDepth(shell->active_browser_id());
+    base::DictValue history;
+    history.Set("undo", depth.first);
+    history.Set("redo", depth.second);
+    out.Set("clearTabsHistory", std::move(history));
+  }
   out.Set("rowHeight", shell->tab_row_height());
   out.Set("rowGap", shell->tab_row_gap());
   out.Set("titleBar", shell->title_bar_height());

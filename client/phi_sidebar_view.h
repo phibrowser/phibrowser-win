@@ -338,6 +338,8 @@ enum class PhiChromeHover {
   // their position in the shell's own paint table.
   kNav,
   kNewTabRow,
+  // The separator row's Clear button.
+  kClearTabs,
   kFieldExt,
   // The Spaces strip's trailing slot — the "+" or, on overflow, the "..."
   // switcher standing in for it.
@@ -356,7 +358,7 @@ struct PhiSidebarRects {
   // and `bookmarks` are NATURAL rects that may run past it — the view
   // scrolls and clips them (PhiSidebarView::ScrolledStoredBands).
   RECT stored_band{};
-  RECT bookmark_separator{};
+  RECT tabs_separator{};
   RECT new_tab_row{};
   bool new_tab_row_at_bottom = false;  // ShellLayout::new_tab_row_at_bottom.
   RECT bottom_bar{};
@@ -822,6 +824,18 @@ class PhiSidebarView {
   // overflow (the Mac's newTabsAtTop, 5590a1d1). Set by every rebuild.
   const RECT& new_tab_row() const { return new_tab_row_; }
   bool new_tab_row_separator() const { return new_tab_row_separator_; }
+  // The separator row heading the tab list, and its Clear button (the Mac's
+  // SeparatorCellView + SidebarCleanupButton .clear): the button is empty
+  // unless the shell shows it (the pointer over the sidebar, something to
+  // clear). `t` is the click's playback, 0..1, or < 0 at rest.
+  const RECT& tabs_separator() const { return tabs_separator_; }
+  RECT clear_tabs_button() const;
+  bool clear_tabs_shown() const { return clear_tabs_shown_; }
+  // Republishes the hits, so the button's name and tooltip come and go
+  // with it.
+  void SetClearTabsShown(bool shown);
+  void SetClearTabsPlayback(double t) { clear_tabs_t_ = t; }
+  double clear_tabs_playback() const { return clear_tabs_t_; }
   // Comfortable's overflow chevron, between the last tab that fits and the
   // "+": up while any strip item is scrolled out of the strip's window;
   // a click opens the tab search palette over every tab. Empty otherwise.
@@ -1166,6 +1180,9 @@ class PhiSidebarView {
   SidebarTree sidebar_tree_;
   RECT add_tab_button_{};
   RECT new_tab_row_{};
+  RECT tabs_separator_{};
+  bool clear_tabs_shown_ = false;
+  double clear_tabs_t_ = -1;
   // The Mac's FloatingNewTabView separator: a hairline on the row's edge
   // toward the tabs while rows scroll under it.
   bool new_tab_row_separator_ = false;

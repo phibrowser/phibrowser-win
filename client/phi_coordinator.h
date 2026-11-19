@@ -1143,8 +1143,8 @@ class PhiCoordinator : public SidebarHost,
   // the framework's ABI 9 calls, the settings pane's state and the launch
   // snapshot's mirror. Gets the framework in OnFrameworkReady.
   PhiContentBlocking content_blocking_;
-  // Clear All Tabs: each browser's latest cleanup, for its toast's Undo.
-  std::map<int64_t, PhiClearedTabsBatch> cleared_tabs_;
+  // Clear All Tabs: each browser's cleanup history (Undo / Redo).
+  std::map<int64_t, PhiClearTabsHistory> clear_tabs_;
   uint64_t cleared_tabs_serial_ = 0;
   // The shell slots, the browser -> slot map, the kiosks and the creations
   // in flight (docs/architecture-review.md §3.4). Every "which window"
@@ -1170,8 +1170,17 @@ class PhiCoordinator : public SidebarHost,
   HWND FolioShellForWindow(int64_t window_id) const override;
   bool CanClearAllTabs(BrowserId browser) const override;
   void ClearAllTabs(BrowserId browser) override;
+  bool CanUndoClearTabs(BrowserId browser) const override;
+  bool CanRedoClearTabs(BrowserId browser) const override;
+  void UndoClearTabs(BrowserId browser) override;
+  void RedoClearTabs(BrowserId browser) override;
+  std::pair<int, int> ClearTabsHistoryDepth(BrowserId browser) const override;
+  // A cleanup of `browser`'s background tabs; `redo` registers it at once.
+  void StartClearTabs(BrowserId browser, bool redo);
+  bool ClearTabsRestoring(BrowserId browser) const;
+  bool ClearTabsAgentHeld(BrowserId browser) const;
+  void RestoreClearedTabs(BrowserId browser, const PhiClearedTabsBatch& batch);
   void NoteClearedTabs(const phi_framework::WindowSnapshot& snapshot);
-  void UndoClearedTabs(BrowserId browser, uint64_t serial);
   void FolioShowToast(int64_t window_id,
                       const std::wstring& title,
                       const std::wstring& message,

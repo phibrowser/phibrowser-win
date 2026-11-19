@@ -635,9 +635,18 @@ class WindowHost {
   // targeting the focused window's Space (phi_import_window.h).
   virtual void RequestBrowserImport() = 0;
   // Clear All Tabs (the Mac's BrowserState+ClearTabs): closes `browser`'s
-  // ordinary background tabs and offers their Undo on a toast.
+  // ordinary background tabs; each Space keeps its cleanups' Undo and Redo
+  // (the ⋯ rows, Ctrl+Z / Ctrl+Shift+Z and the toast's Undo button).
   virtual bool CanClearAllTabs(BrowserId browser) const = 0;
   virtual void ClearAllTabs(BrowserId browser) = 0;
+  virtual bool CanUndoClearTabs(BrowserId browser) const = 0;
+  virtual bool CanRedoClearTabs(BrowserId browser) const = 0;
+  virtual void UndoClearTabs(BrowserId browser) = 0;
+  virtual void RedoClearTabs(BrowserId browser) = 0;
+  // agentSpace.window.layout's view of that history: the Undo steps and the
+  // Redo steps.
+  virtual std::pair<int, int> ClearTabsHistoryDepth(
+      BrowserId browser) const = 0;
   // The client's one analytics capture path (phi_client_analytics.h):
   // the harness ring, then the collector's consent gate and allow-list.
   virtual void CaptureAnalytics(const char* module,
@@ -1252,6 +1261,11 @@ class PhiShellWindow : public PhiHitSource,
   // it shows its sticky hairline, for the layout verb.
   RECT new_tab_row_rect() const;
   bool new_tab_row_separator() const;
+  // The separator row heading the tab list and its Clear button (empty
+  // while hidden), and whether a click's playback is running.
+  RECT tabs_separator_rect() const;
+  RECT clear_tabs_button_rect() const;
+  bool clear_tabs_playing() const { return clear_tabs_animation_ != 0; }
   // The Mini Player: the preference, the framework's change notice, and its
   // state for agentSpace.window.layout.
   void ApplyMiniPlayerPreference(bool enabled, const std::string& mode);
@@ -1425,9 +1439,9 @@ class PhiShellWindow : public PhiHitSource,
     RECT favorites{};      // Pinned-tab band (or its reserved drop zone).
     RECT bookmarks{};      // The outline band: rows (or zone) + separator.
     RECT stored_band{};    // The two bands' capped, scrolling viewport.
-    // The 16pt separator row between the bookmark outline and "+ New Tab"
-    // (the Mac's SeparatorItem); empty without bookmarks.
-    RECT bookmark_separator{};
+    // The 28pt separator row heading the tab list (the Mac's SeparatorItem),
+    // which carries the Clear button.
+    RECT tabs_separator{};
     RECT new_tab_row{};    // The sidebar's "+ New Tab" row (its sticky place
                            // when new_tab_row_at_bottom; see the sidebar's).
     bool new_tab_row_at_bottom = false;
@@ -2129,6 +2143,8 @@ class PhiShellWindow : public PhiHitSource,
   uint64_t pending_split_deadline_ = 0;
   bool MenuCanSplitWithNewTab() const override;
   bool MenuCanClearAllTabs() const override;
+  bool MenuCanUndoClearTabs() const override;
+  bool MenuCanRedoClearTabs() const override;
   void MenuSplitWithNewTab() override;
   void MenuToggleSidebar() override;
   void MenuToggleReader(bool from_accelerator) override;
@@ -2356,6 +2372,15 @@ class PhiShellWindow : public PhiHitSource,
   ULONGLONG download_quick_until_ = 0;  // GetTickCount64; see ScheduleRefresh.
   int download_cue_animation_ = 0;
   int download_fade_animation_ = 0;
+  // The separator row's Clear button (the Mac's SidebarCleanupButton
+  // .clear): shown while the pointer is over the sidebar and the Space on
+  // screen has something to clear; a click plays the bin once and the
+  // cleanup runs when it ends. Repeat clicks during the playback do nothing.
+  void RefreshClearTabsButton();
+  void PlayClearTabs();
+  void InvalidateClearTabsButton();
+  bool pointer_in_sidebar_ = false;
+  int clear_tabs_animation_ = 0;
   // The site menu is tracking (its button stays lit and shown).
   bool site_menu_open_ = false;
   // The Not secure cue's state (RefreshPageSecurity): what was asked last,

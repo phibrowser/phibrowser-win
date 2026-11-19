@@ -1023,6 +1023,34 @@
     "zh-Hant": "清除所有分頁"
    }
   },
+  "appMenu.undoClearAllTabs": {
+   "comment": "the ⋯ menu, phi_app_menu.cc: the Mac's Edit ▸ Undo / Redo while a Clear All Tabs cleanup can be undone or redone, under the Clear all tabs row. Sentence case like its neighbours; \"\\t<chord>\" is the right-aligned shortcut.",
+   "en": "Undo clear all tabs\tCtrl+Z",
+   "translations": {
+    "de": "Alle Tabs aufräumen widerrufen",
+    "es": "Deshacer Limpiar todas las pestañas",
+    "fr": "Annuler Effacer tous les onglets",
+    "ja": "「すべてのタブをクリア」を取り消す",
+    "ko": "모든 탭 지우기 실행 취소",
+    "nl": "Wis alle tabbladen ongedaan maken",
+    "zh-Hans": "撤销清理所有标签页",
+    "zh-Hant": "復原清除所有分頁"
+   }
+  },
+  "appMenu.redoClearAllTabs": {
+   "comment": "the ⋯ menu, phi_app_menu.cc: the Mac's Edit ▸ Undo / Redo while a Clear All Tabs cleanup can be undone or redone, under the Clear all tabs row. Sentence case like its neighbours; \"\\t<chord>\" is the right-aligned shortcut.",
+   "en": "Redo clear all tabs\tCtrl+Shift+Z",
+   "translations": {
+    "de": "Alle Tabs aufräumen wiederholen",
+    "es": "Rehacer Limpiar todas las pestañas",
+    "fr": "Rétablir Effacer tous les onglets",
+    "ja": "「すべてのタブをクリア」をやり直す",
+    "ko": "모든 탭 지우기 다시 실행",
+    "nl": "Wis alle tabbladen opnieuw uitvoeren",
+    "zh-Hans": "重做清理所有标签页",
+    "zh-Hant": "重做清除所有分頁"
+   }
+  },
   "appMenu.deleteBrowsingData": {
    "comment": "appMenu — the ⋯ Settings-and-more flyout (docs/windows-native-ui.md §3.1); \"\\t<chord>\" is the right-aligned shortcut. Translations authored for Windows (impl log D14).",
    "en": "Delete browsing data…\tCtrl+Shift+Del",
@@ -10194,23 +10222,17 @@
    "comment": "settings — Sync status card (Mac DevicesSettingView)",
    "en": "Up to date"
   },
-  "tabs.clearAll.confirmation.windows": {
-   "comment": "the toast after Clear All Tabs, whose Undo is a button; phi_coordinator.cc. Translations are the first sentence of the Mac's tabs.clearAll.confirmation.",
-   "en": "Cleared tabs",
-   "translations": {
-    "de": "Tabs aufgeräumt",
-    "es": "Pestañas cerradas",
-    "fr": "Onglets effacés",
-    "ja": "タブをクリアしました",
-    "ko": "탭을 지웠어요",
-    "nl": "Tabbladen gewist",
-    "zh-Hans": "已清理标签页",
-    "zh-Hant": "已清除分頁"
-   }
-  },
   "tabs.clearAll.title": {
    "comment": "Mac key (translations by key); Settings ▸ Shortcuts, phi_preferences.cc",
    "en": "Clear All Tabs"
+  },
+  "tabs.clearAll.confirmation": {
+   "comment": "Mac key (translations by key); the toast after Clear All Tabs, phi_coordinator.cc. {0} is the Undo chord (Ctrl+Z).",
+   "en": "Cleared tabs. Use {0} to undo."
+  },
+  "tabs.clearAll.undoFallback": {
+   "comment": "Mac key (translations by key); the Clear All Tabs toast's Undo button, phi_coordinator.cc.",
+   "en": "Undo"
   },
   "tabs.strip.overflowButton": {
    "comment": "sidebar — the comfortable strip's overflow chevron (accessibility name), used at phi_sidebar_view.cc",
@@ -10533,6 +10555,10 @@
   "sidebar.media.unmute": {
    "comment": "Tab mute — the Unmute tab row of the tab-row, pinned-cell and bookmark-row context menus, and the speaker button tooltip on a muted tab (the Mac's sidebar.media.unmute), phi_shell_menus.cc.",
    "en": "Unmute tab"
+  },
+  "sidebar.separator.clearTabsTooltip": {
+   "comment": "Mac key (translations by key); the tooltip and accessible name of the separator row's Clear button above the tab list, phi_sidebar_view.cc.",
+   "en": "Clear unselected tabs"
   },
   "settings.profiles.dataLinks.unavailableWithoutSpace": {
    "comment": "settings — profile detail note when no Space uses the profile",

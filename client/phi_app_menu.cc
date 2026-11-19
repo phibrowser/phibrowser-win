@@ -229,8 +229,11 @@ void PhiAppMenu::BuildStatic() {
   // The Mac's File ▸ New Incognito Space (docs/incognito-space-port.md):
   // joins this window's Spaces, unlike the incognito window above it.
   row(root_, kCmdNewIncognitoSpace, "appMenu.newIncognitoSpace", nullptr);
-  // The Mac's File ▸ Clear All Tabs; a toast offers the Undo.
+  // The Mac's File ▸ Clear All Tabs, then its Edit ▸ Undo / Redo (the
+  // cleanup history of the Space on screen).
   row(root_, kCmdClearAllTabs, "appMenu.clearAllTabs", nullptr);
+  row(root_, kCmdUndoClearTabs, "appMenu.undoClearAllTabs", nullptr, false);
+  row(root_, kCmdRedoClearTabs, "appMenu.redoClearAllTabs", nullptr, false);
   rows_.AppendSeparator(root_);
   sub(root_, spaces_, "appMenu.spaces", fluent::kTabs);
   sub(root_, history_, "appMenu.history", fluent::kHistory);
@@ -386,6 +389,8 @@ void PhiAppMenu::RefreshRoot() {
   services_->MenuRefreshNavState();
   SetEnabled(root_, kCmdSplitWithNewTab, services_->MenuCanSplitWithNewTab());
   SetEnabled(root_, kCmdClearAllTabs, services_->MenuCanClearAllTabs());
+  SetEnabled(root_, kCmdUndoClearTabs, services_->MenuCanUndoClearTabs());
+  SetEnabled(root_, kCmdRedoClearTabs, services_->MenuCanRedoClearTabs());
   SetEnabled(root_, kCmdPreferences, services_->MenuWindowHost() != nullptr);
   // Reader View is offered where it has something to show, and ticked
   // while its surface is up.
@@ -899,6 +904,8 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       case kCmdSplitWithNewTab:
       case kCmdCloseTab:
       case kCmdClearAllTabs:
+      case kCmdUndoClearTabs:
+      case kCmdRedoClearTabs:
       case kCmdReopenClosedTab:
       case kCmdDuplicateTab:
       case kCmdOpenFile:
@@ -1067,6 +1074,16 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
     case kCmdClearAllTabs:
       if (c->MenuCanClearAllTabs()) {
         c->MenuWindowHost()->ClearAllTabs(target);
+      }
+      return true;
+    case kCmdUndoClearTabs:
+      if (c->MenuCanUndoClearTabs()) {
+        c->MenuWindowHost()->UndoClearTabs(target);
+      }
+      return true;
+    case kCmdRedoClearTabs:
+      if (c->MenuCanRedoClearTabs()) {
+        c->MenuWindowHost()->RedoClearTabs(target);
       }
       return true;
     case kCmdUndo:

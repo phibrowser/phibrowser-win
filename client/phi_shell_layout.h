@@ -88,6 +88,14 @@ inline constexpr int kHeaderSpacer = 8;
 // 12 above, 4 below, 16 inset (§4.2).
 inline constexpr int kSectionLabelHeight = 28;  // Only the agent's "<Agent>'s tabs" cue now.
 inline constexpr int kSectionGap = 8;           // Between bands (no section labels, §4.2).
+// The separator row heading the tab list (the Mac's SeparatorCellView, 28pt):
+// a 1 dip hairline across the rows' width, and at its trailing end the Clear
+// button (24 dip, 4 in from the rows' edge) while the pointer is over the
+// sidebar; the hairline then stops 36 dip short of the edge.
+inline constexpr int kTabsSeparatorHeight = 28;
+inline constexpr int kClearTabsButton = 24;
+inline constexpr int kClearTabsButtonInset = 4;
+inline constexpr int kClearTabsLineGap = 36;
 inline constexpr int kSectionLabelInset = 16;
 inline constexpr int kFavoritesSpacer = 4;
 inline constexpr int kTabRowHeight = 36;    // Row pitch adds kTabRowGap.
@@ -286,8 +294,9 @@ struct ShellLayout {
   // unscrolled rects and may run past its bottom; the sidebar view scrolls
   // and clips them to this. Empty without pins or bookmarks.
   SidebarRect stored_band;
-  // The 16pt separator row between the bookmark outline and "+ New Tab".
-  SidebarRect bookmark_separator;
+  // The separator row between the stored bands and the tab list ("+ New
+  // Tab" and the tabs): kTabsSeparatorHeight, the rows' width.
+  SidebarRect tabs_separator;
   // The sidebar's "+ New Tab" row. With new_tab_row_at_bottom it is only the
   // row's sticky place at the list's bottom edge: PhiSidebarView places it
   // after the last tab while the tabs fit (PhiSidebarView::new_tab_row()).

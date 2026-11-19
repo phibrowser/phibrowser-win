@@ -166,6 +166,10 @@ enum : UINT {
   kCmdAppearanceSystem,
   kCmdAppearanceLight,
   kCmdAppearanceDark,
+  // The Mac's Edit ▸ Undo / Redo for Clear All Tabs (its cleanup history),
+  // ⋯ rows under Clear all tabs and Ctrl+Z / Ctrl+Shift+Z outside text.
+  kCmdUndoClearTabs,
+  kCmdRedoClearTabs,
   // Layout ▸ Show sidebar — the same toggle as kCmdToggleSidebar, listed
   // under its own name so the remote surface can address the row.
   kCmdShowBookmarksBar = kCmdAlwaysShowBookmarkBar,
@@ -269,6 +273,9 @@ class PhiAppMenuShell {
   virtual bool MenuCanSplitWithNewTab() const = 0;
   // The Mac's File ▸ Clear All Tabs: more than one ordinary tab, no agent.
   virtual bool MenuCanClearAllTabs() const = 0;
+  // Its Undo / Redo in this window's Space (no agent).
+  virtual bool MenuCanUndoClearTabs() const = 0;
+  virtual bool MenuCanRedoClearTabs() const = 0;
   virtual void MenuSplitWithNewTab() = 0;
   virtual void MenuToggleSidebar() = 0;
   // `from_accelerator`: the chord rather than the View menu row (the

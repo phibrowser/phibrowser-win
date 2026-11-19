@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -204,6 +206,95 @@ struct PhiClearedTabsBatch {
   std::vector<SplitSnapshot> splits;  // Those with every pane cleared.
   std::set<int> pending;              // Asked to close, not gone yet.
   std::set<int> closed;               // Confirmed gone.
+  // On the Undo history: after the first confirmed removal, or at once for
+  // a Redo's cleanup (the Mac registers a Redo's inverse while UndoManager
+  // is still redoing).
+  bool registered = false;
+};
+
+// One browser's (one Space's) cleanup history, the Mac's per-BrowserState
+// clearTabsUndoManager: Undo takes the newest registered cleanup back, Redo
+// runs a fresh cleanup of whatever is behind the foreground then. A new
+// cleanup that registers drops the Redo steps, as a new UndoManager action
+// does. While a restore's snapshot has not come back, neither another
+// cleanup nor an Undo or Redo may overlap it (isRestoringClearedTabs).
+struct PhiClearTabsHistory {
+  // The Mac's UndoManager keeps every level; this bounds a long session.
+  static constexpr size_t kMaxSteps = 50;
+  std::vector<PhiClearedTabsBatch> batches;  // Oldest first.
+  int redo = 0;
+  bool restoring = false;
+  uint64_t restoring_deadline = 0;  // GetTickCount64; a lost snapshot's cap.
+
+  bool CanUndo() const {
+    return std::any_of(batches.begin(), batches.end(),
+                       [](const auto& b) { return b.registered; });
+  }
+  bool CanRedo() const { return redo > 0; }
+  int UndoDepth() const {
+    return static_cast<int>(std::count_if(
+        batches.begin(), batches.end(),
+        [](const auto& b) { return b.registered; }));
+  }
+  // The newest registered cleanup, or nullptr.
+  PhiClearedTabsBatch* Top() {
+    for (auto it = batches.rbegin(); it != batches.rend(); ++it) {
+      if (it->registered) {
+        return &*it;
+      }
+    }
+    return nullptr;
+  }
+  // Starts a cleanup. An earlier one with no confirmed removal yet never
+  // reached the history, and this one supersedes it.
+  void Begin(PhiClearedTabsBatch batch) {
+    std::erase_if(batches, [](const auto& b) { return !b.registered; });
+    batches.push_back(std::move(batch));
+    if (batches.size() > kMaxSteps) {
+      batches.erase(batches.begin());
+    }
+  }
+  // Moves confirmed removals out of `pending`, given the ids still live.
+  // Returns the serial of a cleanup whose FIRST removal this was (its toast
+  // goes up then), or 0.
+  uint64_t NoteRemovals(const std::set<int>& live) {
+    uint64_t first = 0;
+    for (PhiClearedTabsBatch& batch : batches) {
+      if (batch.pending.empty()) {
+        continue;
+      }
+      const bool none_yet = batch.closed.empty();
+      for (auto id = batch.pending.begin(); id != batch.pending.end();) {
+        if (live.count(*id)) {
+          ++id;
+        } else {
+          batch.closed.insert(*id);
+          id = batch.pending.erase(id);
+        }
+      }
+      if (none_yet && !batch.closed.empty()) {
+        if (!batch.registered) {
+          batch.registered = true;
+          redo = 0;
+        }
+        first = batch.serial;
+      }
+    }
+    return first;
+  }
+  // Takes the newest registered cleanup off the history for its restore and
+  // makes room for one Redo.
+  std::optional<PhiClearedTabsBatch> PopForUndo() {
+    for (auto it = batches.rbegin(); it != batches.rend(); ++it) {
+      if (it->registered) {
+        PhiClearedTabsBatch batch = std::move(*it);
+        batches.erase(std::next(it).base());
+        ++redo;
+        return batch;
+      }
+    }
+    return std::nullopt;
+  }
 };
 
 inline PhiClearedTabsBatch PhiCaptureClearedTabs(

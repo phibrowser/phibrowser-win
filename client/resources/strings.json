@@ -1960,6 +1960,17 @@
    "zh-Hans": "最近关闭的标签页",
    "zh-Hant": "最近關閉的分頁"
   },
+  "appMenu.redoClearAllTabs": {
+   "de": "Alle Tabs aufräumen wiederholen\tCtrl+Shift+Z",
+   "en": "Redo clear all tabs\tCtrl+Shift+Z",
+   "es": "Rehacer Limpiar todas las pestañas\tCtrl+Shift+Z",
+   "fr": "Rétablir Effacer tous les onglets\tCtrl+Shift+Z",
+   "ja": "「すべてのタブをクリア」をやり直す\tCtrl+Shift+Z",
+   "ko": "모든 탭 지우기 다시 실행\tCtrl+Shift+Z",
+   "nl": "Wis alle tabbladen opnieuw uitvoeren\tCtrl+Shift+Z",
+   "zh-Hans": "重做清理所有标签页\tCtrl+Shift+Z",
+   "zh-Hant": "重做清除所有分頁\tCtrl+Shift+Z"
+  },
   "appMenu.renameSpace": {
    "de": "Space umbenennen…",
    "en": "Rename Space…",
@@ -2080,6 +2091,17 @@
    "nl": "Taakbeheer\tShift+Esc",
    "zh-Hans": "任务管理器\tShift+Esc",
    "zh-Hant": "工作管理員\tShift+Esc"
+  },
+  "appMenu.undoClearAllTabs": {
+   "de": "Alle Tabs aufräumen widerrufen\tCtrl+Z",
+   "en": "Undo clear all tabs\tCtrl+Z",
+   "es": "Deshacer Limpiar todas las pestañas\tCtrl+Z",
+   "fr": "Annuler Effacer tous les onglets\tCtrl+Z",
+   "ja": "「すべてのタブをクリア」を取り消す\tCtrl+Z",
+   "ko": "모든 탭 지우기 실행 취소\tCtrl+Z",
+   "nl": "Wis alle tabbladen ongedaan maken\tCtrl+Z",
+   "zh-Hans": "撤销清理所有标签页\tCtrl+Z",
+   "zh-Hant": "復原清除所有分頁\tCtrl+Z"
   },
   "appMenu.urlRules": {
    "de": "URL-Regeln…",
@@ -13126,6 +13148,17 @@
    "zh-Hans": "标签页",
    "zh-Hant": "分頁"
   },
+  "sidebar.separator.clearTabsTooltip": {
+   "de": "Nicht ausgewählte Tabs aufräumen",
+   "en": "Clear unselected tabs",
+   "es": "Limpiar las pestañas no seleccionadas",
+   "fr": "Effacer les onglets non sélectionnés",
+   "ja": "選択されていないタブをクリア",
+   "ko": "선택하지 않은 탭 지우기",
+   "nl": "Wis niet-geselecteerde tabbladen",
+   "zh-Hans": "清理未选中的标签页",
+   "zh-Hant": "清除未選取的分頁"
+  },
   "sidebar.setTheme": {
    "de": "Design festlegen",
    "en": "Set Theme",
@@ -14985,16 +15018,16 @@
    "zh-Hans": "已是最新",
    "zh-Hant": "已是最新狀態"
   },
-  "tabs.clearAll.confirmation.windows": {
-   "de": "Tabs aufgeräumt",
-   "en": "Cleared tabs",
-   "es": "Pestañas cerradas",
-   "fr": "Onglets effacés",
-   "ja": "タブをクリアしました",
-   "ko": "탭을 지웠어요",
-   "nl": "Tabbladen gewist",
-   "zh-Hans": "已清理标签页",
-   "zh-Hant": "已清除分頁"
+  "tabs.clearAll.confirmation": {
+   "de": "Tabs aufgeräumt. Mit {0} widerrufen.",
+   "en": "Cleared tabs. Use {0} to undo.",
+   "es": "Pestañas cerradas. Usa {0} para deshacer.",
+   "fr": "Onglets effacés. Utilisez {0} pour annuler.",
+   "ja": "タブをクリアしました。{0}で取り消せます。",
+   "ko": "탭을 지웠어요. {0} 키로 실행 취소할 수 있어요.",
+   "nl": "Tabbladen gewist. Gebruik {0} om dit ongedaan te maken.",
+   "zh-Hans": "已清理标签页。按 {0} 可撤销。",
+   "zh-Hant": "已清除分頁。按 {0} 可復原。"
   },
   "tabs.clearAll.title": {
    "de": "Alle Tabs aufräumen",
@@ -15006,6 +15039,17 @@
    "nl": "Wis alle tabbladen",
    "zh-Hans": "清理所有标签页",
    "zh-Hant": "清除所有分頁"
+  },
+  "tabs.clearAll.undoFallback": {
+   "de": "Widerrufen",
+   "en": "Undo",
+   "es": "Deshacer",
+   "fr": "Annuler",
+   "ja": "取り消す",
+   "ko": "실행 취소",
+   "nl": "Herstel",
+   "zh-Hans": "撤销",
+   "zh-Hant": "復原"
   },
   "tabs.strip.overflowButton": {
    "de": "Weitere Tabs",

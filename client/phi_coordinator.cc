@@ -2687,16 +2687,34 @@ HWND PhiCoordinator::FolioShellForWindow(int64_t window_id) const {
 }
 
 namespace {
-// Longer than Folio's 6 s: the toast is the only way back from a whole cleanup.
+// Longer than Folio's 6 s; Ctrl+Z and the ⋯ row stay after it goes.
 constexpr int kClearedTabsToastMs = 10000;
+// A restore whose snapshot never arrives must not lock the history.
+constexpr uint64_t kClearTabsRestoreCapMs = 3000;
 }  // namespace
+
+bool PhiCoordinator::ClearTabsRestoring(BrowserId browser) const {
+  const auto it = clear_tabs_.find(browser.value);
+  return it != clear_tabs_.end() && it->second.restoring &&
+         ::GetTickCount64() < it->second.restoring_deadline;
+}
+
+bool PhiCoordinator::ClearTabsAgentHeld(BrowserId browser) const {
+  const PhiShellWindow* window = registry_.ControllerForBrowser(browser);
+  return window && window->AgentHoldsInput();
+}
 
 bool PhiCoordinator::CanClearAllTabs(BrowserId browser) const {
   const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
-  return snapshot && PhiCanClearAllTabs(snapshot->tabs);
+  return snapshot && PhiCanClearAllTabs(snapshot->tabs) &&
+         !ClearTabsRestoring(browser);
 }
 
 void PhiCoordinator::ClearAllTabs(BrowserId browser) {
+  StartClearTabs(browser, /*redo=*/false);
+}
+
+void PhiCoordinator::StartClearTabs(BrowserId browser, bool redo) {
   const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
   if (!framework_ || !snapshot || !CanClearAllTabs(browser)) {
     return;
@@ -2707,61 +2725,99 @@ void PhiCoordinator::ClearAllTabs(BrowserId browser) {
   }
   PhiClearedTabsBatch batch = PhiCaptureClearedTabs(*snapshot, candidates);
   batch.serial = ++cleared_tabs_serial_;
-  cleared_tabs_[browser.value] = std::move(batch);
+  batch.registered = redo;
+  clear_tabs_[browser.value].Begin(std::move(batch));
   for (const TabId id : candidates) {
     framework_->CloseTabById(browser.value, id.value);
   }
 }
 
-void PhiCoordinator::NoteClearedTabs(
-    const phi_framework::WindowSnapshot& snapshot) {
-  const auto it = cleared_tabs_.find(snapshot.window.value);
-  if (it == cleared_tabs_.end() || it->second.pending.empty()) {
+bool PhiCoordinator::CanUndoClearTabs(BrowserId browser) const {
+  const auto it = clear_tabs_.find(browser.value);
+  return it != clear_tabs_.end() && it->second.CanUndo() &&
+         !ClearTabsRestoring(browser) && !ClearTabsAgentHeld(browser);
+}
+
+bool PhiCoordinator::CanRedoClearTabs(BrowserId browser) const {
+  const auto it = clear_tabs_.find(browser.value);
+  return it != clear_tabs_.end() && it->second.CanRedo() &&
+         !ClearTabsRestoring(browser) && !ClearTabsAgentHeld(browser);
+}
+
+std::pair<int, int> PhiCoordinator::ClearTabsHistoryDepth(
+    BrowserId browser) const {
+  const auto it = clear_tabs_.find(browser.value);
+  if (it == clear_tabs_.end()) {
+    return {0, 0};
+  }
+  return {it->second.UndoDepth(), it->second.redo};
+}
+
+void PhiCoordinator::UndoClearTabs(BrowserId browser) {
+  if (!CanUndoClearTabs(browser)) {
     return;
   }
-  PhiClearedTabsBatch& batch = it->second;
+  PhiClearTabsHistory& history = clear_tabs_[browser.value];
+  std::optional<PhiClearedTabsBatch> batch = history.PopForUndo();
+  if (!batch || batch->closed.empty()) {
+    return;  // A Redo that found nothing to close: its step is spent.
+  }
+  history.restoring = true;
+  history.restoring_deadline = ::GetTickCount64() + kClearTabsRestoreCapMs;
+  RestoreClearedTabs(browser, *batch);
+}
+
+void PhiCoordinator::RedoClearTabs(BrowserId browser) {
+  if (!CanRedoClearTabs(browser)) {
+    return;
+  }
+  --clear_tabs_[browser.value].redo;
+  // A fresh cleanup of what is behind the foreground now, tabs opened since
+  // the Undo included (the Mac's Redo).
+  StartClearTabs(browser, /*redo=*/true);
+}
+
+void PhiCoordinator::NoteClearedTabs(
+    const phi_framework::WindowSnapshot& snapshot) {
+  const auto it = clear_tabs_.find(snapshot.window.value);
+  if (it == clear_tabs_.end()) {
+    return;
+  }
+  PhiClearTabsHistory& history = it->second;
+  // The restore's snapshot: the window shows the restored order now.
+  history.restoring = false;
   std::set<int> live;
   for (const TabSnapshot& tab : snapshot.tabs) {
     live.insert(tab.id.value);
   }
-  const bool first_removal = batch.closed.empty();
-  for (auto id = batch.pending.begin(); id != batch.pending.end();) {
-    if (live.count(*id)) {
-      ++id;
-    } else {
-      batch.closed.insert(*id);
-      id = batch.pending.erase(id);
-    }
-  }
-  if (!first_removal || batch.closed.empty()) {
+  const uint64_t serial = history.NoteRemovals(live);
+  if (serial == 0) {
     return;
   }
-  // The Mac's Undo lives on Edit ▸ Undo, which here serves only the address
-  // field, so the toast carries it. A newer cleanup replaces this toast.
+  // The Mac's toast names the shortcut; this one also carries the Undo as a
+  // button, for the newest cleanup only. A newer cleanup replaces it.
   const BrowserId browser = snapshot.window;
   PhiShellWindow* window = registry_.ControllerForBrowser(browser);
   if (window && window->shell_hwnd()) {
     PhiShowToastWithAction(
         window->shell_hwnd(), window->CurrentPalette(),
-        PhiStr("tabs.clearAll.confirmation.windows"), std::wstring(),
-        kClearedTabsToastMs, PhiStr("browser.folio.undoAction"),
-        [this, browser, serial = batch.serial] {
-          UndoClearedTabs(browser, serial);
+        PhiStrF("tabs.clearAll.confirmation", {L"Ctrl+Z"}), std::wstring(),
+        kClearedTabsToastMs, PhiStr("tabs.clearAll.undoFallback"),
+        [this, browser, serial] {
+          const auto entry = clear_tabs_.find(browser.value);
+          PhiClearedTabsBatch* top =
+              entry == clear_tabs_.end() ? nullptr : entry->second.Top();
+          if (top && top->serial == serial) {
+            UndoClearTabs(browser);
+          }
         });
   }
 }
 
-void PhiCoordinator::UndoClearedTabs(BrowserId browser, uint64_t serial) {
-  const auto it = cleared_tabs_.find(browser.value);
-  if (it == cleared_tabs_.end() || it->second.serial != serial) {
-    return;
-  }
-  const PhiClearedTabsBatch batch = std::move(it->second);
-  cleared_tabs_.erase(it);
+void PhiCoordinator::RestoreClearedTabs(BrowserId browser,
+                                        const PhiClearedTabsBatch& batch) {
   const phi_framework::WindowSnapshot* snapshot = window_model_.Get(browser);
-  PhiShellWindow* window = registry_.ControllerForBrowser(browser);
-  if (!framework_ || !snapshot || batch.closed.empty() ||
-      (window && window->AgentHoldsInput())) {
+  if (!framework_ || !snapshot) {
     return;
   }
   // The record in one call, so the strip goes straight from the cleared order
@@ -7222,7 +7278,7 @@ void PhiCoordinator::RetireBrowserWindow(BrowserId browser) {
     }
   }
   window_model_.Remove(browser);
-  cleared_tabs_.erase(browser.value);
+  clear_tabs_.erase(browser.value);
   RetireClosingBrowser(browser);
   MaybeEnterClosing();
 }
