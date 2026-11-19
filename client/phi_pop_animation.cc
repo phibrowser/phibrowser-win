@@ -3,6 +3,8 @@
 
 #include "client/phi_pop_animation.h"
 
+#include <dwmapi.h>
+
 #include <algorithm>
 #include <map>
 
@@ -10,6 +12,8 @@
 #include "client/phi_menu_paint.h"
 #include "client/phi_modal_scope.h"
 #include "client/phi_popup_chrome.h"
+
+#pragma comment(lib, "dwmapi.lib")
 
 namespace phi_client {
 
@@ -56,11 +60,23 @@ bool IsTopmost(HWND hwnd) {
   return (::GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0;
 }
 
+// The corner the window itself lands with on Windows 11: a menu's small
+// one (4) or a popover's (8). Windows 10 refuses the read and gets 8.
+int CornerRadiusDip(HWND hwnd) {
+  DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_DEFAULT;
+  if (SUCCEEDED(::DwmGetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+                                        &corner, sizeof(corner))) &&
+      corner == DWMWCP_ROUNDSMALL) {
+    return 4;
+  }
+  return 8;
+}
+
 // The picture's frame: the rounded corners Windows 11 gives a popup, and a
 // soft shadow so the landing does not gain one from nowhere.
 PhiCardFlight::Look LookFor(HWND hwnd, int duration_ms) {
   PhiCardFlight::Look look;
-  look.radius_px = DipToPx(hwnd, 8);
+  look.radius_px = DipToPx(hwnd, CornerRadiusDip(hwnd));
   look.shadow_margin_px = DipToPx(hwnd, 20);
   look.shadow_blur_px = DipToPx(hwnd, 16);
   look.shadow_offset_y_px = DipToPx(hwnd, 4);
@@ -204,9 +220,22 @@ void CALLBACK OnFrame(HWND, UINT, UINT_PTR, DWORD) {
 // (GitHub phibrowser/phibrowser-win#9 regression, 9e52ee8).
 HWND g_menu_popped = nullptr;
 
+// Windows 11 rounds a menu window only when it draws the rows itself: one
+// with owner-drawn rows (every menu PhiMenuApplyTheme dresses) is left at
+// DWMWCP_DEFAULT and comes up square, with the old flat frame and a square
+// drop shadow (PHI-2138, feedback 386: the tab area's menu). Ask for the
+// small rounding Windows gives its own menus; it holds for a layered
+// window too, so the pop-in keeps it. Windows 10 refuses the attribute and
+// the menu stays as it was.
+void RoundMenuCorners(HWND menu_window) {
+  const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUNDSMALL;
+  ::DwmSetWindowAttribute(menu_window, DWMWA_WINDOW_CORNER_PREFERENCE, &corner,
+                          sizeof(corner));
+}
+
 // Sees every message SENT on this thread while a menu is up: a menu window
-// about to be shown is armed before its first frame, and one about to be
-// hidden leaves its picture behind.
+// about to be shown is rounded and armed before its first frame, and one
+// about to be hidden leaves its picture behind.
 LRESULT CALLBACK MenuHook(int code, WPARAM wparam, LPARAM lparam) {
   if (code == HC_ACTION) {
     const CWPSTRUCT* message = reinterpret_cast<const CWPSTRUCT*>(lparam);
@@ -218,6 +247,8 @@ LRESULT CALLBACK MenuHook(int code, WPARAM wparam, LPARAM lparam) {
           ::lstrcmpW(cls, kMenuWindowClass) == 0) {
         const bool visible = ::IsWindowVisible(message->hwnd) != FALSE;
         if ((pos->flags & SWP_SHOWWINDOW) && !visible) {
+          // Every menu window, submenus too, before its first frame.
+          RoundMenuCorners(message->hwnd);
           if (!g_menu_popped) {
             g_menu_popped = message->hwnd;
             PhiPopIn(message->hwnd);
@@ -331,7 +362,9 @@ BOOL PhiTrackPopupMenu(HMENU menu,
   // A menu opened from inside another's loop gets its own pop-in.
   const HWND outer_popped = g_menu_popped;
   g_menu_popped = nullptr;
-  if (animate && g_menu_depth++ == 0) {
+  // The hook rounds the menu's windows, and pops them in when animating
+  // (PhiPopIn and PhiPopOut do nothing otherwise).
+  if (g_menu_depth++ == 0) {
     g_menu_hook = ::SetWindowsHookExW(WH_CALLWNDPROC, &MenuHook, nullptr,
                                       ::GetCurrentThreadId());
   }
@@ -340,7 +373,7 @@ BOOL PhiTrackPopupMenu(HMENU menu,
   const BOOL result = ::TrackPopupMenu(
       menu, animate ? (flags | TPM_NOANIMATION) : flags, x, y, reserved, owner,
       rect);
-  if (animate && --g_menu_depth == 0 && g_menu_hook) {
+  if (--g_menu_depth == 0 && g_menu_hook) {
     ::UnhookWindowsHookEx(g_menu_hook);
     g_menu_hook = nullptr;
   }
