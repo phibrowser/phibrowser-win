@@ -4363,7 +4363,7 @@ void PhiSidebarView::PaintBand(HDC dc,
   }
 
   // "New Tab": the row heading the tab list -- a 16pt "+" 6pt in, an 8pt
-  // gap, the title in textTertiary (NewTabButtonCellView). Hover raises the
+  // gap, and body ink so the action does not look disabled. Hover raises the
   // Mac cell's radius-8 wash on the 2pt-inset pill.
   // Everything from here down to the tab rows rides the band shift (read
   // above).
@@ -4415,10 +4415,10 @@ void PhiSidebarView::PaintBand(HDC dc,
     const int mid = (row.top + row.bottom) / 2;
     const RECT icon = {row.left + Scaled(6), mid - Scaled(8),
                        row.left + Scaled(6) + Scaled(16), mid + Scaled(8)};
-    PhiDrawGlyph(dc, icon, L"+", palette.label_tertiary);
+    PhiDrawIconGlyph(dc, icon, fluent::kAdd, Scaled(16), palette.label);
     RECT text = row;
     text.left = icon.right + Scaled(8);
-    ::SetTextColor(dc, palette.label_tertiary);
+    ::SetTextColor(dc, palette.label);
     PhiDrawTextAA(dc, PhiStr("sidebar.newTabRow.title"), -1, &text,
                 DT_LEFT | DT_VCENTER | DT_SINGLELINE);
   }

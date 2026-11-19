@@ -131,7 +131,10 @@ HBITMAP Picture(HWND hwnd, const RECT& rect) {
         flat = ::GetPixel(memory, width * i / 7, height * j / 7) == first;
       }
     }
-    drawn = !(flat && first == RGB(0, 0, 0));
+    // An unpainted themed menu can be grey or tinted, not just black.
+    // Wait for actual content instead of animating a blank rectangle and
+    // replacing it with the menu only when the flight lands.
+    drawn = !flat;
   }
   ::SelectObject(memory, previous);
   ::DeleteDC(memory);

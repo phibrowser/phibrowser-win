@@ -316,7 +316,10 @@ void PhiPopupPaintButton(HDC dc,
   switch (role) {
     case PhiPopupButtonRole::kPrimary:
       fill = hot ? colors.accent_hover : colors.accent;
-      ink = RGB(0xFF, 0xFF, 0xFF);
+      ink = PhiContrastRatio(fill, RGB(0, 0, 0)) >
+                    PhiContrastRatio(fill, RGB(255, 255, 255))
+                ? RGB(0, 0, 0)
+                : RGB(255, 255, 255);
       break;
     case PhiPopupButtonRole::kSecondary:
       fill = hot ? colors.button_hover : colors.button;
@@ -395,6 +398,17 @@ bool PhiPopupDrawButton(const DRAWITEMSTRUCT& item,
                       (item.itemState & ODS_SELECTED) != 0,
                       (item.itemState & ODS_DISABLED) == 0, colors, face,
                       ::GetDpiForWindow(item.hwndItem));
+  if ((item.itemState & ODS_FOCUS) &&
+      !(item.itemState & (ODS_NOFOCUSRECT | ODS_DISABLED))) {
+    // Owner-drawn buttons must paint their own keyboard focus cue. Keep
+    // the two-tone ring inside the control so the parent cannot clip it.
+    const int unit = std::max(1, ::MulDiv(1, ::GetDpiForWindow(item.hwndItem), 96));
+    RECT ring = item.rcItem;
+    ::InflateRect(&ring, -2 * unit, -2 * unit);
+    PhiStrokeRoundRectAA(item.hDC, ring, 2 * unit, RGB(0, 0, 0), unit);
+    ::InflateRect(&ring, -unit, -unit);
+    PhiStrokeRoundRectAA(item.hDC, ring, unit, RGB(255, 255, 255), unit);
+  }
   return true;
 }
 

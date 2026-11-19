@@ -142,6 +142,10 @@ struct PhiPalette {
 // ground_top for a flat palette, the Mac's Oklab palette gradient otherwise.
 PhiColor PhiPaletteGroundAt(const PhiPalette& palette, double position);
 
+// Utility flyouts use the neutral menu surface, retaining the Space accent.
+// Rebase the precomposited ink and interaction washes onto that surface too.
+PhiPalette PhiFlyoutPalette(const PhiPalette& palette);
+
 // The design-unit table: the metrics that recur ACROSS surfaces, in Mac
 // design points at 96 dpi. Scale exactly one way, with PhiDip(dpi, design)
 // from phi_util.h — never MulDiv by hand, never a second `Scaled()` member.

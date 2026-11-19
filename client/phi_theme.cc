@@ -199,6 +199,33 @@ PhiPalette PhiPaletteFromSystemColors(const PhiSystemColors& colors) {
   return palette;
 }
 
+PhiPalette PhiFlyoutPalette(const PhiPalette& source) {
+  if (PhiHighContrastActive()) {
+    return source;
+  }
+  PhiPalette p = source;
+  p.ground_top = p.ground_bottom = p.window_bg = p.flyout;
+  p.ground_stops.fill(p.flyout);
+  p.ground_stop_count = 1;
+  p.label = PhiBlend(p.ink, p.flyout, p.dark ? 230 : 222);
+  p.label_dim = PhiBlend(p.ink, p.flyout, 158);
+  p.label_tertiary = PhiBlend(p.ink, p.flyout, 107);
+  p.hover = p.bar_hover = PhiBlend(p.ink, p.flyout, p.dark ? 15 : 11);
+  p.pressed = p.hover_strong = p.bar_hover_strong =
+      PhiBlend(p.ink, p.flyout, p.dark ? 26 : 23);
+  p.control_fill = p.hover;
+  p.selected = p.pressed;
+  p.border = PhiBlend(p.ink, p.flyout, p.dark ? 20 : 23);
+  p.stroke_strong = PhiBlend(p.ink, p.flyout, p.dark ? 41 : 23);
+  p.separator = PhiBlend(p.ink, p.flyout, 18);
+  // Accent links must remain readable after moving off the tinted Space.
+  for (int alpha = 1; alpha <= 255 &&
+                      PhiContrastRatio(p.accent, p.flyout) < 4.5; ++alpha) {
+    p.accent = PhiBlend(p.ink, source.accent, alpha);
+  }
+  return p;
+}
+
 PhiPalette PhiHighContrastPalette() {
   PhiSystemColors colors;
 #if defined(_WIN32)

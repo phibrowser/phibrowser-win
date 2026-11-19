@@ -101,7 +101,7 @@ class Popover : public PhiPopover {
       return false;
     }
     instance = this;  // Before Show(): activation churn can destroy us.
-    SetPalette(colors);
+    SetPalette(PhiFlyoutPalette(colors));
     SIZE size = {Scaled(kPanelWidth), Scaled(kPanelHeight)};
     Reposition(placement_, size);
     Refresh();

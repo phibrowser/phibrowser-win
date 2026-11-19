@@ -943,7 +943,7 @@ constexpr RowDecor kRowDecor[] = {
     {"profile.bookmarks", nullptr, false, fluent::kFavoriteStar},
     {"profile.extensions", nullptr, false, fluent::kPuzzle},
     {"profile.newTab", nullptr, false, fluent::kAdd},
-    {"profile.newIncognitoSpace", nullptr, false, nullptr},
+    {"profile.newIncognitoSpace", nullptr, false, fluent::kIncognito},
     {"profile.newIncognitoWindow", nullptr, false, fluent::kIncognito},
     {"profile.settings", nullptr, false, fluent::kSettings},
     {"profile.signIn", nullptr, false, fluent::kContact},

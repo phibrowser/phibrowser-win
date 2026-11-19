@@ -222,16 +222,17 @@ void PhiAppMenu::BuildStatic() {
     return r;
   };
   row(root_, kCmdNewTab, "appMenu.newTab", fluent::kAdd);
-  row(root_, kCmdSplitWithNewTab, "app.tabMenu.splitWithNewTab", nullptr, false);
+  row(root_, kCmdSplitWithNewTab, "app.tabMenu.splitWithNewTab", fluent::kDockLeft,
+      false);
   row(root_, kCmdNewWindow, "appMenu.newWindow", fluent::kNewWindow);
   row(root_, kCmdNewIncognitoWindow, "appMenu.newIncognitoWindow",
       fluent::kIncognito, false);
   // The Mac's File ▸ New Incognito Space (docs/incognito-space-port.md):
   // joins this window's Spaces, unlike the incognito window above it.
-  row(root_, kCmdNewIncognitoSpace, "appMenu.newIncognitoSpace", nullptr);
+  row(root_, kCmdNewIncognitoSpace, "appMenu.newIncognitoSpace", fluent::kIncognito);
   // The Mac's File ▸ Clear All Tabs, then its Edit ▸ Undo / Redo (the
   // cleanup history of the Space on screen).
-  row(root_, kCmdClearAllTabs, "appMenu.clearAllTabs", nullptr);
+  row(root_, kCmdClearAllTabs, "appMenu.clearAllTabs", fluent::kDelete);
   row(root_, kCmdUndoClearTabs, "appMenu.undoClearAllTabs", nullptr, false);
   row(root_, kCmdRedoClearTabs, "appMenu.redoClearAllTabs", nullptr, false);
   rows_.AppendSeparator(root_);
