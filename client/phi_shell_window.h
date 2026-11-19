@@ -229,6 +229,9 @@ class SidebarHost {
   // commands and the address field aim at (PhiShellWindow::
   // PageCommandBrowser).
   virtual BrowserId PresentedPeekBrowser(int64_t browser) const = 0;
+  // That Peek's page window (its browser's Chromium child, hosted in the
+  // panel), for the keyboard; null when none is presented.
+  virtual HWND PresentedPeekHwnd(int64_t browser) const = 0;
   // Bookmark rows under `parent_guid` (empty = the root), so the menu bar can
   // descend into folders the way the Mac's Bookmarks menu does.
   virtual std::vector<PhiStoredRowView> BookmarkRows(

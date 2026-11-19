@@ -372,6 +372,7 @@ class PhiCoordinator : public SidebarHost,
              const SidebarTree& tree) override;
   std::map<int, SidebarSurface> AttachedSurfaces(int64_t browser) const override;
   BrowserId PresentedPeekBrowser(int64_t browser) const override;
+  HWND PresentedPeekHwnd(int64_t browser) const override;
   std::vector<PhiStoredRowView> BookmarkRows(
       int64_t slot,
       const std::string& parent_guid) const override;

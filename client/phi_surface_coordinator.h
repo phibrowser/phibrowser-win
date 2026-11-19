@@ -201,6 +201,8 @@ class PhiSurfaceCoordinator {
   // BrowserState.visiblePeek, which pageCommandTarget and the omnibox seed
   // from. A peek marked for a deferred close is already out of the picture.
   BrowserId PresentedPeek(BrowserId window_id) const;
+  // That Peek's page window (PhiPeekPanel::browser_hwnd), or null.
+  HWND PresentedPeekHwnd(BrowserId window_id) const;
   // A mouse button went down in `target`: when that is inside a reader over
   // a split pane other than the focused one, focus that pane (the Mac's
   // activateOriginPaneIfClicked) — Chromium's pane under the reader never

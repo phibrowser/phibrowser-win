@@ -1174,6 +1174,10 @@ BrowserId PhiCoordinator::PresentedPeekBrowser(int64_t browser) const {
   return surface_coordinator_.PresentedPeek(BrowserId{browser});
 }
 
+HWND PhiCoordinator::PresentedPeekHwnd(int64_t browser) const {
+  return surface_coordinator_.PresentedPeekHwnd(BrowserId{browser});
+}
+
 // ---- The sidebar's one mutator (docs/sidebar-architecture.md §5) ---------
 
 namespace {

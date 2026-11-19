@@ -418,6 +418,13 @@ void PhiPeekPanel::LandAppearFlight() {
   Show();
   if (browser_hwnd_ && ::IsWindow(browser_hwnd_)) {
     ::SetFocus(browser_hwnd_);
+    // And Chromium's activation, so the Peek's browser is the focused
+    // window extensions see (chrome.tabs.query lastFocusedWindow), as the
+    // opener's page is after a click (PHI-2139).
+    if (framework_ && ::GetForegroundWindow() ==
+                          ::GetAncestor(hwnd(), GA_ROOT)) {
+      framework_->FocusBrowserWindow(window_id_.value);
+    }
   }
 }
 

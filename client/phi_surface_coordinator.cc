@@ -17,6 +17,7 @@
 #include "base/values.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_peek_panel.h"
 #include "client/phi_shell_window.h"
 #include "client/phi_surface_visibility.h"
 #include "client/phi_window_model.h"
@@ -544,6 +545,15 @@ BrowserId PhiSurfaceCoordinator::PresentedPeek(BrowserId window_id) const {
   }
   const auto it = browsers.find(peek.opener);
   return it != browsers.end() ? it->second : BrowserId();
+}
+
+HWND PhiSurfaceCoordinator::PresentedPeekHwnd(BrowserId window_id) const {
+  const BrowserId peek = PresentedPeek(window_id);
+  PhiSurfacePanel* panel = peek.valid() ? surfaces_.Find(peek) : nullptr;
+  if (!panel || panel->kind() != SidebarSurface::kPeek) {
+    return nullptr;
+  }
+  return static_cast<PhiPeekPanel*>(panel)->browser_hwnd();
 }
 
 TabId PhiSurfaceCoordinator::SplitPartnerOf(BrowserId window,

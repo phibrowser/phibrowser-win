@@ -83,6 +83,9 @@ class PhiPeekPanel : public PhiSurfacePanel, public PhiPanel {
   int64_t origin_tab_id() const override;
   int64_t opener_window_id() const { return opener_window_id_.value; }
   int64_t opener_tab_id() const { return opener_tab_id_; }
+  // The peek's browser window, reparented into the card: where its page
+  // takes the keyboard.
+  HWND browser_hwnd() const { return browser_hwnd_; }
   // The card's own window (the peek's browser is reparented inside it) —
   // what the click-outside test compares against.
   HWND hwnd() const override;

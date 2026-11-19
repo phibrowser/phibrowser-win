@@ -2343,7 +2343,10 @@ void PhiShellWindow::ShowSpaceIconPicker(const std::string& space_id,
 }
 
 void PhiShellWindow::MenuTriggerExtension(const std::string& extension_id) {
-  const BrowserId browser = active_browser_id();
+  // The page in front: a presented Peek's own browser, so the action (its
+  // popup's current window, activeTab) acts on the Peek's page and not the
+  // one under it — Chrome runs an action on the active tab of its window.
+  const BrowserId browser = PageCommandBrowser();
   if (!framework_ || !browser.valid() || !shell_hwnd_) {
     return;
   }
@@ -2669,6 +2672,15 @@ void PhiShellWindow::FocusPageBrowser() {
   // A presented Peek. As FocusActiveBrowser: never steal native focus from
   // another application for a deferred switch or a background callback.
   if (framework_ && page.valid() && ::GetForegroundWindow() == shell_hwnd_) {
+    // The keyboard to the Peek's own Chromium child (the panel hosts it)
+    // and Chromium's activation to its browser, as the opener's page gets
+    // both in the forward below.
+    const HWND peek = services_.sidebar ? services_.sidebar->PresentedPeekHwnd(
+                                              active_browser_id().value)
+                                        : nullptr;
+    if (peek && ::IsWindow(peek) && ::IsWindowVisible(peek)) {
+      ::SetFocus(peek);
+    }
     framework_->FocusBrowserWindow(page.value);
   }
 }
@@ -6071,7 +6083,7 @@ bool PhiShellWindow::ExtensionsButtonScreenRect(RECT* rect) {
 }
 
 void PhiShellWindow::ShowFieldExtensionMenu(size_t index, const RECT& slot) {
-  const BrowserId browser = active_browser_id();
+  const BrowserId browser = PageCommandBrowser();  // As the icon's click.
   if (!framework_ || !browser.valid() || index >= field_extensions_.size()) {
     return;
   }
@@ -6414,9 +6426,15 @@ void PhiShellWindow::CloseExtensionPopup() {
   // Chromium closes an action popup when any widget of its window activates
   // — a click on the Mac's window, on Chrome's toolbar. The shell's chrome
   // is not a views widget, so a click here has to say so itself.
+  // An action run over a presented Peek opened its popup in the Peek's own
+  // browser, so that one closes too.
   const BrowserId browser = active_browser_id();
   if (framework_ && browser.valid()) {
     framework_->CloseExtensionPopup(browser.value);
+  }
+  const BrowserId page = PageCommandBrowser();
+  if (framework_ && page.valid() && page != browser) {
+    framework_->CloseExtensionPopup(page.value);
   }
 }
 
@@ -6578,8 +6596,9 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
     return;
   }
   if (::PtInRect(&layout.extensions, pt)) {
-    // The extensions popover, off the puzzle button.
-    const BrowserId browser = active_browser_id();
+    // The extensions popover, off the puzzle button; its actions run on the
+    // page in front (a presented Peek's), as the pinned icons' do.
+    const BrowserId browser = PageCommandBrowser();
     if (services_.spaces && framework_ && browser.valid()) {
       const RECT anchor = LayoutToScreen(layout.extensions);
       PhiExtensionsPopover::Toggle(
@@ -6599,7 +6618,8 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
         ShowFieldExtensionMenu(i, slot);
         return;
       }
-      const BrowserId browser = active_browser_id();
+      // On the page in front: a presented Peek's, not the page under it.
+      const BrowserId browser = PageCommandBrowser();
       if (framework_ && browser.valid()) {
         const RECT anchor = LayoutToScreen(slot);
         framework_->TriggerExtensionAction(
@@ -11088,6 +11108,13 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
             self->framework_->FocusBrowserWindow(
                 self->active_browser_id().value, false);
           }
+          // A presented Peek's browser was the active one while it had the
+          // keyboard; it loses Chromium's activation with the window too.
+          const BrowserId peek = self->PageCommandBrowser();
+          if (self->framework_ && peek.valid() &&
+              peek != self->active_browser_id()) {
+            self->framework_->FocusBrowserWindow(peek.value, false);
+          }
         }
       }
       if (self && msg == WM_ACTIVATE && LOWORD(wparam) == WA_ACTIVE) {
@@ -11114,6 +11141,19 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           !self->omnibox_->FieldHasFocus() &&
           !(self->sidebar_ && self->sidebar_->keyboard_focused()) &&
           !(msg == WM_ACTIVATE && LOWORD(wparam) == WA_INACTIVE)) {
+        if (self->PageCommandBrowser() != self->active_browser_id()) {
+          // A Peek is presented over the page: the keyboard goes back to the
+          // Peek's page (PHI-2139). Forwarding it to the page under the card
+          // sent every key there once an extension popup closed or Alt+Tab
+          // came back, and the Peek took no typing until it was clicked.
+          // FocusActivePage too: the Peek's widget is a WS_CHILD, whose aura
+          // activation alone does not give its page the focus back.
+          self->FocusPageBrowser();
+          if (self->framework_) {
+            self->framework_->FocusActivePage(self->PageCommandBrowser().value);
+          }
+          return 0;
+        }
         if (self->native_pages_->ntp_wants_focus()) {
           // The native new-tab page is up: its omnibox is the focus.
           self->native_pages_->FocusNtpField();
