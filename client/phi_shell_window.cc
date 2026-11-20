@@ -8128,9 +8128,11 @@ void PhiShellWindow::ShowTabAreaMenu(POINT pt,
     services_.prefs->SetBottomBarShows(button,
                                        !services_.prefs->BottomBarShows(button));
   } else if (action.is("area.layout")) {
-    services_.prefs->RequestLayoutMode(action.target.id == "comfortable"
-                                           ? PhiLayoutMode::kComfortable
-                                           : PhiLayoutMode::kBalanced);
+    // The menu's ids are the layout names; an unknown one changes nothing.
+    PhiLayoutMode mode;
+    if (PhiLayoutModeFromName(action.target.id, &mode)) {
+      services_.prefs->RequestLayoutMode(mode);
+    }
   } else if (PhiAppMenu* bar = app_menu(); bar && action.valid()) {
     // The rest are the app menu's own commands, run through it so the
     // sidebar and the menu cannot drift apart.
