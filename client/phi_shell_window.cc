@@ -11953,10 +11953,34 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         // A move this controller asked for (SetBounds, the watch frame)
         // keeps the size it asked for; Windows' rect is rescaled from it.
         if (suggested && !self->exact_bounds_pending_) {
-          ::SetWindowPos(hwnd, nullptr, suggested->left, suggested->top,
-                         suggested->right - suggested->left,
-                         suggested->bottom - suggested->top,
-                         SWP_NOZORDER | SWP_NOACTIVATE);
+          RECT target = *suggested;
+          UINT flags = SWP_NOZORDER | SWP_NOACTIVATE;
+          // A MAXIMIZED window moved to a monitor of another scale (Win+Shift+
+          // arrow, a monitor change) gets a rect that still overhangs by the
+          // OLD scale's frame: 150 % -> 100 % left it 11 px past every edge
+          // instead of 8, and that extra is drawn on the neighbouring monitor
+          // as a strip of the window. Maximize onto the target monitor's work
+          // area with the frame at the NEW scale, which is what Windows itself
+          // does for a fresh maximize (and what OnNcCalcSize takes back off).
+          MONITORINFO monitor = {sizeof(monitor)};
+          if (::IsZoomed(hwnd) &&
+              ::GetMonitorInfoW(
+                  ::MonitorFromRect(suggested, MONITOR_DEFAULTTONEAREST),
+                  &monitor)) {
+            const UINT dpi = self->dpi_;
+            const int border_x =
+                ::GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) +
+                ::GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+            const int border_y =
+                ::GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) +
+                ::GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+            target = monitor.rcWork;
+            ::InflateRect(&target, border_x, border_y);
+            flags |= SWP_FRAMECHANGED;  // Recompute the client at the new DPI.
+          }
+          ::SetWindowPos(hwnd, nullptr, target.left, target.top,
+                         target.right - target.left,
+                         target.bottom - target.top, flags);
         }
         self->LayoutContents();
         self->RefreshTabs();
