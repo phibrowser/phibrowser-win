@@ -663,7 +663,7 @@ class PhiOmniboxSession {
   // --- The address field ---------------------------------------------------
   // A real Win32 EDIT child, so typing, selection, clipboard, IME and the
   // caret all behave natively (Chromium's own omnibox is hollowed away under
-  // IS_WIN_PHI_CLIENT, and hand-rolling text editing would reproduce it
+  // IS_PHI_ABI_CLIENT, and hand-rolling text editing would reproduce it
   // badly). Created once the shell window exists.
   void EnsureField();
   // Joins another EDIT to this session — the native new-tab page's omnibox

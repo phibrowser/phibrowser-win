@@ -30,7 +30,7 @@ middle pane is square all round.
 
 * **Layout.** Chromium's `MultiContentsView` lays out a pair as before.
   For three or four panes the fork lays them out itself under
-  `IS_WIN_PHI_CLIENT` (`PhiPaneSizes`): each pane takes its share of the
+  `IS_PHI_ABI_CLIENT` (`PhiPaneSizes`): each pane takes its share of the
   axis less the dividers, the last takes the remainder, and no pane goes
   below Chromium's minimum (the lesser of 200 DIP and a tenth of the axis,
   never under 50). The two extra dividers are `MultiContentsResizeArea`s
@@ -123,7 +123,7 @@ Chromium's `MultiContentsView` still lays the panes out and paints the
 chrome — the Windows client drives the native side-by-side through
 `PhiFramework` and reads geometry back (`TabContentBoundsById`,
 `OnContentBoundsChanged`). The fork restyles that chrome under
-`IS_WIN_PHI_CLIENT`, its numbers in one Phi-owned header,
+`IS_PHI_ABI_CLIENT`, its numbers in one Phi-owned header,
 `chrome/browser/ui/views/frame/phi_split_view_style.h`:
 
 | Design | Windows |

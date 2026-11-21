@@ -270,7 +270,7 @@ names too (rev 1 table) but are not synced.
 |---|---|---|---|
 | **S0** | Conformance vectors: emitter in the Mac `Tests/SyncConvergence` harness + a vector format doc; C++ gtest runner skeleton. Confirm with sync-service: platform `"windows"` accepted. | — | vectors generated from `9ff12904` |
 | **S1** | Local foundation: `phi_account_storage`, SQLite LocalStore V13 (tables, root rows, `default-space`, two-row split pins, soft-deleted rules, edit-date write rules, PNG favicons), per-account defaults, preference renames; rewire Spaces/sidebar/router/verbs; Mac pin-scope, transfer and cascade semantics. | — | UI runs on the new store; account switch swaps data |
-| **S2** | Framework hooks (fork, `IS_WIN_PHI_CLIENT`): `phi_framework_api` setters for the token, account tri-state and per-profile `{uuid, passphrase}`; notify-auth/keys/invalidation; route `phi_bridge_wrapper_stub.cc` to them; client passes `--sync-url` per channel (and the non-component switch mirror). The status API is new on both platforms — coordinate with the Mac owner. | — | Chromium sync runs for a profile given a hand-fed key |
+| **S2** | Framework hooks (fork, `IS_PHI_ABI_CLIENT`): `phi_framework_api` setters for the token, account tri-state and per-profile `{uuid, passphrase}`; notify-auth/keys/invalidation; route `phi_bridge_wrapper_stub.cc` to them; client passes `--sync-url` per channel (and the non-component switch mirror). The status API is new on both platforms — coordinate with the Mac owner. | — | Chromium sync runs for a profile given a hand-fed key |
 | **S3** | Key layer + pairing: crypto primitives (vector-tested against Mac golden bytes), `/keys/v1` client, DPAPI device key, bootstrap / recovery / join / approve / revoke, profile keys → S2, domain key, pairing wizard + recovery + Settings → Sync pane. | S2 | a Windows device joins a Mac account; Chromium history/tabs/prefs sync both ways |
 | **S4** | Native engine, merge layer: HLC, settings, Spaces, bookmark/pin/URL-rule kinds, owned-item planner (cycle break, edit beats delete, adoption, claims, collapse). | S0 | all vectors pass |
 | **S5** | Native engine, rounds: protocol client + SSE, marker/cursor stores, pull-before-commit, landing adapters over S1's store, conflicts, birthday/reconfigure, retention, favicon backfill, coordinator lifecycle (sign-out, account switch, self-revoke cleanup). Bring kinds up in Mac order: settings → Spaces → bookmarks → pins → URL rules. | S1, S3, S4 | each kind passes its rows of `sync-e2e-test-cases.md` against a Mac |
@@ -428,7 +428,7 @@ Phi-owned files:
 - `phi_framework_hooks` carries the three queries to
   `phi_bridge_wrapper_stub.cc`, which answers the fork's existing
   `PhiSyncAuthProviderImpl` / `PhiSyncKeyProviderImpl` from them under
-  `IS_WIN_PHI_CLIENT` (same semantics as `phi_bridge_wrapper.mm`).
+  `IS_PHI_ABI_CLIENT` (same semantics as `phi_bridge_wrapper.mm`).
 - `chrome_main_delegate.cc`: `--sync-url` from the exe's optional
   `PhiClientSyncServerUrl` export unless the launch carries one (the Mac's
   ChromiumLauncher passes the switch). The factory's origin gate still

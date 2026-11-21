@@ -31,7 +31,7 @@ should be `is_component_build=false` … decide at packaging time").
   and a first-run profile produced a browser window the framework never
   announced (the client sat at storesLoaded; `agentSpace.list` empty). The
   three switches now live in `ChromeMainDelegate::BasicStartupComplete`
-  under IS_WIN_PHI_CLIENT. Phi.exe: 5.8 MB, imports chrome_elf.dll first
+  under IS_PHI_ABI_CLIENT. Phi.exe: 5.8 MB, imports chrome_elf.dll first
   then system DLLs only, assembly dep `framework`; the gate passes except
   the expected empty release key. Static link of the client ≈ 14 s.
 * **Phase D — done.** phi-fx-ship synced (36 files). The FULL box sweep
@@ -261,7 +261,7 @@ contract is proven before the 3½-hour build exists.
   is_official_build  = false   # PGO/ThinLTO is a separate decision (§7); not needed for a working static build
   ```
   (`is_debug = false`, `dcheck_always_on = false`, `symbol_level = 1`,
-  `is_phi_browser`, `is_win_phi_client`, codecs, keys — unchanged.)
+  `is_phi_browser`, `is_phi_abi_client`, codecs, keys — unchanged.)
 * B2 `gn gen out/PhiFxWinShip` with build-fx.sh's env
   (`DEPOT_TOOLS_WIN_TOOLCHAIN_BASE_URL=<PHI_ROOT>/win_sdk`,
   `GYP_MSVS_HASH_e66617bc68=800603caaa`). The 2026-08 gn-gen breakage was
@@ -390,7 +390,7 @@ wall the 2026-08 attempt hit (windows-framework-status.md ~4600).
 Folder name: `150.0.7871.47` needs no fork change; `framework` needs two
 small ones — the assembly `name=` in `chrome/app/version_assembly/*.template`
 (the version attribute stays) and `GetModulePath` probing `framework` under
-`is_win_phi_client`. Use `framework`: a version-named folder changes every
+`is_phi_abi_client`. Use `framework`: a version-named folder changes every
 release and confuses the rollback copy.
 
 * E0 fork: the two `framework` changes above (chrome/app/version_assembly

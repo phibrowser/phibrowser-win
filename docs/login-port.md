@@ -45,7 +45,7 @@ Mac terms, permanently "guest" with an optional account on top.
 `PhiBrowserProxy::GetAuth0AccessToken()` returns `""` outside
 `IS_MAC_PHI`, and `PhiFrameworkDelegate` has no auth hook. Who would ask:
 `chrome.phinomenonPrivate.getAuth0AccessToken` from the extensions
-(Lexington / Sidecar / Kensington are **not loaded** on `IS_WIN_PHI_CLIENT`;
+(Lexington / Sidecar / Kensington are **not loaded** on `IS_PHI_ABI_CLIENT`;
 Mirage is, and uses it only to extract `sub` for analytics), and
 `highlight_link_tab_helper.cc` (short highlight links, Mac-gated). So
 nothing in Chromium is *broken* by the missing token today.
@@ -171,11 +171,11 @@ Do not port:
 ### Stage 3 — Chromium bridge (with the AI-stack port; shape decided now)
 
 Add to `phi_framework_api.h`, gated the same way as the other
-`IS_WIN_PHI_CLIENT` hooks:
+`IS_PHI_ABI_CLIENT` hooks:
 - `PhiFramework::SetPhiAccountSession(const char* access_token, int64_t expires_at_unix, const char* sub)` — the **client pushes** the token so the fork's sync hot path (`GetAuth0AccessTokenSyncly`, called several times per second on the Mac) reads process memory instead of crossing to the client; the client re-pushes after every refresh and pushes empty on sign-out.
 - `PhiFramework::SetPhiAccountInfo(const char* nickname, const char* email, const uint8_t* avatar_png, size_t len)` for `chrome://settings` people page (`phiName`, `email`, `phiIconUrl`, `phiGuest`), and `IsPhiGuestMode` ⇒ `!signed_in`.
 - `PhiFrameworkDelegate::OnShowLoginUI()` for `PhiAccountHandler::HandleShowLoginUI` → `RequestSignIn()`.
-- `phi_bridge_wrapper_stub.cc`: route `GetAuth0AccessTokenSyncly`, `GetPhiAccountInfo`, `IsPhiGuestMode`, `ShowLoginUI` to the framework-held values under `IS_WIN_PHI_CLIENT`; leave `CanShowChromiumWindow` at `true` (decision 2).
+- `phi_bridge_wrapper_stub.cc`: route `GetAuth0AccessTokenSyncly`, `GetPhiAccountInfo`, `IsPhiGuestMode`, `ShowLoginUI` to the framework-held values under `IS_PHI_ABI_CLIENT`; leave `CanShowChromiumWindow` at `true` (decision 2).
 - `PhiBrowserProxy::GetAuth0AccessToken` and `profile_info_handler.cc`
   currently narrow to `IS_MAC_PHI`; widen to `IS_PHI_BROWSER` at that point.
 
@@ -293,7 +293,7 @@ redirect_uri the Mac app registers as a URL scheme,
 Phi is the browser the hosted login runs in, the redirect to that scheme is
 a navigation Phi sees before anything else.
 
-- **Fork** (`IS_WIN_PHI_CLIENT` only): `chrome/browser/phinomenon/
+- **Fork** (`IS_PHI_ABI_CLIENT` only): `chrome/browser/phinomenon/
   phi_auth_callback_navigation_throttle.{h,cc}`, registered after the Space
   routing throttle. Main-frame `WillStartRequest`/`WillRedirectRequest`: a
   `com.phibrowser.mac` / `com.phibrowser.canary.mac` scheme goes to the

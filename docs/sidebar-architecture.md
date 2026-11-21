@@ -554,7 +554,7 @@ WM_PAINT: paints layout_ only.   Hit-test / hover / drag: read layout_ only.
 
 ---
 
-## 7. Framework API changes (fork, phi-owned, `IS_WIN_PHI_CLIENT`)
+## 7. Framework API changes (fork, phi-owned, `IS_PHI_ABI_CLIENT`)
 
 All additive; index-addressed methods remain for the agent dialect until
 nothing else calls them.

@@ -9,7 +9,7 @@ Companion to the extension-button port recorded in the fork's
 
 ## 1. The two hosting models
 
-| | Mac (`IS_MAC_PHI`) | Windows (`IS_WIN_PHI_CLIENT`) |
+| | Mac (`IS_MAC_PHI`) | Windows (`IS_PHI_ABI_CLIENT`) |
 |---|---|---|
 | Chromium's window | The real NSWindow. The Mac client swaps its `contentView`; Chromium's BrowserView (tab strip, toolbar, `ExtensionsToolbarDesktop`, location bar) keeps existing in a hidden views tree, its compositor output suppressed (`BrowserNativeWidgetMac::ShouldHideCompositorOutput`). | A child HWND of the client's shell window. `WindowFeatureController::NormalBrowserSupportsWindowFeature` answers **false** for toolbar, location bar and bookmark bar, so there is no `ExtensionsToolbarDesktop`, no `ToolbarActionView`, no location-bar icons at all. Only the tab strip stays *model*-supported. |
 | What a views bubble is anchored to | A real (hidden) view: the reference `ToolbarActionView`, the location-bar icon, the extensions button. Positions are meaningless (the window top), so the fork re-anchors case by case. | Nothing but the `BrowserView` itself. Any bubble that asks the toolbar for an anchor gets the whole content area or a null view. |
@@ -21,7 +21,7 @@ Everything below follows from the last row.
 
 Trigger path on Windows: client `TriggerExtensionAction(window, id,
 anchor px)` → framework converts px→DIP → `ExtensionsProxy::TriggerAction`
-stores the rect (`StoreExtensionPopupAnchor`) → the `IS_WIN_PHI_CLIENT`
+stores the rect (`StoreExtensionPopupAnchor`) → the `IS_PHI_ABI_CLIENT`
 branch builds the `ExtensionViewHost` itself and calls
 `ExtensionPopup::ShowPopup(browser, host, views::BubbleAnchor(browser_view),
 TOP_LEFT, …)` → the popup's constructor takes the stored rect
@@ -120,7 +120,7 @@ them; verified at 125 % DPI with the px→DIP conversion.
 
 1. `ExtensionPopup::GetMaxBounds()` from `phi_anchor_rect_` (§2.1) — every
    popup is visibly wrong today. **Done 2026-09-16** (the fork's
-   `IS_WIN_PHI_CLIENT` branch measures from the icon rect). One trap: the
+   `IS_PHI_ABI_CLIENT` branch measures from the icon rect). One trap: the
    constructor used to take the stored rect at its END, after
    `extension_view_->Init()` had already called `GetMaxBounds()` once for
    `EnableSizingFromWebContents` — the override saw no rect and the popup
