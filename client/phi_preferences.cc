@@ -110,6 +110,11 @@ constexpr RebindableShortcut kRebindableShortcuts[] = {
      kCmdForward, {VK_RIGHT, false, false, true}},
     {"showFullHistory", "History", "settings.shortcuts.command.showHistory",
      kCmdShowFullHistory, {'H', true, false, false}},
+    // Chromium's IDC_SHOW_BOOKMARK_MANAGER chord on Windows; the ⋯ and
+    // profile menus advertise it (PHI-2098).
+    {"bookmarkManager", "Bookmarks",
+     "settings.shortcuts.command.bookmarkManager", kCmdBookmarkManager,
+     {'O', true, true, false}},
     {"bookmarkThisTab", "Bookmarks", "settings.shortcuts.command.bookmarkTab",
      kCmdBookmarkThisTab, {'D', true, false, false}},
     {"bookmarkAllTabs", "Bookmarks",

@@ -694,10 +694,11 @@ void PhiAppMenu::RefreshBookmarks() {
                services_->MenuPrefsHost() &&
                    services_->MenuPrefsHost()->AlwaysShowBookmarkBar());
   }
-  // The Mac's entry for the native manager; Chromium's own shortcut for
-  // IDC_SHOW_BOOKMARK_MANAGER on Windows is Ctrl+Shift+O.
+  // The Mac's entry for the native manager; its chord is the rebindable
+  // Ctrl+Shift+O (Chromium's IDC_SHOW_BOOKMARK_MANAGER chord on Windows).
   rows_.AppendCommand(bookmarks_, kCmdBookmarkManager,
-                      PhiStr("appMenu.bookmarkManager"), nullptr,
+                      Label(kCmdBookmarkManager, "appMenu.bookmarkManager"),
+                      nullptr,
                       services_->MenuFramework() != nullptr &&
                           !services_->MenuIncognito());
   // The same window as More tools' "Import from another browser…", under

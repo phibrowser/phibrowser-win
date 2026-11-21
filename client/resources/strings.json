@@ -11047,6 +11047,17 @@
    "zh-Hans": "为所有标签页添加书签",
    "zh-Hant": "將所有分頁加入書籤"
   },
+  "settings.shortcuts.command.bookmarkManager": {
+   "de": "Lesezeichenverwaltung",
+   "en": "Bookmark Manager",
+   "es": "Administrador de marcadores",
+   "fr": "Gestionnaire de favoris",
+   "ja": "ブックマークマネージャ",
+   "ko": "북마크 관리자",
+   "nl": "Bladwijzerbeheer",
+   "zh-Hans": "书签管理器",
+   "zh-Hant": "書籤管理員"
+  },
   "settings.shortcuts.command.bookmarkTab": {
    "de": "Lesezeichen für diesen Tab hinzufügen",
    "en": "Bookmark Tab",
