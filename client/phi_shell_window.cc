@@ -6383,7 +6383,10 @@ void PhiShellWindow::RetitleShell() {
   if (!browsers_->ActiveBrowserPlaceholding() &&
       !PhiNewTabPage::IsNewTabUrl(active_tab_url()) && model_) {
     if (const PhiWindowModel::Tab* tab = model_->ActiveTab(active_browser_id())) {
-      title = tab->title;
+      // The name the sidebar row shows, never Chromium's chrome:// address
+      // (PHI-2130: the bookmark manager's window read "chrome://bookmarks/").
+      title = tab->title.empty() ? std::string()
+                                 : PhiTabDisplayTitle(tab->title, tab->url);
     }
   }
   if (title.empty() && services_.spaces) {

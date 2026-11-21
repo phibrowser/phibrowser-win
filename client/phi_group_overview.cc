@@ -16,6 +16,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
+#include "client/phi_bookmark_manager.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_ids.h"
 #include "client/phi_panel.h"
@@ -233,7 +234,7 @@ class Overview : public PhiPanel {
         }
         Card card;
         card.tab_id = tab.id;
-        card.title = base::UTF8ToWide(tab.title);
+        card.title = base::UTF8ToWide(PhiTabDisplayTitle(tab.title, tab.url));
         int w = 0, h = 0;
         if (const unsigned char* pixels = framework->TabThumbnailBgra(
                 browser.value, tab.id.value, &w, &h)) {

@@ -270,7 +270,9 @@ inline std::wstring PhiOmniboxBrandUrl(const std::wstring& text) {
 // on, it adds the port, path, query and fragment. Neither shows the scheme,
 // "www." or trailing slashes. A url that is not scheme://host (about:, data:,
 // blob:, view-source:, file:///) shows whole: a "://" further along it is the
-// page's content, not its host.
+// page's content, not its host. Chromium's own pages keep their phi:// scheme
+// ("phi://history", not the bare word "history"), as the hover card, Copy link
+// and the Feedback form spell them (PHI-2130).
 inline std::wstring PhiOmniboxRestingUrl(const std::wstring& url,
                                          bool show_path) {
   const auto trimmed = [](std::wstring text) {
@@ -309,6 +311,9 @@ inline std::wstring PhiOmniboxRestingUrl(const std::wstring& url,
   }
   if (host.compare(0, 4, L"www.") == 0) {
     host.erase(0, 4);
+  }
+  if (url.compare(0, 9, L"chrome://") == 0) {
+    host = L"phi://" + host;
   }
   if (show_path) {
     return trimmed(host + port + url.substr(authority_end));

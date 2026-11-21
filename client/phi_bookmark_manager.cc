@@ -130,6 +130,18 @@ bool PhiBookmarkManager::IsManagerUrl(const std::string& url) {
          url.rfind("phi://bookmarks", 0) == 0;
 }
 
+std::string PhiTabDisplayTitle(const std::string& title,
+                               const std::string& url) {
+  if (PhiBookmarkManager::IsManagerUrl(url)) {
+    return "Bookmarks";
+  }
+  static constexpr char kChrome[] = "chrome://";
+  if (title.rfind(kChrome, 0) == 0) {
+    return "phi://" + title.substr(sizeof(kChrome) - 1);
+  }
+  return title;
+}
+
 bool PhiBookmarkManager::visible() const {
   return IsPanelVisible();
 }

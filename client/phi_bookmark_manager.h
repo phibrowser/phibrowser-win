@@ -172,6 +172,16 @@ class PhiBookmarkManager : public PhiPanel {
   bool session_edited_ = false;
 };
 
+// What a tab's title reads in Phi's own chrome: the window's title (the
+// taskbar and Alt+Tab), the sidebar row, the tab switcher and the group
+// overview. The bookmark manager's tab is "Bookmarks": the Chromium view
+// behind the native page has no WebUI to load, so Chromium titles it with
+// its URL. Any other title that is a Chromium page's own address
+// (Chromium's stand-in while a page has no title) reads phi://, as the
+// address field and the hover card spell it (PHI-2130).
+std::string PhiTabDisplayTitle(const std::string& title,
+                               const std::string& url);
+
 }  // namespace phi_client
 
 #endif  // PHIBROWSER_WIN_CLIENT_PHI_BOOKMARK_MANAGER_H_

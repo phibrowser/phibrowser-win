@@ -1352,15 +1352,13 @@ void PhiSidebarView::Rebuild() {
                              std::wstring* url,
                              std::vector<unsigned char>* favicon, int* fw,
                              int* fh) {
-    std::string label = !tab.title.empty()
-                            ? tab.title
-                            : (!tab.url.empty() ? tab.url
-                                                : std::string("(untitled)"));
-    if (PhiBookmarkManager::IsManagerUrl(tab.url)) {
-      // The Chromium view behind the native page has no WebUI to load, so
-      // its title would be the failed URL; the tab shows the page's name.
-      label = "Bookmarks";
-    }
+    // The bookmark manager reads "Bookmarks", a Chromium page's address
+    // phi:// (PhiTabDisplayTitle).
+    const std::string label = PhiTabDisplayTitle(
+        !tab.title.empty()
+            ? tab.title
+            : (!tab.url.empty() ? tab.url : std::string("(untitled)")),
+        tab.url);
     *title = base::UTF8ToWide(label);
     if (incognito() && PhiNewTabPage::IsNewTabUrl(tab.url)) {
       // The Mac's incognito new-tab title (Tab.incognitoNewTabTitle) in

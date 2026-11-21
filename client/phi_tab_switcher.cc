@@ -17,6 +17,7 @@
 #include "chrome/browser/phinomenon/phi_framework/phi_framework_api.h"
 #include "chrome/browser/phinomenon/phi_framework/phi_window_snapshot.h"
 #include "client/phi_agent_spaces.h"
+#include "client/phi_bookmark_manager.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_ids.h"
 #include "client/phi_popover.h"
@@ -247,8 +248,9 @@ class Hud : public PhiPopover {
     const phi_framework::WindowSnapshot* current = model->Get(browser);
     if (current) {
       for (const phi_framework::TabSnapshot& tab : current->tabs) {
-        entries.push_back({tab.id, base::UTF8ToWide(tab.title), browser,
-                           controller_->active_space()});
+        entries.push_back(
+            {tab.id, base::UTF8ToWide(PhiTabDisplayTitle(tab.title, tab.url)),
+             browser, controller_->active_space()});
       }
     }
     std::vector<Entry> ordered;
@@ -271,7 +273,9 @@ class Hud : public PhiPopover {
         for (const phi_framework::TabSnapshot& tab : snapshot->tabs) {
           if (tab.surface == phi_framework::TabSurface::kContent) {
             entries.push_back(
-                {tab.id, base::UTF8ToWide(tab.title), other, space_id});
+                {tab.id,
+                 base::UTF8ToWide(PhiTabDisplayTitle(tab.title, tab.url)),
+                 other, space_id});
           }
         }
       }
