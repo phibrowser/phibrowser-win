@@ -786,7 +786,50 @@ ShellLayoutInputs PhiShellWindow::CurrentLayoutInputs(bool include_floating) con
   // the caption buttons keep the corner pixel. The floating panel paints
   // the sidebar of the docked layout, which has none.
   in.page_margin_dip = !floating && PageMarginWanted() ? kPageMargin : 0;
+  in.trailing_panel = trailing_panel_;
   return in;
+}
+
+bool PhiShellWindow::RefreshTrailingPanel() {
+  // Narrower than any panel Chromium docks there (a side panel is at least
+  // 320 DIP), wider than any inset of its own round the page.
+  constexpr int kTrailingPanelMinWidth = 120;
+  const BrowserId browser = active_browser_id();
+  // Cleared until a query is answered, so the next layout asks again.
+  trailing_panel_browser_ = BrowserId();
+  const TabId active = active_tab_id();
+  const HWND hosted = browsers_->content_hwnd();
+  RECT hosted_rect = {};
+  bool panel = false;
+  if (framework_ && browser.valid() && active.valid() && hosted &&
+      ::GetWindowRect(hosted, &hosted_rect)) {
+    // The page's right edge: the lone tab's, or the split's rightmost pane.
+    std::vector<TabId> tabs = {active};
+    if (const SplitSnapshot* split =
+            model_ ? model_->SplitOfTab(browser, active) : nullptr) {
+      tabs = split->tabs.size() >= 2
+                 ? split->tabs
+                 : std::vector<TabId>{split->primary, split->secondary};
+    }
+    // The first query also starts the framework's watch on this browser's
+    // panes, so OnContentBoundsChanged reports the panel coming and going.
+    int page_right = std::numeric_limits<int>::min();
+    for (const TabId tab : tabs) {
+      int left = 0, top = 0, right = 0, bottom = 0;
+      if (framework_->TabContentBoundsById(browser.value, tab.value, &left,
+                                           &top, &right, &bottom)) {
+        page_right = std::max(page_right, right);
+        trailing_panel_browser_ = browser;
+      }
+    }
+    panel = page_right != std::numeric_limits<int>::min() &&
+            hosted_rect.right - page_right >= Scaled(kTrailingPanelMinWidth);
+  }
+  if (panel == trailing_panel_) {
+    return false;
+  }
+  trailing_panel_ = panel;
+  return true;
 }
 
 bool PhiShellWindow::PageMarginWanted() const {
@@ -2744,6 +2787,10 @@ void PhiShellWindow::SetShellFullscreen(BrowserId browser,
 
 void PhiShellWindow::OnContentBoundsChanged(BrowserId browser_id) {
   if (browser_id == active_browser_id()) {
+    if (RefreshTrailingPanel()) {
+      LayoutContents();  // Repositions the native pages too.
+      return;
+    }
     native_pages_->Reposition();
     PhiLibrary::RepositionIfBoundTo(this);
   }
@@ -3654,6 +3701,13 @@ void PhiShellWindow::LayoutContents() {
     // child to nothing (a page relayout, and the placement Chromium saves
     // on a close while minimized). The restore's WM_SIZE lays out once.
     return;
+  }
+  // Another browser came forward (a Space switch): whether a panel stands
+  // at its page's edge is its own. Within one browser only Chromium's
+  // report decides (OnContentBoundsChanged): mid-resize the page's bounds
+  // still trail the hosted window's.
+  if (active_browser_id() != trailing_panel_browser_) {
+    RefreshTrailingPanel();
   }
   native_pages_->Reposition();
   PhiLibrary::RepositionIfBoundTo(this);  // Covers the client area.

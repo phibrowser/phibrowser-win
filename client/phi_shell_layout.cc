@@ -248,9 +248,12 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   if (performance) {
     out.sidebar = {0, 0, sidebar, h};
     const int pane_left = hide_sidebar ? margin : sidebar;
-    out.pane = out.content = {pane_left, margin, card_right, h - margin};
-    carve_bookmark_bar(&out);
     const int island_h = scaled(36);
+    // A panel at the page's right edge has its header buttons in the corner
+    // the island covers (PHI-2172): the page then starts under the island.
+    const int pane_top = in.trailing_panel ? std::max(margin, island_h) : margin;
+    out.pane = out.content = {pane_left, pane_top, card_right, h - margin};
+    carve_bookmark_bar(&out);
     out.caption_min = {w - 3 * cap, 0, w - 2 * cap, island_h};
     out.caption_max = {w - 2 * cap, 0, w - cap, island_h};
     out.caption_close = {w - cap, 0, w, island_h};

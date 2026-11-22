@@ -177,7 +177,11 @@ int PhiCaptionBand::HitTest(POINT client_pt) {
     return HTMINBUTTON;
   }
   if (rects.mode == PhiLayoutMode::kPerformance &&
-      client_pt.x >= rects.sidebar.right) return HTCLIENT;
+      client_pt.x >= rects.sidebar.right) {
+    // Above the page (a panel at its edge drops it below the island,
+    // PHI-2172) the band is bare ground and drags the window.
+    return client_pt.y < rects.pane.top ? HTCAPTION : HTCLIENT;
+  }
   // The band's own controls take their own clicks — without this the band
   // would drag the window out from under the pointer instead.
   if (::PtInRect(&rects.back, client_pt) ||

@@ -1525,6 +1525,15 @@ class PhiShellWindow : public PhiHitSource,
   bool layout_bookmark_bar_ = false;
   bool layout_reader_ = false;
   void RefreshLayoutInputs();
+  // A panel stands at the right edge of the active browser's page (an
+  // extension side panel, DevTools docked right): Performance drops the page
+  // below its caption island (ShellLayoutInputs::trailing_panel, PHI-2172).
+  // Read from where Chromium laid the page out, against the hosted window,
+  // when Chromium reports new content bounds and when the active browser
+  // changes. True when the answer changed.
+  bool RefreshTrailingPanel();
+  bool trailing_panel_ = false;
+  BrowserId trailing_panel_browser_;
 
   // `include_child_controls` draws what child windows would draw themselves —
   // set only on the WM_PRINTCLIENT (PrintWindow) path, which renders the

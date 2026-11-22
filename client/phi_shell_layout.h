@@ -207,6 +207,12 @@ struct ShellLayoutInputs {
   // .edgesSpacing). 0 = flush. The caller passes 0 while the window is
   // maximized or fullscreen.
   int page_margin_dip = 0;
+  // The hosted browser shows a panel at the page's right edge (an extension
+  // side panel, DevTools docked right; PHI-2172). Performance then drops the
+  // page below its caption island, which would otherwise cover the panel's
+  // own header buttons. The other layouts keep their window buttons above
+  // the page and ignore it.
+  bool trailing_panel = false;
 
   friend bool operator==(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -234,7 +240,8 @@ struct ShellLayoutInputs {
            a.update_dip == b.update_dip &&
            a.media_card_dip == b.media_card_dip &&
            a.new_tab_row_at_bottom == b.new_tab_row_at_bottom &&
-           a.page_margin_dip == b.page_margin_dip;
+           a.page_margin_dip == b.page_margin_dip &&
+           a.trailing_panel == b.trailing_panel;
   }
   friend bool operator!=(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
