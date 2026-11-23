@@ -3922,6 +3922,7 @@ void PhiShellWindow::LayoutContents() {
 
 void PhiShellWindow::PlaceContentChildren(const Layout& layout) {
   if (sidebar_resize_snapshot_) return;
+  placed_content_ = layout.content;
   PhiContentLayout content;
   content.content = layout.content;
   content.client = layout.client;
@@ -6583,6 +6584,18 @@ void PhiShellWindow::RebuildTabs() {
   if (spaces_switch != laid_out_spaces_switch_) {
     laid_out_spaces_switch_ = spaces_switch;
     LayoutContents();
+  }
+  // The page's rect moved with an input the rebuild re-read: the bookmark
+  // bar comes and goes with the new-tab page (BookmarkBarVisible follows the
+  // active tab's URL). InvalidateChangedBands repaints the bands, but the
+  // browser child stayed where it was, so a page that left the new-tab page
+  // kept the bar's slot over it, showing the backdrop, until a resize
+  // (PHI-2097).
+  if (!::IsRectEmpty(&placed_content_)) {
+    const RECT content = ComputeWindowLayout().content;
+    if (!::EqualRect(&content, &placed_content_)) {
+      LayoutContents();
+    }
   }
   // The tabs changed: the Clear button comes and goes with what there is
   // to clear (the Mac follows $normalTabs).
@@ -10551,13 +10564,20 @@ bool PhiShellWindow::BookmarkBarVisible() {
   if (!services_.prefs->BookmarkBarOnNewTab()) {
     return false;
   }
-  // "On new tab": Chromium's NTP, a blank tab, or the placeholder shell.
+  // "On new tab": the New Tab page's address (the Mac's Tab.isNTP) or the
+  // placeholder shell; a blank or about:blank tab is not one. A tab that has
+  // committed nothing yet goes by the address it is loading, if Chromium
+  // shows it: a link or window.open() opened in a new tab would otherwise
+  // show the bar while its page loads and jump up under it at the first
+  // commit (PHI-2097).
   if (browsers_->ActiveBrowserPlaceholding()) {
     return true;
   }
-  return active_tab_url().empty() || active_tab_url() == "about:blank" ||
-         active_tab_url().rfind("chrome://newtab", 0) == 0 ||
-         active_tab_url().rfind("chrome://new-tab-page", 0) == 0;
+  const std::string& url =
+      active_tab_url().empty() && model_
+          ? model_->PendingUrl(active_browser_id(), active_tab_id())
+          : active_tab_url();
+  return PhiNewTabPage::IsNewTabUrl(url);
 }
 
 void PhiShellWindow::PaintBookmarkBar(HDC dc,

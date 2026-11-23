@@ -1930,6 +1930,11 @@ class PhiShellWindow : public PhiHitSource,
   // count crossing the single-Space line moves every band, so the rebuild
   // that notices it re-lays the children and repaints the whole shell.
   bool laid_out_spaces_switch_ = true;
+  // The page rect PlaceContentChildren last put the browser child at (empty
+  // until the first placement). A rebuild that re-reads a layout input moving
+  // it, such as the bookmark bar that shows only on the new-tab page, places
+  // the page again (PHI-2097).
+  RECT placed_content_ = {};
 
   // The page changes AFTER the band slide completes (the Mac reveals the
   // target on completion): the entering child stays hidden and the leaving
