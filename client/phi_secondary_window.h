@@ -124,6 +124,15 @@ PhiRectI PhiPlaceCentered(int width,
                           int height,
                           const PhiRectI& anchor,
                           const PhiRectI& work);
+// The room a secondary window may take on a monitor: `work` less `margin`
+// on every side, so a dialog designed taller than the screen still opens
+// clear of its top edge and the taskbar (PHI-2176: at 300 % Settings,
+// Feedback and Onboarding were cut to the whole work area and stood flush
+// with the screen's top). The margin gives way, to a sixteenth of the
+// side, on a work area too small to keep it.
+PhiRectI PhiInsetWorkArea(const PhiRectI& work, int margin);
+// The margin above, in DIP: the shell's own first-run placement margin.
+inline constexpr int kPhiWindowMarginDip = 24;
 
 // ---------------------------------------------------------------------------
 // Pure dialog-list decisions (see contract point 4).
@@ -233,10 +242,12 @@ class PhiSecondaryWindow : public PhiWindow {
   RECT ContentRect() const;
   // Centres the window over `around` (the work area of the owner's
   // monitor, else the pointer's, when null) at its current size, one third
-  // down — how all five open — kept inside that monitor's work area and cut
-  // down to fit it.
+  // down — how all five open — kept inside that monitor's work area less
+  // the window margin, and cut down to fit it.
   void CenterOn(HWND around);
-  // The work area of the monitor the window is on, in screen px.
+  // The room the window may take on the monitor it is on, in screen px:
+  // that monitor's work area less kPhiWindowMarginDip on every side
+  // (PhiInsetWorkArea).
   RECT WorkArea() const;
   // Moves the window back inside WorkArea(), shrinking it when it is
   // taller or wider (a DPI move, a display or taskbar change). A maximized

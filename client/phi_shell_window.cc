@@ -16,6 +16,7 @@
 #include <array>
 #include <functional>
 #include <cmath>
+#include <cstdlib>
 #include <iterator>
 #include <limits>
 #include <optional>
@@ -127,6 +128,10 @@ constexpr int kSpaceTextVertical = 14;
 // How far a shell with no placement to inherit sits off the work area's
 // top-left corner (see the first-run placement in the constructor).
 constexpr int kDefaultPlacementMargin = 24;
+// How far a new incognito window steps down and right off a shell already
+// standing where it would open (PHI-2176): Chrome's popup and window
+// cascade on the Mac, as the popup rule of PHI-2102.
+constexpr int kCascadeStepDip = 22;
 // The smallest page the window shrinks to beside a docked sidebar (or
 // alone), and the smallest client height: below them the content card's
 // rect goes negative and the caption buttons ride over the sidebar.
@@ -410,6 +415,70 @@ bool OnlyGdiOver(HWND shell, HWND page, const RECT& screen_rect) {
   ::EnumChildWindows(top_level_child, any_composed,
                      reinterpret_cast<LPARAM>(&query));
   return !query.found;
+}
+
+// Where a new incognito window opens (PHI-2176). Chromium hands an incognito
+// browser the first shell's OUTER rect (on 0.8.0.23; its WindowSizer finds
+// no tabbed browser of the off-the-record profile to cascade from), and the
+// constructor anchors the new shell's content there, so it came up over the
+// first window and a sidebar wider. Instead it takes the
+// size of the shell it was opened from (the frontmost visible one of this
+// thread) and steps `step` down and right while another visible, restored
+// shell has its top-left corner within a step of it (Chrome's window
+// cascade), kept inside the work area of the monitor it lands on.
+void PlaceOffOpenerShell(int* x, int* y, int* w, int* h, int step) {
+  const DWORD thread = ::GetCurrentThreadId();
+  auto is_shell = [](HWND hwnd) {
+    wchar_t cls[32] = {};
+    return ::GetClassNameW(hwnd, cls, 32) && wcscmp(cls, kShellClassName) == 0;
+  };
+  for (HWND hwnd = ::GetTopWindow(nullptr); hwnd;
+       hwnd = ::GetWindow(hwnd, GW_HWNDNEXT)) {
+    if (::GetWindowThreadProcessId(hwnd, nullptr) != thread ||
+        !::IsWindowVisible(hwnd) || ::IsIconic(hwnd) || !is_shell(hwnd)) {
+      continue;
+    }
+    RECT r = {};
+    WINDOWPLACEMENT placement = {sizeof(placement)};
+    if (::IsZoomed(hwnd) && ::GetWindowPlacement(hwnd, &placement)) {
+      r = placement.rcNormalPosition;  // A maximized opener: its restored rect.
+    } else {
+      ::GetWindowRect(hwnd, &r);
+    }
+    if (r.right > r.left && r.bottom > r.top) {
+      *x = r.left;
+      *y = r.top;
+      *w = r.right - r.left;
+      *h = r.bottom - r.top;
+    }
+    break;
+  }
+  for (int round = 0; round < 32; ++round) {
+    bool hit = false;
+    for (HWND hwnd = ::GetTopWindow(nullptr); hwnd && !hit;
+         hwnd = ::GetWindow(hwnd, GW_HWNDNEXT)) {
+      RECT r = {};
+      hit = ::GetWindowThreadProcessId(hwnd, nullptr) == thread &&
+            ::IsWindowVisible(hwnd) && !::IsIconic(hwnd) &&
+            !::IsZoomed(hwnd) && is_shell(hwnd) && ::GetWindowRect(hwnd, &r) &&
+            std::abs(r.left - *x) < step && std::abs(r.top - *y) < step;
+    }
+    if (!hit) {
+      break;
+    }
+    *x += step;
+    *y += step;
+  }
+  const POINT corner = {*x, *y};
+  MONITORINFO info = {sizeof(info)};
+  if (::GetMonitorInfoW(::MonitorFromPoint(corner, MONITOR_DEFAULTTONEAREST),
+                        &info)) {
+    const RECT& work = info.rcWork;
+    *w = std::min<int>(*w, work.right - work.left);
+    *h = std::min<int>(*h, work.bottom - work.top);
+    *x = std::max<int>(work.left, std::min<int>(*x, work.right - *w));
+    *y = std::max<int>(work.top, std::min<int>(*y, work.bottom - *h));
+  }
 }
 
 }  // namespace
@@ -1440,7 +1509,9 @@ PhiShellWindow::PhiShellWindow(SlotId slot,
   // bottom-right pulls the window up and left to stay on screen. The size
   // is whatever the placement above produced.
   POINT drop = {};
-  if (!agent_ && services_.window && services_.window->TakeTearOffDrop(&drop)) {
+  const bool tear_off =
+      !agent_ && services_.window && services_.window->TakeTearOffDrop(&drop);
+  if (tear_off) {
     MONITORINFO target = {sizeof(target)};
     if (::GetMonitorInfoW(::MonitorFromPoint(drop, MONITOR_DEFAULTTONEAREST),
                           &target)) {
@@ -1464,6 +1535,10 @@ PhiShellWindow::PhiShellWindow(SlotId slot,
                                         work.bottom - h));
       }
     }
+  }
+
+  if (incognito_ && !agent_ && !tear_off) {
+    PlaceOffOpenerShell(&x, &y, &w, &h, Scaled(kCascadeStepDip));
   }
 
   if (agent_) {
@@ -6445,6 +6520,11 @@ void PhiShellWindow::RetitleShell() {
           tab->title, tab->url,
           model_->PendingUrl(active_browser_id(), tab->id));
     }
+  }
+  if (title.empty() && incognito_) {
+    // An incognito window belongs to no Space: it nominally binds the
+    // default one, whose name ("Default") it used to show (PHI-2176).
+    title = base::WideToUTF8(PhiStr("common.newTabPage.incognitoTitle"));
   }
   if (title.empty() && services_.spaces) {
     for (const PhiSpaceView& space : services_.spaces->Spaces()) {

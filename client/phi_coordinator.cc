@@ -4893,7 +4893,12 @@ void PhiCoordinator::RequestAppearance(PhiAppearance appearance) {
 }
 
 void PhiCoordinator::RequestSettings() {
-  PhiSettingsWindow::Open(this);
+  PhiSettingsWindow::Open(this, SettingsAnchor());
+}
+
+HWND PhiCoordinator::SettingsAnchor() {
+  PhiShellWindow* focused = FocusedUserController();
+  return focused ? focused->shell_hwnd() : nullptr;
 }
 
 void PhiCoordinator::RequestUrlRulesEditor(HWND anchor) {
@@ -4926,7 +4931,7 @@ void PhiCoordinator::OnShowFeedbackRequested() {
 }
 
 void PhiCoordinator::RequestSpaceIconPicker(const std::string& space_id) {
-  PhiSettingsWindow::Open(this);
+  PhiSettingsWindow::Open(this, SettingsAnchor());
   PhiSettingsWindow::ShowSpacePicker(space_id);
 }
 

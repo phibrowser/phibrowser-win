@@ -339,7 +339,10 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
                           public PhiSettingsObserver,
                           public PhiContentBlockingObserver {
  public:
-  static void Open(PhiSettingsHost* host);
+  // `anchor`: the browser window it was asked from; a new window opens
+  // centred on it (on the pointer's monitor when null). An open one stays
+  // where it is.
+  static void Open(PhiSettingsHost* host, HWND anchor = nullptr);
   // Repaints the open window. The coordinator no longer calls this (it
   // notifies the observer instead); the verb ladder still does for the
   // profile settings it writes through the framework.
@@ -371,7 +374,7 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
 
  private:
   explicit PhiSettingsWindow(PhiSettingsHost* host);
-  bool OpenWindow();
+  bool OpenWindow(HWND anchor);
   // Profiles whose content blocking state this window asked for: one fresh
   // read per profile per window, the observer keeps it current after.
   std::set<std::string> content_blocking_read_;

@@ -497,7 +497,7 @@ PhiSettingsWindow::PhiSettingsWindow(PhiSettingsHost* host)
   host_->AddSettingsObserver(this);
 }
 
-bool PhiSettingsWindow::OpenWindow() {
+bool PhiSettingsWindow::OpenWindow(HWND anchor) {
   ClassSpec spec;
   spec.name = kClassName;
   spec.style = CS_HREDRAW | CS_VREDRAW;
@@ -551,10 +551,12 @@ bool PhiSettingsWindow::OpenWindow() {
                  Scaled(kChromeTop + height) + border_y,
                  SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
   // The remembered size (and the 1120 x 760 default) came from whatever
-  // monitor the window was last on: kept inside THIS monitor's work area,
-  // and cut down to it, so a small or scaled display never opens it with
-  // its bottom under the taskbar.
-  FitToWorkArea();
+  // monitor the window was last on: centred on the browser window it was
+  // asked from (it opened wherever CW_USEDEFAULT put it), on that window's
+  // monitor, kept inside the work area less the window margin and cut down
+  // to it, so a small or scaled display never opens it flush with the top
+  // or with its bottom under the taskbar (PHI-2176).
+  CenterOn(anchor && ::IsWindow(anchor) ? anchor : nullptr);
   EnsureFont();
   SyncTitle();
   host_->ContentBlocking().AddObserver(this);
@@ -656,11 +658,11 @@ void PhiSettingsWindow::SyncTitle() {
 }
 
 // static
-void PhiSettingsWindow::Open(PhiSettingsHost* host) {
+void PhiSettingsWindow::Open(PhiSettingsHost* host, HWND anchor) {
   if (!g_instance || !g_instance->alive()) {
     delete g_instance;
     g_instance = new PhiSettingsWindow(host);
-    if (!g_instance->OpenWindow()) {
+    if (!g_instance->OpenWindow(anchor)) {
       delete g_instance;
       g_instance = nullptr;
     }

@@ -765,6 +765,8 @@ class PhiCoordinator : public SidebarHost,
   // The USER window the user is looking at: the foreground shell when it is
   // one of ours, the first user window otherwise. Null without windows.
   PhiShellWindow* FocusedUserController();
+  // The shell a new Settings window centres on: FocusedUserController's.
+  HWND SettingsAnchor();
   // Surfaces `space_id` in `slot` (invalid: the first user window),
   // requesting its browser in the Space's profile when the slot has none —
   // the spaces.switch body, shared with the skill's spaces.activate.

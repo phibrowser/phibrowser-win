@@ -102,6 +102,17 @@ PhiRectI PhiPlaceCentered(int width,
   return PhiFitRectInto(frame, work);
 }
 
+PhiRectI PhiInsetWorkArea(const PhiRectI& work, int margin) {
+  const int mx = std::max(0, std::min(margin, work.width() / 16));
+  const int my = std::max(0, std::min(margin, work.height() / 16));
+  PhiRectI out;
+  out.left = work.left + mx;
+  out.top = work.top + my;
+  out.right = work.right - mx;
+  out.bottom = work.bottom - my;
+  return out;
+}
+
 bool PhiDialogWantsKey(unsigned keys,
                        PhiDialogMessageKind kind,
                        unsigned virtual_key) {
@@ -397,6 +408,8 @@ void PhiSecondaryWindow::CenterOn(HWND around) {
     monitor = ::MonitorFromPoint(cursor, MONITOR_DEFAULTTOPRIMARY);
   }
   const RECT work = MonitorWorkArea(monitor);
+  const PhiRectI room =
+      PhiInsetWorkArea(ToRectI(work), Scaled(kPhiWindowMarginDip));
   RECT anchor = {};
   if (!around || ::IsIconic(around) || !::GetWindowRect(around, &anchor)) {
     anchor = work;
@@ -406,7 +419,7 @@ void PhiSecondaryWindow::CenterOn(HWND around) {
   const int w = frame.right - frame.left;
   const int h = frame.bottom - frame.top;
   const PhiRectI placed =
-      PhiPlaceCentered(w, h, ToRectI(anchor), ToRectI(work));
+      PhiPlaceCentered(w, h, ToRectI(anchor), room);
   const bool same_size = placed.width() == w && placed.height() == h;
   ::SetWindowPos(hwnd(), nullptr, placed.left, placed.top, placed.width(),
                  placed.height(),
@@ -414,9 +427,12 @@ void PhiSecondaryWindow::CenterOn(HWND around) {
 }
 
 RECT PhiSecondaryWindow::WorkArea() const {
-  return MonitorWorkArea(
-      alive() ? ::MonitorFromWindow(hwnd(), MONITOR_DEFAULTTONEAREST)
-              : nullptr);
+  const PhiRectI room = PhiInsetWorkArea(
+      ToRectI(MonitorWorkArea(
+          alive() ? ::MonitorFromWindow(hwnd(), MONITOR_DEFAULTTONEAREST)
+                  : nullptr)),
+      Scaled(kPhiWindowMarginDip));
+  return RECT{room.left, room.top, room.right, room.bottom};
 }
 
 void PhiSecondaryWindow::FitToWorkArea() {

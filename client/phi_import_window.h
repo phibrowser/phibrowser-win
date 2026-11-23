@@ -161,6 +161,9 @@ class PhiImportWindow : public PhiSecondaryWindow {
   Phase phase_ = Phase::kSelecting;
   std::vector<Row> rows_;
   int expanded_ = -1;
+  // Set while Layout() resizes the window to its content: the WM_SIZE that
+  // resize sends lays out again without resizing.
+  bool fitting_ = false;
   std::wstring file_path_;
   std::wstring status_;
   std::vector<Button> buttons_;

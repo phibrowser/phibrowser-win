@@ -31,9 +31,15 @@ namespace {
 constexpr wchar_t kClassName[] = L"PhiImportWindow";
 
 // The Mac's .normal window is 500 x 760; Windows' dialog padding and
-// ContentDialog footer take what the Mac's 56pt margins did.
+// ContentDialog footer take what the Mac's 56pt margins did. The height is
+// the content's (Layout), so three collapsed sources no longer stand over
+// a mostly empty window (PHI-2176); kHeightDip is only the first guess.
 constexpr int kWidthDip = 520;
 constexpr int kHeightDip = 720;
+// Between the last source card and the status line, and between the
+// status line and the buttons.
+constexpr int kFooterGapDip = 16;
+constexpr int kBottomPadDip = 24;
 constexpr int kPadDip = 32;
 constexpr int kHeaderHeightDip = 52;
 constexpr int kToggleRowDip = 40;
@@ -163,14 +169,20 @@ bool PhiImportWindow::OpenWindow(HWND anchor) {
   ClassSpec spec;
   spec.name = kClassName;
   Options options;
-  options.caption_buttons = kPhiCaptionClose | kPhiCaptionMinimize;
+  // Owned by the browser window it was opened from (PHI-2176): it stays in
+  // front of that window, moves to the front and minimizes with it, and has
+  // no taskbar button of its own; so, like the other owned dialogs
+  // (content blocking), it has no minimize button either.
+  options.caption_buttons = kPhiCaptionClose;
   options.dialog_keys = kPhiDialogNone;  // Escape handled here.
   const RECT bounds = {CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT + 100,
                        CW_USEDEFAULT + 100};
+  const HWND owner =
+      anchor && ::IsWindow(anchor) ? ::GetAncestor(anchor, GA_ROOT) : nullptr;
   if (!CreateSecondary(spec, 0,
                        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU |
-                           WS_MINIMIZEBOX | WS_CLIPCHILDREN,
-                       bounds, nullptr,
+                           WS_CLIPCHILDREN,
+                       bounds, owner,
                        PhiStr("appMenu.importFromBrowser"),
                        options)) {
     LOG(ERROR) << "[Import] CreateWindowEx failed err=" << ::GetLastError();
@@ -181,8 +193,10 @@ bool PhiImportWindow::OpenWindow(HWND anchor) {
   const SIZE outer = chrome().OuterSize(kWidthDip, kHeightDip);
   ::SetWindowPos(hwnd(), nullptr, 0, 0, outer.cx, outer.cy,
                  SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-  CenterOn(anchor && ::IsWindow(anchor) ? anchor : nullptr);
   LoadRows();
+  // Sized to the rows first, so it centres at the size it shows.
+  Layout();
+  CenterOn(owner);
   Layout();
   return true;
 }
@@ -666,9 +680,39 @@ void PhiImportWindow::Layout() {
         bottom);
   }
   const int status_bottom =
-      bottom - Scaled(kButtonHeightDip) - Scaled(16);
+      bottom - Scaled(kButtonHeightDip) - Scaled(kFooterGapDip);
   const int status_h = MeasureHeight(BodyFont(), status_, width);
   status_rect_ = {left, status_bottom - status_h, right, status_bottom};
+
+  // The window takes the height its content needs: the cards, then one
+  // status line (kept while empty, so the status coming and going never
+  // resizes the window) and the buttons. A row opening or closing grows or
+  // shrinks it from the top edge; never past the work area less its
+  // margin (a long list at 300 % keeps the old cut).
+  const int rows_bottom = rows_.empty() ? y : y - Scaled(kRowGapDip);
+  const int status_room =
+      std::max(status_h, MeasureHeight(BodyFont(), L"X", width));
+  const int need = (rows_bottom - content.top) + Scaled(kFooterGapDip) +
+                   status_room + Scaled(kFooterGapDip) +
+                   Scaled(kButtonHeightDip) + Scaled(kBottomPadDip);
+  if (!fitting_ && !::IsIconic(hwnd())) {
+    const RECT room = WorkArea();
+    const SIZE frame = chrome().OuterSize(0, 0);
+    const int want =
+        std::min<int>(need + frame.cy, room.bottom - room.top);
+    RECT now = {};
+    ::GetWindowRect(hwnd(), &now);
+    if (want > 0 && now.bottom - now.top != want) {
+      fitting_ = true;
+      ::SetWindowPos(hwnd(), nullptr, 0, 0, now.right - now.left, want,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+      FitToWorkArea();
+      fitting_ = false;
+      Layout();  // Against the new content rect.
+      Invalidate();
+      return;
+    }
+  }
 
   ClearHits();
   for (const Button& b : buttons_) {
