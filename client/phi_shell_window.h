@@ -38,6 +38,7 @@
 #include "client/phi_shell_menus.h"
 #include "client/phi_tab_close.h"
 #include "client/phi_shell_layout.h"
+#include "client/phi_space_swipe.h"
 #include "client/phi_spaces_strip.h"
 #include "client/phi_sidebar_model.h"
 #include "client/phi_theme.h"
@@ -1238,6 +1239,13 @@ class PhiShellWindow : public PhiHitSource,
   // The content region (client coords, physical pixels) the browser child
   // occupies.
   RECT content_rect();
+  // How many edge bounces the Spaces strip has played (PHI-2163 / PHI-2180;
+  // the test pipe reads it).
+  int space_bounces() const;
+  // A Space switch is still sliding (the band, its page flip, or
+  // comfortable's content slide): a swipe now is swallowed, the Mac's
+  // isSwitchAnimationInFlight.
+  bool space_switch_running() const;
   // The DPI the chrome is currently laid out for (96 = 100%).
   UINT dpi() const { return dpi_; }
   // Chrome geometry, published so tools and tests can locate what they are
@@ -2145,6 +2153,15 @@ class PhiShellWindow : public PhiHitSource,
   // False when the press is not the sidebar's (the page navigates instead).
   bool SideButtonSwitchSpace(POINT client_pt, bool forward,
                              bool in_floating_panel);
+  // The next (+1) / previous (-1) Space in the window's presented list, or
+  // the band's edge bounce past either end. False when this window does
+  // not switch Spaces (agent, incognito, the create form up).
+  bool StepSpace(int step);
+  // One wheel message for the sideways Space swipe (phi_space_swipe.h).
+  // True when it was the swipe's; false leaves it to the usual scrolling.
+  bool SpaceSwipeWheel(POINT client_pt, bool horizontal, int delta,
+                       bool in_floating_panel);
+  PhiSpaceSwipe space_swipe_;
   bool InDockedSidebar(POINT client_pt);
   void MenuNewTab() override;
   void PairPendingSplit();

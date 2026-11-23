@@ -38,6 +38,11 @@ constexpr int kCornerRadius = 8;  // The pill radius, everywhere.
 // The band slide (the Mac's Space switch) and the theme ramp behind it.
 constexpr int kSpaceSwapMs = 150;
 constexpr int kThemeRampMs = 600;
+// The edge bounce (the Mac's bounceSpaceSwitchBand): 22 pt out and back in
+// 0.3 s, the turn at 40 % of it, each leg eased in and out.
+constexpr int kBounceDip = 22;
+constexpr int kBounceMs = 300;
+constexpr double kBounceTurn = 0.4;
 // SwapProgress's frame lead: reads closer than this are one frame, and no
 // frame counts as longer than the cap (a stall must not skip the slide).
 constexpr double kSwapSameFrameMs = 8;
@@ -200,7 +205,9 @@ void PhiSpacesStrip::StopAnimations() {
   animator.Cancel(fade_anim_);
   animator.Cancel(swap_anim_);
   animator.Cancel(ramp_anim_);
-  fade_anim_ = swap_anim_ = ramp_anim_ = 0;
+  animator.Cancel(bounce_anim_);
+  fade_anim_ = swap_anim_ = ramp_anim_ = bounce_anim_ = 0;
+  bounce_start_ms_ = 0;
 }
 
 void PhiSpacesStrip::Shutdown() {
@@ -881,6 +888,9 @@ void PhiSpacesStrip::BeginSwap(const std::string& entering_space_id) {
     return;
   }
   CancelSwap();  // Settle any in-flight switch first.
+  PhiAnimator::ForThread().Cancel(bounce_anim_);  // The slide takes the band.
+  bounce_anim_ = 0;
+  bounce_start_ms_ = 0;
   // Direction from strip order, the Mac's forward/backward semantics.
   swap_forward_ = SlideForward(entering_space_id);
   swap_source_palette_ = shell_->SpacesPalette();
@@ -926,6 +936,62 @@ void PhiSpacesStrip::BeginSwap(const std::string& entering_space_id) {
         ramp_anim_ = 0;
         ramp_start_ = 0;
       });
+}
+
+void PhiSpacesStrip::BeginBounce(bool forward) {
+  if (!prefs_host_ ||
+      prefs_host_->LayoutMode() == PhiLayoutMode::kComfortable ||
+      swap_running()) {
+    return;
+  }
+  const HWND shell = shell_->SpacesShellWindow();
+  if (!shell) {
+    return;
+  }
+  ++bounces_;
+  bounce_forward_ = forward;
+  bounce_start_ms_ = PreciseNowMs();
+  PhiAnimator& animator = PhiAnimator::ForThread();
+  animator.Cancel(bounce_anim_);
+  bounce_anim_ = animator.Animate(
+      shell, kBounceMs, PhiEasing::kLinear,
+      [this](double, RECT* dirty) {
+        const PhiSpacesStripRects rects = shell_->SpacesRects();
+        *dirty = rects.sidebar;
+        if (dirty->right <= dirty->left) {
+          // Collapsed: the floating panel paints the band, and it follows
+          // the shell's paints (FloatingSidebarTick).
+          *dirty = rects.client;
+        }
+      },
+      [this] {
+        bounce_anim_ = 0;
+        bounce_start_ms_ = 0;
+        // The rest frame: the band back where it belongs.
+        if (const HWND shell = shell_->SpacesShellWindow()) {
+          const PhiSpacesStripRects rects = shell_->SpacesRects();
+          const RECT& dirty = rects.sidebar.right > rects.sidebar.left
+                                  ? rects.sidebar
+                                  : rects.client;
+          ::InvalidateRect(shell, &dirty, FALSE);
+        }
+      });
+}
+
+int PhiSpacesStrip::BounceOffset() const {
+  if (!bounce_start_ms_ || swap_running()) {
+    return 0;
+  }
+  const double t = (PreciseNowMs() - bounce_start_ms_) / kBounceMs;
+  if (t <= 0 || t >= 1) {
+    return 0;
+  }
+  const double reach = t < kBounceTurn
+                           ? Smoothstep(t / kBounceTurn)
+                           : 1.0 - Smoothstep((t - kBounceTurn) /
+                                              (1.0 - kBounceTurn));
+  const double offset = shell_->SpacesScaled(kBounceDip) * reach;
+  return static_cast<int>(std::lround(bounce_forward_ ? -offset : offset));
 }
 
 bool PhiSpacesStrip::SlideForward(

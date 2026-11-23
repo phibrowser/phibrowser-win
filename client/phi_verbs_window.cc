@@ -157,6 +157,10 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   shell->FlushPendingRebuild();  // The rows below must not be stale.
   base::DictValue out;
   out.Set("content", RectDict(shell->content_rect()));
+  // The Space band's edge bounces so far (a side button or a swipe past the
+  // first / last Space).
+  out.Set("spaceBounces", shell->space_bounces());
+  out.Set("spaceSwitching", shell->space_switch_running());
   // Geometry is in PHYSICAL pixels; a caller comparing against design
   // constants has to scale them by this.
   out.Set("dpi", static_cast<int>(shell->dpi()));

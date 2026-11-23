@@ -251,6 +251,16 @@ class PhiSpacesStrip {
   // the window going away).
   void CancelSwap();
   bool swap_running() const { return swap_start_ != 0; }
+  // The Mac's bounceSpaceSwitchBand: a side button or a swipe that asks
+  // for a Space past the first / last one nudges the band 22 dip in the
+  // push direction (left for `forward`) and springs it back, 0.3 s, so
+  // the gesture still answers (PHI-2163, PHI-2180). Vertical layouts only.
+  void BeginBounce(bool forward);
+  // The band's horizontal bounce offset for the frame being painted, in
+  // device pixels; 0 when no bounce runs.
+  int BounceOffset() const;
+  // How many bounces this strip has started (the test pipe reads it).
+  int bounces() const { return bounces_; }
   bool swap_forward() const { return swap_forward_; }
   // Which way a switch from the active Space to `entering_space_id` runs:
   // forward when the entering Space is later in strip order (an agent
@@ -417,6 +427,11 @@ class PhiSpacesStrip {
   PhiPalette swap_source_palette_{};
   int swap_anim_ = 0;
   int ramp_anim_ = 0;
+  // The edge bounce's clock (0 idle) and direction.
+  double bounce_start_ms_ = 0;
+  bool bounce_forward_ = true;
+  int bounce_anim_ = 0;
+  int bounces_ = 0;
 };
 
 }  // namespace phi_client

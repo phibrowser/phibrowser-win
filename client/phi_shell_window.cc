@@ -2159,11 +2159,20 @@ bool PhiShellWindow::SideButtonSwitchSpace(POINT client_pt, bool forward,
   // The Mac's 711f8a61: the mouse's back / forward side buttons over a
   // sidebar (docked or floating) step to the previous / next Space; over
   // the page they still navigate, which Chromium's own window handles.
-  if (layout_mode_ == PhiLayoutMode::kComfortable || agent_ ||
-      ShowsIncognito()) {
+  if (layout_mode_ == PhiLayoutMode::kComfortable) {
     return false;
   }
   if (!in_floating_panel && !InDockedSidebar(client_pt)) {
+    return false;
+  }
+  return StepSpace(forward ? 1 : -1);
+}
+
+bool PhiShellWindow::StepSpace(int step) {
+  // The Mac's activateAdjacentSpace. Not in agent windows (their strip
+  // switches them), not in incognito (no Spaces), not under the create
+  // form (it covers the band).
+  if (agent_ || ShowsIncognito() || spaces_->creating()) {
     return false;
   }
   // The window's own Spaces in strip order, then its agent Spaces (the
@@ -2181,10 +2190,87 @@ bool PhiShellWindow::SideButtonSwitchSpace(POINT client_pt, bool forward,
   if (at == ids.end()) {
     return true;
   }
-  // No wrap at either end: the Mac bounces there; the click is still taken.
-  const ptrdiff_t index = (at - ids.begin()) + (forward ? 1 : -1);
+  // No wrap at either end: the Mac clamps so the slide always runs the way
+  // the gesture pushed, and bounces the band there instead (PHI-2163).
+  const ptrdiff_t index = (at - ids.begin()) + step;
   if (index >= 0 && index < static_cast<ptrdiff_t>(ids.size())) {
     SwitchToSpace(ids[static_cast<size_t>(index)]);
+  } else {
+    spaces_->BeginBounce(step > 0);
+  }
+  return true;
+}
+
+int PhiShellWindow::space_bounces() const {
+  return spaces_ ? spaces_->bounces() : 0;
+}
+
+bool PhiShellWindow::space_switch_running() const {
+  return spaces_ && content_slide_ && BrowserHostSwapRunning();
+}
+
+bool PhiShellWindow::SpaceSwipeWheel(POINT client_pt,
+                                     bool horizontal,
+                                     int delta,
+                                     bool in_floating_panel) {
+  // PHI-2180: the two-finger sideways swipe (phi_space_swipe.h). Over the
+  // docked sidebar or the floating panel, past the Mini Player (the Mac's
+  // media card keeps sideways swipes for itself), and over comfortable's
+  // strip row when the strip has no tabs to scroll (the Mac's
+  // TabStripBarView). The page's own swipes never reach the shell.
+  if (agent_ || ShowsIncognito() || spaces_->creating() ||
+      AgentHoldsInput()) {
+    space_swipe_.Reset();
+    return false;
+  }
+  const Layout layout = ComputeLayout();
+  const bool comfortable = layout_mode_ == PhiLayoutMode::kComfortable;
+  bool over = false;
+  double width_dip = 0;
+  if (comfortable) {
+    over = !in_floating_panel && ::PtInRect(&layout.title_bar, client_pt) &&
+           !::PtInRect(&layout.caption_min, client_pt) &&
+           !::PtInRect(&layout.caption_max, client_pt) &&
+           !::PtInRect(&layout.caption_close, client_pt);
+    // The comfortable slide pushes the whole client area.
+    width_dip = static_cast<double>(layout.client.right - layout.client.left) *
+                96.0 / static_cast<double>(dpi_ ? dpi_ : 96);
+  } else {
+    over = (in_floating_panel || InDockedSidebar(client_pt)) &&
+           !::PtInRect(&layout.media_card, client_pt);
+    width_dip = sidebar_dip_;
+  }
+  if (!over) {
+    // A run the swipe already owns keeps its messages wherever they land.
+    return space_swipe_.owns_run();
+  }
+  struct Other {
+    PhiShellWindow* self;
+    POINT pt;
+    int delta;
+  } other = {this, client_pt, delta};
+  // Comfortable's strip scrolls its tabs on the same messages (rightward
+  // reveals later ones): when it takes a run's first, the run is its.
+  auto strip_takes = [](void* context) {
+    Other* o = static_cast<Other*>(context);
+    return o->self->sidebar_->OnWheel(o->pt, -o->delta);
+  };
+  const PhiSpaceSwipe::Route route = space_swipe_.Feed(
+      horizontal, delta, static_cast<int64_t>(::GetMessageTime()), width_dip,
+      comfortable ? +strip_takes : nullptr, &other);
+  switch (route) {
+    case PhiSpaceSwipe::Route::kPass:
+      return false;
+    case PhiSpaceSwipe::Route::kConsumed:
+      return true;
+    case PhiSpaceSwipe::Route::kNext:
+    case PhiSpaceSwipe::Route::kPrevious:
+      // A switch already sliding takes no second one (the Mac's
+      // isSwitchAnimationInFlight); the rest of the run is swallowed.
+      if (!space_switch_running()) {
+        StepSpace(route == PhiSpaceSwipe::Route::kNext ? 1 : -1);
+      }
+      return true;
   }
   return true;
 }
@@ -10356,12 +10442,20 @@ LRESULT CALLBACK PhiShellWindow::FloatingSidebarProc(HWND hwnd,
       }
       break;
     case WM_MOUSEWHEEL:
+    case WM_MOUSEHWHEEL:
       if (self && self->floating_expanded_) {
         forward([&] {
           self->DismissChromeTip();
           POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
           ::ScreenToClient(hwnd, &pt);
           pt.y += self->floating_offset_y_;
+          // A sideways swipe over the panel switches Space (PHI-2180).
+          if (self->SpaceSwipeWheel(pt, msg == WM_MOUSEHWHEEL,
+                                    GET_WHEEL_DELTA_WPARAM(wparam),
+                                    /*in_floating_panel=*/true) ||
+              msg == WM_MOUSEHWHEEL) {
+            return;
+          }
           if (self->sidebar_->OnWheel(pt, GET_WHEEL_DELTA_WPARAM(wparam)) &&
               self->rows_dirty_) {
             // As the docked wheel: the rows moved under a resting pointer,
@@ -11876,8 +11970,14 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         POINT pt = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
         ::ScreenToClient(hwnd, &pt);
         // A tilt / two-finger sideways swipe steps comfortable's strip
-        // window: rightward (positive) reveals later tabs.
+        // window: rightward (positive) reveals later tabs. Over the sidebar,
+        // or over a strip with nothing to scroll, it switches Space
+        // (PHI-2180).
         const int delta = GET_WHEEL_DELTA_WPARAM(wparam);
+        if (self->SpaceSwipeWheel(pt, msg == WM_MOUSEHWHEEL, delta,
+                                  /*in_floating_panel=*/false)) {
+          return 0;
+        }
         const bool consumed =
             msg == WM_MOUSEWHEEL
                 ? self->sidebar_->OnWheel(pt, delta)

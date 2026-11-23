@@ -5200,8 +5200,27 @@ void PhiSidebarView::Paint(HDC dc,
     return;  // Collapsed: the band is the floating panel's to paint.
   }
   PhiSpacesStrip* const strip = shell_->SidebarSpacesStrip();
-  if (!strip->swap_running() || layout.horizontal_tabs) {
+  if (layout.horizontal_tabs) {
     PaintBand(dc, layout, palette);
+    return;
+  }
+  if (!strip->swap_running()) {
+    const int bounce_dx = strip->BounceOffset();
+    if (bounce_dx == 0) {
+      PaintBand(dc, layout, palette);
+      return;
+    }
+    // The edge bounce (PHI-2163 / PHI-2180): the band the slide would move,
+    // nudged and clipped the same way, over the same ground.
+    const int save = ::SaveDC(dc);
+    ::IntersectClipRect(dc, 0, layout.favorites.top,
+                        Scaled(sidebar_dip()), layout.tabs_limit);
+    POINT origin = {};
+    ::GetViewportOrgEx(dc, &origin);
+    ::SetViewportOrgEx(dc, origin.x + bounce_dx, origin.y, nullptr);
+    PaintBand(dc, layout, palette);
+    ::SetViewportOrgEx(dc, origin.x, origin.y, nullptr);
+    ::RestoreDC(dc, save);
     return;
   }
   // The Space switch slides the REAL rows (no snapshots): the leaving
