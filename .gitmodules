@@ -1,0 +1,4 @@
+[submodule "phi-client-core"]
+	path = phi-client-core
+	url = ../phibrowser-client-core.git
+	branch = main
