@@ -4594,6 +4594,15 @@ void PhiSidebarView::PaintBand(HDC dc,
     const bool row_hovered =
         hover_kind == HoverKind::kTab &&
         hover_index == static_cast<int>(&row - tabs_.data());
+    // The agent operating mask's badge, on rows an agent is holding. On the
+    // strip it is the Mac's corner badge (TabItemView.layoutStatusBadge: the
+    // 12pt TabCornerBadgeMetrics box at the cell's top-right, 2pt overhang),
+    // our 8 dip dot centred in it; in the sidebar it keeps its slot at the
+    // row's trailing end. Either way the title stops short of it (PHI-2182:
+    // a narrow strip tab's title ran under the dot).
+    const bool agent_badge = agent_host_ && row.id.valid() &&
+                             agent_host_->IsTabAgentDriven(row.id.value);
+    RECT badge = {};  // Placed once the row's trailing edge is known.
     // The strip's lifted tab — the snapshot the drag image carries, and
     // the landing glide — wears the hover wash (the Mac proxy's
     // setDragHighlighted) and no divider: a clean tile over its neighbours.
@@ -4720,6 +4729,10 @@ void PhiSidebarView::PaintBand(HDC dc,
           title_rc.left = speaker.right + Scaled(4);
         }
       }
+      if (agent_badge) {
+        title_rc.right = std::min<LONG>(title_rc.right,
+                                        badge.left - Scaled(4));
+      }
       PhiDrawTextAA(dc,
                   (extra ? extra->title : pane_b ? r.b_title : r.title).c_str(),
                   -1, &title_rc,
@@ -4736,6 +4749,14 @@ void PhiSidebarView::PaintBand(HDC dc,
     const int trailing = show_close ? close_box.left
                          : attached ? surface_box.left
                                     : pill.right;
+    if (agent_badge) {
+      const int dot = Scaled(8);
+      const int cx = layout.horizontal_tabs ? pill.right - Scaled(4)
+                                            : trailing - Scaled(10);
+      const int cy = layout.horizontal_tabs ? pill.top + Scaled(4)
+                                            : (pill.top + pill.bottom) / 2;
+      badge = {cx - dot / 2, cy - dot / 2, cx + dot / 2, cy + dot / 2};
+    }
     if (row.b_index >= 0) {
       // Equal segments, a hairline between each two.
       const int panes = row.PaneCount();
@@ -4769,21 +4790,72 @@ void PhiSidebarView::PaintBand(HDC dc,
     // The agent operating mask: a badge on rows an agent is holding. Accent
     // while the agent drives; dimmed once the user has taken the tab back
     // (the row keeps the badge so "Hand Back" stays discoverable).
-    if (agent_host_ && row.id.valid() &&
-        agent_host_->IsTabAgentDriven(row.id.value)) {
+    if (agent_badge) {
       const bool reclaimed = agent_host_->IsTabReclaimed(row.id.value);
-      const int dot = Scaled(8);
-      const int cx = trailing - Scaled(10);
-      const int cy = (pill.top + pill.bottom) / 2;
       const COLORREF ink =
           reclaimed ? palette.label_tertiary : palette.accent;
-      PhiFillEllipseAA(
-          dc, {cx - dot / 2, cy - dot / 2, cx + dot / 2, cy + dot / 2}, ink);
+      PhiFillEllipseAA(dc, badge, ink);
     }
   }
 
   if (rows_clip_active) {
     ::RestoreDC(dc, rows_clip_save);
+  }
+  if (layout.horizontal_tabs && !drag_capture &&
+      layout.title_bar.right > layout.title_bar.left) {
+    // The Mac's content outline (updateContentOuterBorder): a 1pt border
+    // hairline along the strip's bottom edge, broken by the active tab,
+    // whose sides and rounded top carry it on. It is what gives the active
+    // tab its shape where its ground and the strip's are the same colour —
+    // a white page under a white Space tint (PHI-2182). The Windows tab has
+    // no inverse corners (see PaintStripGroups' underline, which repaints
+    // this path in a group's colour). With a page margin the shell's card
+    // frame already runs along that edge, so only the tab's own outline is
+    // added there.
+    const int line_y = layout.tabs_top + Scaled(kHTabHeight) - 1;
+    RECT active_bounds = {};
+    bool has_active = false;
+    for (size_t t = 0; t < tabs_.size(); ++t) {
+      const TabRow& row = tabs_[t];
+      if (!row.active || row.bounds.right <= row.bounds.left ||
+          (sliding && static_cast<int>(t) == drag_index)) {
+        continue;
+      }
+      int dx = drag_active ? static_cast<int>(TabSlide(row.id)) : 0;
+      if (static_cast<int>(t) == landing_index) {
+        dx += static_cast<int>(std::lround(landing_dx_));
+      }
+      active_bounds = row.bounds;
+      ::OffsetRect(&active_bounds, dx, 0);
+      has_active = true;
+      break;
+    }
+    HBRUSH ink = ::CreateSolidBrush(palette.border);
+    const auto line = [&](LONG from, LONG to) {
+      if (to > from) {
+        RECT r = {from, line_y, to, line_y + 1};
+        ::FillRect(dc, &r, ink);
+      }
+    };
+    if (layout.content.left <= layout.title_bar.left) {
+      if (has_active) {
+        line(layout.title_bar.left, active_bounds.left);
+        line(active_bounds.right, layout.title_bar.right);
+      } else {
+        line(layout.title_bar.left, layout.title_bar.right);
+      }
+    }
+    ::DeleteObject(ink);
+    if (has_active) {
+      const int radius = Scaled(kCornerRadius);
+      const int save = ::SaveDC(dc);
+      ::IntersectClipRect(dc, active_bounds.left - 1, active_bounds.top - 1,
+                          active_bounds.right + 1, line_y + 1);
+      RECT outline = active_bounds;
+      outline.bottom += radius;
+      PhiStrokeRoundRectAA(dc, outline, radius, palette.border, 1);
+      ::RestoreDC(dc, save);
+    }
   }
   if (!layout.horizontal_tabs && !drag_capture) {
     // The tab list's overlay scrollbar, while it scrolls or is hovered.
