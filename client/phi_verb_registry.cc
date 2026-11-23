@@ -1084,6 +1084,17 @@ constexpr PhiParamField kContentBlockingSiteMenu[] = {
     {"blocking", kParamBool, kOptional, "",
      "Set the site row first, as clicking it does."},
 };
+constexpr PhiParamField kShortcutRebind[] = {
+    {"name", kParamString, kRequired, "",
+     "The row's stable name, as shortcuts.list gives it."},
+    {"vk", kParamInt, kOptional, "",
+     "The chord's virtual key; 0 (or absent) unbinds the row."},
+    {"ctrl", kParamBool, kOptional, "", "With Ctrl."},
+    {"shift", kParamBool, kOptional, "", "With Shift."},
+    {"alt", kParamBool, kOptional, "", "With Alt."},
+    {"restore", kParamBool, kOptional, "",
+     "Back to the default chord instead (vk and the rest ignored)."},
+};
 constexpr PhiParamField kFeedbackAccount[] = {
     {"userId", kParamString, kOptional, "", "A stand-in account id."},
     {"email", kParamString, kOptional, "", "Its email."},
@@ -1312,6 +1323,16 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        &Call<&PhiControlDispatcher::VerbContentBlockingSiteMenu>,
        "test_rig_only window_not_open",
        "What the site menu reads for the active tab; can set its row."},
+      {"agentSpace.shortcuts.list", "", kScopeNone, kHost, kVerbPlain, {},
+       false, false, &Call<&PhiControlDispatcher::VerbShortcutsList>,
+       "test_rig_only",
+       "The Shortcuts pane's rows: group, label, chord, name, customized."},
+      {"agentSpace.shortcuts.rebind", "", kScopeNone, kHost, kVerbPlain,
+       kShortcutRebind, false, false,
+       &Call<&PhiControlDispatcher::VerbShortcutsRebind>,
+       "test_rig_only invalid_payload",
+       "Rebinds, unbinds or restores one row as the pane's recorder does "
+       "(a chord another row holds is taken from it)."},
       {"agentSpace.lazyRestore.ghosts", "", kScopeNone, kHost, kVerbPlain, {},
        false, false, &Call<&PhiControlDispatcher::VerbLazyRestoreGhosts>,
        "test_rig_only no_framework",

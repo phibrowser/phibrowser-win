@@ -97,7 +97,7 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 
 ## Verbs
 
-162 rows, 158 distinct names.
+164 rows, 160 distinct names.
 
 ### The agent-Space lifecycle
 
@@ -577,6 +577,33 @@ What the site menu reads for the active tab; can set its row.
 | --- | --- | --- | --- | --- |
 | `windowId` | integer | no | — | The slot (default: focused). |
 | `blocking` | boolean | no | — | Set the site row first, as clicking it does. |
+
+#### `agentSpace.shortcuts.list`
+
+The Shortcuts pane's rows: group, label, chord, name, customized.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`
+
+*No payload fields.*
+
+#### `agentSpace.shortcuts.rebind`
+
+Rebinds, unbinds or restores one row as the pane's recorder does (a chord another row holds is taken from it).
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `invalid_payload`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `name` | string | yes | — | The row's stable name, as shortcuts.list gives it. |
+| `vk` | integer | no | — | The chord's virtual key; 0 (or absent) unbinds the row. |
+| `ctrl` | boolean | no | — | With Ctrl. |
+| `shift` | boolean | no | — | With Shift. |
+| `alt` | boolean | no | — | With Alt. |
+| `restore` | boolean | no | — | Back to the default chord instead (vk and the rest ignored). |
 
 #### `agentSpace.lazyRestore.ghosts`
 

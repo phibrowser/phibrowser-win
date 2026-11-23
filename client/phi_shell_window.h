@@ -920,8 +920,6 @@ class PhiShellWindow : public PhiHitSource,
   // a split, the group overview. BarPalette is the palette painted with it.
   std::optional<PhiColor> ActivePageColor() const;
   PhiPalette BarPalette() const;
-  // Tab ids most-recently-used first — the Ctrl+Tab switcher's order.
-  const std::vector<TabId>& TabMruOrder() const;
   // The Tab Switcher across Spaces (the Mac's `cde2a6a1`): whether the
   // setting is on, and when `tab` last held the focus of its Space on a
   // clock shared by every Space of this window (0 = not since launch). A
@@ -2172,6 +2170,7 @@ class PhiShellWindow : public PhiHitSource,
   bool MenuCanUndoClearTabs() const override;
   bool MenuCanRedoClearTabs() const override;
   void MenuSplitWithNewTab() override;
+  void MenuStepTab(int direction) override;
   void MenuToggleSidebar() override;
   void MenuToggleReader(bool from_accelerator) override;
   bool MenuAgentHoldsInput() const override;
@@ -2376,6 +2375,16 @@ class PhiShellWindow : public PhiHitSource,
   uint64_t tab_seen_clock_ = 0;
   TabId tab_seen_last_;
   void NoteTabSeen(TabId tab);
+  // The Mac's recordBackgroundTab: a loaded tab that turns up in the active
+  // browser's strip without being focused (a link opened in the background)
+  // is stamped as seen just before the focused tab, so it is the next tab
+  // the switcher's forward step reaches. `background_known_` holds the ids
+  // the last rebuild saw in `background_browser_`; a first look at a
+  // browser (launch, a Space switch) admits nothing, and neither do the
+  // unloaded tabs a session restore brings back.
+  void NoteBackgroundTabs();
+  std::set<int> background_known_;
+  BrowserId background_browser_;
   TabId page_color_tab_;
   PhiColor page_fade_from_ = 0;
   // How much page colour the fade starts from (0 = the plain surface).

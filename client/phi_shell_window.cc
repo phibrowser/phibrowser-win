@@ -2300,6 +2300,10 @@ bool PhiShellWindow::MenuCanRedoClearTabs() const {
          services_.window->CanRedoClearTabs(MenuActiveBrowser());
 }
 
+void PhiShellWindow::MenuStepTab(int direction) {
+  sidebar_->StepTab(direction);
+}
+
 void PhiShellWindow::MenuSplitWithNewTab() {
   if (!MenuCanSplitWithNewTab() || !framework_) {
     return;
@@ -6538,6 +6542,7 @@ void PhiShellWindow::RebuildTabs() {
       focused.valid() && focused != tab_seen_last_) {
     NoteTabSeen(focused);
   }
+  NoteBackgroundTabs();
   {
     const std::optional<PhiColor> settled = ComputeActivePageColor();
     const TabId tab = active_tab_id();
@@ -6695,8 +6700,32 @@ void PhiShellWindow::NoteTabSeen(TabId tab) {
   }
 }
 
-const std::vector<TabId>& PhiShellWindow::TabMruOrder() const {
-  return sidebar_->mru();
+void PhiShellWindow::NoteBackgroundTabs() {
+  const BrowserId browser = active_browser_id();
+  const phi_framework::WindowSnapshot* strip =
+      model_ && browser.valid() ? model_->Get(browser) : nullptr;
+  std::set<int> now;
+  if (strip) {
+    const bool known = browser == background_browser_;
+    const TabId focused = active_tab_id();
+    bool admitted = false;
+    for (const phi_framework::TabSnapshot& tab : strip->tabs) {
+      now.insert(tab.id.value);
+      if (known && focused.valid() && tab.id != focused &&
+          !background_known_.count(tab.id.value) && !tab.unloaded &&
+          tab.surface == phi_framework::TabSurface::kContent &&
+          TabSeenStamp(tab.id) == 0) {
+        NoteTabSeen(tab.id);
+        admitted = true;
+      }
+    }
+    if (admitted) {
+      // Stamped last: the focused tab was seen more recently still.
+      NoteTabSeen(focused);
+    }
+  }
+  background_known_ = std::move(now);
+  background_browser_ = strip ? browser : BrowserId();
 }
 
 void PhiShellWindow::OpenOrFocusPinned(const std::string& guid,
@@ -11758,7 +11787,9 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
     case kMsgPhiSwitcherNext:
     case kMsgPhiSwitcherPrev:
       if (self) {
-        PhiTabSwitcher::Cycle(self, msg == kMsgPhiSwitcherNext ? 1 : -1);
+        // wparam: the chord's hold keys (PhiTabSwitcher::HoldMask).
+        PhiTabSwitcher::Cycle(self, msg == kMsgPhiSwitcherNext ? 1 : -1,
+                              static_cast<unsigned int>(wparam));
         return 0;
       }
       break;

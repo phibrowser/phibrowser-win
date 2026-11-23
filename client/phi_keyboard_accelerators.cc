@@ -50,7 +50,8 @@ constexpr PhiKeyboardAccelerators::Accelerator kAccelerators[] = {
     {VK_F10, false, false, false, kCmdShowAppMenu},
     {'F', false, false, true, kCmdShowAppMenu},
     {'E', false, false, true, kCmdShowAppMenu},
-    // Ctrl+Tab / Ctrl+Shift+Tab are handled in OnKey — the MRU switcher.
+    // Ctrl+Tab / Ctrl+Shift+Tab are the switcher's REBINDABLE rows (the
+    // Mac's Show Tab Switcher), matched in OnKey with the rest.
     // Ctrl+1..9 switches Spaces (the Mac's ⌃1..⌃9; the Spaces menu and
     // the pips' hover cards advertise these).
     {'1', true, false, false, kCmdSpace1},
@@ -166,6 +167,12 @@ bool PhiKeyboardAccelerators::IsReservedCommand(UINT command) {
     case kCmdShowAppMenu:
     case kCmdNextSpace:
     case kCmdPreviousSpace:
+    // Chrome reserves its tab cycling from pages (Ctrl+Tab, Ctrl+PageDown);
+    // the commands that took those chords over keep that, on any chord.
+    case kCmdNextTab:
+    case kCmdPreviousTab:
+    case kCmdTabSwitcherForward:
+    case kCmdTabSwitcherBackward:
       return true;
     default:
       return command >= kCmdSpace1 && command <= kCmdSpace9;
@@ -246,8 +253,11 @@ LRESULT CALLBACK PhiKeyboardAccelerators::HookProc(int code,
 
 LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   if (lparam & 0x80000000) {  // Key-up.
-    // Releasing Ctrl commits an in-flight MRU switch (the Mac's ⌃⇥ HUD).
-    if (wparam == VK_CONTROL && PhiTabSwitcher::IsActive()) {
+    // Releasing a hold key of the chord that opened it commits an
+    // in-flight switch (the Mac's handleFlagsChanged), whatever else is
+    // still down.
+    if (PhiTabSwitcher::IsActive() &&
+        PhiTabSwitcher::ReleasesHold(static_cast<UINT>(wparam))) {
       if (HWND shell = host_.FocusedShellHwnd()) {
         ::PostMessageW(shell, kMsgPhiSwitcherCommit, 0, 0);
       } else {
@@ -311,14 +321,6 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
       return 1;
     }
   }
-  if (wparam == VK_TAB && ctrl && !alt) {
-    // Ctrl+Tab drives the MRU switcher HUD, not a plain next-tab hop.
-    if (HWND shell = host_.FocusedShellHwnd()) {
-      ::PostMessageW(shell, shift ? kMsgPhiSwitcherPrev : kMsgPhiSwitcherNext,
-                     0, 0);
-      return 1;
-    }
-  }
   // The REBINDABLE shortcuts first (their effective chords carry the user's
   // overrides), so a custom chord shadows any fixed one it collides with.
   // The menu captures the originating presentation before posting, and
@@ -342,6 +344,18 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
     if (HWND shell = host_.FocusedShellHwnd()) {
       if (!IsReservedCommand(command) && page_first(shell)) {
         return 0;
+      }
+      if (command == kCmdTabSwitcherForward ||
+          command == kCmdTabSwitcherBackward) {
+        // The switcher's chord, default Ctrl+Tab: the held gesture. Its
+        // Ctrl and Alt are the hold keys whose release commits (Shift only
+        // turns it round, as on the Mac); a chord with neither takes one
+        // step at once.
+        ::PostMessageW(shell,
+                       command == kCmdTabSwitcherForward ? kMsgPhiSwitcherNext
+                                                         : kMsgPhiSwitcherPrev,
+                       PhiTabSwitcher::HoldMask(ctrl, alt), 0);
+        return 1;
       }
       PhiAppMenu::PostAccelerator(shell, command,
                                   host_.FocusedFindBrowser(shell));

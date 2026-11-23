@@ -170,12 +170,18 @@ enum : UINT {
   // ⋯ rows under Clear all tabs and Ctrl+Z / Ctrl+Shift+Z outside text.
   kCmdUndoClearTabs,
   kCmdRedoClearTabs,
+  // The Mac's Show Tab Switcher / Show Tab Switcher(Reverse)
+  // (PHI_TAB_SWITCHER_FORWARD / BACKWARD): the recent-tabs switcher, its
+  // rebindable Ctrl+Tab / Ctrl+Shift+Tab rows. The hook drives a held
+  // gesture itself; posted as a command (no key held) it takes one step.
+  kCmdTabSwitcherForward,
+  kCmdTabSwitcherBackward,
   // Layout ▸ Show sidebar — the same toggle as kCmdToggleSidebar, listed
   // under its own name so the remote surface can address the row.
   kCmdShowBookmarksBar = kCmdAlwaysShowBookmarkBar,
 };
 
-// One finished sidebar row (Next / Previous tab walk them). A SNAPSHOT of what the
+// One finished sidebar row (Bookmark All Tabs reads them). A SNAPSHOT of what the
 // last rebuild placed: a menu opening is not a reason to rebuild
 // (docs/architecture-review.md §3.1 principle 3; phase 2 made rebuilds
 // posted).
@@ -277,6 +283,9 @@ class PhiAppMenuShell {
   virtual bool MenuCanUndoClearTabs() const = 0;
   virtual bool MenuCanRedoClearTabs() const = 0;
   virtual void MenuSplitWithNewTab() = 0;
+  // The Mac's Select Next / Previous Tab (swicthTab): one step through the
+  // sidebar's order (pinned, visible bookmarks, open tabs), wrapping.
+  virtual void MenuStepTab(int direction) = 0;
   virtual void MenuToggleSidebar() = 0;
   // `from_accelerator`: the chord rather than the View menu row (the
   // reader's usage metric names the two differently).

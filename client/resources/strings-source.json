@@ -8153,7 +8153,7 @@
    "en": "Next Space"
   },
   "settings.shortcuts.command.selectNextTab": {
-   "comment": "Mac key (translations by key); settings — Shortcuts pane fixed row title (phi_settings_types.h PhiBuildShortcutRows)",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
    "en": "Select Next Tab"
   },
   "settings.shortcuts.command.selectPreviousSpace": {
@@ -8161,8 +8161,16 @@
    "en": "Previous Space"
   },
   "settings.shortcuts.command.selectPreviousTab": {
-   "comment": "Mac key (translations by key); settings — Shortcuts pane fixed row title (phi_settings_types.h PhiBuildShortcutRows)",
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
    "en": "Select Previous Tab"
+  },
+  "settings.shortcuts.command.showTabSwitcher": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Show Tab Switcher"
+  },
+  "settings.shortcuts.command.showTabSwitcherReverse": {
+   "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",
+   "en": "Show Tab Switcher(Reverse)"
   },
   "settings.shortcuts.command.showDownloads": {
    "comment": "Mac key (translations by key); settings — Shortcuts pane row title (phi_preferences.cc kRebindableShortcuts)",

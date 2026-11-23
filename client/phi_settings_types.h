@@ -217,12 +217,6 @@ inline std::vector<PhiShortcutRow> PhiBuildShortcutRows(
       // the pane is not lying about what the chord does, never rebound.
       fixed(&rows, "App", "settings.shortcuts.command.quitApp",
             "Ctrl+Shift+Q");
-    } else if (group == "Tab") {
-      // The MRU switcher's chords, handled in the hook (PhiTabSwitcher).
-      fixed(&rows, "Tab", "settings.shortcuts.command.selectNextTab",
-            "Ctrl+Tab");
-      fixed(&rows, "Tab", "settings.shortcuts.command.selectPreviousTab",
-            "Ctrl+Shift+Tab");
     }
   }
   return rows;

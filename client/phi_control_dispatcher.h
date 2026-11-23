@@ -550,6 +550,8 @@ class PhiControlDispatcher : public PhiControlDelegate {
   PhiVerbResult VerbFeedbackOpen(const PhiVerbContext& ctx);
   PhiVerbResult VerbFeedbackForm(const PhiVerbContext& ctx);
   PhiVerbResult VerbFeedbackSetAccount(const PhiVerbContext& ctx);
+  PhiVerbResult VerbShortcutsList(const PhiVerbContext& ctx);
+  PhiVerbResult VerbShortcutsRebind(const PhiVerbContext& ctx);
   // Content blocking (phi_verbs_content_blocking.cc), test rig only.
   PhiVerbResult VerbContentBlockingGet(const PhiVerbContext& ctx);
   PhiVerbResult VerbContentBlockingSet(const PhiVerbContext& ctx);

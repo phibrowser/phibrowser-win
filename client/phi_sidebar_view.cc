@@ -2002,23 +2002,6 @@ void PhiSidebarView::Rebuild() {
   }
   // A tab dropped on the strip glides into the slot it was just given.
   StartStripLanding(layout);
-  // MRU bookkeeping for the Ctrl+Tab switcher (the rule itself is pure and
-  // host-tested): the active tab moves to the front; ids that left the
-  // strip fall out.
-  {
-    TabId active_id;
-    std::vector<TabId> live;
-    live.reserve(tabs_.size());
-    for (const TabRow& row : tabs_) {
-      if (row.active && !active_id.valid()) {
-        active_id = row.id;
-      }
-      for (const TabId id : row.PaneIds()) {
-        live.push_back(id);
-      }
-    }
-    tab_mru_.Sync(live, active_id);
-  }
   if (BandHidden(layout)) {
     // A COLLAPSED sidebar has no rows on the shell. The model above still
     // runs (the active tab, the native pages and the row counts come from
@@ -3251,6 +3234,85 @@ bool PhiSidebarView::KeyboardMenuPoint(POINT* client_pt) const {
   }
   *client_pt = {(r.left + r.right) / 2, (r.top + r.bottom) / 2};
   return true;
+}
+
+void PhiSidebarView::StepTab(int direction) {
+  const BrowserId browser = shell_->SidebarActiveBrowser();
+  if (!framework_ || !browser.valid()) {
+    return;
+  }
+  struct Step {
+    TabId tab;           // The live tab this step lands on (none: a closed cell).
+    std::string guid;    // A stored row's: opened (or focused) through it.
+    std::string url;
+    SidebarKey key;      // An open-tab row's.
+    int pane = 0;
+  };
+  std::vector<Step> steps;
+  // A stored row: its open panes one by one, else the row itself.
+  const auto add_stored = [&](const ShortcutRow& row) {
+    if (row.folder || row.url.empty()) {
+      return;
+    }
+    std::vector<TabId> panes;
+    if (row.open) {
+      panes.push_back(row.tab_id);
+      if (!row.url_b.empty()) {
+        panes.push_back(row.tab_id_b);
+        for (const ShortcutRow::ExtraPane& extra : row.more) {
+          panes.push_back(extra.tab_id);
+        }
+      }
+      std::erase_if(panes, [](TabId id) { return !id.valid(); });
+    }
+    if (panes.empty()) {
+      steps.push_back({TabId(), row.guid, row.url, SidebarKey(), 0});
+      return;
+    }
+    for (const TabId pane : panes) {
+      steps.push_back({pane, row.guid, row.url, SidebarKey(), 0});
+    }
+  };
+  for (const ShortcutRow& pin : pinned_) {
+    add_stored(pin);
+  }
+  for (const ShortcutRow& bookmark : bookmarks_) {
+    add_stored(bookmark);
+  }
+  for (const TabRow& row : tabs_) {
+    for (int pane = 0; pane < row.PaneCount(); ++pane) {
+      steps.push_back({row.PaneId(pane), std::string(), std::string(),
+                       row.key, pane});
+    }
+  }
+  if (steps.empty()) {
+    return;
+  }
+  const auto current = std::find_if(steps.begin(), steps.end(),
+                                    [&](const Step& step) {
+                                      return step.tab.valid() &&
+                                             step.tab == active_tab_id_;
+                                    });
+  const int count = static_cast<int>(steps.size());
+  const int at = current == steps.end()
+                     ? -1
+                     : static_cast<int>(current - steps.begin());
+  const Step& next =
+      at < 0 ? steps.front()
+             : steps[static_cast<size_t>(
+                   ((at + (direction < 0 ? -1 : 1)) % count + count) % count)];
+  if (!next.key.empty()) {
+    Apply(SidebarActivate{next.key, next.pane});
+  } else if (next.tab.valid()) {
+    // An open pane of a stored row: that pane, the row noted as seen as
+    // its click notes it.
+    if (sidebar_host_) {
+      sidebar_host_->NoteStoredRowSeen(next.guid);
+    }
+    framework_->ActivateTabById(browser.value, next.tab.value);
+  } else {
+    OpenOrFocusPinned(next.guid, next.url);
+  }
 }
 
 void PhiSidebarView::OpenOrFocusPinned(const std::string& guid,

@@ -11467,6 +11467,28 @@
    "zh-Hans": "显示历史记录",
    "zh-Hant": "顯示歷史記錄"
   },
+  "settings.shortcuts.command.showTabSwitcher": {
+   "de": "Tab-Umschalter anzeigen",
+   "en": "Show Tab Switcher",
+   "es": "Mostrar selector de pestañas",
+   "fr": "Afficher le sélecteur d'onglets",
+   "ja": "タブスイッチャーを表示",
+   "ko": "탭 전환기 보기",
+   "nl": "Toon tabbladwisselaar",
+   "zh-Hans": "显示标签页切换器",
+   "zh-Hant": "顯示分頁切換器"
+  },
+  "settings.shortcuts.command.showTabSwitcherReverse": {
+   "de": "Tab-Umschalter anzeigen (rückwärts)",
+   "en": "Show Tab Switcher(Reverse)",
+   "es": "Mostrar selector de pestañas (orden inverso)",
+   "fr": "Afficher le sélecteur d'onglets (ordre inverse)",
+   "ja": "タブスイッチャーを表示（逆順）",
+   "ko": "탭 전환기 보기(역순)",
+   "nl": "Toon tabbladwisselaar (omgekeerd)",
+   "zh-Hans": "显示标签页切换器（反向）",
+   "zh-Hant": "顯示分頁切換器（反向）"
+  },
   "settings.shortcuts.command.splitWithNewTab": {
    "de": "Split View mit neuem Tab",
    "en": "Split with New Tab",

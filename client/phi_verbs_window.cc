@@ -1447,4 +1447,50 @@ PhiVerbResult PhiControlDispatcher::VerbFeedbackSetAccount(
   return PhiVerbResult::Ok(std::move(out));
 }
 
+// The Shortcuts pane without its window: the rows as it lists them, and the
+// recorder's outcome. Harness only.
+PhiVerbResult PhiControlDispatcher::VerbShortcutsList(
+    const PhiVerbContext& ctx) {
+  base::ListValue rows;
+  for (const PhiShortcutRow& row :
+       coordinator_->preferences().ShortcutRows()) {
+    base::DictValue entry;
+    entry.Set("group", row.group);
+    entry.Set("label", row.label);
+    entry.Set("keys", row.keys);
+    entry.Set("name", row.name);
+    entry.Set("customized", row.customized);
+    rows.Append(std::move(entry));
+  }
+  base::DictValue out;
+  out.Set("rows", std::move(rows));
+  return PhiVerbResult::Ok(std::move(out));
+}
+
+PhiVerbResult PhiControlDispatcher::VerbShortcutsRebind(
+    const PhiVerbContext& ctx) {
+  const std::string name = ctx.params.String("name");
+  bool known = false;
+  for (const PhiShortcutRow& row :
+       coordinator_->preferences().ShortcutRows()) {
+    known = known || (row.rebindable() && row.name == name);
+  }
+  if (!known) {
+    return PhiVerbResult::Fail("invalid_payload");
+  }
+  if (ctx.params.Bool("restore", false)) {
+    coordinator_->RestoreShortcut(name);
+  } else {
+    const int vk = ctx.params.Int("vk", 0);
+    if (vk < 0 || vk > 0xFE) {
+      return PhiVerbResult::Fail("invalid_payload");
+    }
+    coordinator_->RebindShortcut(name, static_cast<UINT>(vk),
+                                 vk && ctx.params.Bool("ctrl", false),
+                                 vk && ctx.params.Bool("shift", false),
+                                 vk && ctx.params.Bool("alt", false));
+  }
+  return VerbShortcutsList(ctx);
+}
+
 }  // namespace phi_client

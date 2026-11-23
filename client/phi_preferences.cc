@@ -26,15 +26,18 @@ namespace {
 // CustomShortcuts.json stores, so it never changes); `group` the pane's
 // ASCII group id (phi_settings_types.h kPhiShortcutGroups); `label_key` the
 // Mac's title key, resolved when the rows are built so translations join by
-// key; the chord the default the ⋯ menu advertises. Everything NOT in this
-// table (Quit, F5, the app menu's F10 / Alt+F / Alt+E, F6, Ctrl+Tab's MRU
-// switcher, Ctrl+1..9 Spaces) stays fixed — only ⌘Q does on Mac.
+// key; the chord the default the ⋯ menu advertises. `alias` a hidden second
+// default chord (the Mac's Chromium aliases): it answers while the row keeps
+// its default and goes dead once the row is rebound or unbound. Everything
+// NOT in this table (Quit, F5, the app menu's F10 / Alt+F / Alt+E, F6,
+// Ctrl+1..9 Spaces) stays fixed — only ⌘Q does on Mac.
 struct RebindableShortcut {
   const char* name;
   const char* group;
   const char* label_key;
   UINT command;
   PhiShortcutChord def;
+  PhiShortcutChord alias = {};
 };
 constexpr RebindableShortcut kRebindableShortcuts[] = {
     {"openSettings", "App", "settings.shortcuts.command.openSettings",
@@ -59,9 +62,24 @@ constexpr RebindableShortcut kRebindableShortcuts[] = {
      kCmdSaveToFolio, {'S', true, false, true}},
     {"openLocation", "File", "settings.shortcuts.command.focusAddressBar",
      kCmdOpenLocation, {'L', true, false, false}},
+    // The Mac's Tab group: Show Tab Switcher (⌃⇥ / ⌃⇧⇥ there too), Split
+    // with New Tab, Select Next / Previous Tab (⌘⇧] / ⌘⇧[, Ctrl here).
+    {"tabSwitcher", "Tab", "settings.shortcuts.command.showTabSwitcher",
+     kCmdTabSwitcherForward, {VK_TAB, true, false, false}},
+    {"tabSwitcherReverse", "Tab",
+     "settings.shortcuts.command.showTabSwitcherReverse",
+     kCmdTabSwitcherBackward, {VK_TAB, true, true, false}},
     // The Mac's Ctrl+Shift+= is zoom-in on this platform (accelerator_table.cc).
     {"splitWithNewTab", "Tab", "settings.shortcuts.command.splitWithNewTab",
      kCmdSplitWithNewTab, {VK_OEM_5, true, true, false}},
+    // Ctrl+PageDown / Ctrl+PageUp, Chromium's own next / previous tab here,
+    // ride along as the Mac's hidden aliases of the same commands.
+    {"selectNextTab", "Tab", "settings.shortcuts.command.selectNextTab",
+     kCmdNextTab, {VK_OEM_6, true, true, false},
+     {VK_NEXT, true, false, false}},
+    {"selectPreviousTab", "Tab", "settings.shortcuts.command.selectPreviousTab",
+     kCmdPreviousTab, {VK_OEM_4, true, true, false},
+     {VK_PRIOR, true, false, false}},
     {"closeTab", "File", "settings.shortcuts.command.closeTab", kCmdCloseTab,
      {'W', true, false, false}},
     {"clearAllTabs", "File", "tabs.clearAll.title", kCmdClearAllTabs,
@@ -1084,6 +1102,13 @@ UINT PhiPreferences::MatchRebindableChord(UINT vk,
       return def.command;
     }
   }
+  // A row's own chord, any row's, wins over another row's hidden alias.
+  for (const RebindableShortcut& def : kRebindableShortcuts) {
+    if (def.alias.vk && def.alias == pressed &&
+        EffectiveChord(def.name) == def.def) {
+      return def.command;
+    }
+  }
   return 0;
 }
 
@@ -1094,6 +1119,10 @@ bool PhiPreferences::IsDisplacedDefaultChord(UINT vk,
   const PhiShortcutChord pressed{vk, ctrl, shift, alt};
   for (const RebindableShortcut& def : kRebindableShortcuts) {
     if (def.def == pressed && EffectiveChord(def.name) != pressed) {
+      return true;
+    }
+    if (def.alias.vk && def.alias == pressed &&
+        EffectiveChord(def.name) != def.def) {
       return true;
     }
     // Chromium binds Ctrl+Shift+= beside Ctrl+= for zoom in (the shifted

@@ -19,48 +19,11 @@
 namespace phi_client {
 
 // ---------------------------------------------------------------------------
-// THE PURE HALF — no Win32, no framework, no paint. Two rules of the view
-// that are decisions rather than drawing, so they are tested on the Linux
+// THE PURE HALF — no Win32, no framework, no paint. A rule of the view
+// that is a decision rather than drawing, so it is tested on the Linux
 // host (test/model/sidebar_view_test.cc). A host translation unit defines
 // PHI_SIDEBAR_VIEW_MODEL_ONLY before including this and gets this half
 // alone; the client build sees the whole file.
-
-// Tab ids most-recently-used first — the Ctrl+Tab switcher's order.
-//
-// RULES (the Mac's tabHistory): the ACTIVE tab is always the front; ids that
-// have left the window fall out; everything else keeps its relative order,
-// so cycling back through the switcher does not reshuffle the list behind
-// it. A pane of a split counts as present — it is a live tab of this window
-// even though its row is the merged one.
-class PhiTabMru {
- public:
-  PhiTabMru();
-  ~PhiTabMru();
-
-  const std::vector<TabId>& order() const { return order_; }
-  bool empty() const { return order_.empty(); }
-
-  // One rebuild's worth of bookkeeping: `live` is every tab id the window
-  // still shows (both panes of a split included) and `active` is the one on
-  // screen (invalid when the window shows none).
-  void Sync(const std::vector<TabId>& live, TabId active) {
-    std::erase_if(order_, [&](TabId id) {
-      return std::find(live.begin(), live.end(), id) == live.end();
-    });
-    if (active.valid()) {
-      std::erase(order_, active);
-      order_.insert(order_.begin(), active);
-    }
-  }
-
- private:
-  std::vector<TabId> order_;
-};
-
-// Inline, so the host test needs no .cc of its own (the rest of this file
-// is Win32).
-inline PhiTabMru::PhiTabMru() = default;
-inline PhiTabMru::~PhiTabMru() = default;
 
 // The bookmark cells an expanded chain reveals, in outline order (the Mac's
 // NSOutlineView): the tree is depth-first, so a COLLAPSED folder hides the
@@ -851,8 +814,6 @@ class PhiSidebarView {
   // True when `tab_id` is one this window SHOWS: a content row, or a tab
   // hidden inside one of its stored cells (the tree's owner_of).
   bool ShowsTab(TabId tab_id) const;
-  // Tab ids most-recently-used first — the Ctrl+Tab switcher's order.
-  const std::vector<TabId>& mru() const { return tab_mru_.order(); }
   // The placed rows (keys + client rects) for the agent dialect's
   // window.layout, so a box probe can aim a real drag without pixels.
   base::ListValue LayoutRowsJson() const;
@@ -918,6 +879,11 @@ class PhiSidebarView {
   // Click on a pin or a sidebar bookmark row: focus the bound live tab if it
   // still exists, otherwise open the row's url as a new bound tab.
   void OpenOrFocusPinned(const std::string& guid, const std::string& url);
+  // The Mac's Select Next / Previous Tab (swicthTab): one step, wrapping,
+  // through the pinned cells (a closed one opens), the visible bookmarks
+  // (opened or not), then the open tabs; a split's open panes are a step
+  // each. From a tab none of them shows, the first one.
+  void StepTab(int direction);
   // The pinned cell under the point whose tab is open: its guid, and for a
   // pinned pair the pane (0 or 1; -1 otherwise). Empty when there is none.
   std::string OpenPinAt(POINT client_pt, int* pane) const;
@@ -1229,8 +1195,6 @@ class PhiSidebarView {
   // back when the outline is placed under it.
   int pinned_grid_rows_ = 0;
   bool stored_bands_isolated_ = false;
-  // Tab ids of the ACTIVE browser, most-recently-used first.
-  PhiTabMru tab_mru_;
   // The strip chips' own faces (EnsureChipFonts), rebuilt on a DPI change.
   HFONT chip_count_font_ = nullptr;
   HFONT chip_mosaic_font_ = nullptr;

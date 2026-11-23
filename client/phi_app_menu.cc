@@ -1393,25 +1393,23 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     }
     case kCmdNextTab:
-    case kCmdPreviousTab: {
-      // As the last rebuild placed them.
-      const std::vector<PhiAppMenuTab> tabs = c->MenuTabRows();
-      if (tabs.size() < 2 || !c->MenuFramework() || !target.valid()) {
-        return true;
-      }
-      size_t at = 0;
-      for (size_t i = 0; i < tabs.size(); ++i) {
-        if (tabs[i].active) {
-          at = i;
-          break;
-        }
-      }
-      const size_t next = id == kCmdNextTab
-                              ? (at + 1) % tabs.size()
-                              : (at + tabs.size() - 1) % tabs.size();
-      c->MenuFramework()->ActivateTabById(target.value, tabs[next].id.value);
+    case kCmdPreviousTab:
+      // The Mac's Select Next / Previous Tab: the sidebar's whole order,
+      // pinned cells and bookmarks included, not just the open-tab rows.
+      c->MenuStepTab(id == kCmdNextTab ? 1 : -1);
       return true;
-    }
+    case kCmdTabSwitcherForward:
+    case kCmdTabSwitcherBackward:
+      // No hold key rides a posted command: the switcher takes one step
+      // and commits it (the Mac's menu invocation). The hook posts the
+      // held gesture with its hold keys itself.
+      if (HWND shell = c->MenuShellWindow()) {
+        ::PostMessageW(shell,
+                       id == kCmdTabSwitcherForward ? kMsgPhiSwitcherNext
+                                                    : kMsgPhiSwitcherPrev,
+                       0, 0);
+      }
+      return true;
     case kCmdImportBrowser:
       if (c->MenuWindowHost()) {
         c->MenuWindowHost()->RequestBrowserImport();

@@ -35,10 +35,29 @@ constexpr int kCardHeight = 150;
 constexpr int kCardGap = 12;
 constexpr int kPanelPad = 16;
 constexpr int kFooterHeight = 28;
-constexpr size_t kMaxCards = 7;
-// The HUD's watchdog: focus leaving the owner or Esc cancels it; a Ctrl
+// The Mac's TabSwitchMetrics.maxRecentTabs: a gesture walks at most the
+// five most recent tabs.
+constexpr size_t kMaxCards = 5;
+// The HUD's watchdog: focus leaving the owner or Esc cancels it; a hold-key
 // release the keyboard hook never saw commits it.
 constexpr UINT kPollMs = 50;
+// The Mac's TabSwitchMetrics.longPressThreshold: the cards show only when
+// the hold keys are still down this long after the first press (or at a
+// second press). A quicker tap switches with nothing on screen.
+constexpr UINT kRevealMs = 250;
+
+// Whether every hold key of `mask` is down now.
+bool HoldKeysDown(unsigned int mask) {
+  if ((mask & PhiTabSwitcher::kHoldCtrl) &&
+      !(::GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+    return false;
+  }
+  if ((mask & PhiTabSwitcher::kHoldAlt) &&
+      !(::GetAsyncKeyState(VK_MENU) & 0x8000)) {
+    return false;
+  }
+  return true;
+}
 // Inset from the work-area edges the card strip keeps (DIP).
 constexpr int kScreenMargin = 16;
 
@@ -68,7 +87,8 @@ struct Card {
 // belongs to PhiPopover now (lane 3 §6.2).
 class Hud : public PhiPopover {
  public:
-  explicit Hud(PhiShellWindow* controller) : controller_(controller) {
+  Hud(PhiShellWindow* controller, int direction, unsigned int hold_mask)
+      : controller_(controller), hold_mask_(hold_mask) {
     ClassSpec spec;
     spec.name = L"PhiTabSwitch";
     spec.cursor = nullptr;
@@ -93,8 +113,7 @@ class Hud : public PhiPopover {
                        options)) {
       return;
     }
-    // As many cards as the work area holds (7 × 192 dip overflow a
-    // 1366 px screen), never more than kMaxCards.
+    // As many cards as the work area holds, never more than kMaxCards.
     MONITORINFO monitor = {sizeof(monitor)};
     if (::GetMonitorInfoW(::MonitorFromWindow(controller_->shell_hwnd(),
                                               MONITOR_DEFAULTTONEAREST),
@@ -106,7 +125,7 @@ class Hud : public PhiPopover {
       max_cards_ = static_cast<size_t>(
           std::clamp(fit, 1, static_cast<int>(kMaxCards)));
     }
-    BuildCards();
+    BuildCards(direction);
     const int count = static_cast<int>(std::min(cards_.size(), max_cards_));
     SIZE size = {};
     size.cx = Scaled(kPanelPad) * 2 + count * Scaled(kCardWidth) +
@@ -118,9 +137,13 @@ class Hud : public PhiPopover {
     const LONG y = (owner_rect.top + owner_rect.bottom) / 2 - size.cy / 2;
     placement.anchor = {x, y, x, y};
     Reposition(placement, size);
-    Show();
+    if (!hold_mask_) {
+      return;  // One step, committed by the caller; never shown.
+    }
     poll_ = NewTimer();
     poll_.Start(kPollMs);
+    reveal_ = NewTimer();
+    reveal_.Start(kRevealMs);
   }
 
   ~Hud() override { Destroy(); }
@@ -129,6 +152,9 @@ class Hud : public PhiPopover {
   // input; DeferredClose commits (when `commit_pending`) and deletes it.
   bool cancelled() const { return cancelled_; }
   bool commit_pending() const { return commit_pending_; }
+  unsigned int hold_mask() const { return hold_mask_; }
+  // The cards are on screen (see kRevealMs).
+  bool revealed() const { return revealed_; }
 
   // Hides now and finishes from the message loop (see DeferredClose).
   void RequestClose(bool commit) {
@@ -138,6 +164,7 @@ class Hud : public PhiPopover {
     cancelled_ = true;
     commit_pending_ = commit;
     poll_.Stop();
+    reveal_.Stop();
     if (alive()) {
       ::ShowWindow(hwnd(), SW_HIDE);
     }
@@ -153,6 +180,17 @@ class Hud : public PhiPopover {
     const int count = static_cast<int>(cards_.size());
     selected_ = ((selected_ + direction) % count + count) % count;
     Invalidate();
+    // A second press shows the cards at once (the Mac's advanceSession).
+    Reveal();
+  }
+
+  void Reveal() {
+    reveal_.Stop();
+    if (revealed_ || cancelled_ || !alive()) {
+      return;
+    }
+    revealed_ = true;
+    Show();
   }
 
   void Commit() {
@@ -201,7 +239,21 @@ class Hud : public PhiPopover {
   }
 
   void OnTimerFired(UINT_PTR id) override {
-    if (id != poll_.id() || cancelled_) {
+    if (cancelled_) {
+      return;
+    }
+    if (id == reveal_.id()) {
+      // The quarter second is up: still held, the cards show; let go
+      // (before the hook saw the release), the step commits unseen.
+      reveal_.Stop();
+      if (HoldKeysDown(hold_mask_)) {
+        Reveal();
+      } else {
+        RequestClose(/*commit=*/true);
+      }
+      return;
+    }
+    if (id != poll_.id()) {
       return;
     }
     // Another of our own windows taking activation (a second Phi window,
@@ -217,21 +269,24 @@ class Hud : public PhiPopover {
       RequestClose(/*commit=*/false);
       return;
     }
-    // Ctrl released for two ticks with no commit arriving (a WM_TIMER only
-    // runs once the input queue is drained): the hook missed the key-up —
-    // a Ctrl+Tab tap released before the HUD opened. Releasing commits.
-    ctrl_up_ticks_ =
-        (::GetAsyncKeyState(VK_CONTROL) & 0x8000) ? 0 : ctrl_up_ticks_ + 1;
-    if (ctrl_up_ticks_ >= 2) {
+    // A hold key released for two ticks with no commit arriving (a
+    // WM_TIMER only runs once the input queue is drained): the hook missed
+    // the key-up — a tap released before the gesture began. Releasing
+    // commits.
+    hold_up_ticks_ = HoldKeysDown(hold_mask_) ? 0 : hold_up_ticks_ + 1;
+    if (hold_up_ticks_ >= 2) {
       RequestClose(/*commit=*/true);
     }
   }
 
  private:
-  // MRU-ordered cards: the controller's MRU list first, then any tabs it
-  // has not seen active yet, in strip order — the strip from the window
-  // model, never a parse of the framework's JSON.
-  void BuildCards() {
+  // The Mac's recentTabIDs: the focused tab first, then every tab this
+  // window has shown — or seen opened in the background, which comes
+  // straight after the focused one — newest first; a tab never seen is no
+  // card. At most max_cards_. The Spaces' own tabs from the window model,
+  // never a parse of the framework's JSON. `direction` picks the first
+  // selection: forward the previous tab, reverse the oldest card.
+  void BuildCards(int direction) {
     phi_framework::PhiFramework* framework = controller_->framework();
     const PhiWindowModel* model = controller_->model();
     const BrowserId browser = controller_->active_browser_id();
@@ -255,13 +310,10 @@ class Hud : public PhiPopover {
              browser, controller_->active_space()});
       }
     }
-    std::vector<Entry> ordered;
     if (current && controller_->TabSwitcherIncludesAllSpaces()) {
       // Every Space of this window with the same profile and the same
       // Incognito state, never an agent Space, so no title or thumbnail
-      // crosses those lines (the Mac's `c8c96bca`). The focused tab leads,
-      // then the newest seen first; tabs not seen since launch follow in
-      // strip order, the current Space's first.
+      // crosses those lines (the Mac's `c8c96bca`).
       for (const std::string& space_id : controller_->space_order()) {
         const BrowserId other = controller_->BrowserIdForSpace(space_id);
         if (!other.valid() || other == browser || PhiIsAgentSpaceId(space_id)) {
@@ -282,36 +334,22 @@ class Hud : public PhiPopover {
           }
         }
       }
-      const TabId focused = controller_->active_tab_id();
-      std::stable_sort(entries.begin(), entries.end(),
-                       [&](const Entry& a, const Entry& b) {
-                         if ((a.id == focused) != (b.id == focused)) {
-                           return a.id == focused;
-                         }
-                         return controller_->TabSeenStamp(a.id) >
-                                controller_->TabSeenStamp(b.id);
-                       });
-      ordered = entries;
     }
-    for (const TabId id : controller_->TabMruOrder()) {
-      for (const Entry& entry : entries) {
-        if (entry.id == id &&
-            std::none_of(ordered.begin(), ordered.end(),
-                         [&](const Entry& seen) { return seen.id == id; })) {
-          ordered.push_back(entry);
-          break;
-        }
-      }
-    }
+    // The seen stamps outlive a Space switch, so each Space keeps its own
+    // recent order, as each Mac Space keeps its TabSwitchManager.
+    const TabId focused = controller_->active_tab_id();
+    std::erase_if(entries, [&](const Entry& entry) {
+      return entry.id != focused && controller_->TabSeenStamp(entry.id) == 0;
+    });
+    std::stable_sort(entries.begin(), entries.end(),
+                     [&](const Entry& a, const Entry& b) {
+                       if ((a.id == focused) != (b.id == focused)) {
+                         return a.id == focused;
+                       }
+                       return controller_->TabSeenStamp(a.id) >
+                              controller_->TabSeenStamp(b.id);
+                     });
     for (const Entry& entry : entries) {
-      if (std::none_of(ordered.begin(), ordered.end(),
-                       [&](const Entry& seen) {
-                         return seen.id == entry.id;
-                       })) {
-        ordered.push_back(entry);
-      }
-    }
-    for (const Entry& entry : ordered) {
       if (cards_.size() >= max_cards_) {
         break;
       }
@@ -339,8 +377,26 @@ class Hud : public PhiPopover {
       }
       cards_.push_back(std::move(card));
     }
-    // The gesture means "back to the previous tab": start on entry #2.
-    selected_ = cards_.size() > 1 ? 1 : 0;
+    // The Mac's startSession: one step from the focused tab, either way
+    // round (forward the previous tab, reverse the oldest card); with no
+    // focused card, the newest forward and the oldest in reverse.
+    const int count = static_cast<int>(cards_.size());
+    if (count <= 1) {
+      selected_ = 0;
+      return;
+    }
+    int at = -1;
+    for (int i = 0; i < count; ++i) {
+      if (cards_[static_cast<size_t>(i)].tab_id == focused) {
+        at = i;
+        break;
+      }
+    }
+    if (at < 0) {
+      selected_ = direction < 0 ? count - 1 : 0;
+    } else {
+      selected_ = ((at + (direction < 0 ? -1 : 1)) % count + count) % count;
+    }
   }
 
   void PaintCards(HDC dc) {
@@ -401,8 +457,11 @@ class Hud : public PhiPopover {
   std::vector<Card> cards_;
   int selected_ = 0;
   size_t max_cards_ = kMaxCards;
+  const unsigned int hold_mask_;
   Timer poll_;
-  int ctrl_up_ticks_ = 0;
+  Timer reveal_;
+  int hold_up_ticks_ = 0;
+  bool revealed_ = false;
   bool cancelled_ = false;
   bool commit_pending_ = false;
 };
@@ -435,7 +494,29 @@ bool PhiTabSwitcher::HandleKeyDown(unsigned int virtual_key) {
 }
 
 // static
-void PhiTabSwitcher::Cycle(PhiShellWindow* controller, int direction) {
+bool PhiTabSwitcher::ReleasesHold(unsigned int virtual_key) {
+  if (!IsActive()) {
+    return false;
+  }
+  const unsigned int mask = Hud::instance->hold_mask();
+  switch (virtual_key) {
+    case VK_CONTROL:
+    case VK_LCONTROL:
+    case VK_RCONTROL:
+      return (mask & kHoldCtrl) != 0;
+    case VK_MENU:
+    case VK_LMENU:
+    case VK_RMENU:
+      return (mask & kHoldAlt) != 0;
+    default:
+      return false;
+  }
+}
+
+// static
+void PhiTabSwitcher::Cycle(PhiShellWindow* controller,
+                           int direction,
+                           unsigned int hold_mask) {
   if (Hud::instance && Hud::instance->cancelled()) {
     Cancel();  // A pending close: this press starts a fresh gesture.
   }
@@ -443,8 +524,11 @@ void PhiTabSwitcher::Cycle(PhiShellWindow* controller, int direction) {
     if (!controller) {
       return;
     }
-    Hud::instance = new Hud(controller);
-    return;  // Opening already selects the previous tab.
+    Hud::instance = new Hud(controller, direction, hold_mask);
+    if (!hold_mask) {
+      Commit();  // Nothing to hold: the first step is the whole gesture.
+    }
+    return;  // Opening already selected the first step.
   }
   Hud::instance->Advance(direction);
 }
