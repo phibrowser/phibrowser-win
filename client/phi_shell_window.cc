@@ -6438,9 +6438,12 @@ void PhiShellWindow::RetitleShell() {
       !PhiNewTabPage::IsNewTabUrl(active_tab_url()) && model_) {
     if (const PhiWindowModel::Tab* tab = model_->ActiveTab(active_browser_id())) {
       // The name the sidebar row shows, never Chromium's chrome:// address
-      // (PHI-2130: the bookmark manager's window read "chrome://bookmarks/").
-      title = tab->title.empty() ? std::string()
-                                 : PhiTabDisplayTitle(tab->title, tab->url);
+      // (PHI-2130: the bookmark manager's window read "chrome://bookmarks/"),
+      // and the address while the first page is still loading (PHI-2177:
+      // the window read the Space's name).
+      title = PhiTabDisplayTitle(
+          tab->title, tab->url,
+          model_->PendingUrl(active_browser_id(), tab->id));
     }
   }
   if (title.empty() && services_.spaces) {

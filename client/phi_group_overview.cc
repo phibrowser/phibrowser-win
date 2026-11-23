@@ -234,7 +234,8 @@ class Overview : public PhiPanel {
         }
         Card card;
         card.tab_id = tab.id;
-        card.title = base::UTF8ToWide(PhiTabDisplayTitle(tab.title, tab.url));
+        card.title = base::UTF8ToWide(PhiTabDisplayTitle(
+            tab.title, tab.url, model->PendingUrl(browser, tab.id)));
         int w = 0, h = 0;
         if (const unsigned char* pixels = framework->TabThumbnailBgra(
                 browser.value, tab.id.value, &w, &h)) {

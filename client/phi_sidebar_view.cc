@@ -1353,13 +1353,13 @@ void PhiSidebarView::Rebuild() {
                              std::vector<unsigned char>* favicon, int* fw,
                              int* fh) {
     // The bookmark manager reads "Bookmarks", a Chromium page's address
-    // phi:// (PhiTabDisplayTitle).
+    // phi://, and a tab without a title its address, the one it is still
+    // loading included (PhiTabDisplayTitle; PHI-2177: it read "(untitled)").
+    // A tab with neither a title nor any address yet is a blank new tab.
     const std::string label = PhiTabDisplayTitle(
-        !tab.title.empty()
-            ? tab.title
-            : (!tab.url.empty() ? tab.url : std::string("(untitled)")),
-        tab.url);
-    *title = base::UTF8ToWide(label);
+        tab.title, tab.url,
+        model_ ? model_->PendingUrl(browser, tab.id) : std::string());
+    *title = label.empty() ? PhiStr("app.newTab") : base::UTF8ToWide(label);
     if (incognito() && PhiNewTabPage::IsNewTabUrl(tab.url)) {
       // The Mac's incognito new-tab title (Tab.incognitoNewTabTitle) in
       // place of Chromium's plain "New Tab".

@@ -79,6 +79,14 @@ class PhiWindowModel {
       std::string_view tag) const;
   // Every browser the model knows, in id order.
   std::vector<BrowserId> Browsers() const;
+  // The address a tab that has committed nothing yet is loading (PHI-2177),
+  // "" otherwise. Until a new tab's first response arrives Chromium has no
+  // committed entry, so the snapshot gives it an empty title AND url; only
+  // the window's navigation state (`nav.url`, Chromium's visible URL) holds
+  // the address, and only for the active tab. The model keeps what nav.url
+  // said while the tab was in front, for as long as the tab's url stays
+  // empty, so the tab keeps its name when another one comes forward.
+  const std::string& PendingUrl(BrowserId browser, TabId tab) const;
 
  private:
   struct Entry {
@@ -86,6 +94,7 @@ class PhiWindowModel {
     std::map<TabId, size_t> tab_index;  // id -> position in snapshot.tabs
     std::map<std::string, size_t> tag_index;  // tag -> position (first)
     int active = -1;  // position of the active tab, -1 = none
+    std::map<TabId, std::string> pending_url;  // PendingUrl's answers
   };
   const Entry* Find(BrowserId browser) const;
   static void Reindex(Entry* entry);

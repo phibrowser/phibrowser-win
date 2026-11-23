@@ -249,7 +249,9 @@ class Hud : public PhiPopover {
     if (current) {
       for (const phi_framework::TabSnapshot& tab : current->tabs) {
         entries.push_back(
-            {tab.id, base::UTF8ToWide(PhiTabDisplayTitle(tab.title, tab.url)),
+            {tab.id,
+             base::UTF8ToWide(PhiTabDisplayTitle(
+                 tab.title, tab.url, model->PendingUrl(browser, tab.id))),
              browser, controller_->active_space()});
       }
     }
@@ -274,7 +276,8 @@ class Hud : public PhiPopover {
           if (tab.surface == phi_framework::TabSurface::kContent) {
             entries.push_back(
                 {tab.id,
-                 base::UTF8ToWide(PhiTabDisplayTitle(tab.title, tab.url)),
+                 base::UTF8ToWide(PhiTabDisplayTitle(
+                     tab.title, tab.url, model->PendingUrl(other, tab.id))),
                  other, space_id});
           }
         }

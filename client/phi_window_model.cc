@@ -15,6 +15,21 @@ void PhiWindowModel::Update(const Snapshot& snapshot) {
     return;
   }
   Entry& entry = entries_[snapshot.window];
+  // PendingUrl: a tab keeps the address it was seen loading until it commits
+  // (its url is no longer empty) or leaves the strip.
+  std::map<TabId, std::string> pending;
+  for (const Tab& tab : snapshot.tabs) {
+    if (!tab.url.empty()) {
+      continue;
+    }
+    if (tab.active && !snapshot.nav.url.empty()) {
+      pending[tab.id] = snapshot.nav.url;
+    } else if (const auto it = entry.pending_url.find(tab.id);
+               it != entry.pending_url.end()) {
+      pending[tab.id] = it->second;
+    }
+  }
+  entry.pending_url = std::move(pending);
   entry.snapshot = snapshot;
   Reindex(&entry);
 }
@@ -119,6 +134,17 @@ const PhiWindowModel::Tab* PhiWindowModel::ActiveTab(BrowserId browser) const {
     return nullptr;
   }
   return &entry->snapshot.tabs[static_cast<size_t>(entry->active)];
+}
+
+const std::string& PhiWindowModel::PendingUrl(BrowserId browser,
+                                              TabId tab) const {
+  static const std::string kNone;
+  const Entry* entry = Find(browser);
+  if (!entry) {
+    return kNone;
+  }
+  const auto it = entry->pending_url.find(tab);
+  return it == entry->pending_url.end() ? kNone : it->second;
 }
 
 const PhiWindowModel::Split* PhiWindowModel::FindSplit(

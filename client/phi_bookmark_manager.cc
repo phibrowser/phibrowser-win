@@ -19,6 +19,7 @@
 #include "client/phi_folder_icons.h"
 #include "client/phi_i18n.h"
 #include "client/phi_mac_icons.h"
+#include "client/phi_new_tab_page.h"
 #include "client/phi_prompt.h"
 #include "client/phi_theme.h"
 #include "client/phi_shell_window.h"
@@ -131,15 +132,65 @@ bool PhiBookmarkManager::IsManagerUrl(const std::string& url) {
 }
 
 std::string PhiTabDisplayTitle(const std::string& title,
-                               const std::string& url) {
+                               const std::string& url,
+                               const std::string& pending_url) {
   if (PhiBookmarkManager::IsManagerUrl(url)) {
     return "Bookmarks";
   }
+  const std::string name =
+      !title.empty() ? title
+                     : PhiUntitledTabName(!url.empty() ? url : pending_url);
   static constexpr char kChrome[] = "chrome://";
-  if (title.rfind(kChrome, 0) == 0) {
-    return "phi://" + title.substr(sizeof(kChrome) - 1);
+  if (name.rfind(kChrome, 0) == 0) {
+    return "phi://" + name.substr(sizeof(kChrome) - 1);
   }
-  return title;
+  return name;
+}
+
+std::string PhiUntitledTabName(const std::string& url) {
+  if (url.empty()) {
+    return std::string();
+  }
+  if (PhiNewTabPage::IsNewTabUrl(url)) {
+    return base::WideToUTF8(PhiStr("app.newTab"));
+  }
+  // The query and fragment stay; only the scheme, host and path are read.
+  const size_t tail = url.find_first_of("?#");
+  const std::string head = url.substr(0, tail);
+  const std::string rest =
+      tail == std::string::npos ? std::string() : url.substr(tail);
+  if (head.rfind("file:", 0) == 0) {
+    // A file by its name, as Chromium titles one.
+    const size_t slash = head.find_last_of("/\\");
+    const std::string file =
+        slash == std::string::npos ? head : head.substr(slash + 1);
+    return file.empty() ? url : file;
+  }
+  std::string name = head;
+  const size_t scheme = name.find("://");
+  if (scheme != std::string::npos) {
+    const std::string kind = name.substr(0, scheme);
+    std::string after = name.substr(scheme + 3);
+    // A lone trailing slash after a bare host goes (any standard scheme).
+    if (rest.empty() && !after.empty() &&
+        after.find('/') == after.size() - 1) {
+      after.pop_back();
+    }
+    if (kind == "http" || kind == "https") {
+      if (after.rfind("www.", 0) == 0) {
+        after = after.substr(4);
+      }
+      name = after;
+    } else {
+      name = kind + "://" + after;
+    }
+  }
+  name += rest;
+  for (size_t at = name.find("%20"); at != std::string::npos;
+       at = name.find("%20", at + 1)) {
+    name.replace(at, 3, " ");
+  }
+  return name;
 }
 
 bool PhiBookmarkManager::visible() const {

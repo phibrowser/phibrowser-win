@@ -179,8 +179,22 @@ class PhiBookmarkManager : public PhiPanel {
 // its URL. Any other title that is a Chromium page's own address
 // (Chromium's stand-in while a page has no title) reads phi://, as the
 // address field and the hover card spell it (PHI-2130).
+//
+// A tab whose page has given no title is named by its address, as the Mac
+// names it (TabViewModel.displayTitle) and in the spelling Chromium gives an
+// untitled page (PhiUntitledTabName): its committed `url`, else
+// `pending_url`, the address it is still loading (PhiWindowModel::
+// PendingUrl; PHI-2177). "" when there is neither.
 std::string PhiTabDisplayTitle(const std::string& title,
-                               const std::string& url);
+                               const std::string& url,
+                               const std::string& pending_url = std::string());
+
+// `url` as Chromium names a page without a <title> (NavigationEntryImpl::
+// GetTitleForDisplay through url_formatter::FormatUrl): no http:// or
+// https://, no "www.", no lone trailing slash after a bare host, %20 as a
+// space; a file by its name. The new-tab page is "New Tab". So a page that
+// commits without a title keeps the name it had while it loaded.
+std::string PhiUntitledTabName(const std::string& url);
 
 }  // namespace phi_client
 
