@@ -54,6 +54,42 @@ double PreciseNowMs() {
 // The pip hover card's dwell and its (rounder than the pills') radius.
 constexpr int kHoverCardDelayMs = 300;
 constexpr int kHoverCardRadius = 8;  // windows-native-ui.md §5.6.
+// The Mac's SpaceHoverTooltipController: 6 off the pip, 4 in from the
+// screen's edges.
+constexpr int kHoverCardGap = 6;
+constexpr int kHoverCardScreenMargin = 4;
+
+// Where a pip's hover card lands, in screen pixels (PHI-2186). As on the
+// Mac: centred on the pip, `gap` above it, clamped into the work area.
+// Where the work area's top leaves no room above (a maximized window) the
+// Mac flips below the pip; in the sidebar layouts that is where the pinned
+// tiles start, so the card goes `gap` past the sidebar's trailing edge
+// instead, level with the pip — where the sidebar rows' tab cards sit.
+// Without a sidebar (the caption row's chip) it flips below like the Mac.
+RECT PlaceSpaceHoverCard(const RECT& anchor,
+                         const RECT& sidebar,
+                         int w,
+                         int h,
+                         const RECT& work,
+                         int gap,
+                         int margin) {
+  int x = (anchor.left + anchor.right) / 2 - w / 2;
+  int y = anchor.top - gap - h;
+  if (y < work.top + margin) {
+    if (sidebar.right > sidebar.left &&
+        sidebar.right + gap + w <= work.right - margin) {
+      x = sidebar.right + gap;
+      y = (anchor.top + anchor.bottom) / 2 - h / 2;
+    } else {
+      y = anchor.bottom + gap;
+    }
+  }
+  x = std::max(static_cast<int>(work.left) + margin,
+               std::min(x, static_cast<int>(work.right) - margin - w));
+  y = std::max(static_cast<int>(work.top) + margin,
+               std::min(y, static_cast<int>(work.bottom) - margin - h));
+  return {x, y, x + w, y + h};
+}
 // The trailing "+"'s reveal (the Mac's 0.15s easeInOut on its opacity).
 constexpr int kAddSpaceFadeMs = 150;
 
@@ -1437,16 +1473,11 @@ bool PhiSpacesStrip::MeasureHoverCard(HDC dc,
   const int line2 = scaled(16);
   const int card_h = pad_y + line1 + scaled(2) + line2 + pad_y;
 
-  // Centred under the pip, 4 below the row, clamped 8 from the window's
-  // edges; always BELOW the strip, so it never covers the row.
-  const int mid_x = (chip->bounds.left + chip->bounds.right) / 2;
-  int left = mid_x - card_w / 2;
-  left = std::min(left, static_cast<int>(rects.client.right) - scaled(8) - card_w);
-  left = std::max(left, scaled(8));
-  int top = std::max(static_cast<int>(chip->bounds.bottom),
-                     static_cast<int>(rects.strip.bottom)) +
-            scaled(4);
-  top = std::min(top, static_cast<int>(rects.client.bottom) - scaled(8) - card_h);
+  // Measured at the card's own origin; SyncHoverCardPopup places it off
+  // the pip on the screen (PHI-2186).
+  g.anchor = chip->bounds;
+  const int left = 0;
+  const int top = 0;
   g.card = {left, top, left + card_w, top + card_h};
   g.tile = {left + pad_x, top + pad_y, left + pad_x + tile, top + pad_y + tile};
   RECT key = {};
@@ -1548,17 +1579,38 @@ void PhiSpacesStrip::SyncHoverCardPopup(HDC dc,
   }
   // Layout → screen. The floating sidebar's panel shows the expanded layout
   // from its own offset down, at its own origin.
-  POINT origin = {g.card.left, g.card.top};
   int floating_offset = 0;
-  if (const HWND panel = shell_->SpacesFloatingPanel(&floating_offset)) {
-    origin.y -= floating_offset;
-    ::ClientToScreen(panel, &origin);
-  } else {
-    ::ClientToScreen(shell, &origin);
-  }
+  const HWND panel = shell_->SpacesFloatingPanel(&floating_offset);
+  const auto to_screen = [&](const RECT& layout_rect) {
+    POINT origin = {layout_rect.left, layout_rect.top};
+    if (panel) {
+      origin.y -= floating_offset;
+    }
+    ::ClientToScreen(panel ? panel : shell, &origin);
+    return RECT{origin.x, origin.y,
+                origin.x + (layout_rect.right - layout_rect.left),
+                origin.y + (layout_rect.bottom - layout_rect.top)};
+  };
   const int w = g.card.right - g.card.left;
   const int h = g.card.bottom - g.card.top;
-  const RECT screen = {origin.x, origin.y, origin.x + w, origin.y + h};
+  const RECT anchor = to_screen(g.anchor);
+  MONITORINFO monitor = {sizeof(monitor)};
+  RECT work = {0, 0, ::GetSystemMetrics(SM_CXSCREEN),
+               ::GetSystemMetrics(SM_CYSCREEN)};
+  if (::GetMonitorInfoW(::MonitorFromRect(&anchor, MONITOR_DEFAULTTONEAREST),
+                        &monitor)) {
+    work = monitor.rcWork;
+  }
+  // The sidebar's trailing edge, for the side placement; none in the
+  // horizontal layout, whose chip rides the caption row.
+  RECT sidebar = {};
+  if (!rects.horizontal_tabs && rects.sidebar.right > rects.sidebar.left) {
+    sidebar = to_screen(rects.sidebar);
+  }
+  const RECT screen =
+      PlaceSpaceHoverCard(anchor, sidebar, w, h, work,
+                          shell_->SpacesScaled(kHoverCardGap),
+                          shell_->SpacesScaled(kHoverCardScreenMargin));
   if (!card_popup_) {
     static const ATOM atom = [] {
       WNDCLASSW cls = {};

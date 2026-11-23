@@ -302,6 +302,7 @@ class PhiSpacesStrip {
   //   [icon]  Name                     Ctrl+2
   //           profile · N tabs
   struct CardGeometry {
+    RECT anchor{};  // The hovered pip, layout coordinates (PHI-2186).
     RECT card{};
     RECT tile{};   // The 20 dip icon tile.
     RECT name{};   // Line 1's text.
