@@ -160,7 +160,7 @@ change, harness only) that dumps inputs and outputs of `merge`, `stamp`,
 Windows gtests replay them. The C++ merge layer is not done until it is
 vector-clean; every Mac ruling change regenerates the vectors.
 
-**D3 — Local store: SQLite (vendored amalgamation in `third_party/sqlite`,
+**D3 — Local store: SQLite (vendored amalgamation in `phi-client-core/third_party/sqlite`,
 not in the kit today; Chromium's copy is `chrome_`-prefixed, so no
 clash).** Landing is "one page = one transaction", including the URL-rule
 merge tail that runs inside the transaction. JSON whole-file writes
@@ -357,7 +357,7 @@ box (`test/probes/store-smoke.mjs`, `test/probes/prefs-smoke.mjs`; the
 files read back on Linux):
 
 - `client/phi_local_store.*` — the Mac's LocalStore V13 in SQLite
-  (vendored amalgamation `third_party/sqlite`, compiled as C by
+  (vendored amalgamation `phi-client-core/third_party/sqlite`, compiled as C by
   build-client.py from the kit's recipe): the five entities with every
   column, `LocalStoreCompatibility.json` (format 13, newer = refused), and
   the Mac's write rules: explicit bookmark roots (+ heal-on-read), dense

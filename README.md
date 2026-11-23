@@ -58,7 +58,7 @@ The deeper design and build notes live in [`docs/`](docs/): see `docs/static-bui
 
 ## Build from source
 
-The client builds on its own, without a Chromium checkout. It is an ordinary Windows DLL, and everything it compiles is in this repository.
+The client builds on its own, without a Chromium checkout. It is an ordinary Windows DLL, and everything it compiles is in this repository and its one submodule, `phi-client-core/`, which is [phibrowser/phibrowser-client-core](https://github.com/phibrowser/phibrowser-client-core): the code the Windows and Linux clients share (the sync engine, the account's local store, SQLite and BoringSSL). Clone with `git clone --recurse-submodules`, or run `git submodule update --init` in an existing clone.
 
 Build from `main`. It is the released code: it moves only when we publish a release, and its `framework.lock` always names a published framework. Day-to-day work lands on `dev`, which can run ahead of every published framework, so a build of `dev` may not start. A fresh clone starts on `dev`; run `git switch main` first.
 
@@ -71,6 +71,7 @@ Build from `main`. It is the released code: it moves only when we publish a rele
 From a Visual Studio developer prompt (x64):
 
 ```
+git submodule update --init
 python tools\fetch-framework.py
 python build-client.py
 out\Release\Phi.exe --user-data-dir=%TEMP%\phi-dev
@@ -86,7 +87,7 @@ The framework is `Phi.exe`, `chrome.dll` and their runtime files. It is prebuilt
 
 Because the Phi Browser we distribute is built from this repository, a contribution accepted here reaches everyone using Phi Browser. You are not patching a side project or a public mirror; you are changing the browser that ships.
 
-Contributions are welcome: bug reports, feature requests, documentation, and pull requests. Being early, the Windows client has plenty of room for both polish and new ground. Found a bug or have an idea? Open an issue first. To contribute code, make and test the change on `main`, then open a PR against `dev` with a clear description of the change and the motivation behind it. `dev` is the only branch we merge into, and your change reaches `main` with the next release.
+Contributions are welcome: bug reports, feature requests, documentation, and pull requests. Being early, the Windows client has plenty of room for both polish and new ground. Found a bug or have an idea? Open an issue first. To contribute code, make and test the change on `main`, then open a PR against `dev` with a clear description of the change and the motivation behind it. `dev` is the only branch we merge into, and your change reaches `main` with the next release. A change to the sync engine or the local store is a PR to [phibrowser-client-core](https://github.com/phibrowser/phibrowser-client-core) (its `main`); once it is merged there, a commit on `dev` here moves the submodule to it.
 
 ### Getting in touch
 

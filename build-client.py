@@ -5,8 +5,14 @@
 
 The client is an ordinary Windows DLL: everything it compiles is in this
 repository (client/, its small base:: layer in client/compat, and the vendored
-code in third_party/). The prebuilt Phi framework supplies Phi.exe, which loads
-this DLL in the browser process.
+code in third_party/) and in its submodule phi-client-core/, the code shared
+with the Linux client (the sync engine, the account's local store, the part of
+the base:: layer they use, SQLite and BoringSSL). Check the submodule out with
+
+  git submodule update --init phi-client-core
+
+The prebuilt Phi framework supplies Phi.exe, which loads this DLL in the
+browser process.
 
 On Windows, run it from a Visual Studio developer prompt:
 
@@ -35,6 +41,15 @@ REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 CLIENT_DIR = os.path.join(REPO_DIR, "client")
 COMPAT_DIR = os.path.join(CLIENT_DIR, "compat")
 THIRD_PARTY = os.path.join(REPO_DIR, "third_party")
+# The shared core, a git submodule. Its files keep the spelling they had in
+# this repository: core/client/x.h is included as "client/x.h", its vendored
+# code as "third_party/...".
+CORE_NAME = "phi-client-core"
+CORE_DIR = os.path.join(REPO_DIR, CORE_NAME)
+CORE_ROOT = os.path.join(CORE_DIR, "core")
+CORE_CLIENT_DIR = os.path.join(CORE_ROOT, "client")
+CORE_COMPAT_DIR = os.path.join(CORE_CLIENT_DIR, "compat")
+CORE_THIRD_PARTY = os.path.join(CORE_DIR, "third_party")
 DEFAULT_OUT = os.path.join(REPO_DIR, "out", "Release")
 KIT = "phi_clientkit/kit.json"
 OBJ_DIR = "client_obj"
@@ -160,6 +175,21 @@ def stem_of(path):
     return os.path.splitext(os.path.basename(path))[0]
 
 
+def cc_files(*folders):
+    """The .cc files directly in the folders, sorted by name. The same name in
+    two folders is an error: the objects share one directory."""
+    by_stem = {}
+    for folder in folders:
+        for name in os.listdir(folder):
+            if not name.endswith(".cc"):
+                continue
+            path = os.path.join(folder, name)
+            other = by_stem.setdefault(stem_of(name), path)
+            if other != path:
+                sys.exit(f"two sources named {name}: {other} and {path}")
+    return [by_stem[stem] for stem in sorted(by_stem)]
+
+
 def reorder_imports(exe_path, src_root):
     """chrome_elf.dll must be the FIRST import so its blocklist and crash
     hooks are in place before any other DLL initializes — what
@@ -268,6 +298,9 @@ def main():
                         help="relink Phi.exe from this out dir's framework "
                              "kit (framework maintainers)")
     args = parser.parse_args()
+    if not os.path.isfile(os.path.join(CORE_CLIENT_DIR, "phi_local_store.cc")):
+        sys.exit(f"{CORE_NAME} is not checked out; run: "
+                 f"git submodule update --init {CORE_NAME}")
     out_dir = os.path.abspath(args.out)
     obj_root = os.path.join(out_dir, OBJ_DIR)
     os.makedirs(obj_root, exist_ok=True)
@@ -286,14 +319,17 @@ def main():
     if args.winsysroot:
         base.append("/winsysroot" + os.path.abspath(args.winsysroot))
     cpp_flags = [
-        "/std:c++23preview", "/GR-", "-I" + COMPAT_DIR, "-I" + REPO_DIR,
-        "-I" + os.path.join(THIRD_PARTY, "boringssl", "src", "include"),
+        "/std:c++23preview", "/GR-", "-I" + COMPAT_DIR,
+        "-I" + CORE_COMPAT_DIR, "-I" + REPO_DIR, "-I" + CORE_ROOT,
+        "-I" + CORE_DIR,
+        "-I" + os.path.join(CORE_THIRD_PARTY, "boringssl", "src", "include"),
     ]
     if args.dev_hooks:
         cpp_flags.append("-DPHI_DEV_HOOKS=1")
 
     # What each object depends on, so an unrelated edit rebuilds nothing.
-    client_headers = max(newest_mtime(CLIENT_DIR), os.path.getmtime(__file__))
+    client_headers = max(newest_mtime(CLIENT_DIR, CORE_CLIENT_DIR),
+                         os.path.getmtime(__file__))
     vendored_stamp = os.path.getmtime(__file__)
     jobs = []
     objects = []
@@ -308,12 +344,8 @@ def main():
                      [*base, *flags, "/Fo" + obj, source]))
 
     wanted = {*args.only}
-    client_sources = sorted(
-        os.path.join(CLIENT_DIR, f) for f in os.listdir(CLIENT_DIR)
-        if f.endswith(".cc"))
-    compat_sources = sorted(
-        os.path.join(COMPAT_DIR, f) for f in os.listdir(COMPAT_DIR)
-        if f.endswith(".cc"))
+    client_sources = cc_files(CLIENT_DIR, CORE_CLIENT_DIR)
+    compat_sources = cc_files(COMPAT_DIR, CORE_COMPAT_DIR)
     known = {stem_of(s) for s in client_sources + compat_sources}
     if wanted - known:
         sys.exit(f"--only: no such client source: {sorted(wanted - known)}")
@@ -326,7 +358,7 @@ def main():
                 client_headers)
 
     if not wanted:
-        add("sqlite3", os.path.join(THIRD_PARTY, "sqlite", "sqlite3.c"),
+        add("sqlite3", os.path.join(CORE_THIRD_PARTY, "sqlite", "sqlite3.c"),
             ["/TC", *SQLITE_DEFINES], vendored_stamp)
         for name in ZLIB_SOURCES:
             add("zlib_" + stem_of(name),
@@ -335,8 +367,9 @@ def main():
                  "-DZLIB_IMPLEMENTATION", "-DCPU_NO_SIMD",
                  "-DARMV8_OS_WINDOWS" if args.arch == "arm64"
                  else "-DX86_WINDOWS"], vendored_stamp)
-        boringssl = os.path.join(THIRD_PARTY, "boringssl", "src")
-        with open(os.path.join(THIRD_PARTY, "boringssl", "sources.txt")) as f:
+        boringssl = os.path.join(CORE_THIRD_PARTY, "boringssl", "src")
+        with open(os.path.join(CORE_THIRD_PARTY, "boringssl",
+                               "sources.txt")) as f:
             for relative in f.read().split():
                 add("ssl_" + relative.replace("/", "_").rsplit(".", 1)[0],
                     os.path.join(boringssl, relative),

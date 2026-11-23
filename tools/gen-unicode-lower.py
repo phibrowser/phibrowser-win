@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # Copyright 2026 Phinomenon Inc.
 # Licensed under the Apache License, Version 2.0; see the LICENSE file.
-"""Generates client/phi_unicode_lower.inc: the full Unicode lowercase mapping
+"""Generates phi_unicode_lower.inc (in the phi-client-core submodule, beside
+phi_local_store.cc): the full Unicode lowercase mapping
 of every scalar whose lowercase differs from itself, one scalar at a time
 (no context, so no final-sigma rule) -- what Swift's String.lowercased()
 does, which the Mac's URL rule normalisation uses (LocalStore.normalizedHost)
 and phi_local_store.cc must reproduce. Mappings come from this Python's
 unicodedata (its Unicode version is recorded in the output).
 
-    python3 tools/gen-unicode-lower.py > client/phi_unicode_lower.inc
+    python3 tools/gen-unicode-lower.py > phi-client-core/core/client/phi_unicode_lower.inc
 """
 import sys
 import unicodedata
