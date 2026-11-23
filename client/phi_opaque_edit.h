@@ -26,10 +26,16 @@ class PhiLayerSurface;
 // its parent for colours via WM_CTLCOLOREDIT), forces opaque alpha and
 // blits. `surface` is the caller's cache, resized as needed. Returns false
 // when no surface could be made; the caller then lets `base_proc` paint.
+// `placeholder`, when given, is drawn in `placeholder_color` while the field
+// is empty, where its text would start: the native cue banner's colour is
+// the system's, so a field that wants the palette's placeholder grey sets no
+// EM_SETCUEBANNER and passes it here.
 bool PhiPaintEditOpaque(HWND field,
                         WNDPROC base_proc,
                         COLORREF ground,
-                        std::unique_ptr<PhiLayerSurface>& surface);
+                        std::unique_ptr<PhiLayerSurface>& surface,
+                        const wchar_t* placeholder = nullptr,
+                        COLORREF placeholder_color = 0);
 
 // True for the messages after which the EDIT has drawn synchronously,
 // outside WM_PAINT (typing, selection, caret moves, IME). The caller

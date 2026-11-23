@@ -6,6 +6,7 @@
 
 #include <windows.h>
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -111,6 +112,14 @@ class PhiBookmarkManager : public PhiPanel {
   static std::vector<Row::Pane> PanesOf(struct PhiStoredRowView& view);
   void EnsureWindow();
   void EnsureSearchField();
+  // The search EDIT's subclass: paints it through PhiPaintEditOpaque. The
+  // shell's DWM frame lies under the page, so the EDIT's own GDI output
+  // (alpha 0) had the backdrop added to it: a white field and an invisible
+  // placeholder in Light, a pale grey block in Dark (PHI-2184).
+  static LRESULT CALLBACK SearchFieldProc(HWND hwnd,
+                                          UINT msg,
+                                          WPARAM wparam,
+                                          LPARAM lparam);
   void LayoutChrome();
   // THE rect list (phi_window.h contract rule 6): every row, then the New
   // Folder button on top of them, so a row scrolled under the header
@@ -155,6 +164,12 @@ class PhiBookmarkManager : public PhiPanel {
 
   RAW_PTR_EXCLUSION PhiShellWindow* const controller_;
   HWND search_ = nullptr;
+  WNDPROC search_base_proc_ = nullptr;
+  std::unique_ptr<PhiLayerSurface> search_surface_;
+  // The colours the field was last painted in; Paint() repaints it when the
+  // palette has moved on.
+  COLORREF search_ground_ = CLR_INVALID;
+  COLORREF search_ink_ = CLR_INVALID;
   // Cached background for the search EDIT: WM_CTLCOLOREDIT must hand back a
   // REAL brush — a null one leaves the field unpainted (it renders black).
   HBRUSH field_brush_ = nullptr;

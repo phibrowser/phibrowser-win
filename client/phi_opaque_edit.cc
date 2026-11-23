@@ -14,7 +14,9 @@ namespace phi_client {
 bool PhiPaintEditOpaque(HWND field,
                         WNDPROC base_proc,
                         COLORREF ground,
-                        std::unique_ptr<PhiLayerSurface>& surface) {
+                        std::unique_ptr<PhiLayerSurface>& surface,
+                        const wchar_t* placeholder,
+                        COLORREF placeholder_color) {
   if (!field || !base_proc) {
     return false;
   }
@@ -39,6 +41,18 @@ bool PhiPaintEditOpaque(HWND field,
   ::CallWindowProcW(base_proc, field, WM_PRINTCLIENT,
                     reinterpret_cast<WPARAM>(buffer),
                     PRF_CLIENT | PRF_ERASEBKGND);
+  if (placeholder && ::GetWindowTextLengthW(field) == 0) {
+    RECT text = rc;
+    ::SendMessageW(field, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&text));
+    HGDIOBJ old_font = ::SelectObject(
+        buffer, reinterpret_cast<HFONT>(::SendMessageW(field, WM_GETFONT, 0, 0)));
+    ::SetBkMode(buffer, TRANSPARENT);
+    ::SetTextColor(buffer, placeholder_color);
+    ::DrawTextW(buffer, placeholder, -1, &text,
+                DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX |
+                    DT_END_ELLIPSIS);
+    ::SelectObject(buffer, old_font);
+  }
   ::GdiFlush();
   // SAFETY: PhiLayerSurface owns a tightly packed, top-down 32-bit DIB of
   // byte_size() bytes.

@@ -20,6 +20,7 @@
 #include "client/phi_i18n.h"
 #include "client/phi_mac_icons.h"
 #include "client/phi_new_tab_page.h"
+#include "client/phi_opaque_edit.h"
 #include "client/phi_prompt.h"
 #include "client/phi_theme.h"
 #include "client/phi_shell_window.h"
@@ -243,9 +244,48 @@ void PhiBookmarkManager::EnsureSearchField() {
                    TRUE);
   }
   if (search_) {
-    ::SendMessageW(search_, EM_SETCUEBANNER, TRUE,
-                   reinterpret_cast<LPARAM>(L"Search bookmarks"));
+    // No EM_SETCUEBANNER: SearchFieldProc draws "Search bookmarks" itself,
+    // in the palette's placeholder grey.
+    ::SetWindowLongPtrW(search_, GWLP_USERDATA,
+                        reinterpret_cast<LONG_PTR>(this));
+    search_base_proc_ = reinterpret_cast<WNDPROC>(::SetWindowLongPtrW(
+        search_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&SearchFieldProc)));
   }
+}
+
+// static
+LRESULT CALLBACK PhiBookmarkManager::SearchFieldProc(HWND hwnd,
+                                                     UINT msg,
+                                                     WPARAM wparam,
+                                                     LPARAM lparam) {
+  auto* self = reinterpret_cast<PhiBookmarkManager*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  WNDPROC base = self && self->search_base_proc_ ? self->search_base_proc_
+                                                 : ::DefWindowProcW;
+  if (self && self->controller_) {
+    if (msg == WM_PAINT) {
+      // The ground WM_CTLCOLOREDIT hands the EDIT, and the Settings search's
+      // placeholder colour (label_tertiary, the Mac's placeholder grey).
+      const PhiPalette colors = self->QueryPalette();
+      self->search_ground_ = colors.hover_strong;
+      self->search_ink_ = colors.label_tertiary;
+      if (PhiPaintEditOpaque(hwnd, base, colors.hover_strong,
+                             self->search_surface_, L"Search bookmarks",
+                             colors.label_tertiary)) {
+        return 0;
+      }
+    } else if (msg == WM_ERASEBKGND) {
+      return 1;  // WM_PAINT supplies the complete opaque interior.
+    }
+  }
+  // The EDIT also draws synchronously while typing or selecting: redraw that
+  // output through the opaque path once the native operation has run.
+  const bool repaint = self && PhiEditDrawsDirectly(msg, wparam);
+  const LRESULT result = ::CallWindowProcW(base, hwnd, msg, wparam, lparam);
+  if (repaint && ::IsWindow(hwnd)) {
+    ::InvalidateRect(hwnd, nullptr, FALSE);
+  }
+  return result;
 }
 
 void PhiBookmarkManager::LayoutChrome() {
@@ -694,6 +734,12 @@ void PhiBookmarkManager::Paint(HDC dc, const RECT&) {
   // Live, as before: the slot's palette ramps between frames. The base's
   // cached palette() is what the theme bus repaints against.
   const PhiPalette palette = QueryPalette();
+  // The search EDIT is a window of its own: the shell's paint never reaches
+  // it, so a palette change repaints it from here.
+  if (search_ && (palette.hover_strong != search_ground_ ||
+                  palette.label_tertiary != search_ink_)) {
+    ::InvalidateRect(search_, nullptr, FALSE);
+  }
   HBRUSH ground = ::CreateSolidBrush(palette.window_bg);
   ::FillRect(dc, &rc, ground);
   ::DeleteObject(ground);
