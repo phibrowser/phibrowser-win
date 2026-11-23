@@ -151,6 +151,10 @@ class PhiTabPreview : public PhiPopover {
   // the clamp are PhiPlacePopover's now (phi_window.h); this only names
   // the side.
   SIZE CardSize();
+  // A single card's snapshot band: as tall as the snapshot is at the card's
+  // width, so the whole page shows, within the Mac's 16:10 band (PHI-2183).
+  // 0 for a text-only card.
+  int SingleBandHeight();
   PhiPopover::Placement CardPlacement() const;
   void PaintCard(HDC dc);
   HFONT TitleFont();

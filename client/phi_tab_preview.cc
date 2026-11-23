@@ -21,9 +21,14 @@ namespace phi_client {
 
 namespace {
 
-// TabPreviewView.Metrics, in DIP. The snapshot keeps the Mac's 16:10 crop.
+// TabPreviewView.Metrics, in DIP: the Mac's 16:10 band is the tallest a
+// single card's snapshot gets.
 constexpr int kCardWidth = 280;
 constexpr int kImageHeight = kCardWidth * 10 / 16;
+// The shortest band, 12:5. A page wider than 16:10 (any maximized window on
+// a 16:9 screen) shortens the band to its own shape instead of losing its
+// sides; only a page wider than this is still cropped (PHI-2183).
+constexpr int kMinImageHeight = kCardWidth * 5 / 12;
 constexpr int kPadX = 12;
 constexpr int kPadY = 10;
 constexpr int kTextGap = 4;   // Title-to-URL spacing.
@@ -348,8 +353,7 @@ SIZE PhiTabPreview::CardSize() {
   if (!IsSplit()) {
     // A single tab shows its band only when there IS a cached snapshot —
     // the Mac's `if let image`, no placeholder.
-    const int band =
-        (!compact_ && !snapshot_.empty()) ? Scaled(kImageHeight) : 0;
+    const int band = SingleBandHeight();
     size.cy = band + TextBlockHeight(shown_.title, shown_.url,
                                      width - 2 * pad_x) +
               2 * pad_y;
@@ -376,6 +380,24 @@ SIZE PhiTabPreview::CardSize() {
             2 * pad_y + 1 + band +
             TextBlockHeight(shown_.title_b, shown_.url_b, avail) + 2 * pad_y;
   return size;
+}
+
+int PhiTabPreview::SingleBandHeight() {
+  if (compact_ || snapshot_.empty()) {
+    return 0;
+  }
+  const int tallest = Scaled(kImageHeight);
+  if (snapshot_width_ <= 0 || snapshot_height_ <= 0) {
+    return tallest;
+  }
+  // The snapshot is the page's viewport at its own aspect (Chromium's
+  // ThumbnailTabHelper keeps the source shape), so the band that shows all
+  // of it at the card's width is width * h / w.
+  const int fit = static_cast<int>(
+      static_cast<double>(Scaled(kCardWidth)) * snapshot_height_ /
+          snapshot_width_ +
+      0.5);
+  return std::clamp(fit, Scaled(kMinImageHeight), tallest);
 }
 
 PhiPopover::Placement PhiTabPreview::CardPlacement() const {
@@ -492,24 +514,21 @@ void PhiTabPreview::DrawPane(HDC dc,
     RECT band = {bounds.left, y, bounds.right, y + image_height};
     if (!shot.empty()) {
       // Aspect-fill the band: crop the snapshot's overhang rather than
-      // squashing it, the way SwiftUI's .aspectRatio(.fill) + .clipped() does.
+      // squashing it (SwiftUI's .aspectRatio(.fill) + .clipped()). The
+      // overhang goes off the right and the bottom, never the left or the
+      // top: a centred crop cut the start of every line and the page's
+      // header (PHI-2183). Chromium's CropPreviewImage keeps the top too.
       const double target = static_cast<double>(band.right - band.left) /
                             std::max(1, static_cast<int>(band.bottom - band.top));
       const double source =
           static_cast<double>(shot_width) / std::max(1, shot_height);
       RECT fill = band;
       if (source > target) {
-        const int wide =
-            static_cast<int>((band.bottom - band.top) * source + 0.5);
-        const int overhang = (wide - (band.right - band.left)) / 2;
-        fill.left -= overhang;
-        fill.right += overhang;
+        fill.right = band.left +
+                     static_cast<int>((band.bottom - band.top) * source + 0.5);
       } else if (source < target) {
-        const int tall =
-            static_cast<int>((band.right - band.left) / source + 0.5);
-        const int overhang = (tall - (band.bottom - band.top)) / 2;
-        fill.top -= overhang;
-        fill.bottom += overhang;
+        fill.bottom = band.top +
+                      static_cast<int>((band.right - band.left) / source + 0.5);
       }
       HRGN clip = ::CreateRectRgnIndirect(&band);
       ::SelectClipRgn(dc, clip);
@@ -585,8 +604,7 @@ void PhiTabPreview::PaintCard(HDC dc) {
   ::SetBkMode(dc, TRANSPARENT);
 
   if (!IsSplit()) {
-    const int band =
-        (!compact_ && !snapshot_.empty()) ? Scaled(kImageHeight) : 0;
+    const int band = SingleBandHeight();
     DrawPane(dc, rc, band, snapshot_, snapshot_width_, snapshot_height_,
              shown_.title, shown_.url, palette);
   } else if (!shown_.stacked) {
