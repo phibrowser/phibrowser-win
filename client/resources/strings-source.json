@@ -5993,6 +5993,21 @@
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc)",
    "en": "Agent access, permissions, and the password manager live in the Developer tab."
   },
+  "settings.advanced.developerMode.enabledHintWin": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Advanced, hint under the Developer mode switch while it is on. Windows' Developer tab has no password manager section, so this drops it from the Mac's settings.advanced.developerMode.enabledHint",
+   "en": "Agent access and permissions live in the Developer tab.",
+   "translations": {
+    "de": "Agentenzugriff und Berechtigungen findest du im Tab „Entwickler“.",
+    "es": "El acceso de agentes y los permisos están en la pestaña Desarrollador.",
+    "fr": "L'accès des agents et les autorisations se trouvent dans l'onglet Développeur.",
+    "ja": "エージェントのアクセスと権限は「開発者」タブにあります。",
+    "ko": "에이전트 접근과 권한은 개발자 탭에 있어요.",
+    "nl": "Agenttoegang en machtigingen vind je op het tabblad Ontwikkelaar.",
+    "pt-BR": "O acesso de agentes e as permissões ficam na aba Desenvolvedor.",
+    "zh-Hans": "智能体访问和权限都在「开发者」标签页中。",
+    "zh-Hant": "AI 代理存取與權限都在「開發者」分頁中。"
+   }
+  },
   "settings.advanced.openTabIndicators.showToggle": {
    "comment": "Mac key (translations by key); settings — Settings window (phi_settings_window.cc) (Appearance ▸ Tabs)",
    "en": "Show open tab indicators"
@@ -6235,6 +6250,21 @@
     "nl": "Hoeveel van het bureaublad door de zijbalk heen schijnt",
     "zh-Hans": "桌面透过边栏显示的程度",
     "zh-Hant": "桌面透過側邊欄顯示的程度"
+   }
+  },
+  "settings.appearance.sidebarTransparency.noSidebarHint": {
+   "comment": "settings — Settings window (phi_settings_window.cc): Appearance ▸ Color, hint under the greyed sidebar-transparency slider in the Comfortable (horizontal tabs) layout while neither Transparent toolbars nor Page margin is on; names those two rows and the layout as the Settings window does",
+   "en": "Comfortable has no sidebar. This applies once Transparent toolbars or Page margin is on.",
+   "translations": {
+    "de": "„Komfortabel“ hat keine Seitenleiste. Dies wirkt, sobald „Transparente Symbolleisten“ oder „Seitenrand“ aktiviert ist.",
+    "es": "El diseño Cómodo no tiene barra lateral. Se aplica cuando activas Barras de herramientas transparentes o Margen de página.",
+    "fr": "La disposition Confortable n’a pas de barre latérale. Ce réglage s’applique dès que Barres d’outils transparentes ou Marge autour de la page est activé.",
+    "ja": "「ゆったり」にはサイドバーがありません。「ツールバーを透明にする」または「ページの余白」をオンにすると適用されます。",
+    "ko": "여유 레이아웃에는 사이드바가 없어요. 투명한 도구 모음이나 페이지 여백을 켜면 적용돼요.",
+    "nl": "Comfortabel heeft geen zijbalk. Dit werkt zodra Transparante werkbalken of Paginamarge aan staat.",
+    "pt-BR": "O layout Confortável não tem barra lateral. Isto se aplica quando Barras de ferramentas transparentes ou Margem da página estiver ativado.",
+    "zh-Hans": "「舒适」布局没有边栏。开启「透明工具栏」或「页面边距」后此项生效。",
+    "zh-Hant": "「舒適」版面沒有側邊欄。開啟「透明工具列」或「頁面邊距」後此項生效。"
    }
   },
   "settings.appearance.sidebarTransparency.title": {

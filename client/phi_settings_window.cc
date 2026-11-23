@@ -1653,11 +1653,19 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
   AddDividerRow(y);
   {
     // Sidebar transparency, 0-100 %: the desktop through the theme tint,
-    // the value read out after the track.
+    // the value read out after the track. The tint's alpha reaches every
+    // backdrop surface, but Comfortable has no sidebar: there the slider
+    // only acts through the transparent toolbars or the page margin, so
+    // without either it is greyed and says why (PHI-2178).
+    const bool live = prefs_->LayoutMode() != PhiLayoutMode::kComfortable ||
+                      prefs_->TranslucentFrame() || prefs_->PageMargin();
+    const size_t first = items_.size();
     const RECT area =
         AddRow(y, PhiStr("settings.appearance.sidebarTransparency.title"),
                kSliderHeight, kSliderGeneral + kSliderReadout,
-               PhiStr("settings.appearance.sidebarTransparency.hint"),
+               PhiStr(live ? "settings.appearance.sidebarTransparency.hint"
+                           : "settings.appearance.sidebarTransparency."
+                             "noSidebarHint"),
                kChipIndent, 0xE8A0);
     if (!last_row_skipped_) {
       const int value = prefs_->SidebarTransparency();
@@ -1674,6 +1682,11 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
       readout.bounds = {area.right - Scaled(kSliderReadout) + Scaled(12),
                         area.top, area.right, area.bottom};
       items_.push_back(std::move(readout));
+    }
+    // A dead row reads dead, as AddToggleRow's do: chip, label, hint,
+    // track and readout.
+    for (size_t i = first; i < items_.size(); ++i) {
+      items_[i].enabled = live;
     }
   }
   AddDividerRow(y);
@@ -1848,6 +1861,9 @@ void PhiSettingsWindow::BuildAdvanced(int* y) {
     AddPopupRow(y, PhiStr("settings.advanced.pictureInPicture.title"),
                 PhiStr(label), "autopip", PhiStr(hint), kChipIndent, 0xE8A7);
   }
+  // The Mac's Divider() between the two media rows; every other card
+  // has one between its rows (PHI-2178).
+  AddDividerRow(y);
   {
     // The Mac's Mini Player menu: Off, or the presentation mode (which is
     // kept while the player is off).
@@ -1873,8 +1889,11 @@ void PhiSettingsWindow::BuildAdvanced(int* y) {
   AddToggleRow(y, PhiStr("settings.general.developerMode.enableToggle"),
                prefs_->DeveloperMode(),
                /*enabled=*/true, "devmode",
+               // Windows' Developer tab has agent access and permissions
+               // but no password manager section (df85203 dropped the
+               // placeholder), so the Mac's enabled hint over-promised.
                PhiStr(prefs_->DeveloperMode()
-                          ? "settings.advanced.developerMode.enabledHint"
+                          ? "settings.advanced.developerMode.enabledHintWin"
                           : "settings.advanced.developerMode.disabledHint"),
                kChipIndent, 0xEC7A);
   EndSection(y);
@@ -2912,7 +2931,7 @@ void PhiSettingsWindow::AddProfileBody(
         {0xE72E, "settings.profiles.dataLinks.privacy",
          "settings.profiles.dataLinks.privacyHint",
          "chrome://settings/privacy"},
-        {0xE7E7, "settings.profiles.dataLinks.notifications", nullptr,
+        {0xEA8F, "settings.profiles.dataLinks.notifications", nullptr,
          "chrome://settings/content/notifications"},
         {0xE74D, "settings.profiles.dataLinks.clearData",
          "settings.profiles.dataLinks.clearDataHint",
@@ -3232,7 +3251,7 @@ void PhiSettingsWindow::BuildProfileDetail(int* y, int left, int right,
     } kRows[] = {
         {0xE72E, "settings.profiles.dataLinks.privacy",
          "chrome://settings/privacy"},
-        {0xE7E7, "settings.profiles.dataLinks.notifications",
+        {0xEA8F, "settings.profiles.dataLinks.notifications",
          "chrome://settings/content/notifications"},
         {0xE74D, "settings.profiles.dataLinks.clearData",
          "chrome://settings/clearBrowserData"},
@@ -6572,7 +6591,11 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
                              chevron.left - Scaled(kThemeColorGap),
                              chevron.bottom};
         FillGradientDot(dc, dot_rc, item.colors);
-        PhiStrokeEllipseAA(dc, dot_rc, Blend(ink, ground, 26), 1);
+        // The Mac's Circle().stroke(.border): one point of edge, so a white
+        // or near-white theme still reads as a dot on the white card. A
+        // one-pixel 10 % hairline vanished there, worst at 300 % (PHI-2178).
+        PhiStrokeEllipseAA(dc, dot_rc, Blend(ink, ground, dark ? 64 : 51),
+                           std::max(1, Scaled(1)));
         PhiDrawGlyphIcon(dc, chevron, L"\uE76C", Scaled(11),
                          Blend(ink, ground, 217));
         break;
