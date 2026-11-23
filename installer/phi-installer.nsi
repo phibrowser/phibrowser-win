@@ -65,6 +65,10 @@
 ;     is empty - never a wildcard or RMDir /r in a folder the user may have
 ;     picked; "delete my data" removes the whole data folder only when it is
 ;     the default one or Setup created it, else only Phi's own entries.
+;     The folders that are Phi's whole go whole, on an update and on
+;     removal: framework\, and the client resource folders under names only
+;     Phi uses (uninstall-list.py --owned), so files an older version had and
+;     a newer one dropped do not stay behind (PHI-2117).
 ;
 ; Build (makensis 3.x, on Linux via make-installer.sh):
 ;   makensis -INPUTCHARSET UTF8 -DPHI_VERSION=0.1.0 -DPHI_STAGE=<staged tree> \
@@ -73,7 +77,9 @@
 ;            [-DPHI_UI_TEST] phi-installer.nsi
 ;   PHI_UI_TEST builds a look-and-feel test: it installs to C:\phi-setup-test
 ;   and records itself under Software\PhiSetupTest (and registers no
-;   browser), so a throwaway payload never touches a real install.
+;   browser, names its shortcuts "Phi Browser (Setup Test)", defaults the
+;   data folder to C:\phi-setup-test\User Data and leaves the updater's
+;   keys alone), so a throwaway payload never touches a real install.
 
 !ifndef PHI_VERSION
   !error "pass /DPHI_VERSION=x.y.z"
@@ -139,10 +145,14 @@ RequestExecutionLevel admin
 !ifdef PHI_UI_TEST
   !define REG_PRODUCT "Software\PhiSetupTest"
   !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\PhiBrowserSetupTest"
+  !define SHORTCUT_NAME "Phi Browser (Setup Test)"
+  !define DATA_DIR_DEFAULT "C:\phi-setup-test\User Data"
   InstallDir "C:\phi-setup-test\Phi Browser"
 !else
   !define REG_PRODUCT "Software\Phi"
   !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\PhiBrowser"
+  !define SHORTCUT_NAME "Phi Browser"
+  !define DATA_DIR_DEFAULT "$LOCALAPPDATA\Phi\User Data"
   InstallDir "$PROGRAMFILES64\Phi Browser"
 !endif
 InstallDirRegKey HKLM "${REG_PRODUCT}" "InstallDir"
@@ -356,7 +366,7 @@ Function .onInit
     StrCpy $ArchState "warn"
   ${EndIf}
 !endif
-  StrCpy $DataDirDefault "$LOCALAPPDATA\Phi\User Data"
+  StrCpy $DataDirDefault "${DATA_DIR_DEFAULT}"
   ; A recorded choice from a previous install is the starting point.
   ReadRegStr $DataDir HKCU "${REG_PRODUCT}" "UserDataDir"
   ${If} $DataDir == ""
@@ -1191,6 +1201,20 @@ Section "Install"
   not_running:
     FileClose $0
 
+    ; The client's resource folders that are Phi's whole (uninstall-list.py
+    ; --owned) go before the copy, like framework\ below: the stage puts
+    ; back this version's files, and those an older version had in them -
+    ; onboarding frames, skill scripts, a whole folder since dropped - are
+    ; gone (PHI-2117). Only in Phi's own install: Phi.exe beside the
+    ; chrome.dll just probed (before the flat-layout step deletes it).
+    ${If} ${FileExists} "$INSTDIR\Phi.exe"
+      !tempfile PHI_OWNED_LIST
+      !system 'python3 "${__FILEDIR__}/uninstall-list.py" --owned "${PHI_STAGE}" > "${PHI_OWNED_LIST}"' = 0
+      !include "${PHI_OWNED_LIST}"
+      !delfile "${PHI_OWNED_LIST}"
+      !undef PHI_OWNED_LIST
+    ${EndIf}
+
 !ifdef PHI_LAYOUT_FRAMEWORK
     ; Upgrading a FLAT install: its 500-odd DLLs, paks and manifests sit
     ; beside the exe and nothing in the framework\ layout would ever
@@ -1245,9 +1269,9 @@ Section "Install"
   ; sandbox.cc).
   nsExec::ExecToLog 'icacls "$INSTDIR" /grant "*S-1-15-3-1024-3424233489-972189580-2057154623-747635277-1604371224-316187997-3786583170-1043257646:(OI)(CI)(RX)" "*S-1-15-3-1024-2302894289-466761758-1166120688-1039016420-2430351297-4240214049-4028510897-3317428798:(OI)(CI)(RX)"'
 
-  CreateShortCut "$SMPROGRAMS\Phi Browser.lnk" "$INSTDIR\Phi.exe"
+  CreateShortCut "$SMPROGRAMS\${SHORTCUT_NAME}.lnk" "$INSTDIR\Phi.exe"
   ${If} $DesktopShortcut == 1
-    CreateShortCut "$DESKTOP\Phi Browser.lnk" "$INSTDIR\Phi.exe"
+    CreateShortCut "$DESKTOP\${SHORTCUT_NAME}.lnk" "$INSTDIR\Phi.exe"
   ${EndIf}
 
   ; The program folder, for the next (silent) update and the uninstaller;
@@ -1295,8 +1319,10 @@ Section "Install"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   ; Older clients kept the updater's state (last check time, skipped version)
   ; under the old company name; the client now uses Software\Phinomenon Inc.
+!ifndef PHI_UI_TEST
   DeleteRegKey HKCU "Software\Fyde Innovations\Phi Browser"
   DeleteRegKey /ifempty HKCU "Software\Fyde Innovations"
+!endif
   ; Apps & Features: the 64-bit view, where a 64-bit program's entry
   ; belongs (this stub is 32-bit, so the default view would be WOW6432Node).
   ; Software\Phi above stays in the 32-bit view - that is where
@@ -1323,7 +1349,7 @@ SectionEnd
 
 ; ---------------------------------------------------------------- uninstall
 Function un.onInit
-  StrCpy $DataDirDefault "$LOCALAPPDATA\Phi\User Data"
+  StrCpy $DataDirDefault "${DATA_DIR_DEFAULT}"
   ReadRegStr $DataDir HKCU "${REG_PRODUCT}" "UserDataDir"
   ${If} $DataDir == ""
     ReadRegStr $DataDir HKLM "${REG_PRODUCT}" "UserDataDir"
@@ -1502,7 +1528,14 @@ Section "Uninstall"
   ; blind RMDir /r in a folder the user chose. The payload's own list
   ; (uninstall-list.py over the stage this uninstaller was built with);
   ; each folder goes only once empty. A rollback\ snapshot an earlier
-  ; installer made is all ours, so it goes whole when it holds a Phi.exe.
+  ; installer made is all ours, so it goes whole when it holds a Phi.exe;
+  ; so do the client resource folders that are Phi's whole (--owned,
+  ; PHI-2117), first, so the list's RMDir of resources\ finds it empty.
+  !tempfile PHI_OWNED_LIST
+  !system 'python3 "${__FILEDIR__}/uninstall-list.py" --owned "${PHI_STAGE}" > "${PHI_OWNED_LIST}"' = 0
+  !include "${PHI_OWNED_LIST}"
+  !delfile "${PHI_OWNED_LIST}"
+  !undef PHI_OWNED_LIST
   !tempfile PHI_UNINSTALL_LIST
   !system 'python3 "${__FILEDIR__}/uninstall-list.py" "${PHI_STAGE}" > "${PHI_UNINSTALL_LIST}"' = 0
   !include "${PHI_UNINSTALL_LIST}"
@@ -1514,8 +1547,8 @@ Section "Uninstall"
   ${EndIf}
   RMDir "$INSTDIR"
 
-  Delete "$SMPROGRAMS\Phi Browser.lnk"
-  Delete "$DESKTOP\Phi Browser.lnk"
+  Delete "$SMPROGRAMS\${SHORTCUT_NAME}.lnk"
+  Delete "$DESKTOP\${SHORTCUT_NAME}.lnk"
 
   ; The browsing data goes only when the confirm screen's checkbox was on;
   ; a silent uninstall keeps it. Whole only when the folder is Phi's: the
@@ -1556,10 +1589,12 @@ Section "Uninstall"
   DeleteRegKey HKCU "${REG_PRODUCT}"
   ; The updater's own state (last check time, skipped version), under the
   ; current company name and the one older clients used.
+!ifndef PHI_UI_TEST
   DeleteRegKey HKCU "Software\Phinomenon Inc.\Phi Browser"
   DeleteRegKey /ifempty HKCU "Software\Phinomenon Inc."
   DeleteRegKey HKCU "Software\Fyde Innovations\Phi Browser"
   DeleteRegKey /ifempty HKCU "Software\Fyde Innovations"
+!endif
   ; The window closes by itself once the files are gone; there is no
   ; "Completed" state to click through (AutoCloseWindow does not carry
   ; the uninstaller past its last page, so this is explicit).
