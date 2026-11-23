@@ -4689,7 +4689,10 @@ void PhiCoordinator::OnPreferencesChanged(
       for (PhiShellWindow* controller : registry_.Controllers()) {
         controller->ApplyLayoutMode(preferences_.LayoutMode());
       }
-      return;
+      // Falls through to the Settings notification below: an open
+      // Appearance picker follows a switch made from either Layout menu,
+      // a shortcut, sync or the pipe (PHI-2105).
+      break;
     case PreferenceChange::kSidebarWidth:
     case PreferenceChange::kBottomBar:
     case PreferenceChange::kBookmarkBar:

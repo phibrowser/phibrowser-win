@@ -1569,7 +1569,10 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
   if (SearchMatches(PhiStr("appMenu.layout"), layout_words.c_str())) {
     // The layout picker: three previews
     // with a 2 dip accent ring when chosen, above the radio and
-    // label. Layout names match the macOS picker.
+    // label. Names and order match the macOS picker (LayoutMode.allCases:
+    // Balanced, Performance, Comfortable), and so do both Layout menus.
+    // Every mode the shell can be in has its own card, so one is always
+    // selected (PHI-2105).
     ++filter_hits_;
     const int left = content_left_ + Scaled(kCardPadding);
     const int right = content_right_ - Scaled(kCardPadding);
@@ -1579,9 +1582,9 @@ void PhiSettingsWindow::BuildAppearance(int* y) {
       PhiLayoutMode mode;
       const char* sketch;
     } kCards[] = {
+        {"oobe.layoutSelection.balancedOption", PhiLayoutMode::kBalanced, "balanced"},
         {"oobe.layoutSelection.performanceOption", PhiLayoutMode::kPerformance, "performance"},
         {"oobe.layoutSelection.comfortableOption", PhiLayoutMode::kComfortable, "comfortable"},
-        {"oobe.layoutSelection.balancedOption", PhiLayoutMode::kBalanced, "balanced"},
     };
     int i = 0;
     for (const auto& definition : kCards) {
@@ -4453,6 +4456,7 @@ void PhiSettingsWindow::PublishHits() {
       case ItemKind::kListRow:
       case ItemKind::kSwatch:
       case ItemKind::kImageCard:
+      case ItemKind::kLayoutCard:  // Selected = the layout in use (PHI-2105).
       case ItemKind::kSpaceRow:
       case ItemKind::kPickerCell:
         role = PhiHitRole::kListItem;
@@ -5736,22 +5740,45 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
             ::FillRect(dc, &seam, seam_brush);
             ::DeleteObject(seam_brush);
           } else {
-            // The address row across the top, then the sidebar's three
-            // rows (the middle one the active tab) beside the page.
-            RECT bar = {inner.left, inner.top, inner.right,
-                        inner.top + Scaled(10)};
-            FillRounded(dc, bar, page_white, Scaled(2));
+            // The vertical layouts, as the Mac's tab-layout-balanced /
+            // -performance pictures tell them apart: the sidebar's three
+            // rows (the middle one the active tab) beside the page, and
+            // the address field either across the top of the page
+            // (Balanced) or at the top of the sidebar, with the page
+            // reaching the window top under the caption island
+            // (Performance).
+            const bool performance = item.payload == "performance";
             const int side_w = Scaled(34);
-            int row_top = bar.bottom + gap;
+            const int page_left = inner.left + side_w + gap;
+            int row_top = inner.top;
+            if (performance) {
+              RECT field = {inner.left, inner.top, inner.left + side_w,
+                            inner.top + Scaled(8)};
+              FillRounded(dc, field, page_white, Scaled(2));
+              OutlineRounded(dc, field, chrome, Scaled(2), 1);
+              row_top = field.bottom + gap + Scaled(2);
+            }
             for (int r = 0; r < 3; ++r) {
               RECT row = {inner.left, row_top, inner.left + side_w,
                           row_top + Scaled(6)};
               FillRounded(dc, row, r == 1 ? page_white : chrome, Scaled(2));
               row_top = row.bottom + gap;
             }
-            RECT page_rc = {inner.left + side_w + gap, bar.bottom + gap,
-                            inner.right, inner.bottom};
+            int page_top = inner.top;
+            if (!performance) {
+              RECT bar = {page_left, inner.top, inner.right,
+                          inner.top + Scaled(10)};
+              FillRounded(dc, bar, page_white, Scaled(2));
+              page_top = bar.bottom + gap;
+            }
+            RECT page_rc = {page_left, page_top, inner.right, inner.bottom};
             FillRounded(dc, page_rc, page_white, Scaled(4));
+            if (performance) {
+              // The window-controls island over the page's top-right corner.
+              RECT island = {inner.right - Scaled(24), inner.top,
+                             inner.right, inner.top + Scaled(7)};
+              FillRounded(dc, island, chrome, Scaled(3));
+            }
           }
           ::RestoreDC(dc, save_tile);
         }

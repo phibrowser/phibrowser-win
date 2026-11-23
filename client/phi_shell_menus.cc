@@ -553,9 +553,10 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
     PhiLayoutMode mode;
     const wchar_t* label;
   } kLayouts[] = {
+      // The Mac's order, as the app menu and Settings ▸ Appearance.
+      {"balanced", PhiLayoutMode::kBalanced, PhiStr("oobe.layoutSelection.balancedOption")},
       {"performance", PhiLayoutMode::kPerformance, PhiStr("oobe.layoutSelection.performanceOption")},
       {"comfortable", PhiLayoutMode::kComfortable, PhiStr("oobe.layoutSelection.comfortableOption")},
-      {"balanced", PhiLayoutMode::kBalanced, PhiStr("oobe.layoutSelection.balancedOption")},
   };
   std::vector<PhiMenuItem> layouts;
   for (const auto& entry : kLayouts) {
