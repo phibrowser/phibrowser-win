@@ -368,6 +368,12 @@ def main():
                  "-DARMV8_OS_WINDOWS" if args.arch == "arm64"
                  else "-DX86_WINDOWS"], vendored_stamp)
         boringssl = os.path.join(CORE_THIRD_PARTY, "boringssl", "src")
+        # openssl/base.h includes <memory> inside an extern "C++" block. On
+        # ARM64 the SDK's wchar.h, reached from there, includes clang's
+        # arm_neon.h, and clang 24 refuses the three builtins it redeclares
+        # inside a linkage block ("has a different language linkage").
+        # Including wchar.h first, at file scope, keeps it out of the block.
+        ssl_arch = ["/FIwchar.h"] if args.arch == "arm64" else []
         with open(os.path.join(CORE_THIRD_PARTY, "boringssl",
                                "sources.txt")) as f:
             for relative in f.read().split():
@@ -375,7 +381,8 @@ def main():
                     os.path.join(boringssl, relative),
                     ["/TP", "/std:c++17", "/GR-", "-I" + boringssl,
                      "-I" + os.path.join(boringssl, "include"),
-                     "-DOPENSSL_NO_ASM", "-DBORINGSSL_IMPLEMENTATION"],
+                     "-DOPENSSL_NO_ASM", "-DBORINGSSL_IMPLEMENTATION",
+                     *ssl_arch],
                     vendored_stamp)
 
     failed = False
