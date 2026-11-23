@@ -976,6 +976,57 @@ PhiStoredRowView StoredRowView(const PhiRow& row) {
   return view;
 }
 
+// A sidebar drop that joins a group, as the framework can carry it out
+// (PHI-2179). The drop says "before `anchor` (0 = the end), in `group`", but
+// the strip also holds tabs the list does not show, such as the tabs of open
+// pinned cells and bookmarks, which collect at the end of the strip. "Before
+// `anchor`" is a legal slot for a group member only inside the group's run or
+// right after it. When the drop names the slot after the group's last member
+// (the last row in the group, the end of the list, a collapsed group's
+// header), an unseen tab can sit between that member and `anchor`. That
+// asks Chromium for a slot outside the group and the tab strip aborts. Such a
+// drop always means "last in the group", so it is anchored on the group's
+// last member instead. Drops inside the run, and drops that join no group,
+// are left as they are.
+struct GroupMoveAnchor {
+  int anchor = 0;
+  bool after = false;
+};
+
+GroupMoveAnchor AnchorForGroupMove(
+    const std::vector<phi_framework::TabSnapshot>& strip,
+    int moving,
+    int anchor,
+    const char* group) {
+  GroupMoveAnchor out{anchor, false};
+  if (!group || !*group) {
+    return out;
+  }
+  // The moving unit: the tab and the other panes of its split.
+  std::string moving_split;
+  for (const phi_framework::TabSnapshot& tab : strip) {
+    if (tab.id.value == moving) {
+      moving_split = tab.split_id;
+      break;
+    }
+  }
+  int last_member = 0;
+  for (const phi_framework::TabSnapshot& tab : strip) {
+    if (tab.group_id != group || tab.id.value == moving ||
+        (!moving_split.empty() && tab.split_id == moving_split)) {
+      continue;
+    }
+    if (anchor != 0 && tab.id.value == anchor) {
+      return out;  // Inside the run: a slot the group already has.
+    }
+    last_member = tab.id.value;
+  }
+  if (last_member == 0) {
+    return out;  // Nothing else in the group: the unit is the group.
+  }
+  return GroupMoveAnchor{last_member, /*after=*/true};
+}
+
 }  // namespace
 
 void PhiCoordinator::NoteStoredRowSeen(const std::string& guid) {
@@ -1360,6 +1411,23 @@ TabId PhiCoordinator::OpenCell(BrowserId browser, const std::string& guid) {
   return a;
 }
 
+bool PhiCoordinator::MoveTabForDrop(BrowserId browser,
+                                    int tab,
+                                    int anchor,
+                                    const char* group) {
+  // The framework's own strip, read now: the cell branch may have just
+  // opened the tab it moves, which the window model has not seen yet.
+  PhiWindowModel::Snapshot strip;
+  if (group && *group && PhiWindowModel::Pull(framework_, browser, &strip)) {
+    const GroupMoveAnchor safe =
+        AnchorForGroupMove(strip.tabs, tab, anchor, group);
+    if (safe.after) {
+      return framework_->MoveTabAfter(browser.value, tab, safe.anchor, group);
+    }
+  }
+  return framework_->MoveTabBefore(browser.value, tab, anchor, group);
+}
+
 bool PhiCoordinator::ApplyMove(SlotId slot,
                                const SidebarMove& move,
                                const SidebarTree& tree) {
@@ -1384,8 +1452,8 @@ bool PhiCoordinator::ApplyMove(SlotId slot,
     if (live) {
       // A reorder (the pair moves as a unit inside the framework), possibly
       // joining or leaving a group on the way.
-      const bool ok = framework_->MoveTabBefore(
-          browser.value, TabOfKey(tree, key, 0), anchor, group);
+      const bool ok =
+          MoveTabForDrop(browser, TabOfKey(tree, key, 0), anchor, group);
       refresh();
       return ok;
     }
@@ -1403,7 +1471,7 @@ bool PhiCoordinator::ApplyMove(SlotId slot,
     }
     RemoveStoredRow(key.id);  // Clears the tags; the tabs stay plain.
     if (tab.valid() && (anchor != 0 || group)) {
-      framework_->MoveTabBefore(browser.value, tab.value, anchor, group);
+      MoveTabForDrop(browser, tab.value, anchor, group);
     }
     refresh();
     return true;

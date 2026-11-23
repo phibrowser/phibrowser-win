@@ -1301,6 +1301,13 @@ class PhiCoordinator : public SidebarHost,
   std::vector<BoundTab> TabsBoundTo(const std::string& guid) const;
   // The Move transition table (SidebarMove).
   bool ApplyMove(SlotId slot, const SidebarMove& move, const SidebarTree& tree);
+  // A sidebar drop's tab move: before `anchor` (0 = the end), joining
+  // `group` when it is set. A join is re-anchored where the framework can
+  // resolve it (PHI-2179).
+  bool MoveTabForDrop(BrowserId browser,
+                      int tab,
+                      int anchor,
+                      const char* group);
   // Opens a closed cell's pane(s) as live tab(s) bound to it; returns pane
   // A, invalid on refusal.
   TabId OpenCell(BrowserId browser, const std::string& guid);
