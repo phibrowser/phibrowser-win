@@ -695,7 +695,12 @@ bool PhiSidebarView::OnContentRowClick(POINT pt) {
 
 // Middle-click closes a tab row anywhere on the row (the Mac tab list's
 // otherMouseDown), merged split rows included. Pins and bookmarks are
-// persistent — a middle-click must not delete them, so only tab rows react.
+// persistent — a middle-click must not delete them. An OPEN bookmark row,
+// at the root or inside a folder, holds its tab in the row itself (never in
+// the tab list), so a middle-click there does what the row's hover minus
+// does: the bound tab closes and the bookmark stays (PHI-2163; the Mac's
+// outline ignores bookmark rows). Folders, closed bookmarks and pinned
+// cells do nothing.
 bool PhiSidebarView::OnMiddleClick(POINT pt) {
   if (!framework_) {
     return false;
@@ -705,6 +710,15 @@ bool PhiSidebarView::OnMiddleClick(POINT pt) {
       continue;
     }
     Apply(SidebarClose{row.key, -1});
+    return true;
+  }
+  for (const ShortcutRow& bookmark : bookmarks_) {
+    if (!::PtInRect(&bookmark.bounds, pt)) {
+      continue;
+    }
+    if (bookmark.open && !bookmark.folder && !agent_holds_input_) {
+      Apply(SidebarClose{bookmark.key, -1});
+    }
     return true;
   }
   return false;

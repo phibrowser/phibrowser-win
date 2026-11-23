@@ -467,7 +467,7 @@ Invariants enforced here and nowhere else:
 | Gesture | Closed cell | Open cell |
 |---|---|---|
 | click (release without drag) | `NewTab(url)` then `SetTabTagById(tab, guid)`; for `pane_b`: second tab, `CreateSplitViewForTabs`, tags both | `ActivateTabById(tab_a)` (split: the pane under the pointer) |
-| close glyph / middle-click | hidden | `CloseTabById` on each bound pane, higher strip index first; row stays, becomes closed |
+| close glyph / middle-click | hidden; a middle-click does nothing | `CloseTabById` on each bound pane, higher strip index first; row stays, becomes closed. Bookmark rows only, at the root or in a folder (PHI-2163): a pinned cell has no close glyph and ignores a middle-click, as the Mac's tab list skips pinned tabs |
 | double-click | — | `NavigateTabInPlace(tab_a, stored url)` snap back |
 | Ctrl+double-click | — | open current page as a background plain tab, then snap back |
 | context "Unpin / Remove bookmark" | delete row | clear tags, then delete row; tabs stay plain |
