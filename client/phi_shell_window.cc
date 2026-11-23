@@ -10062,7 +10062,7 @@ void PhiShellWindow::RenderFloatingSidebar(HDC dc, const RECT& panel_rc) {
       // it takes the same alpha over the neutral the acrylic settles to
       // (the flyout ground), which is the docked look on a plain desktop.
       const uint32_t neutral = PhiPackedRgb(palette.flyout);
-      const int alpha = g_phi_backdrop_tint_alpha;
+      const int alpha = PhiBackdropTintAlpha(palette.dark ? 0 : 0xFFFFFF);
       for (uint32_t& ground : grounds) {
         uint32_t mixed = 0xFF000000u;
         for (int shift : {0, 8, 16}) {

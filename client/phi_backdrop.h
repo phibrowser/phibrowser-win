@@ -31,6 +31,26 @@ inline void PhiSetBackdropTransparency(int percent) {
       (255 * (100 - std::clamp(percent, 0, 100)) + 50) / 100;
 }
 
+// A dark tint never shows more of the backdrop than the Mac's does: its
+// overlay alpha, 0.8 (PHI-2127). The tint is read over black, so what shows
+// through adds straight onto the ground: over a light desktop Windows' dark
+// acrylic passes far more light than the Mac's dark material, and a dark or
+// Incognito sidebar at the default 50 % came out mid-grey with its white
+// labels and icons washed out. A light tint keeps the slider's alpha: over
+// a dark desktop the light acrylic stays light. The slider still makes a
+// dark sidebar more opaque, below 20 %.
+inline constexpr int kPhiBackdropDarkMinTintAlpha = 204;
+
+// The tint's alpha for a palette laid over `neutral`, the backing every
+// caller passes: black for a dark palette, white for a light one.
+inline int PhiBackdropTintAlpha(uint32_t neutral) {
+  const int sum = static_cast<int>((neutral & 255) + ((neutral >> 8) & 255) +
+                                   ((neutral >> 16) & 255));
+  return sum < 3 * 128 ? std::max(g_phi_backdrop_tint_alpha,
+                                  kPhiBackdropDarkMinTintAlpha)
+                       : g_phi_backdrop_tint_alpha;
+}
+
 inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
   int coverage = 0;
   for (int shift : {0, 8, 16}) {
@@ -46,7 +66,7 @@ inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
   return coverage;
 }
 
-// The tint is `pixel` read as one colour at g_phi_backdrop_tint_alpha over
+// The tint is `pixel` read as one colour at PhiBackdropTintAlpha over
 // `ground`, as the Mac lays its overlay colour over the material; only a
 // pixel too far from `ground` for that alpha takes more.
 // PhiBackdropPixel with the tint's alpha raised by `opacity` (0-255) of the
@@ -55,11 +75,9 @@ inline int PhiBackdropCoverage(uint32_t pixel, uint32_t ground) {
 inline uint32_t PhiBackdropPixelRaised(uint32_t pixel,
                                        uint32_t ground,
                                        int opacity) {
-  const int floor = g_phi_backdrop_tint_alpha +
-                    ((255 - g_phi_backdrop_tint_alpha) *
-                         std::clamp(opacity, 0, 255) +
-                     127) /
-                        255;
+  const int tint = PhiBackdropTintAlpha(ground);
+  const int floor =
+      tint + ((255 - tint) * std::clamp(opacity, 0, 255) + 127) / 255;
   const int alpha = std::max(floor, PhiBackdropCoverage(pixel, ground));
   uint32_t result = static_cast<uint32_t>(alpha) << 24;
   for (int shift : {0, 8, 16}) {
@@ -73,8 +91,8 @@ inline uint32_t PhiBackdropPixelRaised(uint32_t pixel,
 }
 
 inline uint32_t PhiBackdropPixel(uint32_t pixel, uint32_t ground) {
-  const int alpha =
-      std::max(g_phi_backdrop_tint_alpha, PhiBackdropCoverage(pixel, ground));
+  const int alpha = std::max(PhiBackdropTintAlpha(ground),
+                             PhiBackdropCoverage(pixel, ground));
   uint32_t result = static_cast<uint32_t>(alpha) << 24;
   for (int shift : {0, 8, 16}) {
     const int c = (pixel >> shift) & 255;
