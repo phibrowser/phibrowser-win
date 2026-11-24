@@ -29,6 +29,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "client/phi_about_window.h"
 #include "client/phi_agent_handoff_prompt.h"
 #include "client/phi_agent_overlay.h"
 #include "client/phi_client_analytics.h"
@@ -3671,6 +3672,11 @@ void PhiCoordinator::ReorderSpace(const std::string& space_id, int new_index) {
   space_manager_->ReorderSpace(space_id, new_index);
 }
 
+namespace {
+// The Mac OverlayToastCenter's default duration.
+constexpr int kBookmarkSavedToastMs = 3000;
+}  // namespace
+
 void PhiCoordinator::RequestBookmarkActiveTab(int64_t slot_number,
                                               int64_t browser_number) {
   const SlotId slot{slot_number};
@@ -3692,14 +3698,58 @@ void PhiCoordinator::RequestBookmarkActiveTab(int64_t slot_number,
   if (url.empty()) {
     return;  // Nothing to bookmark (the Mac disables the item then).
   }
-  int fw = 0, fh = 0;
-  const std::string favicon = CaptureFavicon(browser, &fw, &fh);
-  const std::string guid =
-      tab_store_.AddBookmark(profile_id, space_id, std::string(), title, url,
-                             /*folder=*/false, favicon, fw, fh);
-  if (!guid.empty()) {
+  // The Mac's toggleBookmark (PHI-2202): a page the Space already keeps as
+  // a single-page bookmark is not saved twice; either way a toast says what
+  // happened ("Added to Bookmarks" / "Already Bookmarked"), and its Edit
+  // button opens the bookmark's editor on demand. Saving never blocks.
+  std::string guid;
+  for (const PhiRow& row : tab_store_.BookmarkTree(
+           profile_id, space_id, PhiFaviconForm::kNone)) {
+    if (row.type == PhiRowType::kBookmark && row.url_b.empty() &&
+        row.url == url) {
+      guid = row.guid;
+      break;
+    }
+  }
+  const bool already_bookmarked = !guid.empty();
+  if (!already_bookmarked) {
+    int fw = 0, fh = 0;
+    const std::string favicon = CaptureFavicon(browser, &fw, &fh);
+    guid = tab_store_.AddBookmark(profile_id, space_id, std::string(), title,
+                                  url, /*folder=*/false, favicon, fw, fh);
+    if (guid.empty()) {
+      return;
+    }
     registry_.InvalidateAll();
   }
+  PhiShellWindow* window = registry_.ControllerForBrowser(browser);
+  if (!window) {
+    window = ControllerForSlot(slot);
+  }
+  if (!window || !window->shell_hwnd()) {
+    return;
+  }
+  const HWND owner = window->shell_hwnd();
+  PhiShowToastWithAction(
+      owner, window->CurrentPalette(),
+      PhiStr(already_bookmarked ? "browser.bookmarkShortcut.alreadySavedToast"
+                                : "browser.bookmarkShortcut.savedToast"),
+      std::wstring(), kBookmarkSavedToastMs,
+      PhiStr("browser.bookmarkShortcut.editAction"), [this, owner, guid] {
+        // Resolved at the click: the bookmark may be gone by then.
+        const std::optional<PhiRow> row = tab_store_.Find(guid);
+        if (!row || row->type != PhiRowType::kBookmark ||
+            !::IsWindow(owner)) {
+          return;
+        }
+        // The sidebar's own bookmark editor (its Edit Bookmark prompt).
+        std::wstring edited = base::UTF8ToWide(row->url);
+        if (PhiPromptText(owner, PhiStr("common.bookmarkEditor.editTitle"),
+                          PhiStr("sidebar.address"), &edited) &&
+            !edited.empty()) {
+          SetStoredRowUrl(guid, base::WideToUTF8(edited));
+        }
+      });
 }
 
 void PhiCoordinator::LoadStores(const std::wstring& user_data_dir) {
@@ -4987,6 +5037,21 @@ void PhiCoordinator::RequestUrlRulesEditor(HWND anchor) {
   // The universal URL Rules editor: one app-global window over the router,
   // the Space list and the profile names (all PhiSettingsHost reads).
   PhiUrlRulesWindow::Open(this, anchor);
+}
+
+void PhiCoordinator::RequestAbout(HWND anchor) {
+  // A link opens in the window the user is in (the Mac's active window
+  // controller), else the first one.
+  PhiAboutWindow::Open(anchor, [this](const std::string& url) {
+    PhiShellWindow* focused = FocusedUserController();
+    const SlotId slot = focused ? focused->slot() : registry_.FirstUserSlot();
+    if (slot.valid()) {
+      RequestOpen(slot.value, url);
+      if (PhiShellWindow* window = registry_.Resolve(slot.value)) {
+        ::SetForegroundWindow(window->shell_hwnd());
+      }
+    }
+  });
 }
 
 void PhiCoordinator::RequestFeedback(int64_t slot,

@@ -334,6 +334,7 @@ class PhiCoordinator : public SidebarHost,
   std::string KioskIncognitoSpaceId();
   void RequestSettings() override;
   void RequestUrlRulesEditor(HWND anchor) override;
+  void RequestAbout(HWND anchor) override;
   // PhiSettingsHost + PhiSyncSetupWindow::Host (the same answer for both).
   PhiSyncKeyService* SyncKeys() override;
   void RequestSyncSetup(HWND anchor) override;

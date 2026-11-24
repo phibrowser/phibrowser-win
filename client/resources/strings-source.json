@@ -1,5 +1,33 @@
 {
  "strings": {
+  "about.acknowledgements.chromiumProjectLink": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc): link text to the Chromium project home, {0} of about.acknowledgements.text",
+   "en": "Chromium"
+  },
+  "about.acknowledgements.chromiumSourceLink": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc): link text to Chromium's open source software credits (chrome://credits), {1} of about.acknowledgements.text",
+   "en": "open source software"
+  },
+  "about.acknowledgements.otherOpenSourceLink": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc): link text to the browser's other open source software credits, {2} of about.acknowledgements.text",
+   "en": "open source software"
+  },
+  "about.acknowledgements.text": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc): the acknowledgements sentence; {0}, {1}, {2} are the three links in order",
+   "en": "Phi is made possible by the {0} open source project, Chromium's {1}, as well as other {2}."
+  },
+  "about.chromiumVersionLabel": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc): the Chromium engine version, {0}",
+   "en": "Chromium Engine Version {0}"
+  },
+  "about.copyrightNotice": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc): the copyright notice, {0} = the year",
+   "en": "© {0} Phinomenon. All rights reserved."
+  },
+  "about.versionLabel": {
+   "comment": "Mac key (translations by key); the About window (phi_about_window.cc), under the app name: {0} = the version, {1} = the build number",
+   "en": "Version {0} ({1})"
+  },
   "accountDataExport.cancelButton": {
    "comment": "prompt — used at phi_prompt.cc:124",
    "en": "Cancel"
@@ -1874,6 +1902,48 @@
   "browser.addressBarMenu.siteSettingsAction": {
    "comment": "addressBar — the in-field site menu (the Mac WebContentAddressBarMenu), phi_shell_menus.cc PhiBuildSiteMenu",
    "en": "Site Settings"
+  },
+  "browser.bookmarkShortcut.alreadySavedToast": {
+   "comment": "Mac key; toast when Bookmark this tab / Ctrl+D finds the page already bookmarked (phi_coordinator.cc RequestBookmarkActiveTab)",
+   "en": "Already Bookmarked",
+   "interim": {
+    "de": "Bereits in Lesezeichen",
+    "es": "Ya está en Marcadores",
+    "fr": "Déjà dans les favoris",
+    "ja": "すでにブックマークされています",
+    "ko": "이미 북마크에 있음",
+    "nl": "Staat al in bladwijzers",
+    "zh-Hans": "已在书签中",
+    "zh-Hant": "已在書籤中"
+   }
+  },
+  "browser.bookmarkShortcut.editAction": {
+   "comment": "Mac key; the bookmark-saved toast's button that opens the bookmark editor (phi_coordinator.cc RequestBookmarkActiveTab)",
+   "en": "Edit",
+   "interim": {
+    "de": "Bearbeiten",
+    "es": "Editar",
+    "fr": "Modifier",
+    "ja": "編集",
+    "ko": "편집",
+    "nl": "Bewerken",
+    "zh-Hans": "编辑",
+    "zh-Hant": "編輯"
+   }
+  },
+  "browser.bookmarkShortcut.savedToast": {
+   "comment": "Mac key; toast after Bookmark this tab / Ctrl+D saves the page (phi_coordinator.cc RequestBookmarkActiveTab)",
+   "en": "Added to Bookmarks",
+   "interim": {
+    "de": "Zu Lesezeichen hinzugefügt",
+    "es": "Añadido a Marcadores",
+    "fr": "Ajouté aux favoris",
+    "ja": "ブックマークに追加しました",
+    "ko": "북마크에 추가됨",
+    "nl": "Toegevoegd aan bladwijzers",
+    "zh-Hans": "已添加到书签",
+    "zh-Hant": "已加入書籤"
+   }
   },
   "browser.folio.addNoteAction": {
    "comment": "folio — the Mac key of the same name; used at phi_folio.cc",
@@ -4188,34 +4258,6 @@
   "localData.bookmarks.importedFromGuestFolderTitle": {
    "comment": "bookmarks — Container created when Guest bookmarks are moved into a signed-in account (phi_coordinator.cc)",
    "en": "Imported from Guest"
-  },
-  "menuBar.aboutBody": {
-   "comment": "About Phi alert - body. {0} is the version string",
-   "en": "Phi Browser for Windows {0}\nThe Phi client shell over the Phi framework.",
-   "translations": {
-    "de": "Phi Browser für Windows {0}\nDie Phi-Client-Shell über dem Phi-Framework.",
-    "es": "Phi Browser para Windows {0}\nEl shell del cliente Phi sobre el framework Phi.",
-    "fr": "Phi Browser pour Windows {0}\nLe shell client Phi au-dessus du framework Phi.",
-    "ja": "Phi Browser for Windows {0}\nPhi フレームワーク上で動作する Phi クライアントシェル。",
-    "ko": "Windows용 Phi Browser {0}\nPhi 프레임워크 위의 Phi 클라이언트 셸입니다.",
-    "nl": "Phi Browser voor Windows {0}\nDe Phi-clientshell boven het Phi-framework.",
-    "zh-Hans": "Phi Browser for Windows {0}\n运行于 Phi 框架之上的 Phi 客户端外壳。",
-    "zh-Hant": "Phi Browser for Windows {0}\n執行於 Phi 框架之上的 Phi 用戶端外殼。"
-   }
-  },
-  "menuBar.aboutPhi": {
-   "comment": "menuBar — used at phi_menu_bar.cc:282",
-   "en": "About Phi",
-   "translations": {
-    "de": "Über Phi",
-    "es": "Acerca de Phi",
-    "fr": "À propos de Phi",
-    "ja": "Phi について",
-    "ko": "Phi 정보",
-    "nl": "Over Phi",
-    "zh-Hans": "关于 Phi",
-    "zh-Hant": "關於 Phi"
-   }
   },
   "menuBar.actualSize": {
    "comment": "menuBar — used at phi_menu_bar.cc:340",
@@ -7665,6 +7707,10 @@
     "zh-Hans": "个人资料各自管理自己的设置。",
     "zh-Hant": "設定檔各自管理自己的設定。"
    }
+  },
+  "settings.profiles.createDialog.createButton": {
+   "comment": "Mac key (translations by key); the New Profile prompt's confirming button (phi_app_menu.cc, phi_settings_window.cc, phi_create_space_panel.cc)",
+   "en": "Create"
   },
   "settings.profiles.createDialog.message": {
    "comment": "createSpace — used at phi_create_space_panel.cc",

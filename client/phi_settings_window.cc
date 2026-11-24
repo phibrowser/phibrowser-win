@@ -7758,7 +7758,8 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     std::wstring name;
     if (PhiPromptText(hwnd(), PhiStr("settings.profiles.createDialog.title"),
                       PhiStr("settings.profiles.createDialog.message"), &name,
-                      nullptr, kPhiNameRules)) {
+                      PhiStr("settings.profiles.createDialog.createButton"),
+                      kPhiNameRules)) {
       host_->CreateProfileNamed(base::WideToUTF8(name));
     }
   }

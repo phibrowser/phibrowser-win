@@ -31,7 +31,6 @@
 #include "client/phi_modal_scope.h"
 #include "client/phi_prompt.h"
 #include "client/phi_updater.h"
-#include "client/phi_version.h"
 #include "client/phi_toast.h"
 #include "client/phi_theme.h"
 // The four narrow host interfaces and PhiWindowModel still live in the
@@ -1007,8 +1006,12 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
 
   switch (id) {
     case kCmdAbout:
-      PhiNotice(c->MenuShellWindow(), PhiStr("menuBar.aboutPhi"),
-                PhiStrF("menuBar.aboutBody", {PHI_WIN_VERSION_FULL_WIDE}).c_str());
+      // The Mac's About window (PHI-2202): name, version, engine,
+      // copyright and acknowledgements; Settings ▸ About keeps the update
+      // check.
+      if (c->MenuWindowHost()) {
+        c->MenuWindowHost()->RequestAbout(c->MenuShellWindow());
+      }
       return true;
     case kCmdReportIssue:
       c->MenuOpenFeedback();
@@ -1262,7 +1265,8 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
           PhiPromptText(c->MenuShellWindow(),
                         PhiStr("settings.profiles.createDialog.title"),
                         PhiStr("menuBar.newProfilePromptBody"), &name,
-                        /*confirm_label=*/nullptr, kPhiNameRules)) {
+                        PhiStr("settings.profiles.createDialog.createButton"),
+                        kPhiNameRules)) {
         c->MenuFramework()->CreateProfile(base::WideToUTF8(name).c_str());
       }
       return true;

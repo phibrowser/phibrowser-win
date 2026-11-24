@@ -475,9 +475,9 @@ std::optional<Manifest> ReadManifest(const std::wstring& job_root) {
 
 // --- Metadata (the Mac's makeMetadata) -----------------------------------
 
-// The framework's version: chrome.dll's file version, the browser this
-// client is hosting (the Mac's buildNumber slot).
-std::string ChromiumVersion() {
+}  // namespace
+
+std::string PhiChromiumVersion() {
   HMODULE module = ::GetModuleHandleW(L"chrome.dll");
   if (!module) {
     return std::string();
@@ -510,6 +510,8 @@ std::string ChromiumVersion() {
          std::to_string(HIWORD(info->dwFileVersionLS)) + "." +
          std::to_string(LOWORD(info->dwFileVersionLS));
 }
+
+namespace {
 
 std::string RegistryString(HKEY root, const wchar_t* key, const wchar_t* name) {
   std::wstring value(256, L'\0');
@@ -565,7 +567,7 @@ std::string ModelIdentifier() {
 
 base::DictValue MakeMetadata(const std::string& job_id,
                              const PhiFeedbackDraft& draft) {
-  const std::string chromium = ChromiumVersion();
+  const std::string chromium = PhiChromiumVersion();
   base::DictValue browser;
   browser.Set("name", "Phi Browser");
   browser.Set("version", PHI_WIN_VERSION_FULL_STRING);

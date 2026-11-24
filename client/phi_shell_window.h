@@ -671,6 +671,9 @@ class WindowHost {
   // Opens the universal URL Rules editor (Spaces ▸ URL Rules…), centred
   // over `anchor`.
   virtual void RequestUrlRulesEditor(HWND anchor) = 0;
+  // Opens the About window (Help ▸ About Phi; the Mac's About panel),
+  // centred over `anchor`.
+  virtual void RequestAbout(HWND anchor) = 0;
   // Opens the feedback form for `slot`, about `context` (its focused
   // tab) — Help ▸ Report an Issue, the sidebar's Feedback capsule, and
   // Chromium's own feedback command all land here.

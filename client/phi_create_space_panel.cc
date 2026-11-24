@@ -797,7 +797,9 @@ void PhiCreateSpacePanel::ShowProfileMenu(const Geometry& g) {
     if (PhiPromptText(host_hwnd_ ? host_hwnd_ : controller_->shell_hwnd(),
                       PhiStr("settings.profiles.createDialog.title"),
                       PhiStr("settings.profiles.createDialog.message"),
-                      &name, /*confirm_label=*/nullptr, kPhiNameRules)) {
+                      &name,
+                      PhiStr("settings.profiles.createDialog.createButton"),
+                      kPhiNameRules)) {
       controller_->spaces_host()->RequestCreateProfileForSpaceForm(
           controller_->slot().value, base::WideToUTF8(name));
     }

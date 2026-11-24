@@ -181,6 +181,11 @@ class PhiFeedbackOutbox {
   UINT notify_msg_ = 0;
 };
 
+// The framework's version: chrome.dll's file version, the Chromium this
+// client is hosting (the feedback metadata's buildNumber slot, the About
+// page's "Chromium Engine Version"). Empty when it cannot be read.
+std::string PhiChromiumVersion();
+
 }  // namespace phi_client
 
 #endif  // PHIBROWSER_WIN_CLIENT_PHI_FEEDBACK_OUTBOX_H_

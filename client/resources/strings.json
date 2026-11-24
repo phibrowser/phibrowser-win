@@ -12,6 +12,83 @@
   "zh-Hant"
  ],
  "strings": {
+  "about.acknowledgements.chromiumProjectLink": {
+   "de": "Chromium",
+   "en": "Chromium",
+   "es": "Chromium",
+   "fr": "Chromium",
+   "ja": "Chromium",
+   "ko": "Chromium",
+   "nl": "Chromium",
+   "zh-Hans": "Chromium",
+   "zh-Hant": "Chromium"
+  },
+  "about.acknowledgements.chromiumSourceLink": {
+   "de": "Open-Source-Software",
+   "en": "open source software",
+   "es": "software de código abierto",
+   "fr": "logiciels open source",
+   "ja": "オープンソースソフトウェア",
+   "ko": "오픈 소스 소프트웨어",
+   "nl": "opensourcesoftware",
+   "zh-Hans": "开源软件",
+   "zh-Hant": "開放原始碼軟體"
+  },
+  "about.acknowledgements.otherOpenSourceLink": {
+   "de": "Open-Source-Software",
+   "en": "open source software",
+   "es": "software de código abierto",
+   "fr": "logiciels open source",
+   "ja": "オープンソースソフトウェア",
+   "ko": "오픈 소스 소프트웨어",
+   "nl": "opensourcesoftware",
+   "zh-Hans": "开源软件",
+   "zh-Hant": "開放原始碼軟體"
+  },
+  "about.acknowledgements.text": {
+   "de": "Phi wird ermöglicht durch das Open-Source-Projekt {0}, die {1} von Chromium sowie weitere {2}.",
+   "en": "Phi is made possible by the {0} open source project, Chromium's {1}, as well as other {2}.",
+   "es": "Phi es posible gracias al proyecto de código abierto {0}, al {1} de Chromium y a otro {2}.",
+   "fr": "Phi est rendu possible par le projet open source {0}, les {1} de Chromium, ainsi que d'autres {2}.",
+   "ja": "Phiは、オープンソースプロジェクトの{0}、Chromiumの{1}、そしてその他の{2}によって実現しています。",
+   "ko": "Phi는 {0} 오픈 소스 프로젝트와 Chromium의 {1}, 그리고 기타 {2} 덕분에 만들어졌어요.",
+   "nl": "Phi is mogelijk gemaakt door het opensourceproject {0}, de {1} van Chromium en andere {2}.",
+   "zh-Hans": "Phi 的实现离不开 {0} 开源项目、Chromium 的 {1}，以及其他 {2}。",
+   "zh-Hant": "Phi 的誕生要歸功於 {0} 開放原始碼專案、Chromium 的 {1}，以及其他 {2}。"
+  },
+  "about.chromiumVersionLabel": {
+   "de": "Chromium-Engine-Version {0}",
+   "en": "Chromium Engine Version {0}",
+   "es": "Versión del motor Chromium {0}",
+   "fr": "Version {0} du moteur Chromium",
+   "ja": "Chromiumエンジンバージョン{0}",
+   "ko": "Chromium 엔진 버전 {0}",
+   "nl": "Chromium-engineversie {0}",
+   "zh-Hans": "Chromium 引擎版本 {0}",
+   "zh-Hant": "Chromium 引擎版本 {0}"
+  },
+  "about.copyrightNotice": {
+   "de": "© {0} Phinomenon. Alle Rechte vorbehalten.",
+   "en": "© {0} Phinomenon. All rights reserved.",
+   "es": "© {0} Phinomenon. Todos los derechos reservados.",
+   "fr": "© {0} Phinomenon. Tous droits réservés.",
+   "ja": "© {0} Phinomenon. All rights reserved.",
+   "ko": "© {0} Phinomenon. 모든 권리 보유.",
+   "nl": "© {0} Phinomenon. Alle rechten voorbehouden.",
+   "zh-Hans": "© {0} Phinomenon。保留所有权利。",
+   "zh-Hant": "© {0} Phinomenon 保留一切權利。"
+  },
+  "about.versionLabel": {
+   "de": "Version {0} ({1})",
+   "en": "Version {0} ({1})",
+   "es": "Versión {0} ({1})",
+   "fr": "Version {0} ({1})",
+   "ja": "バージョン{0} ({1})",
+   "ko": "버전 {0} ({1})",
+   "nl": "Versie {0} ({1})",
+   "zh-Hans": "版本 {0}（{1}）",
+   "zh-Hant": "版本 {0}（{1}）"
+  },
   "accountDataExport.cancelButton": {
    "de": "Abbrechen",
    "en": "Cancel",
@@ -2465,6 +2542,39 @@
    "nl": "Site-instellingen",
    "zh-Hans": "网站设置",
    "zh-Hant": "網站設定"
+  },
+  "browser.bookmarkShortcut.alreadySavedToast": {
+   "de": "Bereits in Lesezeichen",
+   "en": "Already Bookmarked",
+   "es": "Ya está en Marcadores",
+   "fr": "Déjà dans les favoris",
+   "ja": "すでにブックマークされています",
+   "ko": "이미 북마크에 있음",
+   "nl": "Staat al in bladwijzers",
+   "zh-Hans": "已在书签中",
+   "zh-Hant": "已在書籤中"
+  },
+  "browser.bookmarkShortcut.editAction": {
+   "de": "Bearbeiten",
+   "en": "Edit",
+   "es": "Editar",
+   "fr": "Modifier",
+   "ja": "編集",
+   "ko": "편집",
+   "nl": "Bewerken",
+   "zh-Hans": "编辑",
+   "zh-Hant": "編輯"
+  },
+  "browser.bookmarkShortcut.savedToast": {
+   "de": "Zu Lesezeichen hinzugefügt",
+   "en": "Added to Bookmarks",
+   "es": "Añadido a Marcadores",
+   "fr": "Ajouté aux favoris",
+   "ja": "ブックマークに追加しました",
+   "ko": "북마크에 추가됨",
+   "nl": "Toegevoegd aan bladwijzers",
+   "zh-Hans": "已添加到书签",
+   "zh-Hant": "已加入書籤"
   },
   "browser.folio.addNoteAction": {
    "de": "Notiz hinzufügen",
@@ -5534,28 +5644,6 @@
    "nl": "Geïmporteerd uit Gast",
    "zh-Hans": "从访客模式导入",
    "zh-Hant": "從訪客匯入"
-  },
-  "menuBar.aboutBody": {
-   "de": "Phi Browser für Windows {0}\nDie Phi-Client-Shell über dem Phi-Framework.",
-   "en": "Phi Browser for Windows {0}\nThe Phi client shell over the Phi framework.",
-   "es": "Phi Browser para Windows {0}\nEl shell del cliente Phi sobre el framework Phi.",
-   "fr": "Phi Browser pour Windows {0}\nLe shell client Phi au-dessus du framework Phi.",
-   "ja": "Phi Browser for Windows {0}\nPhi フレームワーク上で動作する Phi クライアントシェル。",
-   "ko": "Windows용 Phi Browser {0}\nPhi 프레임워크 위의 Phi 클라이언트 셸입니다.",
-   "nl": "Phi Browser voor Windows {0}\nDe Phi-clientshell boven het Phi-framework.",
-   "zh-Hans": "Phi Browser for Windows {0}\n运行于 Phi 框架之上的 Phi 客户端外壳。",
-   "zh-Hant": "Phi Browser for Windows {0}\n執行於 Phi 框架之上的 Phi 用戶端外殼。"
-  },
-  "menuBar.aboutPhi": {
-   "de": "Über Phi",
-   "en": "About Phi",
-   "es": "Acerca de Phi",
-   "fr": "À propos de Phi",
-   "ja": "Phi について",
-   "ko": "Phi 정보",
-   "nl": "Over Phi",
-   "zh-Hans": "关于 Phi",
-   "zh-Hant": "關於 Phi"
   },
   "menuBar.actualSize": {
    "de": "Tatsächliche Größe\tCtrl+0",
@@ -10575,6 +10663,17 @@
    "nl": "profiel beheert zijn eigen instellingen.",
    "zh-Hans": "个人资料各自管理自己的设置。",
    "zh-Hant": "設定檔各自管理自己的設定。"
+  },
+  "settings.profiles.createDialog.createButton": {
+   "de": "Erstellen",
+   "en": "Create",
+   "es": "Crear",
+   "fr": "Créer",
+   "ja": "作成",
+   "ko": "만들기",
+   "nl": "Maak aan",
+   "zh-Hans": "创建",
+   "zh-Hant": "建立"
   },
   "settings.profiles.createDialog.message": {
    "de": "Gib einen Namen für das neue Profil ein. Jedes Profil hat eigene Cookies, einen eigenen Verlauf und eigene Erweiterungen.",
