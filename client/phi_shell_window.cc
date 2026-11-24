@@ -5714,6 +5714,19 @@ void PhiShellWindow::UpdateSidebarBackdrop() {
   if (FAILED(::DwmExtendFrameIntoClientArea(shell_hwnd_, &margins))) {
     sidebar_backdrop_ = false;
   }
+  // With Settings ▸ Personalization ▸ Colors ▸ "Show accent color on title
+  // bars and window borders" on, DWM paints the accent across the caption
+  // strip of the frame extended under the client while the window is
+  // active: a hard-edged accent band behind the sidebar's top row, under
+  // the tint, with nothing of ours lined up with it (PHI-2181). The shell
+  // has no title bar of its own to colour: the Space's ground is the
+  // caption, as on the Mac, so DWM is told to paint no caption colour.
+  // Windows 11 only; older DWM refuses the attribute and paints none.
+  const COLORREF caption = sidebar_backdrop_ && !legacy_acrylic_
+                               ? DWMWA_COLOR_NONE
+                               : DWMWA_COLOR_DEFAULT;
+  ::DwmSetWindowAttribute(shell_hwnd_, DWMWA_CAPTION_COLOR, &caption,
+                          sizeof(caption));
   frame_glass_ = sidebar_backdrop_ && services_.prefs &&
                  services_.prefs->TranslucentFrame();
   if (frame_glass_ != dwm_caption_hidden_) {
