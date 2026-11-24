@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+# Copyright 2026 Phinomenon Inc.
+# Licensed under the Apache License, Version 2.0; see the LICENSE file.
+"""Rasterize the Mac's Phi icon catalog SVGs into client/phi_icon_masks.cc.
+
+The Mac draws its Space / pin icon picker from the imagesets in
+Resources/Assets.xcassets/icons: Heroicons v2 mini picture icons
+(scripts/generate-phi-icons.py on the Mac writes them, MIT, credited in
+third_party/heroicons) and hand-drawn letters, digits and punctuation. The
+Windows client ports the same shapes as 48x48 alpha masks and tints them at
+draw time, in the run-length format phi_folder_icon_masks.cc uses.
+
+The ids come from PhiIconCatalogAll() in client/phi_icons.cc, so the catalog
+there stays the one list on Windows: add an icon to it, then run
+
+    python3 tools/gen-icon-masks.py [--mac /path/to/phibrowser-mac]
+
+Only the light (black-on-transparent) SVG of each imageset is read; the dark
+ones are the same shapes in white. The SVGs' group transforms are applied
+(the picture icons sit in `translate(2 2) scale(0.8)` inside their 20x20
+canvas), so a mask keeps the imageset's padding.
+"""
+
+import argparse
+import importlib.util
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+
+
+def load_folder_tool():
+    """The folder-mask tool's path flattener, filler and RLE (same format)."""
+    spec = importlib.util.spec_from_file_location(
+        'gen_folder_icon_masks', os.path.join(HERE, 'gen-folder-icon-masks.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+folder = load_folder_tool()
+MASK = folder.MASK
+# 16x16 samples a pixel (256 coverage levels): the folder tool's 4x gives
+# visible steps on these thinner shapes. The folder tool reads its own SS.
+SS = folder.SS = 16
+NS = '{http://www.w3.org/2000/svg}'
+NUM = re.compile(r'[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?')
+
+
+def catalog_ids(source):
+    """The catalog's ids, in PhiIconCatalogAll() order."""
+    text = open(source, encoding='utf-8').read()
+    body = text[text.index('PhiIconCatalogAll()'):]
+    body = body[:body.index('});')]
+    ids = re.findall(r'\{"(phi-icon-[a-z0-9-]+)", "', body)
+    if len(ids) != len(set(ids)):
+        sys.exit('duplicate ids in PhiIconCatalogAll()')
+    return ids
+
+
+def multiply(a, b):
+    """Affine a·b, each (a, b, c, d, e, f) as SVG's matrix()."""
+    return (a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
+            a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3],
+            a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5])
+
+
+def parse_transform(text):
+    m = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+    for name, args in re.findall(r'(\w+)\s*\(([^)]*)\)', text or ''):
+        v = [float(n) for n in NUM.findall(args)]
+        if name == 'translate':
+            t = (1, 0, 0, 1, v[0], v[1] if len(v) > 1 else 0.0)
+        elif name == 'scale':
+            t = (v[0], 0, 0, v[1] if len(v) > 1 else v[0], 0, 0)
+        elif name == 'matrix':
+            t = tuple(v)
+        else:
+            sys.exit(f'unsupported transform: {name}')
+        m = multiply(m, t)
+    return m
+
+
+def drawable_paths(root):
+    """(element, transform) for every filled <path> outside defs/clipPath/
+    mask, in document order."""
+    out = []
+
+    def walk(el, matrix):
+        if el.tag in (f'{NS}defs', f'{NS}clipPath', f'{NS}mask'):
+            return
+        matrix = multiply(matrix, parse_transform(el.get('transform')))
+        if el.tag == f'{NS}path' and el.get('d'):
+            out.append((el, matrix))
+        for child in el:
+            walk(child, matrix)
+
+    walk(root, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0))
+    return out
+
+
+def rasterize(path):
+    root = ET.parse(path).getroot()
+    vb = root.get('viewBox')
+    if vb:
+        vx, vy, vw, vh = [float(v) for v in vb.replace(',', ' ').split()]
+    else:
+        vx = vy = 0.0
+        vw = float(root.get('width', 20))
+        vh = float(root.get('height', 20))
+    big = MASK * SS
+    sx, sy = big / vw, big / vh
+    cover = bytearray(big * big)
+    drawn = 0
+    for el, m in drawable_paths(root):
+        if (el.get('fill') or '').lower() == 'none':
+            continue
+        subpaths = []
+        for sp in folder.flatten(el.get('d')):
+            pts = []
+            for px, py in sp:
+                tx = m[0] * px + m[2] * py + m[4]
+                ty = m[1] * px + m[3] * py + m[5]
+                pts.append(((tx - vx) * sx, (ty - vy) * sy))
+            subpaths.append(pts)
+        folder.fill(subpaths, folder.even_odd_of(el), big, cover)
+        drawn += 1
+    if not drawn:
+        sys.exit(f'{path}: nothing to draw')
+    return folder.downsample(cover)
+
+
+HEADER = '''// Copyright 2026 Phinomenon Inc.
+// Licensed under the Apache License, Version 2.0; see the LICENSE file.
+
+// GENERATED by tools/gen-icon-masks.py from the Mac icon catalog
+// (Resources/Assets.xcassets/icons, light variants — the dark SVGs are the
+// same shapes in white). The picture icons are Heroicons v2 mini (MIT, see
+// third_party/heroicons). 48x48 alpha masks, run-length packed as
+// (count, value) byte pairs. Do not edit by hand.
+
+#include "client/phi_icons.h"
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "base/containers/span.h"
+#include "base/no_destructor.h"
+
+namespace phi_client {
+
+namespace {
+
+constexpr int kMaskSize = 48;
+
+constexpr unsigned char kMaskRle[] = {
+'''
+
+FOOTER = '''};
+
+}  // namespace
+
+const PhiMacIcon* PhiCatalogMask(const std::string& id) {
+  // Decoded once; map nodes never move, so the PhiMacIcon
+  // views handed out stay valid for the process lifetime.
+  struct Tables {
+    std::map<std::string, std::vector<unsigned char>> data;
+    std::map<std::string, PhiMacIcon> icons;
+  };
+  static const base::NoDestructor<Tables> tables([] {
+    const base::span<const unsigned char> rle(kMaskRle);
+    Tables t;
+    for (const MaskEntry& entry : kMaskEntries) {
+      std::vector<unsigned char> mask;
+      mask.reserve(kMaskSize * kMaskSize);
+      for (unsigned int i = 0; i + 1 < entry.length; i += 2) {
+        const unsigned char run = rle[entry.offset + i];
+        const unsigned char value =
+            rle[entry.offset + i + 1];
+        mask.insert(mask.end(), run, value);
+      }
+      t.data[entry.id] = std::move(mask);
+    }
+    for (const auto& [icon_id, mask] : t.data) {
+      t.icons[icon_id] = {kMaskSize, kMaskSize, mask.data()};
+    }
+    return t;
+  }());
+  auto it = tables->icons.find(id);
+  return it == tables->icons.end() ? nullptr : &it->second;
+}
+
+const PhiMacIcon* PhiCatalogMaskForGlyph(const std::wstring& text) {
+  if (text.size() != 1) {
+    return nullptr;
+  }
+  for (const PhiCatalogIcon& entry : PhiIconCatalogAll()) {
+    if (entry.glyph == text[0]) {
+      return PhiCatalogMask(entry.id);
+    }
+  }
+  return nullptr;
+}
+
+}  // namespace phi_client
+'''
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--mac', default=os.path.expanduser('~/Phi/phibrowser-mac'))
+    ap.add_argument('--icons', help='the icons folder itself (default: '
+                    '<mac>/Resources/Assets.xcassets/icons)')
+    ap.add_argument('--catalog', default=os.path.join(REPO, 'client', 'phi_icons.cc'))
+    ap.add_argument('--out', default=os.path.join(REPO, 'client', 'phi_icon_masks.cc'))
+    args = ap.parse_args()
+
+    icons = args.icons or os.path.join(args.mac, 'Resources', 'Assets.xcassets', 'icons')
+    ids = catalog_ids(args.catalog)
+    blob, entries = [], []
+    for icon_id in sorted(ids):
+        svg = os.path.join(icons, f'{icon_id}.imageset', f'{icon_id}.svg')
+        if not os.path.exists(svg):
+            sys.exit(f'missing {svg}')
+        pairs = folder.rle(rasterize(svg))
+        offset = len(blob)
+        for run, value in pairs:
+            blob += [run, value]
+        entries.append((icon_id, offset, len(pairs) * 2))
+
+    with open(args.out, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(HEADER)
+        line = '    '
+        for b in blob:
+            piece = f'{b},'
+            if len(line) + len(piece) > 76:
+                f.write(line.rstrip() + '\n')
+                line = '    '
+            line += piece + ' '
+        if line.strip():
+            f.write(line.rstrip() + '\n')
+        f.write('''};
+
+struct MaskEntry {
+  const char* id;
+  unsigned int offset;
+  unsigned int length;
+};
+
+constexpr MaskEntry kMaskEntries[] = {
+''')
+        for icon_id, offset, length in entries:
+            f.write(f'    {{"{icon_id}", {offset}, {length}}},\n')
+        f.write(FOOTER)
+    print(f'{len(entries)} masks, {len(blob)} bytes -> {args.out}')
+
+
+if __name__ == '__main__':
+    main()

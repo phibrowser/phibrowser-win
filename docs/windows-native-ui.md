@@ -1063,10 +1063,10 @@ Windows version:
 
 ### 5.9 Space icons and emoji (the "Space icons & emoji" artboard)
 
-The shared catalogue contains 88 solid icons
+The shared catalogue contains 158 solid icons
 (`client/phi_icon_masks.cc`, 48 px alpha masks rasterised from
-`Assets.xcassets/icons`: academic-cap … view-grid-add, the letters A–Z
-and the digits 0–9) plus the shared emoji catalogue
+`Assets.xcassets/icons` by `tools/gen-icon-masks.py`: 118 Heroicons v2
+mini pictures, the letters A–Z, the digits 0–9 and ? ! ~ `) plus the shared emoji catalogue
 (`resources/emoji-catalog.json`, Unicode 17, nine groups, 1914 emoji),
 stored as `phi:<id>` / `emoji:<id>` so a Space means the same on both
 clients. The **stored ids do not change**; only how Windows draws them.
@@ -1091,13 +1091,15 @@ clients. The **stored ids do not change**; only how Windows draws them.
   first-letter fallback stay for missing fonts.
 * **Picker**: the "Change icon…" flyout is 262 dip wide, with 16 dip
   padding, Icon | Emoji tabs and search. The icon grid has eight columns
-  of 20 dip cells with 10 dip gaps, in the supplied order: 48 pictograms,
-  digits 1–9 and 0, letters A–Z, then ? ! ~ and backtick. All 11 rows are
-  visible. Selected cells retain the accent fill and inset ring. Emoji
+  of 20 dip cells with 10 dip gaps, in the Mac's order: the 48 original
+  pictograms, the 70 added with the Heroicons v2 artwork (Mac `739fd939`),
+  digits 1–9 and 0, letters A–Z, then ? ! ~ and backtick. Eleven rows are
+  visible and the rest scroll. Selected cells retain the accent fill and inset ring. Emoji
   retain their category strip, group headings and name search. The create
   form and Settings use the same catalog artwork in their existing layouts.
-* Implementation: `PhiIconCatalogAll` preserves all 88 stored ids and
-  display keys. `PhiDrawCatalogArtwork` draws the padded artwork canvas;
+* Implementation: `PhiIconCatalogAll` preserves the 88 original stored
+  ids and display keys; the 70 added ids use stand-ins from U+E600, below
+  the MDL2 block. `PhiDrawCatalogArtwork` draws the padded artwork canvas;
   `PhiDrawCatalogIcon` fits its ink to a Space icon slot. Both resolve the
   same compiled masks, with no dependency on an installed icon font.
 
