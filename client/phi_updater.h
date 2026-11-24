@@ -8,6 +8,12 @@
 
 namespace phi_client {
 
+// The Windows release notes: the phibrowser/phibrowser-win GitHub releases,
+// newest first. Settings ▸ About's "What's new" row and Help ▸ What's new
+// open it in a tab (PHI-2024, PHI-2217).
+inline constexpr char kPhiReleaseNotesUrl[] =
+    "https://github.com/phibrowser/phibrowser-win/releases/";
+
 // The Windows update check — WinSparkle over the SAME appcast pipeline the
 // Mac's Sparkle uses (ota.phibrowser.com/<channel>/appcast). WinSparkle.dll
 // is vendored (third_party/winsparkle) and loaded DYNAMICALLY: a dev deploy

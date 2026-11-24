@@ -1818,7 +1818,7 @@ void PhiSettingsWindow::BuildAbout(int* y) {
     Item row;
     row.kind = ItemKind::kListRow;
     row.action = "openpage";
-    row.payload = "https://github.com/phibrowser/phibrowser-win/releases/";
+    row.payload = kPhiReleaseNotesUrl;
     items_.push_back(std::move(row));
     const size_t row_index = items_.size() - 1;
     const RECT area =

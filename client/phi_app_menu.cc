@@ -331,9 +331,9 @@ void PhiAppMenu::BuildStatic() {
   // Live only when WinSparkle.dll is deployed beside the client.
   row(help_, kCmdCheckUpdate, "appMenu.checkForUpdate", fluent::kSync,
       PhiUpdater::Available());
-  row(help_, kCmdWhatsNew, "appMenu.whatsNew", fluent::kLightbulb, false);
-  row(help_, kCmdDocumentation, "appMenu.documentation", fluent::kDocument,
-      false);
+  // The Windows release notes, as Settings ▸ About's row (PHI-2217). No
+  // Documentation row: neither client has a page behind it.
+  row(help_, kCmdWhatsNew, "appMenu.whatsNew", fluent::kLightbulb);
   rows_.AppendSeparator(help_);
   // The sidebar Feedback pill's bug (Figma solar:bug-line-duotone), not
   // the icon face's Feedback glyph.
@@ -1044,6 +1044,11 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       return true;
     case kCmdReportIssue:
       c->MenuOpenFeedback();
+      return true;
+    case kCmdWhatsNew:
+      if (c->MenuFramework() && target.valid()) {
+        c->MenuFramework()->OpenTab(target, kPhiReleaseNotesUrl);
+      }
       return true;
     case kCmdCheckUpdate:
       if (!PhiUpdater::CheckForUpdateWithUi()) {

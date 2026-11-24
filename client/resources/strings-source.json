@@ -1117,20 +1117,6 @@
     "zh-Hant": "開發人員工具"
    }
   },
-  "appMenu.documentation": {
-   "comment": "appMenu — the ⋯ Settings-and-more flyout (docs/windows-native-ui.md §3.1); \"\\t<chord>\" is the right-aligned shortcut. Translations authored for Windows (impl log D14).",
-   "en": "Documentation\tF1",
-   "translations": {
-    "de": "Dokumentation",
-    "es": "Documentación",
-    "fr": "Documentation",
-    "ja": "ドキュメント",
-    "ko": "문서",
-    "nl": "Documentatie",
-    "zh-Hans": "文档",
-    "zh-Hant": "說明文件"
-   }
-  },
   "appMenu.downloads": {
    "comment": "appMenu — the ⋯ Settings-and-more flyout (docs/windows-native-ui.md §3.1); \"\\t<chord>\" is the right-aligned shortcut. Translations authored for Windows (impl log D14).",
    "en": "Downloads\tCtrl+J",

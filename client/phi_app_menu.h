@@ -139,7 +139,7 @@ enum : UINT {
   // Help
   kCmdReportIssue,
   kCmdWhatsNew,
-  kCmdDocumentation,
+  kCmdDocumentation,  // Unused since PHI-2217; kept so later ids keep their numbers.
   kCmdExportUserData,
   kCmdImportUserData,
   // APPEND ONLY below this line: the box test rigs post these ids as raw

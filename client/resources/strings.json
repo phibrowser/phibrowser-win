@@ -1652,17 +1652,6 @@
    "zh-Hans": "开发者工具\tCtrl+Shift+I",
    "zh-Hant": "開發人員工具\tCtrl+Shift+I"
   },
-  "appMenu.documentation": {
-   "de": "Dokumentation\tF1",
-   "en": "Documentation\tF1",
-   "es": "Documentación\tF1",
-   "fr": "Documentation\tF1",
-   "ja": "ドキュメント\tF1",
-   "ko": "문서\tF1",
-   "nl": "Documentatie\tF1",
-   "zh-Hans": "文档\tF1",
-   "zh-Hant": "說明文件\tF1"
-  },
   "appMenu.downloads": {
    "de": "Downloads\tCtrl+J",
    "en": "Downloads\tCtrl+J",
