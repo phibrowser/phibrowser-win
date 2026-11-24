@@ -1345,6 +1345,7 @@ class PhiShellWindow : public PhiHitSource,
   bool ActiveTabExtensionOfferable() const;
   bool ActiveTabDistillable() const;
   int tabs_top();
+  int sidebar_scroll() const { return sidebar_->list_scroll(); }
   int tab_row_height() const;
   // The placed sidebar rows (keys + client rects) for the agent dialect's
   // window.layout, so a box probe can aim a real drag without pixels.
@@ -1682,7 +1683,12 @@ class PhiShellWindow : public PhiHitSource,
   // Collapses/restores the sidebar (View > Toggle Sidebar, Ctrl+S). The
   // content card widens to the left margin; the margin becomes the hover
   // trigger for the floating sidebar. No-op in the comfortable layout.
-  void ToggleSidebar();
+  // `from_key`: the shortcut, which with the pointer on the docked sidebar
+  // leaves the floating panel out in its place (the Mac's unpin in place,
+  // 0416448a) instead of tucked at the edge.
+  void ToggleSidebar(bool from_key = false);
+  // The pointer is on the docked sidebar, with nothing over it.
+  bool PointerOnDockedSidebar();
   // The New Tab entry points (Ctrl+T, the sidebar row, the menu): honors
   // the "New tab behavior" setting — page mode opens the NTP, omnibox mode
   // focuses the address field and the tab is born on commit.
@@ -2198,7 +2204,7 @@ class PhiShellWindow : public PhiHitSource,
   bool MenuCanRedoClearTabs() const override;
   void MenuSplitWithNewTab() override;
   void MenuStepTab(int direction) override;
-  void MenuToggleSidebar() override;
+  void MenuToggleSidebar(bool from_accelerator) override;
   void MenuToggleReader(bool from_accelerator) override;
   bool MenuAgentHoldsInput() const override;
   void MenuToggleDownloads() override;
@@ -2694,6 +2700,9 @@ class PhiShellWindow : public PhiHitSource,
   HWND floating_flyout_ = nullptr;
   // The pointer entered the invisible edge zone (the 300 ms dwell).
   ULONGLONG floating_hover_tick_ = 0;
+  // The pointer has been on the slid-in panel's visible part since it last
+  // came out: running on out of the window from there holds it.
+  bool floating_pointer_reached_ = false;
   // The band (chips, pinned grid, outline, tab rows) belongs to this
   // shell's own paint and pointer: false while the sidebar is collapsed and
   // the turn is not the floating panel's.
@@ -2713,8 +2722,10 @@ class PhiShellWindow : public PhiHitSource,
   // would otherwise paint over the desktop beside the window. The rounded
   // region stays at rest too; native shadows are disabled to obey the clip.
   void ClipFloatingPanel();
-  // Starts the 150 ms slide to the expanded or tucked position.
-  void SlideFloatingPanel(bool expanded);
+  // Starts the 150 ms slide to the expanded or tucked position; puts the
+  // panel there at once when `animated` is false or Windows' Animation
+  // effects are off.
+  void SlideFloatingPanel(bool expanded, bool animated = true);
   // Slides the panel in (the left-edge hover, a drag crossing the edge).
   void ShowFloatingSidebar();
   // Slides it back to its tucked position.

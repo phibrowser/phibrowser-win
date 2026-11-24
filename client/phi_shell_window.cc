@@ -257,6 +257,17 @@ int OpaqueFieldCoverage(const RECT& field, int radius, int x, int y) {
       field.right - field.left, field.bottom - field.top, radius));
 }
 
+// Windows' Settings ▸ Accessibility ▸ Visual effects ▸ Animation effects;
+// on when it cannot be read.
+bool PhiClientAreaAnimationsOn() {
+  BOOL animations = TRUE;
+  if (!::SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &animations,
+                               0)) {
+    return true;
+  }
+  return animations != FALSE;
+}
+
 double PerformanceMs() {
   LARGE_INTEGER frequency = {};
   LARGE_INTEGER counter = {};
@@ -2357,8 +2368,8 @@ void PhiShellWindow::PairPendingSplit() {
   }
 }
 
-void PhiShellWindow::MenuToggleSidebar() {
-  ToggleSidebar();
+void PhiShellWindow::MenuToggleSidebar(bool from_accelerator) {
+  ToggleSidebar(from_accelerator);
 }
 
 bool PhiShellWindow::MenuAgentHoldsInput() const {
@@ -3721,8 +3732,32 @@ RECT PhiShellWindow::ContentRect() {
   return ComputeWindowLayout().content;
 }
 
-void PhiShellWindow::ToggleSidebar() {
+void PhiShellWindow::ToggleSidebar(bool from_key) {
+  // Hiding with the shortcut while the pointer is on the column turns the
+  // column into the floating panel where it is: the pointer is still on the
+  // sidebar, so it stays up, and the list keeps its scroll position (one
+  // list, re-laid out for the panel). A click on the toggle means put it
+  // away, so only a key press keeps it up (Mac 0416448a).
+  const bool in_place =
+      from_key && !sidebar_collapsed_ && PointerOnDockedSidebar();
   SetSidebarCollapsed(!sidebar_collapsed_);
+  if (in_place && sidebar_collapsed_ && floating_sidebar_) {
+    SlideFloatingPanel(/*expanded=*/true, /*animated=*/false);
+  }
+}
+
+bool PhiShellWindow::PointerOnDockedSidebar() {
+  if (!shell_hwnd_ || sidebar_collapsed_) {
+    return false;
+  }
+  POINT cursor = {};
+  if (!::GetCursorPos(&cursor) ||
+      ::GetAncestor(::WindowFromPoint(cursor), GA_ROOT) != shell_hwnd_) {
+    return false;
+  }
+  ::ScreenToClient(shell_hwnd_, &cursor);
+  const RECT sidebar = ComputeLayout().sidebar;
+  return ::PtInRect(&sidebar, cursor) != FALSE;
 }
 
 void PhiShellWindow::SetSidebarCollapsed(bool collapsed) {
@@ -8902,6 +8937,7 @@ void PhiShellWindow::EnsureFloatingPanel() {
     ::RegisterClassW(&cls);
   }
   floating_expanded_ = false;
+  floating_pointer_reached_ = false;
   floating_offset_y_ = 0;
   floating_panel_h_ = rc.bottom - rc.top;
   floating_hover_tick_ = 0;
@@ -8943,6 +8979,7 @@ void PhiShellWindow::DestroyFloatingPanel() {
   HWND panel = floating_sidebar_;
   floating_sidebar_ = nullptr;
   floating_expanded_ = false;
+  floating_pointer_reached_ = false;
   floating_panel_h_ = 0;
   floating_slide_start_ = 0;
   DropFloatingCache();
@@ -9004,11 +9041,30 @@ void PhiShellWindow::ClipFloatingPanel() {
   ::SetWindowRgn(floating_sidebar_, region, TRUE);  // The system owns it now.
 }
 
-void PhiShellWindow::SlideFloatingPanel(bool expanded) {
+void PhiShellWindow::SlideFloatingPanel(bool expanded, bool animated) {
   if (!floating_sidebar_ || floating_expanded_ == expanded) {
     return;
   }
   floating_expanded_ = expanded;
+  floating_pointer_reached_ = false;
+  if (!animated || !PhiClientAreaAnimationsOn()) {
+    // Windows' "Animation effects" off (the Mac's Reduce Motion, dacfd786 /
+    // 01be27ec), or a caller that wants it in place: the panel is at its
+    // rest at once, with no slide. A slide under way stops where it is
+    // going.
+    if (expanded) {
+      floating_shown_tick_ = ::GetTickCount64();
+      floating_outside_tick_ = 0;
+    }
+    floating_hover_tick_ = 0;
+    PositionFloatingPanel();  // Lands any slide; shows or hides the panel.
+    if (expanded) {
+      ::SetWindowPos(floating_sidebar_, HWND_TOP, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+      ::InvalidateRect(floating_sidebar_, nullptr, FALSE);
+    }
+    return;
+  }
   RECT now_rc = {};
   ::GetWindowRect(floating_sidebar_, &now_rc);
   floating_slide_from_ = now_rc.left;
@@ -10148,7 +10204,7 @@ void PhiShellWindow::HideFloatingSidebar(bool animated) {
     return;
   }
   floating_flyout_ = nullptr;
-  SlideFloatingPanel(/*expanded=*/false);
+  SlideFloatingPanel(/*expanded=*/false, animated);
   if (!animated) {
     PositionFloatingPanel();
   }
@@ -10248,6 +10304,18 @@ void PhiShellWindow::FloatingSidebarTick() {
   }
   zone.right = std::min(zone.right, shell_rc.right);
   const bool inside = ::PtInRect(&zone, cursor) != FALSE;
+  if (floating_expanded_ && !floating_pointer_reached_) {
+    // The pointer is on the panel's visible part, not only the edge strip
+    // left of it (the Mac's pointerReachedFloatingSidebar, 29179ff9).
+    RECT client = {};
+    ::GetClientRect(shell_hwnd_, &client);
+    ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&client),
+                      2);
+    RECT visible = {};
+    floating_pointer_reached_ =
+        ::IntersectRect(&visible, &panel_rc, &client) &&
+        ::PtInRect(&visible, cursor);
+  }
   if (!inside && ::WindowFromPoint(cursor) != shell_hwnd_) {
     UpdateChromeTip(std::wstring());  // A panel button's tip: no leave event.
   }
@@ -10271,7 +10339,12 @@ void PhiShellWindow::FloatingSidebarTick() {
                            !::IsWindowVisible(floating_flyout_))) {
     floating_flyout_ = nullptr;
   }
-  const bool held = inside || sidebar_->drag_armed() ||
+  // A pointer that reached the panel and ran on out of the window, past its
+  // edge, keeps the panel out wherever it goes outside; back in the window,
+  // over the page, the usual countdown runs (Mac 29179ff9).
+  const bool ran_out =
+      floating_pointer_reached_ && ::PtInRect(&shell_rc, cursor) == FALSE;
+  const bool held = inside || ran_out || sidebar_->drag_armed() ||
                     PhiModalDepthFor(shell_hwnd_) > 0 ||
                     floating_flyout_ != nullptr;
   if (held) {

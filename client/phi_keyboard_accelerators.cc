@@ -217,6 +217,9 @@ bool PhiKeyboardAccelerators::OnUnhandledPageKey(UINT vk,
   if (!command) {
     command = MatchFixedAccelerator(vk, ctrl, shift, alt);
   }
+  if (command == kCmdToggleSidebar && !TakeSidebarTogglePress()) {
+    return true;  // A repeat of the held chord: ours, and it does nothing.
+  }
   if (command) {
     PhiAppMenu::PostAccelerator(shell, command,
                                 host_.FocusedFindBrowser(shell));
@@ -224,6 +227,14 @@ bool PhiKeyboardAccelerators::OnUnhandledPageKey(UINT vk,
   }
   // A default chord the user moved a shortcut away from stays dead.
   return preferences_.IsDisplacedDefaultChord(vk, ctrl, shift, alt);
+}
+
+bool PhiKeyboardAccelerators::TakeSidebarTogglePress() {
+  if (toggle_sidebar_ran_) {
+    return false;
+  }
+  toggle_sidebar_ran_ = true;
+  return true;
 }
 
 // static
@@ -277,9 +288,13 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
     }
     return 0;
   }
+  const bool repeat = (lparam & 0x40000000) != 0;  // Bit 30: was down.
+  if (!repeat) {
+    toggle_sidebar_ran_ = false;  // A new press.
+  }
   // Track whether Alt is being held alone, for the reveal gesture above.
   alt_solo_ = AltSoloAfterKeyDown(alt_solo_, static_cast<UINT>(wparam),
-                                  (lparam & 0x40000000) != 0);
+                                  repeat);
   const bool ctrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
   const bool shift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
   const bool alt = (lparam & 0x20000000) != 0;  // The context code bit.
@@ -356,6 +371,9 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
                                                          : kMsgPhiSwitcherPrev,
                        PhiTabSwitcher::HoldMask(ctrl, alt), 0);
         return 1;
+      }
+      if (command == kCmdToggleSidebar && !TakeSidebarTogglePress()) {
+        return 1;  // Holding the chord toggles once (Mac 996edcb1).
       }
       PhiAppMenu::PostAccelerator(shell, command,
                                   host_.FocusedFindBrowser(shell));

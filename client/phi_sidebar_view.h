@@ -826,6 +826,8 @@ class PhiSidebarView {
   // The placed rows (keys + client rects) for the agent dialect's
   // window.layout, so a box probe can aim a real drag without pixels.
   base::ListValue LayoutRowsJson() const;
+  // How far the tab list is scrolled, in pixels (window.layout).
+  int list_scroll() const { return scroll_offset_; }
   // The drag in flight, for a probe: kind, band, the gap slot, the folder
   // the drop lands inside. Empty when nothing drags.
   base::DictValue DragStateJson() const;

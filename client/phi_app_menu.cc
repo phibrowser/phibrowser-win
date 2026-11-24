@@ -1207,7 +1207,7 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       }
       return true;
     case kCmdToggleSidebar:
-      c->MenuToggleSidebar();
+      c->MenuToggleSidebar(from_accelerator);
       return true;
     case kCmdToggleReader:
       c->MenuToggleReader(from_accelerator);

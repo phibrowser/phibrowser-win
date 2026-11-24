@@ -286,7 +286,9 @@ class PhiAppMenuShell {
   // The Mac's Select Next / Previous Tab (swicthTab): one step through the
   // sidebar's order (pinned, visible bookmarks, open tabs), wrapping.
   virtual void MenuStepTab(int direction) = 0;
-  virtual void MenuToggleSidebar() = 0;
+  // `from_accelerator`: the chord, which with the pointer on the docked
+  // sidebar hides it into the floating panel in place.
+  virtual void MenuToggleSidebar(bool from_accelerator) = 0;
   // `from_accelerator`: the chord rather than the View menu row (the
   // reader's usage metric names the two differently).
   virtual void MenuToggleReader(bool from_accelerator) = 0;

@@ -225,6 +225,9 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   out.Set("sidebarCollapsed", shell->sidebar_collapsed());
   out.Set("sidebarFloating", shell->sidebar_floating());
   out.Set("tabsTop", shell->tabs_top());
+  // The tab list's scroll offset (px): one list, shared by the docked
+  // sidebar and the floating panel.
+  out.Set("sidebarScroll", shell->sidebar_scroll());
   // The "+ New Tab" row (empty in Comfortable or with the sidebar hidden):
   // above the tabs, or after the last one and sticky at the list's bottom
   // edge, with its hairline while rows scroll under it (newTabsAtTop).

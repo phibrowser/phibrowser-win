@@ -171,6 +171,14 @@ class PhiKeyboardAccelerators {
   // Alt+Tab and the Alt+arrow history chords never trip it) and by a mouse
   // button (an Alt-click).
   bool alt_solo_ = false;
+  // The sidebar toggle already ran for the key press under way: holding its
+  // chord toggles once, not on every key repeat (Mac 996edcb1). A key-down
+  // that is not a repeat starts a new press. Kept per press rather than
+  // read off the repeat bit, so a page-first chord whose unhandled callback
+  // comes back after the first repeat still toggles once.
+  bool toggle_sidebar_ran_ = false;
+  // True the first time per press; false for the press's repeats.
+  bool TakeSidebarTogglePress();
 };
 
 }  // namespace phi_client
