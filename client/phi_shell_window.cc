@@ -6896,7 +6896,8 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   }
   if (::PtInRect(&layout.update, pt)) {
     // The Update reminder: WinSparkle's update window, where the user
-    // installs, skips or postpones (the Mac's checkForUpdate).
+    // installs, skips or postpones (the Mac's checkForUpdate) — or the
+    // installer an earlier attempt downloaded (PHI-2199).
     PhiUpdater::CheckForUpdateWithUi();
     return;
   }

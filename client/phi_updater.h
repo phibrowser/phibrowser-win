@@ -21,6 +21,15 @@ namespace phi_client {
 // callback, and its default for that callback is nothing at all — so Init
 // takes where to post the request: the installer's running-app wait
 // (phi-installer.nsi) covers the seconds Chromium takes to unwind.
+//
+// The installer WinSparkle downloads is kept (PHI-2199, phi_update_cache.h):
+// WinSparkle hands the verified file to us to run, we copy it into a per-user
+// cache under the feed's version and EdDSA signature and start the copy.
+// When that start fails (a cancelled UAC prompt), the next Update click or
+// "Check for Update..." installs the cached copy instead of downloading the
+// package again, and a launch with one cached shows the Update reminder at
+// once. Every start re-verifies the file; the cache goes once this build is
+// that version, the feed offers another one, or the user skips it.
 class PhiUpdater {
  public:
   // Loads the DLL, configures the appcast + app identity + the feed's
@@ -36,8 +45,10 @@ class PhiUpdater {
   // posted to the same window whenever UpdateAvailable changes.
   static void Init(HWND quit_hwnd, UINT quit_msg, UINT state_msg);
 
-  // "Check for Update..." — the interactive check with WinSparkle's UI.
-  // False when the updater is unavailable (DLL missing, no key).
+  // "Check for Update..." and the Update reminder — the interactive check
+  // with WinSparkle's UI, or, with an installer cached that the feed still
+  // offers, that installer (UAC is the prompt). False when the updater is
+  // unavailable (DLL missing, no key).
   static bool CheckForUpdateWithUi();
 
   // True when the DLL loads and a signing key is built in (drives the menu

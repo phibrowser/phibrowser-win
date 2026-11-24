@@ -34,7 +34,8 @@ inline constexpr bool kPhiFolioAutoTriggerEnabled = true;
 // (build-client.py --dev-hooks is the only way to set it), so everything
 // behind this constant compiles out of the shipped exe:
 //   * PHI_APPCAST_URL / PHI_APPCAST_ED25519 — replace the update feed and its
-//     signing key (phi_updater.cc);
+//     signing key, PHI_UPDATE_CACHE_DIR the folder the downloaded installer
+//     is kept in (phi_updater.cc);
 //   * PHI_VAULT_HELPER — replace the credential helper binary, and the
 //     local "dev vault" fallback that accepts a PLAINTEXT PhiCredentials.dat
 //     when the helper is absent (phi_coordinator.cc, phi_credentials.cc);

@@ -5,11 +5,17 @@
 
 #include <windows.h>
 
+#include <shellapi.h>
+#include <shlobj.h>
+
 #include <atomic>
+#include <optional>
 #include <string>
 
 #include "base/logging.h"
 #include "client/phi_features.h"
+#include "client/phi_http.h"
+#include "client/phi_update_cache.h"
 #include "client/phi_version.h"
 
 namespace phi_client {
@@ -41,6 +47,10 @@ using CanShutdownFn = int(__cdecl*)();
 using SetCanShutdownFn = void(__cdecl*)(CanShutdownFn);
 using SetShutdownRequestFn = void(__cdecl*)(VoidFn);
 using SetCallbackFn = void(__cdecl*)(VoidFn);
+using RunInstallerFn = int(__cdecl*)(const wchar_t*);
+using SetRunInstallerFn = void(__cdecl*)(RunInstallerFn);
+// winsparkle.h's WINSPARKLE_RETURN_ERROR: "Failed to launch the installer."
+constexpr int kSparkleReturnError = -1;
 
 struct Sparkle {
   HMODULE dll = nullptr;
@@ -58,6 +68,10 @@ struct Sparkle {
   SetCallbackFn set_did_find_update = nullptr;
   SetCallbackFn set_did_not_find_update = nullptr;
   SetCallbackFn set_update_skipped = nullptr;
+  // WinSparkle 0.8: the verified download is handed to us to run, which
+  // is where it is kept for the next attempt (PHI-2199). Optional too:
+  // without it every attempt downloads again, as before.
+  SetRunInstallerFn set_user_run_installer = nullptr;
 };
 
 Sparkle g_sparkle;
@@ -70,6 +84,19 @@ UINT g_state_msg = 0;
 // An update is on offer (the Mac's sparkleDidDownloadUpdate .. skip): set
 // from WinSparkle's thread, read by the windows' layout.
 std::atomic<bool> g_update_available{false};
+// An install from the cache is in flight (its worker thread is up).
+std::atomic<bool> g_cached_install_busy{false};
+// The updater's own message-only window, for the worker threads' hand-back
+// to the UI thread (WinSparkle's own window wants the UI thread).
+HWND g_updater_hwnd = nullptr;
+constexpr UINT WM_PHI_UPDATER_SPARKLE_UI = WM_APP + 1;
+
+// The architecture tag WinSparkle matches enclosures against.
+#if defined(_M_ARM64)
+constexpr char kOsTag[] = "windows-arm64";
+#else
+constexpr char kOsTag[] = "windows-x64";
+#endif
 
 // WinSparkle's "may I close you?" — always yes: Chromium has no unsaved
 // documents, and the close path itself saves the session.
@@ -97,9 +124,8 @@ void SetUpdateAvailable(bool available) {
 void __cdecl DidFindUpdate() {
   SetUpdateAvailable(true);
 }
-void __cdecl DidNotFindUpdate() {
-  SetUpdateAvailable(false);
-}
+void __cdecl DidNotFindUpdate();
+void __cdecl UpdateSkipped();
 
 // WinSparkle.dll sits beside phi_client.exe (the sync and the installer both
 // place it there). An absolute path keeps the search-order honest — no
@@ -161,6 +187,8 @@ bool Load() {
       proc("win_sparkle_set_did_not_find_update_callback"));
   sparkle.set_update_skipped = reinterpret_cast<SetCallbackFn>(
       proc("win_sparkle_set_update_skipped_callback"));
+  sparkle.set_user_run_installer = reinterpret_cast<SetRunInstallerFn>(
+      proc("win_sparkle_set_user_run_installer_callback"));
   if (!sparkle.set_appcast_url || !sparkle.set_app_details ||
       !sparkle.set_eddsa_public_key || !sparkle.set_can_shutdown ||
       !sparkle.set_shutdown_request || !sparkle.init ||
@@ -204,6 +232,226 @@ std::string EdDsaPublicKey() {
     }
   }
   return kEdDsaPublicKey;
+}
+
+// %LOCALAPPDATA%\Phi\Update Cache — per user, beside the default User Data
+// folder; or in a --dev-hooks build PHI_UPDATE_CACHE_DIR, so a test build
+// never shares the installed copy's cache.
+std::wstring CacheDir() {
+  if constexpr (kPhiDevHooks) {
+    wchar_t value[MAX_PATH] = {};
+    const DWORD length =
+        ::GetEnvironmentVariableW(L"PHI_UPDATE_CACHE_DIR", value, MAX_PATH);
+    if (length > 0 && length < MAX_PATH) {
+      return std::wstring(value, length);
+    }
+  }
+  PWSTR local = nullptr;
+  std::wstring dir;
+  if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr,
+                                       &local))) {
+    dir = std::wstring(local) + L"\\Phi\\Update Cache";
+  }
+  ::CoTaskMemFree(local);
+  return dir;
+}
+
+PhiUpdateCache Cache() {
+  return PhiUpdateCache(CacheDir());
+}
+
+// The enclosure the feed offers this build now. BLOCKING (a worker or
+// WinSparkle's thread). Empty when the feed cannot be read.
+std::optional<PhiUpdateEnclosure> FetchOffer() {
+  constexpr size_t kMaxFeedBytes = 1024 * 1024;
+  const PhiHttpResult result =
+      PhiHttpRequest(L"GET", AppcastUrl(), L"", "", kMaxFeedBytes);
+  if (!result.transport_ok || result.status != 200) {
+    LOG(INFO) << "[PhiUpdater] feed not read (status " << result.status
+              << ")";
+    return std::nullopt;
+  }
+  return PhiParseAppcast(result.body, kOsTag);
+}
+
+// Starts the installer the way WinSparkle does (ShellExecuteEx, so the
+// installer's manifest brings up UAC), while `verified` keeps the checked
+// bytes locked. False on any failure, a cancelled UAC prompt included.
+bool LaunchInstaller(const std::wstring& file, HANDLE verified, HWND owner) {
+  SHELLEXECUTEINFOW sei = {};
+  sei.cbSize = sizeof(sei);
+  sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_NOASYNC;
+  sei.hwnd = owner;
+  sei.lpFile = file.c_str();
+  sei.nShow = SW_SHOWDEFAULT;
+  const bool ok = ::ShellExecuteExW(&sei) != FALSE;
+  const DWORD error = ok ? 0 : ::GetLastError();
+  ::CloseHandle(verified);
+  if (ok) {
+    LOG(INFO) << "[PhiUpdater] cached installer started";
+  } else {
+    LOG(INFO) << "[PhiUpdater] cached installer not started (error " << error
+              << (error == ERROR_CANCELLED ? ", UAC cancelled" : "")
+              << "); it stays cached";
+  }
+  return ok;
+}
+
+// The cached installer, verified and still worth installing (newer than
+// this build), locked open; INVALID_HANDLE_VALUE (and the cache cleared)
+// otherwise.
+HANDLE OpenUsableCache(const PhiUpdateCache& cache,
+                       const PhiCachedUpdate& cached) {
+  if (PhiCompareUpdateVersions(cached.version, PHI_WIN_VERSION_FULL_STRING) <=
+      0) {
+    LOG(INFO) << "[PhiUpdater] cached installer " << cached.version
+              << " is installed or older; removed";
+    cache.Clear();
+    return INVALID_HANDLE_VALUE;
+  }
+  HANDLE verified = PhiOpenVerifiedUpdate(cached.file, cached.length,
+                                          cached.signature, EdDsaPublicKey());
+  if (verified == INVALID_HANDLE_VALUE) {
+    LOG(ERROR) << "[PhiUpdater] cached installer " << cached.version
+               << " failed verification; removed";
+    cache.Clear();
+  }
+  return verified;
+}
+
+// WinSparkle downloaded and verified the installer and wants it run (its
+// UI thread). Keep a copy under the feed's version and signature, start
+// the COPY (re-verified), and say we ran it: 1 lets WinSparkle close its
+// window and ask us to quit, kSparkleReturnError puts up its "Failed to
+// launch" box and the copy stays for the next attempt. 0 hands the file
+// back to WinSparkle unchanged — the feed could not be read or does not
+// describe this file, so there is nothing to cache it under.
+int __cdecl RunInstaller(const wchar_t* path) {
+  const std::wstring source = path ? path : L"";
+  if (source.size() < 4 ||
+      _wcsicmp(source.c_str() + source.size() - 4, L".exe") != 0) {
+    return 0;
+  }
+  const std::optional<PhiUpdateEnclosure> offer = FetchOffer();
+  if (!offer || offer->signature.empty()) {
+    LOG(INFO) << "[PhiUpdater] no signed offer to cache the download under";
+    return 0;
+  }
+  PhiUpdateCache cache = Cache();
+  if (!cache.Store(source, *offer)) {
+    return 0;
+  }
+  const std::optional<PhiCachedUpdate> cached = cache.Read();
+  if (!cached) {
+    cache.Clear();
+    return 0;
+  }
+  HANDLE verified = PhiOpenVerifiedUpdate(cached->file, cached->length,
+                                          cached->signature, EdDsaPublicKey());
+  if (verified == INVALID_HANDLE_VALUE) {
+    // The feed changed between WinSparkle's read and ours.
+    LOG(INFO) << "[PhiUpdater] download does not match the feed now; "
+                 "not cached";
+    cache.Clear();
+    return 0;
+  }
+  LOG(INFO) << "[PhiUpdater] installer " << cached->version << " cached";
+  return LaunchInstaller(cached->file, verified, ::GetForegroundWindow())
+             ? 1
+             : kSparkleReturnError;
+}
+
+void PostSparkleUi() {
+  ::PostMessageW(g_updater_hwnd, WM_PHI_UPDATER_SPARKLE_UI, 0, 0);
+}
+
+// The Update pill or "Check for Update..." with an installer cached (a
+// worker thread: the feed read and the hash of a large file are slow).
+// The feed decides first: when it now offers another version or other
+// bytes, the cache is stale and WinSparkle takes over. Offline, the cached
+// installer still installs — it is verified and newer than this build.
+DWORD WINAPI InstallCachedThread(void* param) {
+  const HWND owner = static_cast<HWND>(param);
+  PhiUpdateCache cache = Cache();
+  std::optional<PhiCachedUpdate> cached = cache.Read();
+  HANDLE verified = INVALID_HANDLE_VALUE;
+  if (cached) {
+    if (const std::optional<PhiUpdateEnclosure> offer = FetchOffer()) {
+      if (offer->version != cached->version ||
+          offer->signature != cached->signature) {
+        LOG(INFO) << "[PhiUpdater] cached installer " << cached->version
+                  << " superseded by " << offer->version << "; removed";
+        cache.Clear();
+        cached.reset();
+      }
+    }
+    if (cached) {
+      verified = OpenUsableCache(cache, *cached);
+    }
+  }
+  if (verified == INVALID_HANDLE_VALUE) {
+    PostSparkleUi();  // Nothing usable cached: WinSparkle's own flow.
+  } else {
+    LOG(INFO) << "[PhiUpdater] installing cached " << cached->version
+              << " (no download)";
+    if (LaunchInstaller(cached->file, verified, owner)) {
+      RequestShutdown();  // What WinSparkle does after its own launch.
+    }
+  }
+  g_cached_install_busy = false;
+  return 0;
+}
+
+// At start-up (a worker thread): drop an installer this build already is
+// (the update went in) or one that no longer verifies; a good one brings
+// the Update reminder up at once, before the next feed check.
+DWORD WINAPI CheckCacheThread(void*) {
+  PhiUpdateCache cache = Cache();
+  if (const std::optional<PhiCachedUpdate> cached = cache.Read()) {
+    HANDLE verified = OpenUsableCache(cache, *cached);
+    if (verified != INVALID_HANDLE_VALUE) {
+      ::CloseHandle(verified);
+      LOG(INFO) << "[PhiUpdater] installer " << cached->version
+                << " is cached and verified";
+      SetUpdateAvailable(true);
+    }
+  } else {
+    cache.Clear();  // A half-written or foreign folder.
+  }
+  return 0;
+}
+
+void __cdecl DidNotFindUpdate() {
+  // The feed no longer offers anything newer: a cached installer is moot.
+  Cache().Clear();
+  SetUpdateAvailable(false);
+}
+
+void __cdecl UpdateSkipped() {
+  Cache().Clear();  // The user does not want this version.
+  SetUpdateAvailable(false);
+}
+
+LRESULT CALLBACK UpdaterWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+  if (msg == WM_PHI_UPDATER_SPARKLE_UI) {
+    if (g_initialized) {
+      g_sparkle.check_update_with_ui();
+    }
+    return 0;
+  }
+  return ::DefWindowProcW(hwnd, msg, wp, lp);
+}
+
+void CreateUpdaterWindow() {
+  WNDCLASSEXW wc = {};
+  wc.cbSize = sizeof(wc);
+  wc.lpfnWndProc = &UpdaterWndProc;
+  wc.hInstance = ::GetModuleHandleW(nullptr);
+  wc.lpszClassName = L"PhiUpdaterMessages";
+  ::RegisterClassExW(&wc);
+  g_updater_hwnd = ::CreateWindowExW(0, wc.lpszClassName, L"", 0, 0, 0, 0, 0,
+                                     HWND_MESSAGE, nullptr, wc.hInstance,
+                                     nullptr);
 }
 
 }  // namespace
@@ -253,10 +501,21 @@ void PhiUpdater::Init(HWND quit_hwnd, UINT quit_msg, UINT state_msg) {
       g_sparkle.set_update_skipped) {
     g_sparkle.set_did_find_update(&DidFindUpdate);
     g_sparkle.set_did_not_find_update(&DidNotFindUpdate);
-    g_sparkle.set_update_skipped(&DidNotFindUpdate);
+    g_sparkle.set_update_skipped(&UpdateSkipped);
   }
+  // Keep the verified download for the next attempt (PHI-2199).
+  if (g_sparkle.set_user_run_installer) {
+    g_sparkle.set_user_run_installer(&RunInstaller);
+  }
+  CreateUpdaterWindow();
   g_sparkle.init();
   g_initialized = true;
+  if (g_sparkle.set_user_run_installer) {
+    if (HANDLE thread =
+            ::CreateThread(nullptr, 0, &CheckCacheThread, nullptr, 0, nullptr)) {
+      ::CloseHandle(thread);
+    }
+  }
   LOG(INFO) << "[PhiUpdater] init v" << PHI_WIN_VERSION_FULL_STRING
             << " appcast=" << url;
 }
@@ -265,6 +524,19 @@ void PhiUpdater::Init(HWND quit_hwnd, UINT quit_msg, UINT state_msg) {
 bool PhiUpdater::CheckForUpdateWithUi() {
   if (!g_initialized) {
     return false;  // Never initialised: no DLL, no key.
+  }
+  // An installer from an earlier attempt: install it rather than download
+  // it again (PHI-2199). The worker checks the feed and the file first.
+  if (g_sparkle.set_user_run_installer && Cache().Read()) {
+    if (g_cached_install_busy.exchange(true)) {
+      return true;  // The first click is still at it.
+    }
+    if (HANDLE thread = ::CreateThread(nullptr, 0, &InstallCachedThread,
+                                       ::GetForegroundWindow(), 0, nullptr)) {
+      ::CloseHandle(thread);
+      return true;
+    }
+    g_cached_install_busy = false;
   }
   g_sparkle.check_update_with_ui();
   return true;
