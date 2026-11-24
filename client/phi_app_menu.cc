@@ -250,10 +250,8 @@ void PhiAppMenu::BuildStatic() {
   // ViewAll's grid, not Open Folio's book (fluent::kLibrary).
   row(root_, kCmdLibrary, "library.navigation.title", fluent::kTaskView);
   // Folio (docs/folio-port.md): the Mac's File ▸ Save to Folio / Open Folio.
-  if (PhiFolio::Enabled()) {
-    row(root_, kCmdSaveToFolio, "appMenu.saveToFolio", fluent::kSaveLocal);
-    row(root_, kCmdOpenFolio, "appMenu.openFolio", fluent::kLibrary);
-  }
+  // RefreshRoot takes them out off the record and puts them back here.
+  ShowFolioRows(PhiFolio::Enabled());
   sub(root_, layout_, "appMenu.layout", fluent::kView);
   sub(root_, tools_, "appMenu.moreTools", fluent::kDeveloperTools);
   rows_.AppendSeparator(root_);
@@ -389,8 +387,39 @@ void PhiAppMenu::RefreshChromiumCommands() {
   }
 }
 
+void PhiAppMenu::ShowFolioRows(bool shown) {
+  const bool present =
+      ::GetMenuState(root_, kCmdSaveToFolio, MF_BYCOMMAND) != UINT(-1);
+  if (present == shown) {
+    return;
+  }
+  if (!shown) {
+    rows_.DeleteCommand(root_, kCmdSaveToFolio);
+    rows_.DeleteCommand(root_, kCmdOpenFolio);
+    return;
+  }
+  UINT at = static_cast<UINT>(::GetMenuItemCount(root_));
+  for (int i = 0; i < ::GetMenuItemCount(root_); ++i) {
+    if (::GetMenuItemID(root_, i) == kCmdLibrary) {
+      at = static_cast<UINT>(i + 1);
+      break;
+    }
+  }
+  rows_.InsertCommandAt(root_, at, kCmdSaveToFolio,
+                        Label(kCmdSaveToFolio, "appMenu.saveToFolio"),
+                        fluent::kSaveLocal)
+      ->min_width_dip = kRootWidth;
+  rows_.InsertCommandAt(root_, at + 1, kCmdOpenFolio,
+                        Label(kCmdOpenFolio, "appMenu.openFolio"),
+                        fluent::kLibrary)
+      ->min_width_dip = kRootWidth;
+}
+
 void PhiAppMenu::RefreshRoot() {
   services_->MenuRefreshNavState();
+  // The Mac hides the Folio rows in an off-the-record window (incognito
+  // windows and the Incognito Space): Folio never saves private browsing.
+  ShowFolioRows(PhiFolio::Enabled() && !services_->MenuIncognito());
   SetEnabled(root_, kCmdSplitWithNewTab, services_->MenuCanSplitWithNewTab());
   SetEnabled(root_, kCmdClearAllTabs, services_->MenuCanClearAllTabs());
   SetEnabled(root_, kCmdUndoClearTabs, services_->MenuCanUndoClearTabs());
@@ -1226,15 +1255,18 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       }
       return true;
     case kCmdSaveToFolio:
-      // Re-checked there: the chord arrives without the menu's enable pass.
+      // Re-checked there: the chord arrives without the menu's enable pass,
+      // and off the record its row is not even there (PhiFolio refuses an
+      // incognito page too).
       // The page in front of the user — the presented peek's, when one is up.
       if (SidebarHost* sidebar = c->MenuSidebarHost();
-          sidebar && c->MenuPageCommandTab().valid()) {
+          sidebar && !c->MenuIncognito() && c->MenuPageCommandTab().valid()) {
         sidebar->RequestSaveToFolio(c->MenuPageCommandTab().value);
       }
       return true;
     case kCmdOpenFolio:
-      if (SidebarHost* sidebar = c->MenuSidebarHost()) {
+      if (SidebarHost* sidebar = c->MenuSidebarHost();
+          sidebar && !c->MenuIncognito()) {
         sidebar->RequestOpenFolio();
       }
       return true;

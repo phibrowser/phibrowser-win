@@ -3001,6 +3001,20 @@ PhiPreferences& PhiCoordinator::FolioPreferences() {
   return preferences_;
 }
 
+bool PhiCoordinator::FolioWindowIsOffTheRecord(int64_t window_id) const {
+  const BrowserId browser{window_id};
+  // The framework's word (the browser's profile is off the record) covers
+  // incognito windows, Incognito Space browsers and peeks over them.
+  if (const PhiWindowModel::Snapshot* snapshot = window_model_.Get(browser);
+      snapshot && snapshot->incognito) {
+    return true;
+  }
+  // And the shell's, should a snapshot lag its browser.
+  const PhiShellWindow* window = registry_.ControllerForBrowser(browser);
+  return window && (window->is_incognito() ||
+                    model::IsIncognitoSpaceId(window->SpaceForBrowser(browser)));
+}
+
 void PhiCoordinator::FolioOpenTab(const std::string& url) {
   const int64_t window = FolioActiveWindow();
   if (framework_ && window != 0) {

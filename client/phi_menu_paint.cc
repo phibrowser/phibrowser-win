@@ -276,6 +276,17 @@ PhiMenuRow* PhiMenuRowStore::InsertCommandBefore(HMENU menu,
   return row;
 }
 
+PhiMenuRow* PhiMenuRowStore::InsertCommandAt(HMENU menu,
+                                             UINT position,
+                                             UINT id,
+                                             const std::wstring& text,
+                                             const wchar_t* icon,
+                                             bool enabled) {
+  PhiMenuRow* row = Adopt(MakeRow(text, icon));
+  SetItem(menu, position, true, id, nullptr, enabled, false, row, true);
+  return row;
+}
+
 void PhiMenuRowStore::InsertSeparatorBefore(HMENU menu, UINT before) {
   auto row = std::make_unique<PhiMenuRow>();
   row->separator = true;

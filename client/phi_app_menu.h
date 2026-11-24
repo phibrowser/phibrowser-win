@@ -384,6 +384,9 @@ class PhiAppMenu {
   PhiKeyboardCommandQueue pending_accelerators_;
   void BuildStatic();
   void RefreshRoot();
+  // Puts Save to Folio / Open Folio in the root after Library, or takes
+  // them out (off the record, PHI-2157).
+  void ShowFolioRows(bool shown);
   void RefreshSpaces();
   void RefreshHistory();
   void RefreshBookmarks();

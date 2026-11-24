@@ -75,6 +75,13 @@ The user's opt-in for site-action saves stays off by default, so nothing
 writes on a like until the user asks for it. There is no remote kill switch
 for misfiring site rules on Windows; turning the constant off is a release.
 
+Folio is never offered off the record (the Mac's PHI-2157,
+`SaveForLaterService.isAvailable(in:)`): in an incognito window, the
+Incognito Space or a peek over either, the ⋯ menu has no Folio rows, the
+Save chord and Open Folio do nothing, and a site-action trigger is dropped.
+`PhiFolio::AvailableIn` decides, from the framework snapshot's `incognito`
+(and the shell's own state); suite `suite-folioincognito` checks it.
+
 ## Not ported
 
 * The Mac's **native Folio library window** and the in-window Library

@@ -61,6 +61,9 @@ class PhiFolio {
     virtual int64_t FolioActiveWindow() const = 0;
     // The profile owning a browser window ("" when unknown).
     virtual std::string FolioProfileOfWindow(int64_t window_id) const = 0;
+    // `window_id`'s browser is off the record: an incognito window, the
+    // Incognito Space, or a peek over either.
+    virtual bool FolioWindowIsOffTheRecord(int64_t window_id) const = 0;
     // One open browser window per loaded profile: the armed state reaches
     // every profile's Mirage through these.
     virtual std::vector<int64_t> FolioWindowPerProfile() const = 0;
@@ -90,12 +93,19 @@ class PhiFolio {
   // Folio on && the auto-trigger switch && the user's opt-in.
   bool AutoTriggerArmed() const;
 
-  // Save to Folio is offered for this tab: Folio on, an http(s) page, and
-  // no save of it in flight.
+  // Folio is offered in `window_id`'s browser: Folio on, and never off the
+  // record (the Mac's SaveForLaterService.isAvailable(in:), PHI-2157). A
+  // save there would leave a durable copy of private browsing, and Mirage,
+  // which serves the library page, does not run in incognito.
+  bool AvailableIn(int64_t window_id) const;
+  // Save to Folio is offered for this tab: Folio available in its window,
+  // an http(s) page, and no save of it in flight. The menu, the chord and
+  // the site-action auto-save all pass through here.
   bool CanSave(int tab_id) const;
   // Save to Folio (menu / Ctrl+Alt+S). Hands the save to Mirage.
   void Save(int tab_id);
-  // Open Folio: Mirage's library page in a new tab of the active window.
+  // Open Folio: Mirage's library page in a new tab of the active window,
+  // unless that window is off the record.
   void OpenLibrary();
   // Settings ▸ General ▸ Folio ▸ Choose sites…: the extension's per-site
   // auto-save switches.

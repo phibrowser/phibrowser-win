@@ -1195,6 +1195,7 @@ class PhiCoordinator : public SidebarHost,
                       const std::wstring& action_label,
                       std::function<void()> action) override;
   void FolioOpenTab(const std::string& url) override;
+  bool FolioWindowIsOffTheRecord(int64_t window_id) const override;
   PhiPreferences& FolioPreferences() override;
   // PhiSurfaceCoordinator::Host (WindowShowingTab is public, above):
   void ScheduleRefreshForTab(TabId tab_id) override;

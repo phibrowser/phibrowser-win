@@ -98,6 +98,13 @@ class PhiMenuRowStore {
                                   const wchar_t* icon = nullptr,
                                   bool enabled = true);
   void InsertSeparatorBefore(HMENU menu, UINT before);
+  // Inserts at `position` (MF_BYPOSITION; past the end appends).
+  PhiMenuRow* InsertCommandAt(HMENU menu,
+                              UINT position,
+                              UINT id,
+                              const std::wstring& text,
+                              const wchar_t* icon = nullptr,
+                              bool enabled = true);
   // Deletes every item of `menu` (submenus go with them) and releases
   // their rows.
   void ClearMenu(HMENU menu);

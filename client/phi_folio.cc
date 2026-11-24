@@ -473,12 +473,17 @@ bool PhiFolio::AutoTriggerArmed() const {
          host_->FolioPreferences().FolioAutoSaveOnSiteActions();
 }
 
+bool PhiFolio::AvailableIn(int64_t window_id) const {
+  return Enabled() && window_id != 0 &&
+         !host_->FolioWindowIsOffTheRecord(window_id);
+}
+
 bool PhiFolio::CanSave(int tab_id) const {
   if (!Enabled() || in_flight_tabs_.count(tab_id)) {
     return false;
   }
   const std::optional<TabInfo> tab = host_->FolioFindTab(tab_id);
-  return tab && PhiFolioIsSaveableUrl(tab->url);
+  return tab && AvailableIn(tab->window_id) && PhiFolioIsSaveableUrl(tab->url);
 }
 
 void PhiFolio::Save(int tab_id) {
@@ -544,7 +549,7 @@ void PhiFolio::SettleSave(const std::string& save_id, bool accepted) {
 }
 
 void PhiFolio::OpenLibrary() {
-  if (Enabled()) {
+  if (AvailableIn(host_->FolioActiveWindow())) {
     host_->FolioOpenTab(std::string("chrome-extension://") +
                         PhiReaderBridge::extension_id() + "/library.html");
   }
