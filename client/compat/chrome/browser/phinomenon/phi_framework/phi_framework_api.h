@@ -1961,6 +1961,17 @@ class PHI_ABI_INTERFACE PhiFramework {
   // nothing. In-place navigations are unchanged: a same-site one stays in
   // the tab, a cross-site one leaves for a new tab or a Peek as before.
   virtual void SetAutoPeekSameSiteLinks(bool enabled) = 0;
+
+  // --- App appearance (ABI 11) -----------------------------------------------
+  // Phi's Settings ▸ Appearance (the Mac sets NSApp.appearance, which Chromium
+  // follows there): 0 follows the system, 1 is Light, 2 is Dark; anything else
+  // is taken as 0. Chromium's own surfaces follow it through every loaded
+  // profile's browser colour scheme: the page, link, image and selection
+  // context menus and the rest of its Views UI, and prefers-color-scheme for
+  // web and extension pages (Reader View's "Match browser" reads it). A
+  // profile that loads later takes it as it loads. Incognito keeps Chromium's
+  // own rule (dark menus, pages follow the device).
+  virtual void SetAppearance(int appearance) = 0;
 };
 
 // --- In-process DevTools transport (docs/architecture-review.md §3.7) ----
@@ -2031,7 +2042,7 @@ using PhiClientCreateDelegateFn = PhiFrameworkDelegate* (*)();
 // built against the old header could not run with: a virtual added, removed or
 // moved, or a struct's layout changed. The host (Phi.exe) refuses a client
 // whose PhiClientAbiVersion export returns anything else.
-inline constexpr uint32_t kPhiFrameworkAbiVersion = 10;
+inline constexpr uint32_t kPhiFrameworkAbiVersion = 11;
 using PhiClientAbiVersionFn = uint32_t (*)();
 
 }  // namespace phi_framework

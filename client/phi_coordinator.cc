@@ -685,6 +685,7 @@ void PhiCoordinator::OnProfileLoaded(const char* profile_id) {
   PhiPeekPanel::SetPanelSize(preferences_.PeekPanelSize());
   PushPeekPreferences();
   PushKioskPreferences();
+  PushAppearance();
   PushNewTabPreferences();
   PushMiniPlayerPreference();
   PushDisplayLanguageToChromium();
@@ -4210,6 +4211,13 @@ void PhiCoordinator::PushKioskPreferences() {
   }
 }
 
+void PhiCoordinator::PushAppearance() {
+  if (framework_) {
+    // PhiAppearance's order is the framework's: 0 system, 1 light, 2 dark.
+    framework_->SetAppearance(static_cast<int>(preferences_.Appearance()));
+  }
+}
+
 void PhiCoordinator::PushMiniPlayerPreference() {
   if (framework_) {
     framework_->SetMediaControlsEnabled(preferences_.MiniPlayerEnabled());
@@ -4713,6 +4721,9 @@ void PhiCoordinator::OnPreferencesChanged(
       // colours. Without the second half an open Settings window kept its
       // caption band in the appearance it opened with.
       PhiThemeBus::Get().Broadcast();
+      if (what == PreferenceChange::kTheme) {
+        PushAppearance();  // Chromium's menus and pages follow (PHI-2200).
+      }
       break;
     case PreferenceChange::kFullUrl:
       for (PhiShellWindow* controller : registry_.Controllers()) {

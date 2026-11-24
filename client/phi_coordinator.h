@@ -537,6 +537,10 @@ class PhiCoordinator : public SidebarHost,
   // Pushes the Ctrl+Alt-click Kiosk switch the same way: the framework's
   // Browser::OpenURLFromTab is where the click is remapped.
   void PushKioskPreferences();
+  // Settings ▸ Appearance to the framework (PHI-2200), so Chromium's own
+  // surfaces — the page context menus, prefers-color-scheme for pages and
+  // Reader View — follow Phi's Light/Dark rather than the Windows app mode.
+  void PushAppearance();
   // The Mini Player: the framework watches media sessions only while it is
   // on, and every shell's card follows the switch and the mode.
   void PushMiniPlayerPreference();
