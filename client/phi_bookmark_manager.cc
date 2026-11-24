@@ -233,8 +233,9 @@ void PhiBookmarkManager::EnsureSearchField() {
   if (search_ || !alive()) {
     return;
   }
+  // No WS_EX_CLIENTEDGE: Paint() draws the field's box in palette colours.
   search_ = ::CreateWindowExW(
-      WS_EX_CLIENTEDGE, L"EDIT", L"",
+      0, L"EDIT", L"",
       WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_LEFT, 0, 0, 0, 0, hwnd(),
       reinterpret_cast<HMENU>(static_cast<UINT_PTR>(kSearchId)),
       ::GetModuleHandleW(nullptr), nullptr);
@@ -300,9 +301,27 @@ void PhiBookmarkManager::LayoutChrome() {
   const int search_h = Scaled(kSearchHeight);
   const int button_w = Scaled(kButtonWidth);
   const int button_h = Scaled(kButtonHeight);
+  search_box_ = {rc.right - pad - search_w, header_mid - search_h / 2,
+                 rc.right - pad, header_mid - search_h / 2 + search_h};
   if (search_) {
-    ::SetWindowPos(search_, nullptr, rc.right - pad - search_w,
-                   header_mid - search_h / 2, search_w, search_h,
+    // The EDIT is one text line high, centred in the box, inset from its
+    // rounded ends.
+    int line = Scaled(16);
+    if (HDC screen = ::GetDC(nullptr)) {
+      HGDIOBJ prev = ::SelectObject(
+          screen, reinterpret_cast<HGDIOBJ>(
+                      ::SendMessageW(search_, WM_GETFONT, 0, 0)));
+      TEXTMETRICW tm = {};
+      if (::GetTextMetricsW(screen, &tm)) {
+        line = tm.tmHeight;
+      }
+      ::SelectObject(screen, prev);
+      ::ReleaseDC(nullptr, screen);
+    }
+    line = std::min(line, search_h - 2);
+    const int inset = Scaled(8);
+    ::SetWindowPos(search_, nullptr, search_box_.left + inset,
+                   header_mid - line / 2, search_w - 2 * inset, line,
                    SWP_NOZORDER | SWP_NOACTIVATE);
   }
   new_folder_button_ = {rc.right - pad - search_w - Scaled(12) - button_w,
@@ -775,6 +794,13 @@ void PhiBookmarkManager::Paint(HDC dc, const RECT&) {
     ::DrawTextW(dc, button.label, -1, &button_text,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX |
                     DT_END_ELLIPSIS);
+  }
+
+  // The search field's box: the EDIT's own ground and a hairline, as the
+  // buttons beside it.
+  if (search_ && !::IsRectEmpty(&search_box_)) {
+    PhiFillRoundRectAA(dc, search_box_, Scaled(6), palette.hover_strong);
+    PhiStrokeRoundRectAA(dc, search_box_, Scaled(6), palette.border, 1);
   }
 
   // A hairline under the header, then the rows.

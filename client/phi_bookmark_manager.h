@@ -164,6 +164,10 @@ class PhiBookmarkManager : public PhiPanel {
 
   RAW_PTR_EXCLUSION PhiShellWindow* const controller_;
   HWND search_ = nullptr;
+  // The field's drawn box (ground + hairline, like the header buttons). The
+  // EDIT sits inside it with no frame of its own: a WS_EX_CLIENTEDGE border is
+  // non-client GDI, alpha 0 on the shell's glass, and showed light in Dark.
+  RECT search_box_{};
   WNDPROC search_base_proc_ = nullptr;
   std::unique_ptr<PhiLayerSurface> search_surface_;
   // The colours the field was last painted in; Paint() repaints it when the
