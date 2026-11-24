@@ -535,6 +535,25 @@ PhiMenuSpec PhiBuildTabAreaMenu(const PhiTabAreaMenuInputs& in) {
     }
     return spec;
   }
+  if (in.space_root) {
+    PhiTabAreaMenuInputs rest = in;
+    rest.space_root = false;
+    rest.bottom_buttons = false;
+    PhiMenuSpec full = PhiBuildTabAreaMenu(rest);
+    bool in_space_block = false;
+    for (PhiMenuItem& item : full.items) {
+      if (item.key == "area.newSpace") {
+        in_space_block = true;
+        items.push_back(PhiMenuItem::Separator());
+      }
+      const bool lead = item.key == "area.newTab" ||
+                        (item.key == "area.newRootFolder" && !in.incognito);
+      if (lead || (in_space_block && item.key != "area.setTheme")) {
+        items.push_back(std::move(item));
+      }
+    }
+    return spec;
+  }
   items.push_back(PhiMenuItem::Command("area.newTab", PhiStr("contextMenu.newTab")));
   items.push_back(PhiMenuItem::Command("area.reopen", PhiStr("contextMenu.reopenClosedTab")));
   items.push_back(PhiMenuItem::Separator());

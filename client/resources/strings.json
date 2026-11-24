@@ -9244,6 +9244,39 @@
    "zh-Hans": "布局模式",
    "zh-Hant": "版面配置模式"
   },
+  "settings.general.newTabPosition.bottomOption": {
+   "de": "Unten",
+   "en": "At the bottom",
+   "es": "Abajo",
+   "fr": "En bas",
+   "ja": "一番下",
+   "ko": "맨 아래",
+   "nl": "Onderaan",
+   "zh-Hans": "底部",
+   "zh-Hant": "底端"
+  },
+  "settings.general.newTabPosition.title": {
+   "de": "Neue Tabs öffnen",
+   "en": "Open new tabs",
+   "es": "Abrir las pestañas nuevas",
+   "fr": "Ouvrir les nouveaux onglets",
+   "ja": "新しいタブを開く位置",
+   "ko": "새 탭 여는 위치",
+   "nl": "Open nieuwe tabbladen",
+   "zh-Hans": "新标签页打开位置",
+   "zh-Hant": "新分頁開啟位置"
+  },
+  "settings.general.newTabPosition.topOption": {
+   "de": "Oben",
+   "en": "At the top",
+   "es": "Arriba",
+   "fr": "En haut",
+   "ja": "一番上",
+   "ko": "맨 위",
+   "nl": "Bovenaan",
+   "zh-Hans": "顶部",
+   "zh-Hant": "頂端"
+  },
   "settings.general.newTabShortcut.addressBarOption": {
    "de": "Omnibox",
    "en": "Omnibox",
@@ -9276,28 +9309,6 @@
    "nl": "Gedrag van nieuwe tabbladen",
    "zh-Hans": "新标签页行为",
    "zh-Hant": "新分頁行為"
-  },
-  "settings.general.newTabsAtTop.description": {
-   "de": "Platziert neue Tabs in Layouts mit Seitenleiste oben in der Tab-Liste. Im Layout „Komfortabel“ werden neue Tabs immer am Ende geöffnet.",
-   "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end.",
-   "es": "En los diseños con barra lateral, coloca las pestañas nuevas en la parte superior de la lista de pestañas. El diseño Cómodo siempre abre las pestañas nuevas al final.",
-   "fr": "Dans les dispositions avec barre latérale, place les nouveaux onglets en haut de la liste des onglets. La disposition Confortable ouvre toujours les nouveaux onglets à la fin.",
-   "ja": "サイドバーのあるレイアウトでは、新しいタブをタブリストの一番上に配置します。ゆったりレイアウトでは、新しいタブは常に末尾に開きます。",
-   "ko": "사이드바 레이아웃에서는 새 탭을 탭 목록 맨 위에 배치해요. 여유 레이아웃에서는 새 탭이 항상 맨 끝에 열려요.",
-   "nl": "Plaats nieuwe tabbladen in lay-outs met een zijbalk boven aan de tabbladenlijst. In Comfortabel worden nieuwe tabbladen altijd aan het einde geopend.",
-   "zh-Hans": "在侧边栏布局中，将新标签页放在标签页列表顶部。「舒适」布局始终在末尾打开新标签页。",
-   "zh-Hant": "在側邊欄版面配置中，將新分頁放在分頁列表的頂端。「舒適」版面配置一律在尾端開啟新分頁。"
-  },
-  "settings.general.newTabsAtTop.title": {
-   "de": "Neue Tabs oben öffnen",
-   "en": "Open new tabs at top",
-   "es": "Abrir las pestañas nuevas arriba",
-   "fr": "Ouvrir les nouveaux onglets en haut",
-   "ja": "新しいタブを一番上に開く",
-   "ko": "새 탭을 맨 위에 열기",
-   "nl": "Open nieuwe tabbladen bovenaan",
-   "zh-Hans": "在顶部打开新标签页",
-   "zh-Hant": "在頂端開啟新分頁"
   },
   "settings.general.pictureInPicture.normalDescription": {
    "de": "Laufendes Video als Bild-in-Bild öffnen, wenn du Tabs oder Apps wechselst",
@@ -13337,6 +13348,17 @@
    "zh-Hans": "当前",
    "zh-Hant": "目前"
   },
+  "sidebar.spaceRoot.moreButton": {
+   "de": "Mehr",
+   "en": "More",
+   "es": "Más",
+   "fr": "Plus",
+   "ja": "その他",
+   "ko": "더 보기",
+   "nl": "Meer",
+   "zh-Hans": "更多",
+   "zh-Hant": "更多"
+  },
   "sidebar.switchToThisSpace": {
    "de": "Zu diesem Space wechseln",
    "en": "Switch to this Space",
@@ -15173,6 +15195,17 @@
    "nl": "Up-to-date",
    "zh-Hans": "已是最新",
    "zh-Hant": "已是最新狀態"
+  },
+  "tabs.backgroundCreation.confirmation": {
+   "de": "Neuer Tab erstellt",
+   "en": "New Tab Created",
+   "es": "Nueva pestaña creada",
+   "fr": "Nouvel onglet créé",
+   "ja": "新しいタブを開きました",
+   "ko": "새 탭이 열렸어요",
+   "nl": "Nieuw tabblad geopend",
+   "zh-Hans": "已创建新标签页",
+   "zh-Hant": "已開啟新分頁"
   },
   "tabs.clearAll.confirmation": {
    "de": "Tabs aufgeräumt. Mit {0} widerrufen.",

@@ -7051,33 +7051,17 @@
    "comment": "settings — used at phi_settings_window.cc:774",
    "en": "Reopen your windows and tabs the next time you open Phi."
   },
-  "settings.general.newTabsAtTop.title": {
-   "comment": "Mac key (translations by key); settings — General ▸ Browsing, phi_settings_window.cc",
-   "en": "Open new tabs at top",
-   "interim": {
-    "de": "Neue Tabs oben öffnen",
-    "es": "Abrir las pestañas nuevas arriba",
-    "fr": "Ouvrir les nouveaux onglets en haut",
-    "ja": "新しいタブを一番上に開く",
-    "ko": "새 탭을 맨 위에 열기",
-    "nl": "Open nieuwe tabbladen bovenaan",
-    "zh-Hans": "在顶部打开新标签页",
-    "zh-Hant": "在頂端開啟新分頁"
-   }
+  "settings.general.newTabPosition.title": {
+   "comment": "Mac key (translations by key); settings — General ▸ Browsing, row title over the At the top / At the bottom cards, phi_settings_window.cc",
+   "en": "Open new tabs"
   },
-  "settings.general.newTabsAtTop.description": {
-   "comment": "Mac key (translations by key); settings — General ▸ Browsing, phi_settings_window.cc",
-   "en": "In sidebar layouts, place new tabs at the top of the tab list. Comfortable always opens new tabs at the end.",
-   "interim": {
-    "de": "In Layouts mit Seitenleiste werden neue Tabs oben in der Tab-Liste platziert. „Komfortabel“ öffnet neue Tabs immer am Ende.",
-    "es": "En los diseños con barra lateral, coloca las pestañas nuevas al principio de la lista de pestañas. Cómodo siempre abre las pestañas nuevas al final.",
-    "fr": "Dans les dispositions avec barre latérale, place les nouveaux onglets en haut de la liste des onglets. Confortable ouvre toujours les nouveaux onglets à la fin.",
-    "ja": "サイドバーレイアウトでは、新しいタブをタブリストの一番上に配置します。「ゆったり」では、新しいタブは常に末尾に開きます。",
-    "ko": "사이드바 레이아웃에서는 새 탭을 탭 목록 맨 위에 배치해요. 여유 레이아웃에서는 새 탭이 항상 맨 끝에 열려요.",
-    "nl": "Plaats nieuwe tabbladen in lay-outs met een zijbalk boven aan de tabbladenlijst. Comfortabel opent nieuwe tabbladen altijd aan het einde.",
-    "zh-Hans": "在侧边栏布局中，将新标签页放在标签页列表顶部。“舒适”布局始终在末尾打开新标签页。",
-    "zh-Hant": "在側邊欄版面配置中，將新分頁放在分頁列表頂端。「舒適」版面配置一律在最後開啟新分頁。"
-   }
+  "settings.general.newTabPosition.topOption": {
+   "comment": "Mac key (translations by key); settings — General ▸ Browsing, card that places new tabs at the top of the sidebar tab list",
+   "en": "At the top"
+  },
+  "settings.general.newTabPosition.bottomOption": {
+   "comment": "Mac key (translations by key); settings — General ▸ Browsing, card that places new tabs at the bottom of the sidebar tab list",
+   "en": "At the bottom"
   },
   "settings.general.restoreLastSession.toggle": {
    "comment": "settings — used at phi_settings_window.cc:772",
@@ -10679,6 +10663,14 @@
   "settings.profiles.nameField.duplicateError": {
    "comment": "settings — in-place profile rename duplicate name",
    "en": "A profile with this name already exists."
+  },
+  "sidebar.spaceRoot.moreButton": {
+   "comment": "Mac key (translations by key); sidebar (phi_sidebar_view.cc) — the Space root row's hover “…” button that opens the Space actions menu; its accessible name and tooltip",
+   "en": "More"
+  },
+  "tabs.backgroundCreation.confirmation": {
+   "comment": "Mac key (translations by key); clickable toast (phi_shell_window.cc) shown when a link opens in a background tab while the sidebar is hidden; clicking it switches to the new tab",
+   "en": "New Tab Created"
   }
  }
 }

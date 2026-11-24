@@ -155,6 +155,7 @@ inline constexpr int kHTabActiveWidth = 240;  // The active tab takes more room.
 inline constexpr int kHTabMinWidth = 56;
 inline constexpr int kHTabGap = 0;        // Tabs abut; a hairline divides them.
 inline constexpr int kCloseBoxSize = 24;  // UnifiedTabCloseButton frame.
+inline constexpr int kSpaceRootMoreBox = 24;  // SpaceRootCellView moreButton.
 // The speaker button after a pane's favicon (the Mac's SplitPaneMuteButton
 // frame), its glyph, and the room it needs before it is drawn at all.
 inline constexpr int kMuteBoxSize = 20;
@@ -691,6 +692,11 @@ class PhiSidebarShell {
   // The New Tab entry point (the "+ New Tab" row honours the "New tab
   // behavior" pref, which the shell owns).
   virtual void SidebarStartNewTab() = 0;
+  // The Space root row's "…" menu (the Mac's populateSpaceRootMenu): New
+  // Tab, New Folder and the active Space's rows without its theme editor,
+  // dropped below `button` (shell client coordinates). Returns once the menu
+  // has closed.
+  virtual void SidebarShowSpaceRootMenu(const RECT& button) = 0;
   // The rows, as accessibility sees them (docs/architecture-review.md §3.6,
   // ranked finding 31): the shell publishes them on its window.
   virtual void SidebarPublishHits(std::vector<PhiHit> hits) = 0;
@@ -766,6 +772,9 @@ class PhiSidebarView {
     std::wstring title;
     RECT frame{};
     RECT bounds{};
+    // The Mac's hover "…" button (c813ad28) at the row's trailing edge: it
+    // opens the trimmed tab-area menu. Empty while the row is scrolled out.
+    RECT more_box{};
   };
   const SpaceRootRow& space_root() const { return space_root_; }
   // No bookmark in the tree at all, whatever the root is hiding.
@@ -1158,6 +1167,9 @@ class PhiSidebarView {
   std::vector<ShortcutRow> pinned_;
   std::vector<ShortcutRow> bookmarks_;
   SpaceRootRow space_root_;
+  // The root row's "…" menu is up: its button stays drawn (the Mac pins the
+  // row's hover while it shows).
+  bool space_root_menu_open_ = false;
   // The active tab's URL (captured by Rebuild) and its session id.
   std::string active_tab_url_;
   TabId active_tab_id_;

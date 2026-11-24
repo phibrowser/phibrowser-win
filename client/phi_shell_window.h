@@ -1409,6 +1409,11 @@ class PhiShellWindow : public PhiHitSource,
   // which IS scaled — outgrows the boxes drawn for it.
   int Scaled(int design_units) const;
   RECT Scaled(const RECT& design_units) const;
+  // OnUserOpenedLinkTab's "New Tab Created" toast (the Mac's
+  // showBackgroundTabCreation), when the sidebar is hidden.
+  void ShowBackgroundTabToast(BrowserId browser, TabId tab);
+  // The Mac's OverlayToastCenter.defaultDuration.
+  static constexpr int kBackgroundTabToastMs = 3000;
   // Rebuilds `ui_font_` for `dpi_`. Idempotent for an unchanged DPI.
   void EnsureFont();
 
@@ -1657,9 +1662,12 @@ class PhiShellWindow : public PhiHitSource,
   // the Space chip (docs/windows-native-ui.md §5.4). `space_id`: the Space
   // the block acts on (empty = the active Space) — a pip's, by value, so
   // the menu acts on it whether or not the switch to it has landed.
+  // `space_root`: the Space root row's "…" menu (the Mac's
+  // populateSpaceRootMenu), opened from its button at `pt`.
   void ShowTabAreaMenu(POINT pt,
                        bool space_only = false,
-                       std::string space_id = std::string());
+                       std::string space_id = std::string(),
+                       bool space_root = false);
   // A right-click inside the bookmark bar's band: a pill takes the bookmark
   // row's menu, the bare run the bar's own. False when `pt` is off the bar.
   bool ShowBookmarkBarContextMenu(POINT pt);
@@ -2312,6 +2320,7 @@ class PhiShellWindow : public PhiHitSource,
   PhiDragBitmap SidebarCaptureChrome(const RECT& client_rect) override;
   HWND SidebarContentWindow() const override;
   void SidebarStartNewTab() override;
+  void SidebarShowSpaceRootMenu(const RECT& button) override;
   void SidebarPublishHits(std::vector<PhiHit> hits) override;
   // The sidebar's slice of a per-turn Layout.
   PhiSidebarRects BandRects(const Layout& layout) const;

@@ -39,6 +39,16 @@ void PhiShowToastWithAction(HWND owner,
                             const std::wstring& action_label,
                             std::function<void()> action);
 
+// The Mac's whole-toast action (OverlayToastAction usesWholeToast, 1f585bac)
+// at the top-trailing slot: the toast itself is ONE button named `title` —
+// a click anywhere on it runs `action` once and dismisses it. It still
+// never takes focus.
+void PhiShowClickableToast(HWND owner,
+                           const PhiPalette& palette,
+                           const std::wstring& title,
+                           int duration_ms,
+                           std::function<void()> action);
+
 }  // namespace phi_client
 
 #endif  // PHIBROWSER_WIN_CLIENT_PHI_TOAST_H_

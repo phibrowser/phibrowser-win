@@ -125,6 +125,7 @@ using sidebar_metrics::kScrollbarHoldMs;
 using sidebar_metrics::kScrollbarInset;
 using sidebar_metrics::kScrollbarMinThumb;
 using sidebar_metrics::kScrollbarWidth;
+using sidebar_metrics::kSpaceRootMoreBox;
 
 // A RECLAIMED tab — restored-but-never-loaded (unloaded) or discarded —
 // draws its favicon at 30% (the Mac's TabFaviconPresentation.reclaimedOpacity,
@@ -560,6 +561,17 @@ DropResolution PhiSidebarView::ResolveOutlineDrop(
 
 bool PhiSidebarView::OnStoredRowClick(POINT pt) {
   EndKeyboardFocus();  // The ring is the keyboard's; a click retires it.
+  if (::PtInRect(&space_root_.more_box, pt)) {
+    // The row stays hovered-looking while the menu is up; the menu's loop
+    // runs inside this call.
+    const RECT button = space_root_.more_box;
+    space_root_menu_open_ = true;
+    ::InvalidateRect(shell_->SidebarShellWindow(), &button, FALSE);
+    shell_->SidebarShowSpaceRootMenu(button);
+    space_root_menu_open_ = false;
+    shell_->SidebarScheduleRefresh();
+    return true;
+  }
   if (::PtInRect(&space_root_.bounds, pt)) {
     ToggleSpaceRoot();
     return true;
@@ -1041,6 +1053,11 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
     add(space_root_.bounds, kBookmarkKey - 1, space_root_.title,
         PhiHitRole::kGroup, space_root_.expanded);
     note_focus(SpaceRootKey(), before);
+    // Its "…" button, after the row so it takes the pointer there. Always
+    // published, like a tab row's close box: drawn on hover only, but a
+    // screen reader reaches it without hovering.
+    add(space_root_.more_box, kBookmarkKey - 2,
+        PhiStr("sidebar.spaceRoot.moreButton"), PhiHitRole::kButton, false);
   }
   for (size_t i = 0; i < bookmarks_.size(); ++i) {
     const ShortcutRow& row = bookmarks_[i];
@@ -2025,6 +2042,7 @@ void PhiSidebarView::Rebuild() {
     }
     space_root_.bounds = none;
     space_root_.frame = none;
+    space_root_.more_box = none;
     for (GroupHeader& header : group_headers_) {
       header.bounds = none;
       header.container = none;
@@ -2070,6 +2088,7 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
                                       const WindowSnapshot& snapshot) {
   space_root_.frame = RECT{};
   space_root_.bounds = RECT{};
+  space_root_.more_box = RECT{};
   pinned_.clear();
   bookmarks_.clear();
   if (!sidebar_host_ || incognito() || agent_ ||
@@ -2346,6 +2365,15 @@ void PhiSidebarView::RebuildShortcuts(const PhiSidebarRects& layout,
     if (space_root_.shown) {
       space_root_.frame = PhiToRect(placed.rects[0]);
       space_root_.bounds = clip_to_band(space_root_.frame);
+      // The Mac's 24pt "…" button, 4pt in from the trailing edge, only
+      // while the whole row is in view (a half-scrolled row has no room).
+      const RECT& frame = space_root_.frame;
+      if (::EqualRect(&space_root_.bounds, &frame)) {
+        const int box = Scaled(kSpaceRootMoreBox);
+        const int mid = (frame.top + frame.bottom) / 2;
+        space_root_.more_box = {frame.right - Scaled(4) - box, mid - box / 2,
+                                frame.right - Scaled(4), mid + box / 2};
+      }
     }
     for (size_t i = 0; i < bookmarks_.size(); ++i) {
       ShortcutRow& row = bookmarks_[i];
@@ -4156,6 +4184,20 @@ void PhiSidebarView::PaintBand(HDC dc,
     RECT text = pill;
     text.left += Scaled(6) + Scaled(kFaviconSlot) + Scaled(8);
     text.right -= Scaled(8);
+    // The "…" button shows while the row is hovered or its menu is up (the
+    // Mac's moreButton, textMuted on a hover-colour r6 ground while pressed).
+    const bool more_shown =
+        !drag_active && space_root_.more_box.right > space_root_.more_box.left &&
+        (hover_kind == HoverKind::kSpaceRoot || space_root_menu_open_);
+    if (more_shown) {
+      const RECT& more = space_root_.more_box;
+      if (space_root_menu_open_) {
+        PhiFillRounded(dc, more, palette.hover_strong, Scaled(6));
+      }
+      PhiDrawIconGlyph(dc, more, fluent::kMore, Scaled(14),
+                       FadeInk(kLabel, kTintTop, 0.55f));
+      text.right = more.left - Scaled(4);
+    }
     ::SetTextColor(dc, ink);
     PhiDrawTextAA(dc, space_root_.title.c_str(), -1, &text,
                   DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS |

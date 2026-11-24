@@ -257,6 +257,11 @@ struct PhiTabAreaMenuInputs {
   // on a Space pip or the Space chip — rename, icon, theme, profile,
   // delete — without the tab-area rows.
   bool space_only = false;
+  // The Space root row's "…" menu (the Mac's populateSpaceRootMenu,
+  // c813ad28): New Tab, New Folder (not off the record), then the Space
+  // block without its theme editor; no reopen, bookmark-all, layout or
+  // bottom-button rows.
+  bool space_root = false;
   // The Mac's trailing "Bottom Buttons" submenu (`ce1f357f`): which buttons
   // the sidebar's bottom bar shows. Offered in the vertical layout only,
   // where the bar is.

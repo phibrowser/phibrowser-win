@@ -1448,12 +1448,39 @@ void PhiSettingsWindow::BuildGeneral(int* y) {
     }
   }
   AddDividerRow(y);
-  // The Mac's "Open new tabs at top" (5590a1d1), right under the new tab
-  // behavior there too. Synced; the sidebar's New Tab row follows it.
-  AddToggleRow(y, PhiStr("settings.general.newTabsAtTop.title"),
-               prefs_->NewTabsAtTop(), /*enabled=*/true, "newtabsattop",
-               PhiStr("settings.general.newTabsAtTop.description"),
-               kChipIndent, 0xE74A);  // Up.
+  {
+    // "Open new tabs": the Mac's At the top / At the bottom cards (234efbac,
+    // was the 5590a1d1 toggle), right under the new tab behavior there too.
+    // Still the synced newTabsAtTop; the sidebar's New Tab row follows it.
+    const RECT area = AddRow(y, PhiStr("settings.general.newTabPosition.title"),
+                             kImageCardBlock,
+                             2 * kImageCardW + kImageCardGap, nullptr,
+                             kChipIndent, 0xE74A);  // Up.
+    const struct {
+      const char* title;  // A string-catalog key.
+      bool at_top;
+      const char* sketch;
+    } kCards[] = {
+        {"settings.general.newTabPosition.topOption", true, "newtab-top"},
+        {"settings.general.newTabPosition.bottomOption", false,
+         "newtab-bottom"},
+    };
+    int i = 0;
+    for (const auto& definition : kCards) {
+      Item card;
+      card.kind = ItemKind::kImageCard;
+      card.text = PhiStr(definition.title);
+      card.payload = definition.sketch;
+      card.selected = prefs_->NewTabsAtTop() == definition.at_top;
+      card.value = definition.at_top ? 1 : 0;
+      card.action = "newtabposition";
+      const int x = area.left + i * Scaled(kImageCardW + kImageCardGap);
+      card.bounds = {x, area.top, x + Scaled(kImageCardW),
+                     area.top + Scaled(kImageCardBlock)};
+      items_.push_back(std::move(card));
+      ++i;
+    }
+  }
   AddDividerRow(y);
   AddToggleRow(y, PhiStr("settings.general.restoreLastSession.toggle"),
                prefs_->RestoreLastSession(),
@@ -5650,6 +5677,31 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
             rr(28, 22, 56, 3, chrome6, 2);      // Suggestion lines.
             rr(28, 29, 44, 3, chrome6, 2);
             rr(105, 2, 14, 8, kAgentPill, 8);
+          } else if (item.payload == "newtab-top" ||
+                     item.payload == "newtab-bottom") {
+            // The Mac's "New Tab above / below tabs" illustrations: a
+            // sidebar of three tab lines with the "+" New Tab pill before
+            // or after them. No agent pill on these two.
+            const bool top = item.payload == "newtab-top";
+            rr(32, 1, 1, 70, chrome10, 0);      // Sidebar divider.
+            const int pill_y = top ? 9 : 21;
+            rr(4, pill_y, 26, 6, chrome6, 3);   // New Tab pill.
+            const int first_line = top ? 17 : 9;
+            for (int line = 0; line < 3; ++line) {
+              rr(4, first_line + 4 * line, 26, 2, chrome6, 1);  // A tab.
+            }
+            // The pill's "+", ink ~45% (#888 on the light card).
+            const COLORREF plus = Blend(ink_color, ground, 115);
+            const int cx = image.left + Scaled(17);
+            const int cy = image.top + Scaled(pill_y + 3);
+            const int arm = std::max(2, Scaled(2));
+            const int stroke = std::max(1, Scaled(1));
+            RECT horizontal = {cx - arm, cy - stroke / 2, cx + arm,
+                               cy - stroke / 2 + stroke};
+            RECT vertical = {cx - stroke / 2, cy - arm,
+                             cx - stroke / 2 + stroke, cy + arm};
+            FillRounded(dc, horizontal, plus, 0);
+            FillRounded(dc, vertical, plus, 0);
           } else {
             // The appearance tiles: two tab chips + the agent pill.
             RECT tab = {image.left + Scaled(8), image.top + Scaled(2),
@@ -6975,8 +7027,8 @@ void PhiSettingsWindow::Apply(const Item& item, int x) {
     host_->SetDirectionalTabClosing(!item.on);
   } else if (item.action == "linkgroups") {
     host_->SetGroupTabsOpenedFromLinks(!item.on);
-  } else if (item.action == "newtabsattop") {
-    host_->SetNewTabsAtTop(!item.on);
+  } else if (item.action == "newtabposition") {
+    host_->SetNewTabsAtTop(item.value != 0);
   } else if (item.action == "fullurl") {
     host_->SetAlwaysShowFullUrl(!item.on);
   } else if (item.action == "restoresession") {

@@ -60,6 +60,7 @@
 #include "client/phi_folder_icons.h"
 #include "client/phi_tab_preview.h"
 #include "client/phi_tab_switcher.h"
+#include "client/phi_toast.h"
 #include "client/phi_dwrite.h"
 #include "client/phi_emoji.h"
 #include "client/phi_icons.h"
@@ -3329,6 +3330,12 @@ void PhiShellWindow::SidebarStartNewTab() {
   StartNewTab();
 }
 
+void PhiShellWindow::SidebarShowSpaceRootMenu(const RECT& button) {
+  // Dropped 4 DIP under the button's leading edge, as the Mac pops it.
+  ShowTabAreaMenu({button.left, button.bottom + Scaled(4)},
+                  /*space_only=*/false, std::string(), /*space_root=*/true);
+}
+
 // The rows, as assistive technology reads them. The list is THE data source
 // the UIA provider (phi_uia.h) walks — one fragment per hit, named, typed
 // and invokable through the same messages a mouse click sends.
@@ -4742,10 +4749,46 @@ std::string TrimLinkGroupName(const std::string& text) {
 
 }  // namespace
 
+// The Mac's showBackgroundTabCreation (1f585bac, 919ba4cb): a link the user
+// opened into a BACKGROUND tab while the sidebar is hidden in a sidebar
+// layout says so with a clickable "New Tab Created" toast, since no row
+// shows the tab arrive. A click activates the tab through the framework,
+// which finds it in whatever split it landed; a tab closed meanwhile makes
+// the click a no-op.
+void PhiShellWindow::ShowBackgroundTabToast(BrowserId browser, TabId tab) {
+  if (!framework_ || !sidebar_collapsed_ ||
+      layout_mode_ == PhiLayoutMode::kComfortable ||
+      browser != active_browser_id() || !shell_hwnd_ ||
+      !::IsWindowVisible(shell_hwnd_) || ::IsIconic(shell_hwnd_)) {
+    return;
+  }
+  const phi_framework::WindowSnapshotView* view =
+      framework_->Snapshot(browser);
+  if (!view) {
+    return;
+  }
+  const phi_framework::WindowSnapshot snapshot =
+      phi_framework::ToOwnedSnapshot(*view);
+  const phi_framework::TabSnapshot* arrival = PhiFindTabIn(snapshot, tab);
+  // Only a tab of the list that opened behind the current one: a
+  // Ctrl+Shift-click's foreground tab, a Peek or a bound tab tells nothing.
+  if (!arrival || arrival->active || !arrival->tag.empty() ||
+      arrival->surface != phi_framework::TabSurface::kContent) {
+    return;
+  }
+  phi_framework::PhiFramework* const framework = framework_;
+  PhiShowClickableToast(shell_hwnd_, CurrentPalette(),
+                        PhiStr("tabs.backgroundCreation.confirmation"),
+                        kBackgroundTabToastMs, [framework, browser, tab] {
+                          framework->ActivateTabById(browser.value, tab.value);
+                        });
+}
+
 void PhiShellWindow::OnUserOpenedLinkTab(BrowserId browser,
                                          TabId tab,
                                          TabId opener,
                                          const std::string& opener_search_terms) {
+  ShowBackgroundTabToast(browser, tab);
   // Only a regular window's Space or an Incognito one groups: never an agent
   // Space (also while the user holds it, or hosts it for a watch), and never a
   // Kiosk, shadow or Peek browser, which no slot hosts as a Space.
@@ -8361,7 +8404,8 @@ bool PhiShellWindow::ShowBookmarkBarContextMenu(POINT pt) {
 
 void PhiShellWindow::ShowTabAreaMenu(POINT pt,
                                      bool space_only,
-                                     std::string space_id) {
+                                     std::string space_id,
+                                     bool space_root) {
   // The Mac tab-area menu (TabAreaContextMenuHelper): new tab, reopen, the
   // bookmark block, the layout switch, then the active Space's own controls
   // (the Spaces menu's rows, for the Space under the pointer).
@@ -8378,6 +8422,7 @@ void PhiShellWindow::ShowTabAreaMenu(POINT pt,
   in.tabs_empty = sidebar_->tabs().empty();
   in.mode = layout_mode_;
   in.space_only = space_only;
+  in.space_root = space_root;
   if (services_.prefs) {
     // The bottom bar exists in the vertical layout only.
     in.bottom_buttons = layout_mode_ != PhiLayoutMode::kComfortable;

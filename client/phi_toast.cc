@@ -3,6 +3,7 @@
 
 #include "client/phi_toast.h"
 
+#include <dwmapi.h>
 #include <oleauto.h>
 #include <uiautomation.h>
 
@@ -32,6 +33,8 @@ constexpr int kSideInset = 48;
 constexpr int kHeightOneLine = 40;
 constexpr int kHeightTwoLine = 56;
 constexpr int kTopOffset = 56;
+// The Mac's topTrailing slot: genericToastRightOffset from the trailing edge.
+constexpr int kTrailingInset = 16;
 constexpr int kTitleSize = 13;
 constexpr int kMessageSize = 12;
 // A long title or message wraps inside this width (and inside the owner,
@@ -64,12 +67,14 @@ class Toast : public PhiPopover {
         std::wstring message,
         const PhiPalette& palette,
         std::wstring action_label,
-        std::function<void()> action)
+        std::function<void()> action,
+        bool whole_toast = false)
       : title_(std::move(title)),
         message_(std::move(message)),
         pending_palette_(palette),
         action_label_(std::move(action_label)),
-        action_(std::move(action)) {}
+        action_(std::move(action)),
+        whole_toast_(whole_toast && action_) {}
 
   ~Toast() override = default;
 
@@ -105,7 +110,17 @@ class Toast : public PhiPopover {
     const SIZE size = Measure();
     RECT owner_rect = {};
     ::GetWindowRect(owner, &owner_rect);
-    const LONG x = (owner_rect.left + owner_rect.right) / 2 - size.cx / 2;
+    // The whole-toast action sits in the Mac's topTrailing slot, the rest
+    // top-centre. The owner's visible frame, not its resize border.
+    RECT frame = owner_rect;
+    if (FAILED(::DwmGetWindowAttribute(owner, DWMWA_EXTENDED_FRAME_BOUNDS,
+                                       &frame, sizeof(frame)))) {
+      frame = owner_rect;
+    }
+    const LONG x =
+        whole_toast_
+            ? frame.right - Scaled(kTrailingInset) - size.cx
+            : (owner_rect.left + owner_rect.right) / 2 - size.cx / 2;
     const LONG y = owner_rect.top + Scaled(kTopOffset);
     placement.anchor = {x, y, x, y};
     Reposition(placement, size);
@@ -142,7 +157,9 @@ class Toast : public PhiPopover {
     RECT text = rc;
     text.left += Scaled(kTextInset);
     text.right -= Scaled(kTextInset);
-    if (has_action()) {
+    // A whole-toast action draws no button: the card is one (the Mac's
+    // plain-style Button around the surface).
+    if (has_action() && !whole_toast_) {
       text.right = action_rect_.left - Scaled(kActionGap);
       const bool hot = hovered() >= 0;
       PhiFillRoundRectAA(dc, action_rect_, Scaled(kActionRadius),
@@ -213,11 +230,13 @@ class Toast : public PhiPopover {
   }
 
  private:
-  bool has_action() const { return !action_label_.empty() && action_; }
+  bool has_action() const {
+    return action_ && (whole_toast_ || !action_label_.empty());
+  }
 
   // The button's rect, measured from its label, and its one hit.
   int ActionWidth() {
-    if (!has_action()) {
+    if (!has_action() || whole_toast_) {
       return 0;
     }
     HDC probe = ::GetDC(nullptr);
@@ -239,6 +258,11 @@ class Toast : public PhiPopover {
     }
     RECT rc = {};
     ::GetClientRect(hwnd(), &rc);
+    if (whole_toast_) {
+      // One hit, the whole card, named as the toast reads.
+      AddHit(rc, kActionKey, title_, PhiHitRole::kButton);
+      return;
+    }
     const int width = action_width_;
     const int height = Scaled(kActionHeight);
     action_rect_ = {rc.right - Scaled(kTextInset) - width,
@@ -301,7 +325,9 @@ class Toast : public PhiPopover {
                                                owner_rect.left) -
                                   2 * Scaled(kOwnerMargin));
     }
-    const int action = has_action() ? action_width_ + Scaled(kActionGap) : 0;
+    const int action = has_action() && !whole_toast_
+                           ? action_width_ + Scaled(kActionGap)
+                           : 0;
     return std::max(width - Scaled(kSideInset) - action, Scaled(80));
   }
 
@@ -345,7 +371,9 @@ class Toast : public PhiPopover {
     SIZE size = {};
     size.cx = std::max<LONG>(std::max(title_size.cx, message_size.cx), 1) +
               Scaled(kSideInset) +
-              (has_action() ? action_width_ + Scaled(kActionGap) : 0);
+              (has_action() && !whole_toast_
+                   ? action_width_ + Scaled(kActionGap)
+                   : 0);
     // One- and two-line toasts keep their fixed heights; wrapped text
     // grows the toast.
     const int block =
@@ -366,6 +394,7 @@ class Toast : public PhiPopover {
   std::function<void()> action_;
   RECT action_rect_ = {};
   int action_width_ = 0;  // Measured with the label font (Measure).
+  const bool whole_toast_;  // The card is the action (no label button).
   Timer dismiss_;
   bool fading_out_ = false;
   bool layered_ = true;  // Until a commit fails (Commit).
@@ -433,6 +462,21 @@ void PhiShowToast(HWND owner,
                          std::wstring(), nullptr);
 }
 
+namespace {
+
+void OpenToast(HWND owner, Toast* toast, int duration_ms) {
+  if (g_toast) {
+    g_toast->Destroy();  // Replacement, not queueing (v1).
+    g_toast = nullptr;
+  }
+  toast->DeleteWhenDestroyed();
+  if (!toast->Open(owner, duration_ms)) {
+    delete toast;
+  }
+}
+
+}  // namespace
+
 void PhiShowToastWithAction(HWND owner,
                             const PhiPalette& palette,
                             const std::wstring& title,
@@ -443,16 +487,23 @@ void PhiShowToastWithAction(HWND owner,
   if (!owner || !::IsWindow(owner)) {
     return;
   }
-  if (g_toast) {
-    g_toast->Destroy();  // Replacement, not queueing (v1).
-    g_toast = nullptr;
+  OpenToast(owner,
+            new Toast(title, message, palette, action_label, std::move(action)),
+            duration_ms);
+}
+
+void PhiShowClickableToast(HWND owner,
+                           const PhiPalette& palette,
+                           const std::wstring& title,
+                           int duration_ms,
+                           std::function<void()> action) {
+  if (!owner || !::IsWindow(owner) || !action) {
+    return;
   }
-  Toast* toast =
-      new Toast(title, message, palette, action_label, std::move(action));
-  toast->DeleteWhenDestroyed();
-  if (!toast->Open(owner, duration_ms)) {
-    delete toast;
-  }
+  OpenToast(owner,
+            new Toast(title, std::wstring(), palette, std::wstring(),
+                      std::move(action), /*whole_toast=*/true),
+            duration_ms);
 }
 
 }  // namespace phi_client
