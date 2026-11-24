@@ -192,6 +192,9 @@ PhiVerbResult PhiControlDispatcher::VerbWindowLayout(
   // while the field is hovered).
   out.Set("copyLink", RectDict(shell->copy_link_rect()));
   out.Set("siteMenu", RectDict(shell->site_menu_rect()));
+  // The field's leading slot: empty unless it holds the incognito glyph or
+  // the Not secure cue (the Mac's field has no leading icon, PHI-2203).
+  out.Set("pageIcon", RectDict(shell->page_icon_rect()));
   // The field's Not secure cue (the chip with its triangle and label), an
   // empty rect unless the page is not secure and the field is at rest;
   // `danger` for the red state, a certificate error.

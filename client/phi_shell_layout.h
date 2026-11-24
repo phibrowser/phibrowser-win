@@ -68,6 +68,10 @@ inline constexpr int kFieldSlotInset = 4;
 inline constexpr int kFieldTextInset = 12;
 // The Mac's minimumAddressTextWidth: below it the trailing stack hides.
 inline constexpr int kFieldMinText = 84;
+// The Mac's addressBarReservedWidth (WebContentHeaderView): the room the
+// page header keeps for the address field before anything else. In the
+// vertical layout the window's minimum width keeps it (PHI-2203).
+inline constexpr int kAddressFieldReserve = 200;
 // The pinned-extension slots in the tool cluster: 28 wide, 2 apart.
 inline constexpr int kExtSlot = 28;
 inline constexpr int kExtSlotGap = 2;
@@ -351,6 +355,14 @@ struct ShellLayout {
 };
 
 ShellLayout ComputeShellLayout(const ShellLayoutInputs& in);
+
+// The narrowest client width, in pixels, at which the vertical layout's
+// address row still gives the field kAddressFieldReserve dip: the row's
+// fixed controls (and a docked sidebar) plus the reserve. The pinned-
+// extension slots are left out, since they give way first; the transient
+// agent chip too. 0 for the layouts whose field is not in that row
+// (comfortable's toolbar, Performance's sidebar) and in content fullscreen.
+int ShellMinClientWidthForField(const ShellLayoutInputs& in);
 
 }  // namespace phi_client
 

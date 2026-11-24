@@ -501,4 +501,22 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   return out;
 }
 
+int ShellMinClientWidthForField(const ShellLayoutInputs& in) {
+  if (in.mode != PhiLayoutMode::kBalanced || in.content_fullscreen) {
+    return 0;
+  }
+  // Lay the row out wide enough for nothing to give way, then the fixed
+  // part is everything but the field.
+  ShellLayoutInputs wide = in;
+  wide.client_width = 1 << 16;
+  wide.field_ext_count = 0;
+  wide.agent_chip_dip = 0;
+  const ShellLayout row = ComputeShellLayout(wide);
+  const int field = row.url_field.right - row.url_field.left;
+  if (field <= 0) {
+    return 0;
+  }
+  return wide.client_width - field + ShellScaled(kAddressFieldReserve, in.dpi);
+}
+
 }  // namespace phi_client

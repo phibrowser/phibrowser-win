@@ -1141,6 +1141,13 @@ PhiShellWindow::Layout PhiShellWindow::ComputeLayout(bool include_floating) {
     layout_cache_ = ToLayout(ComputeShellLayout(inputs));
     layout_cache_valid_ = true;
   }
+  if (!LeadingSlotShown()) {
+    // Nothing to lead the field with: no slot, the text at the field's own
+    // inset, as on the Mac.
+    Layout out = layout_cache_;
+    out.page_icon = RECT{};
+    return out;
+  }
   return layout_cache_;
 }
 
@@ -6834,14 +6841,15 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   if (!floating_layout_ && floating_expanded_) {
     HideFloatingSidebar(/*animated=*/true);  // A click on the row tucks it.
   }
+  POINT pt = {x, y};
   // Clicking anywhere else in the chrome means the user is done editing the
   // address; hand the keyboard back to the page (the field is a child window,
-  // so clicks on it never reach here).
-  if (omnibox_->FieldHasFocus()) {
+  // so clicks on it never reach here). A press on the field's own free area
+  // around the EDIT is not "elsewhere": it opens the field below.
+  if (omnibox_->FieldHasFocus() && !FieldFreeAreaAt(ComputeLayout(), pt)) {
     FocusActiveBrowser();
   }
   const Layout layout = ComputeLayout();
-  POINT pt = {x, y};
   if (PressClosedButtonMenu(pt)) {
     return;  // This press closed the button's own menu: it stays closed.
   }
@@ -6982,6 +6990,15 @@ void PhiShellWindow::OnChromeClick(int x, int y) {
   if (FieldToolsShown() && ::PtInRect(&layout.site_menu, pt)) {
     ShowSiteMenu(layout.site_menu);
     NoteButtonMenuClosed(layout.site_menu);
+    return;
+  }
+  if (FieldFreeAreaAt(layout, pt)) {
+    // The rest of the field -- its leading slot and padding, the room the
+    // EDIT leaves -- opens the address for editing, the whole URL selected:
+    // the Mac's click surface spans its text region from the capsule's
+    // leading edge (WebContentAddressBarDragSurface), with no icon there
+    // (PHI-2203).
+    FocusAddressField();
     return;
   }
   for (const BarItem& item : bar_items_) {
@@ -7388,6 +7405,10 @@ RECT PhiShellWindow::site_menu_rect() {
   return ComputeLayout().site_menu;
 }
 
+RECT PhiShellWindow::page_icon_rect() {
+  return ComputeLayout().page_icon;
+}
+
 RECT PhiShellWindow::security_cue_rect() {
   const Layout layout = ComputeLayout();
   if (!SecurityCueShown() ||
@@ -7446,6 +7467,28 @@ void PhiShellWindow::RefreshPageSecurity(BrowserId page, uint64_t version) {
 bool PhiShellWindow::SecurityCueShown() const {
   return page_not_secure_ && !omnibox_->FieldHasFocus() &&
          !omnibox_->nav_url().empty();
+}
+
+bool PhiShellWindow::FieldFreeAreaAt(const Layout& layout, POINT pt) {
+  if (!::PtInRect(&layout.url_field, pt) || OmniboxFieldHidden()) {
+    return false;
+  }
+  // Not on a control the field carries: those take their own clicks.
+  const bool field_tools = FieldToolsShown();
+  for (const RECT& control :
+       {field_tools || ActiveTabShowsReader() ? layout.reader : RECT{},
+        field_tools ? layout.copy_link : RECT{},
+        field_tools ? layout.site_menu : RECT{}, layout.extensions,
+        layout.field_ext_strip}) {
+    if (control.right > control.left && ::PtInRect(&control, pt)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool PhiShellWindow::LeadingSlotShown() const {
+  return ShowsIncognito() || (omnibox_ && SecurityCueShown());
 }
 
 RECT PhiShellWindow::SecurityCueChipRect(const Layout& layout) {
@@ -10968,7 +11011,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
       PhiFillRoundRectAA(dc, layout.url_field, radius,
                          field_hot ? kFieldBgHot : kFieldBg);
     }
-    // The leading site-info slot: the page glyph, in `dim`.
+    // The leading slot: the Not secure cue, or an incognito window's glyph.
     if (layout.page_icon.right > layout.page_icon.left &&
         SecurityCueShown()) {
       // A page that is not secure, as Chrome marks it: a fully rounded chip
@@ -11022,8 +11065,8 @@ void PhiShellWindow::PaintChrome(HDC dc,
     } else if (layout.page_icon.right > layout.page_icon.left) {
       // §4.9: an incognito window wears the incognito glyph in the
       // field's leading slot (its chrome is fixed dark, CurrentPalette).
-      PhiDrawIconGlyph(dc, layout.page_icon,
-                       ShowsIncognito() ? fluent::kIncognito : fluent::kGlobe,
+      // Other windows have no slot (LeadingSlotShown).
+      PhiDrawIconGlyph(dc, layout.page_icon, fluent::kIncognito,
                        Scaled(fluent::kIconToolbar), bar.label_dim);
     }
     // The keyword chip ahead of the text and the "Tab to search X" hint
@@ -11615,10 +11658,15 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
                              ::GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
         const int border_y = ::GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) +
                              ::GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
-        const int min_w =
+        // The vertical layout's address row also keeps the Mac's 200 dip
+        // for the field (PHI-2203): its nav trio, tool cluster and caption
+        // buttons share the pane with the field, where the Mac keeps them
+        // in the sidebar.
+        const int min_client = std::max(
             self->Scaled((docked_sidebar ? self->sidebar_dip_ : 0) +
-                         kMinContentWidth) +
-            2 * border_x;
+                         kMinContentWidth),
+            ShellMinClientWidthForField(self->CurrentLayoutInputs(false)));
+        const int min_w = min_client + 2 * border_x;
         const int min_h = self->Scaled(kMinClientHeight) + border_y;
         info->ptMinTrackSize.x = std::max<LONG>(info->ptMinTrackSize.x, min_w);
         info->ptMinTrackSize.y = std::max<LONG>(info->ptMinTrackSize.y, min_h);

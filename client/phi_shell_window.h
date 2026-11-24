@@ -1291,6 +1291,9 @@ class PhiShellWindow : public PhiHitSource,
   // The address field (a Win32 EDIT), for the test rig's readout.
   HWND address_field() const;
   RECT site_menu_rect();
+  // The field's leading slot (the incognito glyph or the Not secure cue's
+  // place), empty while it holds nothing, for the layout verb.
+  RECT page_icon_rect();
   // The address field's Not secure cue (the chip, or the bare triangle in a
   // narrow field), for the layout verb; empty unless it is on show. Danger:
   // the red state, a certificate error rather than plain http.
@@ -1468,8 +1471,10 @@ class PhiShellWindow : public PhiHitSource,
     // vertical layout's band cluster. Every layout has one — it is the
     // only way to the menu (docs/windows-native-ui.md §3).
     RECT app_menu{};
-    // The globe leading comfortable's omnibox pill, where Chrome shows the
-    // site chip. Empty in the other layouts, whose fields carry no icon.
+    // The field's leading slot: the incognito glyph, or the Not secure
+    // cue. Empty otherwise -- the Mac's address bar has no leading icon
+    // (PHI-2203: the idle globe looked like a site-info button and did
+    // nothing), so the text starts at the field's own inset.
     RECT page_icon{};
     // The floating panel's pin (empty on the shell's own layout) and the
     // sidebar's section labels.
@@ -2050,6 +2055,12 @@ class PhiShellWindow : public PhiHitSource,
   // On show: the page is not secure and the field is at rest. While the
   // field is edited the globe returns and the text has its room back.
   bool SecurityCueShown() const;
+  // The field's leading slot holds something: an incognito window's glyph
+  // or the Not secure cue.
+  bool LeadingSlotShown() const;
+  // `pt` is on the address field but on none of its controls (the leading
+  // slot, the padding round the EDIT): a press there opens the field.
+  bool FieldFreeAreaAt(const Layout& layout, POINT pt);
   // The chip's rect at the head of `layout`'s field, or empty: no cue, or a
   // field too narrow to hold the chip and still show the address (the
   // triangle alone stays).
