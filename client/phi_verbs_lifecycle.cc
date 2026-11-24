@@ -573,6 +573,20 @@ PhiVerbResult PhiControlDispatcher::VerbAgentPanelSize(
       ctx.scope.kind == Scope::Kind::kAgent
           ? coordinator_->agent_spaces().Find(ctx.scope.task_id)
           : nullptr;
+  // A watched Space is measured from the user window hosting it, and that
+  // size becomes the one it holds (the Mac's heldPageArea, "the last one it
+  // had on screen"): the task's window still resolves to its own agent shell
+  // while a user slot hosts its browser, so the held size would otherwise
+  // never change and a driver's idle follower could never fill a window
+  // grown while the Space was hidden (PHI-2155).
+  if (task) {
+    for (PhiShellWindow* host : coordinator_->registry().Controllers()) {
+      if (!host->is_agent() && host->HoldsAgentTask(task->task_id)) {
+        shell = host;
+        break;
+      }
+    }
+  }
   if (ctx.scope.kind == Scope::Kind::kAgent && (!shell || shell->is_agent())) {
     if (task && task->held_page_width > 0 && task->held_page_height > 0) {
       base::DictValue held;

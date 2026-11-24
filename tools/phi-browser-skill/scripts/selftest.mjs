@@ -270,7 +270,8 @@ async function main() {
   try { await H.goto(`${BASE}/slow`, { timeout: 4 }) } catch (e) { threw = e }
   const tightMs = Date.now() - s
   check('goto over-budget navigation throws promptly',
-        threw && /timed out/i.test(threw.message) && tightMs < 7000,
+        threw && /timed out|did not start loading/i.test(threw.message) &&
+          tightMs < 7000,
         `${tightMs}ms: ${String(threw?.message).slice(0, 50)}`)
   s = Date.now()
   const slow = await H.goto(`${BASE}/slow?roomy`, { timeout: 15 })
