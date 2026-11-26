@@ -82,14 +82,11 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // with a page margin in the vertical layout).
   const int tb = scaled(horizontal ? kStripRowHeight : kAddressRowHeight);
   out.title_bar = {0, 0, w, row_top + tb};
-  // Performance gives the window buttons a row of their own at the top of
-  // the docked sidebar (PHI-2238), so nothing of the browser's stands over
-  // the page; the sidebar's rows start under it. The floating panel has no
-  // such row: the shell keeps the buttons while the sidebar is hidden.
+  // Performance's window buttons live in a drawer at the window's top-right
+  // corner (PHI-2238): only its lip shows over the page until the pointer
+  // reaches it. The sidebar keeps its rows where they were.
   const int caption_row = scaled(kPerformanceCaptionRowHeight);
-  const bool sidebar_caption_row =
-      performance && !in.sidebar_hidden && !in.floating_panel;
-  const int sidebar_top = row_top + (sidebar_caption_row ? caption_row : 0);
+  const int sidebar_top = row_top;
   const int cap_right = horizontal ? w : card_right;
   out.caption_close = {cap_right - cap, row_top, cap_right, row_top + tb};
   out.caption_max = {cap_right - 2 * cap, row_top, cap_right - cap,
@@ -252,33 +249,21 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   }
 
   // Performance keeps the browser's chrome in the sidebar and the page at
-  // the window's full height (the Mac's Performance): the window buttons
-  // stand at the right end of the sidebar's caption row, against the page
-  // (PHI-2238 — floating over the page they covered the site's own
-  // controls in its top-right corner). With the sidebar hidden there is no
-  // sidebar to hold them: a bare strip over the page carries them at the
-  // window's corner, the page starting under it.
+  // the window's full height. The window buttons are the drawer's
+  // (PhiCaptionBand): its rects are the buttons fully pulled out at the
+  // window's top-right corner, over the page; at rest only the drawer's lip
+  // shows there (PHI-2238 — always out, they covered the site's own
+  // top-right controls).
   if (performance) {
     out.sidebar = {0, 0, sidebar, h};
     const int pane_left = hide_sidebar ? margin : sidebar;
-    int pane_top = margin;
-    if (sidebar_caption_row) {
-      out.title_bar = {0, 0, w, sidebar_top + tb};
-      out.caption_min = {sidebar - 3 * cap, row_top, sidebar - 2 * cap,
-                         sidebar_top};
-      out.caption_max = {sidebar - 2 * cap, row_top, sidebar - cap,
-                         sidebar_top};
-      out.caption_close = {sidebar - cap, row_top, sidebar, sidebar_top};
-    } else if (in.floating_panel) {
+    const int pane_top = margin;
+    if (in.floating_panel) {
       out.caption_min = out.caption_max = out.caption_close = SidebarRect{};
     } else {
-      pane_top = row_top + caption_row;
-      out.title_bar = {0, 0, w, pane_top};
-      out.caption_min = {card_right - 3 * cap, row_top, card_right - 2 * cap,
-                         pane_top};
-      out.caption_max = {card_right - 2 * cap, row_top, card_right - cap,
-                         pane_top};
-      out.caption_close = {card_right - cap, row_top, card_right, pane_top};
+      out.caption_min = {w - 3 * cap, 0, w - 2 * cap, caption_row};
+      out.caption_max = {w - 2 * cap, 0, w - cap, caption_row};
+      out.caption_close = {w - cap, 0, w, caption_row};
     }
     out.pane = out.content = {pane_left, pane_top, card_right, h - margin};
     carve_bookmark_bar(&out);

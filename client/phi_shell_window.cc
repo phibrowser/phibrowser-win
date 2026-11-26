@@ -240,6 +240,11 @@ constexpr UINT_PTR kFloatingSlideTimer = 0x529;
 constexpr UINT_PTR kPageColorFadeTimer = 0x52A;
 // The Downloads button's list poll (DownloadWatchTick).
 constexpr UINT_PTR kDownloadWatchTimer = 0x52B;
+// How long a native page keeps its square corners after a Space switch's
+// reveal: past the entering page's first frames, which its rounded
+// corners' cut would show black (PHI-2238).
+constexpr UINT_PTR kRevealSettleTimer = 0x52C;
+constexpr UINT kRevealSettleMs = 250;
 // After a page change the watch polls this often for this long, so a link
 // that becomes a download shows its cue at once (the idle poll is 500 ms).
 constexpr UINT kDownloadQuickPollMs = 150;
@@ -1255,6 +1260,8 @@ void PhiShellWindow::PushSplitViewStyle() {
   // address row owns the top ones): their ground is the sidebar's at that
   // height, which a multi-colour palette grades down the window — the
   // regrade's row position (PrepareBackdropPixels) at the corner's middle.
+  const bool ramping = !incognito_ && spaces_ && spaces_->ramp_running();
+  const PhiPalette ramp = ramping ? CurrentPalette() : PhiPalette{};
   const Layout layout = ComputeWindowLayout();
   const double corner_position = std::clamp(
       (layout.content.bottom - Scaled(kContentRadius) / 2.0) /
@@ -1264,11 +1271,15 @@ void PhiShellWindow::PushSplitViewStyle() {
     if (!browser.valid()) {
       continue;
     }
-    // The SETTLED palette of the browser's own Space, not the ramp a switch
-    // animation is painting the chrome with: the framework should not be
-    // re-laid out per frame.
+    // The browser's own Space's SETTLED palette — but while a switch's
+    // theme ramp runs, the ramp's frame for every browser of this window:
+    // the ground outside the page's rounded corners is this colour and
+    // stands beside the sidebar, which rides the ramp (PHI-2238; it stayed
+    // on the leaving Space's colour, then jumped). Only a solid-colour
+    // layer repaints; nothing is laid out.
     const PhiPalette& palette =
-        incognito_          ? kIncognito
+        ramping             ? ramp
+        : incognito_        ? kIncognito
         : services_.spaces  ? services_.spaces->PaletteForSpace(space_id)
                             : kFallback;
     // The split (Figma 9044:26952, docs/split-view-chrome.md): two panes
@@ -1908,6 +1919,10 @@ void PhiShellWindow::CaptionClearShellHover() {
 
 bool PhiShellWindow::CaptionShellFullscreen() const {
   return browsers_->shell_fullscreen();
+}
+
+bool PhiShellWindow::CaptionBackdrop() const {
+  return sidebar_backdrop_;
 }
 
 // --- PhiAppMenuShell: what the app menu asks of its shell -----------------
@@ -3453,6 +3468,7 @@ void PhiShellWindow::SpacesApplyPalette() {
 void PhiShellWindow::SpacesRefreshTinted() {
   native_pages_->Refresh();
   browsers_->RefreshCornerCaps();
+  PushSplitViewStyle();  // The page corners' ground rides the ramp too.
 }
 
 void PhiShellWindow::SpacesRepaintOmnibox() {
@@ -3939,6 +3955,7 @@ void PhiShellWindow::PlaceContentChildren(const Layout& layout) {
   PhiAgentOverlay::Reposition();
 
   browsers_->PositionCornerCaps(content);
+  caption_band_->SyncIsland();  // Performance's window-button drawer.
 }
 
 // --- The comfortable layout's Space switch (phi_content_slide.h) ------------
@@ -6135,6 +6152,13 @@ void PhiShellWindow::RevealSwappedContent() {
   swap_reveal_ = nullptr;  // The native pages' swap gate opens.
   swap_conceal_ = nullptr;
   const bool had_reveal = reveal != nullptr;
+  if (had_reveal && layout_mode_ == PhiLayoutMode::kPerformance) {
+    // The native page goes up over the entering child before that child has
+    // drawn: its rounded corners would show the child's black first frames.
+    // Square until then (SplitPaneCardCorners).
+    reveal_settling_ = true;
+    ::SetTimer(shell_hwnd_, kRevealSettleTimer, kRevealSettleMs, nullptr);
+  }
   if (had_reveal && layout_mode_ != PhiLayoutMode::kComfortable &&
       (native_pages_->ntp_mounted() ||
        native_pages_->bookmark_page_mounted())) {
@@ -7226,10 +7250,25 @@ unsigned PhiShellWindow::SplitPaneCardCorners(const RECT& pane) {
   }
   // Geometric, so either split axis reads the same: a pane edge on the
   // card's edge (within a DIP rounding or two).
-  const RECT content = ComputeWindowLayout().content;
+  const Layout layout = ComputeWindowLayout();
+  const RECT content = layout.content;
   const int slack = Scaled(2);
   const bool bottom = pane.bottom >= content.bottom - slack;
   unsigned corners = 0;
+  // Performance has nothing of the shell's above the page: the card's top
+  // corners are the page's too (PHI-2238, as the framework rounds a web
+  // page's), but where the page meets the window's own edge.
+  if (layout.mode == PhiLayoutMode::kPerformance && !reveal_settling_ &&
+      pane.top <= content.top + slack) {
+    if (pane.left <= content.left + slack &&
+        content.left > layout.client.left) {
+      corners |= 1;
+    }
+    if (pane.right >= content.right - slack &&
+        content.right < layout.client.right) {
+      corners |= 2;
+    }
+  }
   if (bottom && pane.left <= content.left + slack) {
     corners |= 4;  // Against the sidebar: the card's own corner.
   }
@@ -10948,6 +10987,7 @@ void PhiShellWindow::PaintChrome(HDC dc,
   // painted AFTER the row's ground so the fill cannot cover them
   // (phi_caption_band.h owns their hot states).
   caption_band_->Paint(dc, /*with_buttons=*/!caption_buttons_suppressed_);
+  if (!floating_layout_) caption_band_->SyncIsland();
 
   if (layout.app_icon.right > layout.app_icon.left) {
     const auto& logo = PhiLogoBgra256();
@@ -11950,6 +11990,7 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           self->services_.sidebar->RaiseReaderPanels(self->slot_.value);
         }
         self->browsers_->RaiseOverlays();
+        self->caption_band_->SyncIsland();  // The drawer above the page.
         // The Library covers the client area, caps included (the Mac's
         // panel sits over the whole content view): last, so the next raise
         // never drops it under the browser child.
@@ -12225,6 +12266,12 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       }
       break;
     case WM_TIMER:
+      if (self && wparam == kRevealSettleTimer) {
+        ::KillTimer(hwnd, kRevealSettleTimer);
+        self->reveal_settling_ = false;
+        self->native_pages_->Reposition();  // Their rounded corners now.
+        return 0;
+      }
       if (self && wparam == kPairSplitTimer) {
         self->PairPendingSplit();
         return 0;
@@ -12347,6 +12394,7 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       if (self) {
         self->CloseExtensionPopup();
         self->PositionFloatingPanel();  // The panel follows the shell.
+        self->caption_band_->SyncIsland();  // So does the drawer.
         PhiNotificationCards::NoteOwnerMoved(hwnd);
         if (self->reveal_veil_) {
           self->reveal_veil_->Lift();  // An owned popup does not follow.

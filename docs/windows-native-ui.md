@@ -534,31 +534,39 @@ page pane, left and right is ok").
   hover ink 4.5 %; close box 20 on hover / active; dimmed rows at 62 %.
 * Hidden sidebar: §4.4.
 
-### 4.3 Performance: window buttons on the sidebar's top row (2026-11-26, PHI-2238)
+### 4.3 Performance: window buttons in a hover drawer (2026-11-26, PHI-2238)
 
 Performance is a separate Windows layout. Navigation, Extensions, the app menu
 and the address field live in the sidebar, and the page keeps the window's full
-height with nothing of the browser's over it (the Mac's Performance).
+height (the Mac's Performance).
 
-The three 46 by 36 DIP caption buttons stand on a caption row of their own at
-the top of the docked sidebar, at its right end against the page
-(`kPerformanceCaptionRowHeight`). The rest of that row drags the window. The
-sidebar's nav row, Space pips and address field start under it. Maximised, the
-row touches the screen's top edge, so the buttons stay a flick target. They are
-painted and hit-tested by the shell like every other layout's, so Snap Layouts
-opens from maximise.
+The three 46 by 36 DIP caption buttons live in a drawer at the window's
+top-right corner (`PhiCaptionBand`, a shaped, layered child of the shell above
+the page, so it never stands outside the window and the window's own rounded
+corner clips its top-right). At rest it is pushed up out of the client area but
+for an 8 DIP lip (`kPerformanceDrawerLip`) with a grip in the theme's accent.
+The pointer on the lip, or a tap on it, slides it out in 140 ms; it slides back
+450 ms after the pointer leaves (no slide with Windows' animations off). While
+it is out the grip is hidden. Its lower-left corner rounds. Its ground is the
+sidebar's: with the sidebar on the OS backdrop, the tint at its alpha over the
+acrylic's neutral (what the glass reads as on a plain desktop, the floating
+sidebar's approximation; a child cannot blur what is behind the window). It
+answers HTCLIENT everywhere and fires the buttons itself, so maximise has no
+Snap Layouts flyout. Content fullscreen hides it.
 
-With the sidebar hidden, there is no sidebar to hold them. A bare 36 DIP strip
-across the top of the window carries the buttons at the card's top-right corner,
-and the page starts under it. The floating panel paints no caption row: the
-strip keeps the buttons while it is out. Content fullscreen hides the buttons.
-With a page margin, the row (or the strip) stands on the margin line.
+The page's top corners are the card's in Performance: the client sets the
+shell property `Phi.CardTopRounded` and a framework that knows it rounds the
+page's top-left (and top-right, off the window's edge) as it rounds the bottom
+ones; the native new tab page rounds them with its fringe. Over a Space switch
+the ground outside those corners follows the theme ramp with the sidebar
+(PushSplitViewStyle), and a native page keeps square corners for 250 ms after
+the reveal, while the entering page has not drawn yet.
 
-History: from 2026-11-19 (66dcf53) to PHI-2238 the buttons were a shaped,
-layered "Corner island" child (PhiCaptionIsland) floating over the page's
-top-right corner. It covered sites' own account and notification buttons there
-(PHI-2238) and side panels' pin and close (PHI-2172, which dropped the page
-under it while a panel was open). Both the island and that panel watch are gone.
+History: from 2026-11-19 (66dcf53) the buttons were an always-visible "Corner
+island" over the page's top-right corner, which covered sites' own account and
+notification buttons there (PHI-2238) and side panels' pin and close (PHI-2172,
+which dropped the page under it while a panel was open; that watch is gone).
+b2fd25b briefly put them on a caption row at the top of the sidebar.
 
 The layout menu, Appearance picker, saved preferences and cross-platform sync
 accept `performance`. Balanced and Comfortable keep their existing geometry.

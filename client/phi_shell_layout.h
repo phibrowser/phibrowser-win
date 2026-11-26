@@ -21,8 +21,8 @@ namespace phi_client {
 // and same meanings (PhiPreferences.swift), so a user moving between platforms
 // gets the same three choices:
 //
-//   kPerformance  sidebar navigation and address; the window buttons on the
-//                 sidebar's top row, the page at the window's full height
+//   kPerformance  sidebar navigation and address, the page at the window's
+//                 full height; the window buttons in a hover drawer, top-right
 //   kBalanced     vertical tabs, address bar across the TOP of the web content
 //   kComfortable  horizontal tabs — the traditional stacked layout, no sidebar
 enum class PhiLayoutMode { kPerformance, kBalanced, kComfortable };
@@ -46,10 +46,10 @@ inline constexpr int kAddressRowHeight = 44;   // Vertical: the pane's first row
 inline constexpr int kStripRowHeight = 40;     // Horizontal: the tab strip.
 inline constexpr int kToolbarRowHeight = 40;   // Horizontal: the toolbar.
 inline constexpr int kCaptionButtonWidth = 46;  // The Win11 caption metric.
-// Performance: the sidebar's caption row (the window buttons over the
-// sidebar, the page keeping the window's full height; PHI-2238), and the
-// strip that carries them over the page while the sidebar is hidden.
+// Performance: the window-button drawer at the window's top-right corner
+// (PHI-2238): the buttons' height pulled out, and the lip that shows at rest.
 inline constexpr int kPerformanceCaptionRowHeight = 36;
+inline constexpr int kPerformanceDrawerLip = 8;
 // THE horizontal gutter: every row applies 8 on each side itself.
 inline constexpr int kEdgeInset = 8;
 // The one toolbar button: 32 square, radius 4; 4 apart in a cluster.

@@ -77,6 +77,9 @@ class PhiCaptionShell {
   // The shell covers its monitor (SetShellFullscreen): every pixel is
   // client, borders included.
   virtual bool CaptionShellFullscreen() const = 0;
+  // The sidebar stands on the OS backdrop (acrylic / Mica, "Sidebar
+  // transparency" above 0): Performance's drawer takes the same material.
+  virtual bool CaptionBackdrop() const = 0;
 
  protected:
   // The shell owns the band, never the reverse.
@@ -92,6 +95,10 @@ class PhiCaptionBand {
   PhiCaptionBand& operator=(const PhiCaptionBand&) = delete;
 
   void Install(HWND shell_hwnd);
+  // Performance's window-button drawer: a shaped child above the page at the
+  // window's top-right corner, closed to its lip until the pointer reaches
+  // it (PHI-2238). Placed, shown or hidden to match the layout.
+  void SyncIsland();
 
   // Paints the band's own contents over the ground the shell already laid:
   // the trailing hairline and the three caption buttons — those only when
@@ -137,6 +144,20 @@ class PhiCaptionBand {
   void OnMouseLeave();
 
  private:
+  static LRESULT CALLBACK IslandProc(HWND, UINT, WPARAM, LPARAM);
+  RECT DrawerRect();
+  void PlaceIsland(bool show);
+  void PaintIsland();
+  void SetDrawerOpen(bool open);
+  void StepDrawer();
+  void ScheduleDrawerClose();
+  bool PointerOnIsland() const;
+  POINT IslandToShell(HWND island, LPARAM lp) const;
+  HWND island_ = nullptr;
+  bool drawer_open_ = false;
+  double drawer_t_ = 0.0;  // 0 closed (the lip only) .. 1 pulled out.
+  double slide_from_ = 0.0;
+  ULONGLONG slide_start_ = 0;
   void SetCaptionHot(int code);
   void InvalidateBand();
 

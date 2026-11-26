@@ -935,6 +935,7 @@ void PhiSpacesStrip::BeginSwap(const std::string& entering_space_id) {
       [this] {
         ramp_anim_ = 0;
         ramp_start_ = 0;
+        shell_->SpacesRefreshTinted();  // Settled: each Space's own again.
       });
 }
 
@@ -1059,6 +1060,7 @@ void PhiSpacesStrip::CancelSwap() {
   swap_start_ = 0;
   ramp_start_ = 0;
   shell_->SpacesRepaintOmnibox();  // The palette jumped to its target.
+  shell_->SpacesRefreshTinted();
 }
 
 RECT PhiSpacesStrip::ViewportRect(

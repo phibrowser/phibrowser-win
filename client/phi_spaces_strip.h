@@ -297,6 +297,8 @@ class PhiSpacesStrip {
   // runs, or replaced outright by the create form's live preview. THE one
   // place a palette is overridden.
   PhiPalette RampPalette(const PhiPalette& target) const;
+  // A Space switch's theme ramp is running (RampPalette is mid-way).
+  bool ramp_running() const { return ramp_start_ != 0; }
 
   // --- Paint --------------------------------------------------------------
   // The pips, the placeholder and the trailing slot, into the shell's DC.

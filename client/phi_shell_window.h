@@ -1746,6 +1746,9 @@ class PhiShellWindow : public PhiHitSource,
   RAW_PTR_EXCLUSION void* back_buffer_bits_ = nullptr;
   SIZE back_buffer_size_{};
   bool sidebar_backdrop_ = false;
+  // A Space switch's reveal just showed the entering page: native pages
+  // keep square corners until it has drawn (kRevealSettleTimer, PHI-2238).
+  bool reveal_settling_ = false;
   bool backdrop_split_ = false;
   // Appearance ▸ "Transparent toolbars" in effect (GitHub
   // phibrowser/phibrowser-win#10): the backdrop is on and reaches the
@@ -2138,6 +2141,7 @@ class PhiShellWindow : public PhiHitSource,
   bool CaptionStripTakesPoint(POINT client_pt) override;
   void CaptionClearShellHover() override;
   bool CaptionShellFullscreen() const override;
+  bool CaptionBackdrop() const override;
 
   // --- PhiAppMenuShell: what the app menu asks of its shell ----------------
   // This interface RETIRED `friend class PhiMenuBar` and the six const

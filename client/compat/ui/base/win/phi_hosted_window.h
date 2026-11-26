@@ -14,6 +14,10 @@ namespace ui::win {
 inline constexpr wchar_t kPhiHostedShell[] = L"Phi.HostedShell";
 inline constexpr wchar_t kPhiHostedPresented[] = L"Phi.HostedPresented";
 inline constexpr wchar_t kPhiShellFullscreen[] = L"Phi.ShellFullscreen";
+// Set on the shell while nothing of the shell's stands above the page
+// (Performance: no address row), so the card's TOP corners are the page's
+// to round (PHI-2238). Absent, the shell's row owns them.
+inline constexpr wchar_t kPhiCardTopRounded[] = L"Phi.CardTopRounded";
 // Borrowed WINDOWPLACEMENT owned by the shell host, valid while fullscreen.
 inline constexpr wchar_t kPhiShellRestoredPlacement[] =
     L"Phi.RestoredPlacement";

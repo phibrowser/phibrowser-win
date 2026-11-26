@@ -210,9 +210,13 @@ void PhiNewTabPage::Reposition() {
     ::InflateRect(&inner, -ring, -ring);
     SetPanelBounds(inner);
     ApplyPaneCorners();
-  } else if (controller_->PageMarginActive()) {
-    // A free-standing card (page margin, GitHub #13): the lower corners
-    // stand on the backdrop, which no opaque cap can show.
+  } else if (controller_->PageMarginActive() ||
+             (controller_->SplitPaneCardCorners(controller_->ContentRect()) &
+              3u) != 0) {
+    // A free-standing card (page margin, GitHub #13), or Performance's card
+    // whose top corners are the page's (PHI-2238): the corners stand on the
+    // backdrop, which no opaque cap can show. (A theme change re-applies
+    // them; a reposition must too, or they flicker over a Space switch.)
     SetPanelBounds(controller_->ContentRect());
     ApplyPaneCorners();
   } else {
@@ -228,13 +232,14 @@ void PhiNewTabPage::ApplyPaneCorners() {
     return;
   }
   if (!has_pane_) {
-    // The whole card's page with a page margin: its lower corners, as
-    // Chromium rounds a web page's (the fringe holds the arcs' pixels).
-    if (controller_->PageMarginActive()) {
-      SetCornerFringe(
-          controller_->ContentCornerRadius(),
-          controller_->SplitPaneCardCorners(controller_->ContentRect()),
-          QueryPalette().card);
+    // The whole card's page with a page margin, or in Performance (whose
+    // card's top corners are the page's, PHI-2238): its corners as Chromium
+    // rounds a web page's (the fringe holds the arcs' pixels).
+    const unsigned corners =
+        controller_->SplitPaneCardCorners(controller_->ContentRect());
+    if (controller_->PageMarginActive() || (corners & 3u) != 0) {
+      SetCornerFringe(controller_->ContentCornerRadius(), corners,
+                      QueryPalette().card);
     }
     return;
   }

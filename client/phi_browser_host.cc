@@ -163,6 +163,7 @@ PhiBrowserHost::PhiBrowserHost(PhiBrowserHostShell* shell) : shell_(shell) {}
 
 PhiBrowserHost::~PhiBrowserHost() {
   ::RemovePropW(shell_hwnd(), ui::win::kPhiShellRestoredPlacement);
+  ::RemovePropW(shell_hwnd(), ui::win::kPhiCardTopRounded);
   // The overlays are shell children and would die with it; taking them down
   // here keeps their procs from finding a half-destroyed host.
   if (status_bubble_ && ::IsWindow(status_bubble_)) {
@@ -262,6 +263,15 @@ void PhiBrowserHost::RaiseOverlays() {
 }
 
 void PhiBrowserHost::PositionContentChild(const PhiContentLayout& layout) {
+  // The card's top corners are the page's (Performance): the framework
+  // rounds them by its own clip (PHI-2238), as it does the bottom ones.
+  // Set before the page moves, which is what makes the framework look.
+  if (layout.top_caps) {
+    ::SetPropW(shell_hwnd(), ui::win::kPhiCardTopRounded,
+               reinterpret_cast<HANDLE>(1));
+  } else {
+    ::RemovePropW(shell_hwnd(), ui::win::kPhiCardTopRounded);
+  }
   if (content_hwnd_ && ::IsWindow(content_hwnd_)) {
     const int w = layout.content.right - layout.content.left;
     const int h = layout.content.bottom - layout.content.top;

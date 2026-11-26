@@ -5653,8 +5653,8 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
             FillRounded(dc, shape, c, Scaled(r));
           };
           if (item.payload == "performance") {
-            rr(15, 2, 15, 5, chrome10, 2);      // Window buttons, sidebar top.
             rr(4, 9, 27, 8, chrome6, 4);        // Sidebar address bar.
+            rr(103, 0, 18, 3, chrome10, 1);     // Window-button drawer's lip.
             rr(32, 1, 1, 70, chrome10, 0);      // Sidebar divider.
             rr(15, 59, 14, 8, kAgentPill, 8);   // Agent pill, bottom.
           } else if (item.payload == "balanced") {
@@ -5796,20 +5796,16 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
             // -performance pictures tell them apart: the sidebar's three
             // rows (the middle one the active tab) beside the page, and
             // the address field either across the top of the page
-            // (Balanced) or at the top of the sidebar, under the window
-            // buttons, with the page reaching the window top (Performance,
-            // PHI-2238).
+            // (Balanced) or at the top of the sidebar, with the page reaching
+            // the window top under the window-button drawer's lip
+            // (Performance, PHI-2238).
             const bool performance = item.payload == "performance";
             const int side_w = Scaled(34);
             const int page_left = inner.left + side_w + gap;
             int row_top = inner.top;
             if (performance) {
-              RECT buttons = {inner.left + side_w - Scaled(16), inner.top,
-                              inner.left + side_w, inner.top + Scaled(5)};
-              FillRounded(dc, buttons, chrome, Scaled(2));
-              RECT field = {inner.left, buttons.bottom + gap,
-                            inner.left + side_w,
-                            buttons.bottom + gap + Scaled(8)};
+              RECT field = {inner.left, inner.top, inner.left + side_w,
+                            inner.top + Scaled(8)};
               FillRounded(dc, field, page_white, Scaled(2));
               OutlineRounded(dc, field, chrome, Scaled(2), 1);
               row_top = field.bottom + gap + Scaled(2);
@@ -5829,6 +5825,12 @@ void PhiSettingsWindow::Paint(HDC dc, const RECT& dirty_rect) {
             }
             RECT page_rc = {page_left, page_top, inner.right, inner.bottom};
             FillRounded(dc, page_rc, page_white, Scaled(4));
+            if (performance) {
+              // The window-button drawer's lip at the page's top-right.
+              RECT lip = {inner.right - Scaled(18), inner.top,
+                          inner.right - Scaled(2), inner.top + Scaled(3)};
+              FillRounded(dc, lip, chrome, Scaled(1));
+            }
           }
           ::RestoreDC(dc, save_tile);
         }

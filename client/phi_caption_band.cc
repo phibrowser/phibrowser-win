@@ -3,10 +3,17 @@
 
 #include "client/phi_caption_band.h"
 
+#include <algorithm>
+#include <cstdint>
+
 #include <shellapi.h>
 #include <windowsx.h>
 
+#include "base/compiler_specific.h"
+#include "base/containers/span.h"
+#include "client/phi_backdrop.h"
 #include "client/phi_dwrite.h"
+#include "client/phi_util.h"
 #include "client/phi_fluent.h"
 
 namespace phi_client {
@@ -37,7 +44,9 @@ bool HasAutoHideAppBar(UINT edge, const RECT& monitor) {
 
 PhiCaptionBand::PhiCaptionBand(PhiCaptionShell* shell) : shell_(shell) {}
 
-PhiCaptionBand::~PhiCaptionBand() = default;
+PhiCaptionBand::~PhiCaptionBand() {
+  if (::IsWindow(island_)) ::DestroyWindow(island_);
+}
 
 void PhiCaptionBand::Install(HWND shell_hwnd) {
   shell_hwnd_ = shell_hwnd;
@@ -45,6 +54,13 @@ void PhiCaptionBand::Install(HWND shell_hwnd) {
 
 void PhiCaptionBand::InvalidateBand() {
   if (!shell_hwnd_) {
+    return;
+  }
+  // Performance's buttons are the drawer's alone: repaint it, not the
+  // shell's band (a full chrome paint per hover change).
+  if (island_ && ::IsWindowVisible(island_) &&
+      shell_->CaptionRects().mode == PhiLayoutMode::kPerformance) {
+    PaintIsland();
     return;
   }
   const RECT band = shell_->CaptionRects().title_bar;
@@ -57,6 +73,267 @@ void PhiCaptionBand::SetCaptionHot(int code) {
   }
   hot_caption_ = code;
   InvalidateBand();
+}
+
+// --- Performance's window-button drawer (PHI-2238) -------------------------
+//
+// The three buttons in a shaped, layered CHILD of the shell at the window's
+// top-right corner, above the page: part of the browser window, clipped by
+// it (its top-right is the window's own rounded corner) and never outside
+// it. At rest it is pushed up out of the client area but for its lip
+// (kPerformanceDrawerLip), with a grip in the theme's accent; the pointer on
+// the lip (or a tap on it) pulls it down, and it goes back shortly after the
+// pointer leaves. Its ground is the sidebar's: with the sidebar on the OS
+// backdrop, that tint at its alpha over the acrylic's neutral — what the
+// glass reads as on a plain desktop, as the floating sidebar paints it (a
+// child cannot blur what is behind the window). It answers HTCLIENT
+// everywhere and handles its own presses.
+
+namespace {
+constexpr UINT_PTR kDrawerSlideTimer = 1;
+constexpr UINT_PTR kDrawerCloseTimer = 2;
+constexpr double kDrawerSlideMs = 140.0;
+constexpr UINT kDrawerCloseDelayMs = 450;
+
+bool AnimationsOn() {
+  BOOL on = TRUE;
+  ::SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &on, 0);
+  return on != FALSE;
+}
+
+// The drawer's ground: the sidebar's, as the glass reads on a plain desktop
+// while the sidebar stands on the OS backdrop.
+COLORREF DrawerGround(const PhiPalette& p, bool glass) {
+  if (!glass) return p.ground_top;
+  const int alpha = PhiBackdropTintAlpha(p.dark ? 0 : 0xFFFFFF);
+  const COLORREF g = p.ground_top;
+  const COLORREF n = p.flyout;
+  const auto mix = [&](int a, int b) {
+    return (a * alpha + b * (255 - alpha) + 127) / 255;
+  };
+  return RGB(mix(GetRValue(g), GetRValue(n)), mix(GetGValue(g), GetGValue(n)),
+             mix(GetBValue(g), GetBValue(n)));
+}
+
+void FireCaptionButton(HWND hwnd, int pressed);
+}  // namespace
+
+RECT PhiCaptionBand::DrawerRect() {
+  const auto rects = shell_->CaptionRects();
+  return RECT{rects.caption_min.left, rects.caption_min.top,
+              rects.caption_close.right, rects.caption_close.bottom};
+}
+
+void PhiCaptionBand::SyncIsland() {
+  const auto rects = shell_->CaptionRects();
+  if (rects.mode != PhiLayoutMode::kPerformance ||
+      ::IsRectEmpty(&rects.caption_close) || shell_->CaptionShellFullscreen()) {
+    if (island_) ::ShowWindow(island_, SW_HIDE);
+    return;
+  }
+  if (!island_) {
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = IslandProc;
+    wc.hInstance = ::GetModuleHandleW(nullptr);
+    wc.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
+    wc.lpszClassName = L"PhiCaptionIsland";
+    ::RegisterClassW(&wc);
+    island_ = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_NOACTIVATE,
+        wc.lpszClassName, L"Window controls", WS_CHILD,
+        0, 0, 0, 0, shell_hwnd_, nullptr, wc.hInstance, this);
+  }
+  if (!island_) return;
+  PaintIsland();
+  PlaceIsland(/*show=*/true);
+}
+
+void PhiCaptionBand::PlaceIsland(bool show) {
+  if (!island_) return;
+  const RECT r = DrawerRect();
+  const int height = r.bottom - r.top;
+  const int lip =
+      std::min(height, shell_->CaptionScaled(shell_metrics::kPerformanceDrawerLip));
+  // Closed, the drawer stands above the client area but for its lip; the
+  // window clips the rest.
+  const int hidden = height - lip;
+  const int top = r.top - static_cast<int>(hidden * (1.0 - drawer_t_) + 0.5);
+  ::SetWindowPos(island_, HWND_TOP, r.left, top, r.right - r.left, height,
+                 SWP_NOACTIVATE | (show ? SWP_SHOWWINDOW : 0));
+}
+
+void PhiCaptionBand::SetDrawerOpen(bool open) {
+  ::KillTimer(island_, kDrawerCloseTimer);
+  if (drawer_open_ == open) return;
+  drawer_open_ = open;
+  if (!open) hot_caption_ = 0;
+  PaintIsland();  // The grip goes as the drawer comes out, and back.
+  if (!AnimationsOn()) {
+    drawer_t_ = open ? 1.0 : 0.0;
+    PlaceIsland(false);
+    return;
+  }
+  slide_from_ = drawer_t_;
+  slide_start_ = ::GetTickCount64();
+  ::SetTimer(island_, kDrawerSlideTimer, 10, nullptr);
+}
+
+void PhiCaptionBand::StepDrawer() {
+  const double elapsed =
+      static_cast<double>(::GetTickCount64() - slide_start_);
+  const double target = drawer_open_ ? 1.0 : 0.0;
+  double k = std::min(1.0, elapsed / kDrawerSlideMs);
+  k = 1.0 - (1.0 - k) * (1.0 - k) * (1.0 - k);  // Ease out.
+  drawer_t_ = slide_from_ + (target - slide_from_) * k;
+  if (k >= 1.0) {
+    drawer_t_ = target;
+    ::KillTimer(island_, kDrawerSlideTimer);
+  }
+  PlaceIsland(false);
+}
+
+POINT PhiCaptionBand::IslandToShell(HWND island, LPARAM lp) const {
+  POINT pt = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+  ::MapWindowPoints(island, shell_hwnd_, &pt, 1);
+  return pt;
+}
+
+bool PhiCaptionBand::PointerOnIsland() const {
+  // The drawer's part inside the client area: what the pointer can be on.
+  POINT pt = {};
+  RECT r = {};
+  RECT client = {};
+  if (!island_ || !::GetCursorPos(&pt) || !::GetWindowRect(island_, &r) ||
+      !::GetClientRect(shell_hwnd_, &client)) {
+    return false;
+  }
+  ::MapWindowPoints(shell_hwnd_, nullptr, reinterpret_cast<POINT*>(&client), 2);
+  RECT shown = {};
+  return ::IntersectRect(&shown, &r, &client) && ::PtInRect(&shown, pt);
+}
+
+void PhiCaptionBand::ScheduleDrawerClose() {
+  if (drawer_open_) {
+    ::SetTimer(island_, kDrawerCloseTimer, kDrawerCloseDelayMs, nullptr);
+  }
+}
+
+void PhiCaptionBand::PaintIsland() {
+  if (!island_) return;
+  const RECT r = DrawerRect();
+  const int width = r.right - r.left;
+  const int height = r.bottom - r.top;
+  if (width <= 0 || height <= 0) return;
+  const auto p = shell_->CaptionPalette();
+  const COLORREF ground = DrawerGround(p, shell_->CaptionBackdrop());
+  const int radius = shell_->CaptionScaled(8);
+  const int lip =
+      std::min(height, shell_->CaptionScaled(shell_metrics::kPerformanceDrawerLip));
+  PhiCommitShapedLayer(island_, width, height, [&](HDC dc) {
+    RECT all = {0, 0, width, height};
+    HBRUSH brush = ::CreateSolidBrush(ground);
+    ::FillRect(dc, &all, brush);
+    ::DeleteObject(brush);
+    ::SetBkMode(dc, TRANSPARENT);
+    ::SetViewportOrgEx(dc, -r.left, -r.top, nullptr);
+    PaintButtons(dc);
+    ::SetViewportOrgEx(dc, 0, 0, nullptr);
+    if (!drawer_open_) {
+      // The grip on the lip, in the theme's accent: what the pointer
+      // reaches for. Gone while the drawer is out.
+      const int grip_w = shell_->CaptionScaled(28);
+      const int grip_h = std::max(2, shell_->CaptionScaled(3));
+      const int grip_top = height - (lip + grip_h) / 2;
+      PhiFillRoundRectAA(dc,
+                         RECT{(width - grip_w) / 2, grip_top,
+                              (width + grip_w) / 2, grip_top + grip_h},
+                         grip_h / 2, p.accent);
+    }
+  }, [&](double x, double y) {
+    // The lower-left corner rounds; the top-right is the window's corner,
+    // which Windows rounds (and clips this child to).
+    return PhiRoundRectCoverage(x, y, width, height,
+                                std::min(radius, lip), 1u << 2);
+  });
+}
+
+LRESULT CALLBACK PhiCaptionBand::IslandProc(HWND hwnd, UINT msg,
+                                            WPARAM wp, LPARAM lp) {
+  auto* self = reinterpret_cast<PhiCaptionBand*>(
+      ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  if (msg == WM_NCCREATE) {
+    self = static_cast<PhiCaptionBand*>(
+        reinterpret_cast<CREATESTRUCTW*>(lp)->lpCreateParams);
+    ::SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+  }
+  if (!self) return ::DefWindowProcW(hwnd, msg, wp, lp);
+  switch (msg) {
+    case WM_TIMER:
+      if (wp == kDrawerSlideTimer) {
+        self->StepDrawer();
+      } else if (wp == kDrawerCloseTimer) {
+        ::KillTimer(hwnd, kDrawerCloseTimer);
+        if (!self->PointerOnIsland() && !self->pressed_caption_) {
+          self->SetDrawerOpen(false);
+        }
+      }
+      return 0;
+    case WM_NCHITTEST:
+      return HTCLIENT;
+    case WM_MOUSEACTIVATE:
+      return MA_NOACTIVATE;
+    case WM_MOUSEMOVE: {
+      TRACKMOUSEEVENT track = {sizeof(track), TME_LEAVE, hwnd, 0};
+      ::TrackMouseEvent(&track);
+      if (!self->drawer_open_) {
+        self->SetDrawerOpen(true);  // The pointer reached the lip.
+        return 0;
+      }
+      ::KillTimer(hwnd, kDrawerCloseTimer);
+      const int hit = self->HitTest(self->IslandToShell(hwnd, lp));
+      if (self->pressed_caption_) {
+        self->SetCaptionHot(hit == self->pressed_caption_ ? hit : 0);
+      } else {
+        self->SetCaptionHot(
+            hit == HTMINBUTTON || hit == HTMAXBUTTON || hit == HTCLOSE ? hit
+                                                                       : 0);
+      }
+      return 0;
+    }
+    case WM_MOUSELEAVE:
+      if (!self->pressed_caption_) self->SetCaptionHot(0);
+      self->ScheduleDrawerClose();
+      return 0;
+    case WM_LBUTTONDOWN: {
+      if (!self->drawer_open_) {
+        self->SetDrawerOpen(true);  // A tap on the lip (no hover on touch).
+        return 0;
+      }
+      const int hit = self->HitTest(self->IslandToShell(hwnd, lp));
+      if (hit == HTMINBUTTON || hit == HTMAXBUTTON || hit == HTCLOSE) {
+        self->pressed_caption_ = hit;
+        self->SetCaptionHot(hit);
+        ::SetCapture(hwnd);
+      }
+      return 0;
+    }
+    case WM_LBUTTONUP: {
+      const int pressed = self->pressed_caption_;
+      if (!pressed) return 0;
+      const int hit = self->HitTest(self->IslandToShell(hwnd, lp));
+      self->pressed_caption_ = 0;
+      if (::GetCapture() == hwnd) ::ReleaseCapture();
+      self->SetCaptionHot(hit == pressed ? hit : 0);
+      // Released over the button it was pressed on: the shell's action.
+      if (hit == pressed) FireCaptionButton(self->shell_hwnd_, pressed);
+      return 0;
+    }
+    case WM_CAPTURECHANGED:
+      self->pressed_caption_ = 0;
+      return 0;
+    case WM_ERASEBKGND:
+      return 1;
+  }
+  return ::DefWindowProcW(hwnd, msg, wp, lp);
 }
 
 // --- Hit-testing -----------------------------------------------------------
@@ -336,7 +613,8 @@ void PhiCaptionBand::Paint(HDC dc, bool with_buttons) {
     ::FillRect(dc, &rects.band_divider, divider_brush);
     ::DeleteObject(divider_brush);
   }
-  if (with_buttons) {
+  // Performance's buttons are the drawer's (SyncIsland), above the page.
+  if (with_buttons && shell_->CaptionRects().mode != PhiLayoutMode::kPerformance) {
     PaintButtons(dc);
   }
 }
@@ -352,7 +630,13 @@ void PhiCaptionBand::PaintButtons(HDC dc) {
   if (hot_caption_ == HTMINBUTTON || hot_caption_ == HTMAXBUTTON) {
     const RECT& hot_rc =
         hot_caption_ == HTMINBUTTON ? rects.caption_min : rects.caption_max;
-    HBRUSH hover_brush = ::CreateSolidBrush(palette.hover);
+    // Performance's drawer stands on its own ground (DrawerGround): the
+    // hover wash is the ink over that.
+    HBRUSH hover_brush = ::CreateSolidBrush(
+        rects.mode == PhiLayoutMode::kPerformance
+            ? PhiBlend(palette.ink,
+                       DrawerGround(palette, shell_->CaptionBackdrop()), 15)
+            : static_cast<COLORREF>(palette.hover));
     ::FillRect(dc, &hot_rc, hover_brush);
     ::DeleteObject(hover_brush);
   } else if (hot_caption_ == HTCLOSE) {
