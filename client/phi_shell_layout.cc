@@ -82,6 +82,14 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // with a page margin in the vertical layout).
   const int tb = scaled(horizontal ? kStripRowHeight : kAddressRowHeight);
   out.title_bar = {0, 0, w, row_top + tb};
+  // Performance gives the window buttons a row of their own at the top of
+  // the docked sidebar (PHI-2238), so nothing of the browser's stands over
+  // the page; the sidebar's rows start under it. The floating panel has no
+  // such row: the shell keeps the buttons while the sidebar is hidden.
+  const int caption_row = scaled(kPerformanceCaptionRowHeight);
+  const bool sidebar_caption_row =
+      performance && !in.sidebar_hidden && !in.floating_panel;
+  const int sidebar_top = row_top + (sidebar_caption_row ? caption_row : 0);
   const int cap_right = horizontal ? w : card_right;
   out.caption_close = {cap_right - cap, row_top, cap_right, row_top + tb};
   out.caption_max = {cap_right - 2 * cap, row_top, cap_right - cap,
@@ -243,28 +251,45 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
     return out;
   }
 
-  // Performance keeps browser chrome in the sidebar and overlays only the
-  // caption island at the page's top-right corner.
+  // Performance keeps the browser's chrome in the sidebar and the page at
+  // the window's full height (the Mac's Performance): the window buttons
+  // stand at the right end of the sidebar's caption row, against the page
+  // (PHI-2238 — floating over the page they covered the site's own
+  // controls in its top-right corner). With the sidebar hidden there is no
+  // sidebar to hold them: a bare strip over the page carries them at the
+  // window's corner, the page starting under it.
   if (performance) {
     out.sidebar = {0, 0, sidebar, h};
     const int pane_left = hide_sidebar ? margin : sidebar;
-    const int island_h = scaled(36);
-    // A panel at the page's right edge has its header buttons in the corner
-    // the island covers (PHI-2172): the page then starts under the island.
-    const int pane_top = in.trailing_panel ? std::max(margin, island_h) : margin;
+    int pane_top = margin;
+    if (sidebar_caption_row) {
+      out.title_bar = {0, 0, w, sidebar_top + tb};
+      out.caption_min = {sidebar - 3 * cap, row_top, sidebar - 2 * cap,
+                         sidebar_top};
+      out.caption_max = {sidebar - 2 * cap, row_top, sidebar - cap,
+                         sidebar_top};
+      out.caption_close = {sidebar - cap, row_top, sidebar, sidebar_top};
+    } else if (in.floating_panel) {
+      out.caption_min = out.caption_max = out.caption_close = SidebarRect{};
+    } else {
+      pane_top = row_top + caption_row;
+      out.title_bar = {0, 0, w, pane_top};
+      out.caption_min = {card_right - 3 * cap, row_top, card_right - 2 * cap,
+                         pane_top};
+      out.caption_max = {card_right - 2 * cap, row_top, card_right - cap,
+                         pane_top};
+      out.caption_close = {card_right - cap, row_top, card_right, pane_top};
+    }
     out.pane = out.content = {pane_left, pane_top, card_right, h - margin};
     carve_bookmark_bar(&out);
-    out.caption_min = {w - 3 * cap, 0, w - 2 * cap, island_h};
-    out.caption_max = {w - 2 * cap, 0, w - cap, island_h};
-    out.caption_close = {w - cap, 0, w, island_h};
-    const int mid = row_top + tb / 2;
+    const int mid = sidebar_top + tb / 2;
     if (!hide_sidebar) {
       out.sidebar_toggle = control_l(inset, mid);
       out.back = control_l(out.sidebar_toggle.right + btn_gap, mid);
       out.forward = control_l(out.back.right + btn_gap, mid);
       out.reload = control_l(out.forward.right + btn_gap, mid);
       out.app_menu = control_r(sidebar - inset, mid);
-      const int address_top = row_top + tb +
+      const int address_top = sidebar_top + tb +
           ((in.spaces_switch || in.floating_panel) ? tb : 0);
       place_omnibox(inset, sidebar - inset, address_top + tb / 2);
     }
@@ -349,14 +374,14 @@ ShellLayout ComputeShellLayout(const ShellLayoutInputs& in) {
   // pins, bookmarks, new tab, tabs and the bottom bar.
   const bool header_row = in.spaces_switch || in.floating_panel;
   if (!hide_sidebar && header_row) {
-    place_spaces(0, sidebar, row_top + tb, tb);
+    place_spaces(0, sidebar, sidebar_top + tb, tb);
   }
   // No section labels (§4.2): the bands follow each other 8 dip apart;
   // only the agent Space's "<Agent>'s tabs" cue keeps a label row.
   const int label_h = scaled(kSectionLabelHeight);
   const int label_inset = scaled(kSectionLabelInset);
   const int gap = scaled(kSectionGap);
-  const int sidebar_header_bottom = row_top + tb + (header_row ? tb : 0) +
+  const int sidebar_header_bottom = sidebar_top + tb + (header_row ? tb : 0) +
                                     (performance ? tb : 0);
   // The bottom bar's top, up front: the stored bands' cap is a share of the
   // room between the header and it.

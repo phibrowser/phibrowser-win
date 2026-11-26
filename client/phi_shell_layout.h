@@ -21,7 +21,8 @@ namespace phi_client {
 // and same meanings (PhiPreferences.swift), so a user moving between platforms
 // gets the same three choices:
 //
-//   kPerformance  sidebar navigation and address, with a top-right caption island
+//   kPerformance  sidebar navigation and address; the window buttons on the
+//                 sidebar's top row, the page at the window's full height
 //   kBalanced     vertical tabs, address bar across the TOP of the web content
 //   kComfortable  horizontal tabs — the traditional stacked layout, no sidebar
 enum class PhiLayoutMode { kPerformance, kBalanced, kComfortable };
@@ -45,6 +46,10 @@ inline constexpr int kAddressRowHeight = 44;   // Vertical: the pane's first row
 inline constexpr int kStripRowHeight = 40;     // Horizontal: the tab strip.
 inline constexpr int kToolbarRowHeight = 40;   // Horizontal: the toolbar.
 inline constexpr int kCaptionButtonWidth = 46;  // The Win11 caption metric.
+// Performance: the sidebar's caption row (the window buttons over the
+// sidebar, the page keeping the window's full height; PHI-2238), and the
+// strip that carries them over the page while the sidebar is hidden.
+inline constexpr int kPerformanceCaptionRowHeight = 36;
 // THE horizontal gutter: every row applies 8 on each side itself.
 inline constexpr int kEdgeInset = 8;
 // The one toolbar button: 32 square, radius 4; 4 apart in a cluster.
@@ -211,12 +216,6 @@ struct ShellLayoutInputs {
   // .edgesSpacing). 0 = flush. The caller passes 0 while the window is
   // maximized or fullscreen.
   int page_margin_dip = 0;
-  // The hosted browser shows a panel at the page's right edge (an extension
-  // side panel, DevTools docked right; PHI-2172). Performance then drops the
-  // page below its caption island, which would otherwise cover the panel's
-  // own header buttons. The other layouts keep their window buttons above
-  // the page and ignore it.
-  bool trailing_panel = false;
 
   friend bool operator==(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {
@@ -244,8 +243,7 @@ struct ShellLayoutInputs {
            a.update_dip == b.update_dip &&
            a.media_card_dip == b.media_card_dip &&
            a.new_tab_row_at_bottom == b.new_tab_row_at_bottom &&
-           a.page_margin_dip == b.page_margin_dip &&
-           a.trailing_panel == b.trailing_panel;
+           a.page_margin_dip == b.page_margin_dip;
   }
   friend bool operator!=(const ShellLayoutInputs& a,
                          const ShellLayoutInputs& b) {

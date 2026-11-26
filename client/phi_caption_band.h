@@ -92,8 +92,6 @@ class PhiCaptionBand {
   PhiCaptionBand& operator=(const PhiCaptionBand&) = delete;
 
   void Install(HWND shell_hwnd);
-  // Performance caption island: a shaped child above the page compositor.
-  void SyncIsland();
 
   // Paints the band's own contents over the ground the shell already laid:
   // the trailing hairline and the three caption buttons — those only when
@@ -139,9 +137,6 @@ class PhiCaptionBand {
   void OnMouseLeave();
 
  private:
-  static LRESULT CALLBACK IslandProc(HWND, UINT, WPARAM, LPARAM);
-  void PaintIsland();
-  HWND island_ = nullptr;
   void SetCaptionHot(int code);
   void InvalidateBand();
 

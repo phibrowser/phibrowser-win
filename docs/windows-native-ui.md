@@ -56,7 +56,7 @@ that is why Phi's Performance layout is removed on Windows (§4.3).
 4. **The address row carries the caption buttons.** Vertical: at the
    trailing end of the pane's address row; Horizontal: in the tab-strip
    row (Chrome). There is never a caption-only band — which is why there
-   Performance instead overlays the Corner island described in §4.3.
+   Performance instead gives them a row at the top of the sidebar (§4.3).
 5. **Density is Windows density.** Tab titles and sidebar rows at 12 dip,
    menus and dialogs at 14, page titles at 20/28 (§2.2). The current 13 pt
    rows are Mac-sized.
@@ -534,19 +534,36 @@ page pane, left and right is ok").
   hover ink 4.5 %; close box 20 on hover / active; dimmed rows at 62 %.
 * Hidden sidebar: §4.4.
 
-### 4.3 Performance with Corner island (2026-11-19)
+### 4.3 Performance: window buttons on the sidebar's top row (2026-11-26, PHI-2238)
 
-Performance is a separate Windows layout again. Navigation, Extensions, the app
-menu and the address field live in the sidebar; the page reaches the top edge.
-The three 46 by 36 DIP caption buttons stay visible in a top-right island with a
-12 DIP bottom-left corner. The island is a shaped layered child above the page,
-using the shared caption hit testing, capture, hover and window commands.
+Performance is a separate Windows layout. Navigation, Extensions, the app menu
+and the address field live in the sidebar, and the page keeps the window's full
+height with nothing of the browser's over it (the Mac's Performance).
+
+The three 46 by 36 DIP caption buttons stand on a caption row of their own at
+the top of the docked sidebar, at its right end against the page
+(`kPerformanceCaptionRowHeight`). The rest of that row drags the window. The
+sidebar's nav row, Space pips and address field start under it. Maximised, the
+row touches the screen's top edge, so the buttons stay a flick target. They are
+painted and hit-tested by the shell like every other layout's, so Snap Layouts
+opens from maximise.
+
+With the sidebar hidden, there is no sidebar to hold them. A bare 36 DIP strip
+across the top of the window carries the buttons at the card's top-right corner,
+and the page starts under it. The floating panel paints no caption row: the
+strip keeps the buttons while it is out. Content fullscreen hides the buttons.
+With a page margin, the row (or the strip) stands on the margin line.
+
+History: from 2026-11-19 (66dcf53) to PHI-2238 the buttons were a shaped,
+layered "Corner island" child (PhiCaptionIsland) floating over the page's
+top-right corner. It covered sites' own account and notification buttons there
+(PHI-2238) and side panels' pin and close (PHI-2172, which dropped the page
+under it while a panel was open). Both the island and that panel watch are gone.
 
 The layout menu, Appearance picker, saved preferences and cross-platform sync
 accept `performance`. Balanced and Comfortable keep their existing geometry.
 When the sidebar is collapsed, Ctrl+L opens the floating address field for the
-current tab. Fullscreen hides the island. A page margin still insets the page;
-the island remains attached to the window corner.
+current tab.
 
 ### 4.4 The floating sidebar (Vertical tabs, sidebar hidden)
 
