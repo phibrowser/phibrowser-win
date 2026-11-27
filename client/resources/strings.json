@@ -14338,6 +14338,17 @@
    "zh-Hans": "选择目标空间，然后输入主机名，例如「github.com」。",
    "zh-Hant": "選擇目標空間，然後輸入主機名稱，例如「github.com」。"
   },
+  "sidebar.urlRulesEditor.emptyHintWin": {
+   "de": "Klicke auf „Regel hinzufügen“, wähle dann einen Ziel-Space und gib einen Host wie „github.com“ ein.",
+   "en": "Click Add Rule, then pick a target Space and enter a host like “github.com”.",
+   "es": "Haz clic en Agregar regla, elige un Espacio de destino e introduce un host como “github.com”.",
+   "fr": "Cliquez sur Ajouter une règle, puis choisissez un Espace cible et saisissez un hôte tel que « github.com ».",
+   "ja": "「ルールを追加」をクリックし、対象のスペースを選んで「github.com」のようなホスト名を入力してください。",
+   "ko": "규칙 추가를 클릭한 다음 대상 스페이스를 고르고 “github.com” 같은 호스트를 입력해 주세요.",
+   "nl": "Klik op Regel toevoegen, kies dan een doel-Space en voer een host in, bijvoorbeeld “github.com”.",
+   "zh-Hans": "点击「添加规则」，然后选择目标空间并输入主机名，例如「github.com」。",
+   "zh-Hant": "按一下「新增規則」，然後選擇目標空間並輸入主機名稱，例如「github.com」。"
+  },
   "sidebar.urlRulesEditor.emptyTitle": {
    "de": "Noch keine Regeln.",
    "en": "No rules yet.",

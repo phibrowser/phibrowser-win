@@ -375,7 +375,10 @@ class PhiUrlRulesWindow::RuleList : public PhiPanel {
       hint.top = title.bottom + Scaled(8);
       hint.left += Scaled(24);
       hint.right -= Scaled(24);
-      PhiDrawTextAA(dc, PhiStr("sidebar.urlRulesEditor.emptyHint"), -1, &hint,
+      // Windows names the button first: the Mac's hint talks about a
+      // Space picker and a host field that only exist after Add Rule.
+      PhiDrawTextAA(dc, PhiStr("sidebar.urlRulesEditor.emptyHintWin"), -1,
+                    &hint,
                     DT_CENTER | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
       ::SelectObject(dc, previous);
       return;

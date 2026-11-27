@@ -625,6 +625,11 @@ class PhiSettingsWindow : public PhiSecondaryWindow,
   // least, grown to fit a longer (translated) value up to kPillMaxWidth,
   // past which the paint ellipsizes.
   int PillWidthFor(const std::wstring& text) const;
+  // A small bordered button's width (dip) for its title: kSmallButtonWidth
+  // at least, grown to fit a longer (translated) title.
+  int SmallButtonWidthFor(const std::wstring& text) const;
+  // `text`'s single-line width in dip, in the window's body font.
+  int TextWidthDip(const std::wstring& text) const;
   // AddRow + its trailing ComboBox pill showing `value`, sized to fit it;
   // a click runs `action`.
   void AddPopupRow(int* y, const wchar_t* title, const std::wstring& value,

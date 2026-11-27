@@ -215,6 +215,10 @@ constexpr int kPillWidth = 160;
 // ellipsizes.
 constexpr int kPillMaxWidth = 280;
 constexpr int kPillHeight = 32;
+// The Mac's small bordered button (You's Sign in, Sync's actions): 24 tall,
+// 108 wide unless its title needs more.
+constexpr int kSmallButtonHeight = 24;
+constexpr int kSmallButtonWidth = 108;
 // A row's leading icon (the design's 20 dip glyph, 16 from the text it
 // leads), so an icon-led row's text column starts 36 in; the rows grouped
 // under such a header are indented to match.
@@ -946,12 +950,17 @@ void PhiSettingsWindow::BuildSync(int* y) {
     button.bounds = area;
     items_.push_back(std::move(button));
   };
+  // The Mac's actionButton (.bordered, .controlSize(.small)): a neutral
+  // button sized to its title, the same as You's Sign in, never a wide
+  // accent fill.
   auto message_row = [&](const wchar_t* title, const wchar_t* hint,
                          const wchar_t* button, const char* action) {
     BeginSection(y, nullptr);
-    const RECT area = AddRow(y, title, kPillHeight, button ? 230 : 0, hint);
+    const RECT area =
+        AddRow(y, title, kSmallButtonHeight,
+               button ? SmallButtonWidthFor(button) : 0, hint);
     if (button) {
-      button_in(area, button, action, true, false, true, std::string());
+      button_in(area, button, action, false, false, true, std::string());
     }
     EndSection(y);
   };
@@ -1317,10 +1326,7 @@ RECT PhiSettingsWindow::AddRow(int* y, const wchar_t* title,
   return control;
 }
 
-int PhiSettingsWindow::PillWidthFor(const std::wstring& text) const {
-  // The pill's own chrome: 10 before the value, the 28 chevron lane after
-  // it (Paint, kPopup), and a little air.
-  constexpr int kPillChrome = 10 + 28 + 4;
+int PhiSettingsWindow::TextWidthDip(const std::wstring& text) const {
   int text_px = 0;
   if (font_ && !text.empty()) {
     if (!measure_dc_) {
@@ -1335,8 +1341,22 @@ int PhiSettingsWindow::PillWidthFor(const std::wstring& text) const {
       text_px = box.right - box.left;
     }
   }
-  const int text_dip = ::MulDiv(text_px, 96, static_cast<int>(dpi()));
-  return std::max(kPillWidth, std::min(kPillMaxWidth, text_dip + kPillChrome));
+  return ::MulDiv(text_px, 96, static_cast<int>(dpi()));
+}
+
+int PhiSettingsWindow::PillWidthFor(const std::wstring& text) const {
+  // The pill's own chrome: 10 before the value, the 28 chevron lane after
+  // it (Paint, kPopup), and a little air.
+  constexpr int kPillChrome = 10 + 28 + 4;
+  return std::max(kPillWidth,
+                  std::min(kPillMaxWidth, TextWidthDip(text) + kPillChrome));
+}
+
+int PhiSettingsWindow::SmallButtonWidthFor(const std::wstring& text) const {
+  // You's Sign in width at least; a longer (translated) title gets 16 each
+  // side, up to a pill's widest.
+  return std::max(kSmallButtonWidth,
+                  std::min(kPillMaxWidth, TextWidthDip(text) + 32));
 }
 
 void PhiSettingsWindow::AddPopupRow(int* y, const wchar_t* title,
@@ -3591,7 +3611,7 @@ void PhiSettingsWindow::BuildAccount(int* y) {
     card.kind = ItemKind::kCard;
     card.bounds = {right_left, top, right_edge, top + Scaled(92)};
     items_.push_back(std::move(card));
-    const int button_w = Scaled(108);
+    const int button_w = Scaled(kSmallButtonWidth);
     const int text_right = right_edge - Scaled(kCardPadding) - button_w - Scaled(8);
     Item avatar;
     avatar.kind = ItemKind::kAvatar;
@@ -3689,7 +3709,7 @@ void PhiSettingsWindow::BuildAccount(int* y) {
     button.enabled = !busy;
     button.bounds = {right_edge - Scaled(kCardPadding) - button_w,
                      top + Scaled(34), right_edge - Scaled(kCardPadding),
-                     top + Scaled(58)};
+                     top + Scaled(34 + kSmallButtonHeight)};
     items_.push_back(std::move(button));
   }
   const int section_top = top + Scaled(92) + Scaled(20);
