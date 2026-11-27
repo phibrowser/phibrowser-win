@@ -57,6 +57,12 @@ constexpr RebindableShortcut kRebindableShortcuts[] = {
      kCmdReopenClosedTab, {'T', true, true, false}},
     {"openFile", "File", "settings.shortcuts.command.openFile", kCmdOpenFile,
      {'O', true, false, false}},
+    // The Mac's ⇧⌘1 / ⇧⌘2 (7e731204): File ▸ Capture Full Page / Capture
+    // Area… (docs/page-screenshots.md).
+    {"captureFullPage", "File", "app.fileMenu.copyFullPageScreenshot",
+     kCmdCaptureFullPage, {'1', true, true, false}},
+    {"captureArea", "File", "app.fileMenu.capturePageArea", kCmdCaptureArea,
+     {'2', true, true, false}},
     // The Mac's ⌘⌥S, as Reader's ⌘⌥R became Ctrl+Alt+R.
     {"saveToFolio", "File", "settings.shortcuts.command.saveToFolio",
      kCmdSaveToFolio, {'S', true, false, true}},

@@ -552,6 +552,11 @@ class PhiControlDispatcher : public PhiControlDelegate {
   PhiVerbResult VerbFeedbackSetAccount(const PhiVerbContext& ctx);
   PhiVerbResult VerbShortcutsList(const PhiVerbContext& ctx);
   PhiVerbResult VerbShortcutsRebind(const PhiVerbContext& ctx);
+  // Page screenshots (docs/page-screenshots.md), test rig only.
+  PhiVerbResult VerbScreenshotCapture(const PhiVerbContext& ctx);
+  PhiVerbResult VerbScreenshotState(const PhiVerbContext& ctx);
+  PhiVerbResult VerbScreenshotExport(const PhiVerbContext& ctx);
+  PhiVerbResult VerbScreenshotClose(const PhiVerbContext& ctx);
   // Content blocking (phi_verbs_content_blocking.cc), test rig only.
   PhiVerbResult VerbContentBlockingGet(const PhiVerbContext& ctx);
   PhiVerbResult VerbContentBlockingSet(const PhiVerbContext& ctx);

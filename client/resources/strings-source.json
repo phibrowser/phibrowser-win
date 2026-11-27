@@ -10657,6 +10657,174 @@
   "tabs.backgroundCreation.confirmation": {
    "comment": "Mac key (translations by key); clickable toast (phi_shell_window.cc) shown when a link opens in a background tab while the sidebar is hidden; clicking it switches to the new tab",
    "en": "New Tab Created"
+  },
+  "app.fileMenu.copyFullPageScreenshot": {
+   "comment": "Mac key (translations by key); the ⋯ menu row and the Shortcuts pane row Capture Full Page (Ctrl+Shift+1)",
+   "en": "Capture Full Page"
+  },
+  "app.fileMenu.capturePageArea": {
+   "comment": "Mac key (translations by key); the ⋯ menu row and the Shortcuts pane row Capture Area… (Ctrl+Shift+2)",
+   "en": "Capture Area…"
+  },
+  "browser.screenshot.saveAction": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): the capture toast's Save button",
+   "en": "Save"
+  },
+  "browser.screenshot.saveFailed": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast when saving or exporting failed",
+   "en": "Could not save the screenshot"
+  },
+  "browser.screenshot.fileName": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): the default file name when the tab has no usable title",
+   "en": "Screenshot"
+  },
+  "browser.screenshot.clipboardChanged": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast when the user copied something newer during the capture",
+   "en": "Screenshot not copied because the clipboard changed"
+  },
+  "browser.screenshot.areaCopied": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast after Capture Area",
+   "en": "Area screenshot copied"
+  },
+  "browser.screenshot.copied": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast after Capture Full Page",
+   "en": "Full page screenshot copied"
+  },
+  "browser.screenshot.copyFailed": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast when the clipboard write failed",
+   "en": "Could not copy the screenshot"
+  },
+  "browser.screenshot.timedOut": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast when the capture ran out of time",
+   "en": "Screenshot timed out. Please try again."
+  },
+  "browser.screenshot.captureFailed": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast when the capture failed",
+   "en": "Could not take a screenshot of this page"
+  },
+  "browser.screenshot.areaHint": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): Capture Area overlay hint",
+   "en": "Drag to select · Scroll or drag to an edge to extend · Escape to cancel"
+  },
+  "browser.screenshot.discardTitle": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor close prompt title",
+   "en": "Close without saving your edits?"
+  },
+  "browser.screenshot.discardMessage": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor close prompt message",
+   "en": "Export the screenshot as JPG or PDF to keep your edits."
+  },
+  "browser.screenshot.keepEditing": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor close prompt button",
+   "en": "Keep Editing"
+  },
+  "browser.screenshot.closeWithoutSaving": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor close prompt button",
+   "en": "Close Without Saving"
+  },
+  "browser.screenshot.select": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Select"
+  },
+  "browser.screenshot.arrow": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Arrow"
+  },
+  "browser.screenshot.freehand": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Freehand"
+  },
+  "browser.screenshot.text": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Text"
+  },
+  "browser.screenshot.rectangle": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Rectangle"
+  },
+  "browser.screenshot.ellipse": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Ellipse"
+  },
+  "browser.screenshot.mosaic": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Blur"
+  },
+  "browser.screenshot.crop": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Crop"
+  },
+  "browser.screenshot.cropHint": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): crop bar before a selection",
+   "en": "Drag to select an area"
+  },
+  "browser.screenshot.cancelCrop": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): crop bar button",
+   "en": "Cancel"
+  },
+  "browser.screenshot.applyCrop": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): crop bar button",
+   "en": "Apply"
+  },
+  "browser.screenshot.undo": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Undo"
+  },
+  "browser.screenshot.redo": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Redo"
+  },
+  "browser.screenshot.export": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Export…"
+  },
+  "browser.screenshot.exportRetry": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): toast detail after a failed export",
+   "en": "Your edits are still available. Choose another location and try again."
+  },
+  "browser.screenshot.color": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Color"
+  },
+  "browser.screenshot.textSize": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Text Size"
+  },
+  "browser.screenshot.width": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Width"
+  },
+  "browser.screenshot.fill": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Fill"
+  },
+  "browser.screenshot.zoomIn": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Zoom In"
+  },
+  "browser.screenshot.zoomOut": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Zoom Out"
+  },
+  "browser.screenshot.fit": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Fit"
+  },
+  "browser.screenshot.bringToFront": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Bring to Front"
+  },
+  "browser.screenshot.sendToBack": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Send to Back"
+  },
+  "browser.screenshot.duplicate": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Duplicate"
+  },
+  "browser.screenshot.delete": {
+   "comment": "Mac key (translations by key); page screenshots (docs/page-screenshots.md): editor toolbar or menu label",
+   "en": "Delete"
   }
  }
 }

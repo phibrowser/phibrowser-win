@@ -242,6 +242,12 @@ void PhiAppMenu::BuildStatic() {
   sub(root_, extensions_, "appMenu.extensions", fluent::kPuzzle);
   rows_.AppendSeparator(root_);
   sub(root_, zoom_, "appMenu.zoom", fluent::kZoomIn);
+  // The Mac's File ▸ Capture Full Page / Capture Area…, just above Print
+  // as there (docs/page-screenshots.md).
+  row(root_, kCmdCaptureFullPage, "app.fileMenu.copyFullPageScreenshot",
+      fluent::kScreenshot, false);
+  row(root_, kCmdCaptureArea, "app.fileMenu.capturePageArea",
+      fluent::kCaptureArea, false);
   row(root_, kCmdPrint, "appMenu.print", fluent::kPrint, false);
   row(root_, kCmdFind, "appMenu.findOnPage", fluent::kFind, false);
   row(root_, kCmdToggleReader, "appMenu.readerView", fluent::kReadingMode);
@@ -424,6 +430,9 @@ void PhiAppMenu::RefreshRoot() {
   SetEnabled(root_, kCmdClearAllTabs, services_->MenuCanClearAllTabs());
   SetEnabled(root_, kCmdUndoClearTabs, services_->MenuCanUndoClearTabs());
   SetEnabled(root_, kCmdRedoClearTabs, services_->MenuCanRedoClearTabs());
+  const bool can_capture = services_->MenuCanCapturePage();
+  SetEnabled(root_, kCmdCaptureFullPage, can_capture);
+  SetEnabled(root_, kCmdCaptureArea, can_capture);
   SetEnabled(root_, kCmdPreferences, services_->MenuWindowHost() != nullptr);
   // Reader View is offered where it has something to show, and ticked
   // while its surface is up.
@@ -1258,6 +1267,12 @@ bool PhiAppMenu::OnCommand(UINT id, bool from_accelerator) {
       if (c->MenuFramework() && target.valid()) {
         c->MenuFramework()->OpenTab(target, "chrome://extensions");
       }
+      return true;
+    case kCmdCaptureFullPage:
+    case kCmdCaptureArea:
+      // The chord arrives without the menu's enable pass; the capture
+      // re-checks the page itself.
+      c->MenuCapturePage(id == kCmdCaptureArea);
       return true;
     case kCmdSaveToFolio:
       // Re-checked there: the chord arrives without the menu's enable pass,

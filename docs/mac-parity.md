@@ -47,7 +47,7 @@ Two standing decisions cover many rows and are not repeated in full:
 | Edit ▸ Search the web | ⌥⌘F | dropped | ⛔ | Same, §8. |
 | Hide / Hide Others | ⌘H / ⌥⌘H | — | — | macOS app model. |
 | Share… (system share sheet) | File ▸ Share, site menu Share ▸, ⌃⌥S | none | 🔧 | `phi_shell_menus.h` notes the site menu's Share ▸ is "not ported yet". Windows has `IDataTransferManager`. |
-| Capture Full Page / Capture Area… + screenshot annotation editor (Mac Oct 2026 series `fec4739a`…`c8c6ac28`; rebindable ⇧⌘1 / ⇧⌘2 `7e731204`) | File menu, `docs/page-screenshots.md` | none | 🔧 | PNG (not JPEG since `f7bc5b67`) via CDP `Page.captureScreenshot` with `captureBeyondViewport`, 16,384 px / 64 Mpx clip, 60 s budget, copied to the clipboard + Save toast; Capture Area… drags an overlay with wheel / edge autoscroll; then the browser-attached annotation editor (select, freehand, text, rectangle, ellipse, arrow, blur, crop; PNG / JPG / PDF export; undo). Two `kRebindableShortcuts` rows (Ctrl+Shift+1 / 2) come with it. |
+| Capture Full Page / Capture Area… + screenshot annotation editor (Mac Oct 2026 series `fec4739a`…`c8c6ac28`; rebindable ⇧⌘1 / ⇧⌘2 `7e731204`) | File menu, `docs/page-screenshots.md` | ⋯ menu rows above Print, rebindable Ctrl+Shift+1 / Ctrl+Shift+2 (PHI-2251, `docs/page-screenshots.md`) | ◐ | Ported client-only (no fork or ABI change): PNG via CDP `Page.captureScreenshot` over the in-process DevTools transport with `captureBeyondViewport`, the 16,384 px / 64 Mpx clip and 60 s budget, PNG + bitmap on the clipboard (a newer copy is kept), Save toast; Capture Area… overlay with wheel and 32 DIP edge autoscroll; the editor over the content card with select, arrow, freehand, text, rectangle, ellipse, blur, crop, undo / redo (100 steps), context menu, PNG / JPG / PDF export. Gaps: a style strip instead of the object-anchored property popover and colour picker; no annotation Cut / Copy / Paste, mirrored resize, marquee subtract or Space-drag pan; closing the window drops an unsaved editor (Mac: standalone window); PDF is always flattened (Mac keeps vectors unless blur needs flattening); export and decode run on the UI thread. |
 | Copy URL / Copy URLs (⇧⌘C) | with toast | Ctrl+Shift+C, Copy link flash | ✅ | Only the address field's button brands chrome:// as phi://. `kCmdCopyUrl`, `PhiKioskWindow::CopyUrl` and `tab.copyUrl` copy the raw URL, where the Mac's copy paths brand it. |
 | New Tab to the Right / New Tab Below | title follows layout | handler only, no row | ◐ | Corrected 2026-11-02: `kCmdNewTabToRight` has a handler and an agent refusal (`phi_app_menu.cc`), but no menu row invokes it and nothing reads `menuBar.newTabToTheRight`, although `windows-native-ui.md` §3.2 lists it on the tab context menu. No "below" wording in the vertical layout. |
 | Tab ▸ Select tab 1–8 / last tab | ⌘1–⌘9 | none | ⛔ | Ctrl+1–9 switches Spaces on Windows (`windows-native-ui.md` §3.3); Chrome's tab-index chord was given up for it. |
@@ -221,8 +221,8 @@ Two standing decisions cover many rows and are not repeated in full:
 | Status | Rows |
 |---|---|
 | ✅ ported | 71 |
-| ◐ partial | 31 |
-| 🔧 to implement | 26 |
+| ◐ partial | 32 |
+| 🔧 to implement | 25 |
 | ⛔ deliberately left | 21 |
 | ❓ needs a decision | 0 |
 | — not applicable | 4 |
@@ -232,12 +232,13 @@ Counted from the tables on 2026-11-24. Before this pass the tables held
 changed on dev after 2026-11-17 (the layouts row, the Space switch rows)
 without the counts. This pass: tab audio 🔧 → ✅ (a correction), Space
 icons and Folio ✅ → ◐, edge-to-edge ⛔ → ◐, three new 🔧 rows (capture
-indicators, the background-tab toast, the unified omnibox).
+indicators, the background-tab toast, the unified omnibox). Since then:
+Capture Full Page 🔧 → ◐ (PHI-2251, 2026-11-27).
 
 **The 🔧 list, roughly by user impact:** multi-selection ·
 Bitwarden Settings rows and standing grants ·
 crash feedback prompt · image
-preview · Arc/Zen migration wizard · Share · Capture Full Page ·
+preview · Arc/Zen migration wizard · Share ·
 Export/Import user data · account export + deletion · invitation code
 (backend) · full screen · client-side
 external-link hook (Kiosk preference, App rules, return to the sending
@@ -1240,7 +1241,7 @@ test account), `parked_for_scope` and the App-rule replay (host tests only).**
 | `10e72672` | docs: sync pageColor bridge contract with held page color | done | The documented contract is the fork's `PhiPageColorTabHelper`, compiled for both clients. |
 | `f4cb47d2`, `4ec8a392`, `e5bc31ef`, `5a192b93` | fix: page card inset / corners / resize through AI Chat and side panel slides | skip | ⛔ AI Chat + Mac content-surface hosting; the Windows extension side panel is Chromium's own view. |
 | `2010d662` | fix: open the content address bar on the activation click | done | The Windows field is a real EDIT; `WM_MOUSEACTIVATE` lets the activating click reach it. |
-| `fec4739a`, `2ac14793`, `7b0c35ec`, `0f0aa5c3`, `e4b5b572`, `c11e968c`, `715c8b67`, `f7bc5b67`, `916b0303`, `39681178`, `6e399950`, `c8c6ac28` | feat/fix: screenshot annotation editor series (crop, floating tools, scrolling selection, blur, Bezier strokes, PNG, PDF leaks, export, toolbar order) | watch | Capture Full Page 🔧 (§1). The row now records what to match: PNG (not JPEG) since `f7bc5b67`, Capture Area…, and the attached annotation editor. |
+| `fec4739a`, `2ac14793`, `7b0c35ec`, `0f0aa5c3`, `e4b5b572`, `c11e968c`, `715c8b67`, `f7bc5b67`, `916b0303`, `39681178`, `6e399950`, `c8c6ac28` | feat/fix: screenshot annotation editor series (crop, floating tools, scrolling selection, blur, Bezier strokes, PNG, PDF leaks, export, toolbar order) | ported | Capture Full Page ◐ (§1, PHI-2251, 2026-11-27): PNG since `f7bc5b67`, Capture Area… with scrolling selection, the attached annotation editor with blur, Bézier freehand, crop and PNG / JPG / PDF export. |
 | `63238441`, `100a2a2f` | fix/test: preserve mini player visibility across navigation | done | Ported with the Mini Player 2026-11-13: a shown source stays while paused until visited, a track change keeps its replacement. Tests: `suite-miniplayer` (Windows). |
 | `29cb09ed`, `ffcee6bf` | fix: theme tab colour / flashes while the extension side panel is open | skip | Windows has no page-card separation; `ComputeActivePageColor` ignores the side panel. |
 | `896b36d0` | Feat/shortcut engine (#203) | done (Windows deltas) | Ported 2026-10-27 the parts a Windows user sees: Delete-to-unassign + per-row Reset, Chromium page commands (Open File, Print, Find, View Source, DevTools, Console, zoom, Back/Forward/Home, Settings) rebindable, effective chords in the ⋯ menu, displaced default chords swallowed by the hook. Not needed: owner/scope inventory, NSMenu scan, informational conflicts (Windows keeps confirm-and-steal), filters, system-hotkey warnings, `excludedKeys`, Kiosk global hotkey (⛔). |
@@ -1249,7 +1250,7 @@ test account), `parked_for_scope` and the App-rule replay (host tests only).**
 | `3a4469a3` | fix: close auxiliary windows before showing login after logout | done | Ported 2026-10-27 in `PhiCoordinator::RequireLogin`. |
 | `4d6a7bf2` | fix: keep pins parked for another pinned-tab scope out of held and Needs attention (#206) | done | Ported 2026-10-27: `OwnedCursor::parked_for_scope`, set in `PinOwnedKind::Land`, excluded from `FinishStatusRound`'s pending-inbound count. |
 | `c89c05cb` | fix: localize missing shortcut command titles | done | Ported 2026-10-27: every row, fixed row and group heading of the Shortcuts pane resolves a Mac `settings.shortcuts.*` key. |
-| `7e731204` | feat: add customizable capture shortcuts and clarify key labels | watch / done | Capture rows: Capture Full Page 🔧 (add two `kRebindableShortcuts` rows, Ctrl+Shift+1/2, when it lands). Key labels: Windows chords are VK-based (`PhiFormatChord` prints Ctrl+Shift+1), so the shifted-symbol ambiguity cannot exist. |
+| `7e731204` | feat: add customizable capture shortcuts and clarify key labels | done | Capture rows: two `kRebindableShortcuts` rows `captureFullPage` / `captureArea`, Ctrl+Shift+1/2 (PHI-2251). Key labels: Windows chords are VK-based (`PhiFormatChord` prints Ctrl+Shift+1), so the shifted-symbol ambiguity cannot exist. |
 | `ce059932` | fix: prevent false close conflicts and disable split tab shortcuts | done | Close half n/a (Windows compares its own rows only). Split half ported 2026-10-27: the fork's Alt+Shift+N → `IDC_NEW_SPLIT_TAB` row is excluded under `IS_PHI_ABI_CLIENT`; split stays a menu / Alt-click action. |
 | `4f947521` | fix: prevent crash when opening the profile menu | skip | AppKit `NSMenuItem.copy()` of a hosting view; Windows menus are HMENU rows. |
 | `39681178`… | (screenshot editor, see above) | watch | |

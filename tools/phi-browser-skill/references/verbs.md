@@ -97,7 +97,7 @@ These are what protocol 1 puts in `error`; protocol 2 reports the code beside th
 
 ## Verbs
 
-164 rows, 160 distinct names.
+168 rows, 164 distinct names.
 
 ### The agent-Space lifecycle
 
@@ -604,6 +604,55 @@ Rebinds, unbinds or restores one row as the pane's recorder does (a chord anothe
 | `shift` | boolean | no | — | With Shift. |
 | `alt` | boolean | no | — | With Alt. |
 | `restore` | boolean | no | — | Back to the default chord instead (vk and the rest ignored). |
+
+#### `agentSpace.screenshot.capture`
+
+Runs Capture Full Page or Capture Area as the menu does.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `window_not_open`, `invalid_payload`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `windowId` | integer | no | — | The slot (default: focused). |
+| `mode` | string | no | `full` | full or area. |
+| `rect` | object | no | — | Area only: {x, y, width, height} in document CSS px; skips the overlay. |
+
+#### `agentSpace.screenshot.state`
+
+The last capture, the area overlay, the editor and the clipboard.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`
+
+*No payload fields.*
+
+#### `agentSpace.screenshot.export`
+
+Exports the screenshot editor's document without the dialog.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`, `invalid_payload`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `format` | string | yes | — | png, jpg or pdf. |
+| `path` | string | yes | — | Where to write (no dialog). |
+
+#### `agentSpace.screenshot.close`
+
+Closes the screenshot editor.
+
+- **Capabilities**: `host`
+- **Scope**: app-wide.
+- **Errors**: `test_rig_only`
+
+| field | type | required | also accepts | meaning |
+| --- | --- | --- | --- | --- |
+| `discard` | boolean | no | — | Close without the unsaved-edits prompt. |
 
 #### `agentSpace.lazyRestore.ghosts`
 

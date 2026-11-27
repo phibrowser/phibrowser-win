@@ -176,6 +176,10 @@ enum : UINT {
   // gesture itself; posted as a command (no key held) it takes one step.
   kCmdTabSwitcherForward,
   kCmdTabSwitcherBackward,
+  // The Mac's File ▸ Capture Full Page / Capture Area… (PHI-2251,
+  // docs/page-screenshots.md): the rebindable Ctrl+Shift+1 / Ctrl+Shift+2.
+  kCmdCaptureFullPage,
+  kCmdCaptureArea,
   // Layout ▸ Show sidebar — the same toggle as kCmdToggleSidebar, listed
   // under its own name so the remote surface can address the row.
   kCmdShowBookmarksBar = kCmdAlwaysShowBookmarkBar,
@@ -282,6 +286,10 @@ class PhiAppMenuShell {
   // Its Undo / Redo in this window's Space (no agent).
   virtual bool MenuCanUndoClearTabs() const = 0;
   virtual bool MenuCanRedoClearTabs() const = 0;
+  // Capture Full Page / Capture Area… (docs/page-screenshots.md): a web
+  // page in front of the user and no capture running; then start one.
+  virtual bool MenuCanCapturePage() = 0;
+  virtual void MenuCapturePage(bool area) = 0;
   virtual void MenuSplitWithNewTab() = 0;
   // The Mac's Select Next / Previous Tab (swicthTab): one step through the
   // sidebar's order (pinned, visible bookmarks, open tabs), wrapping.

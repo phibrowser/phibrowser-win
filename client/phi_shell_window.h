@@ -2197,6 +2197,8 @@ class PhiShellWindow : public PhiHitSource,
   bool MenuCanClearAllTabs() const override;
   bool MenuCanUndoClearTabs() const override;
   bool MenuCanRedoClearTabs() const override;
+  bool MenuCanCapturePage() override;
+  void MenuCapturePage(bool area) override;
   void MenuSplitWithNewTab() override;
   void MenuStepTab(int direction) override;
   void MenuToggleSidebar(bool from_accelerator) override;

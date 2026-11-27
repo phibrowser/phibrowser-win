@@ -16,6 +16,7 @@ PhiKeyboardCommandQueue::~PhiKeyboardCommandQueue() = default;
 
 #include "client/phi_app_menu.h"
 #include "client/phi_library.h"
+#include "client/phi_page_screenshot.h"
 #include "client/phi_preferences.h"
 #include "client/phi_tab_switcher.h"
 #include "client/phi_shell_window.h"
@@ -310,6 +311,12 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   // Esc under an open Ctrl+Tab HUD cancels it, and the page never sees it.
   if (PhiTabSwitcher::HandleKeyDown(static_cast<UINT>(wparam))) {
     return 1;
+  }
+  // The screenshot editor or Capture Area…'s overlay has the keyboard:
+  // every chord is theirs (Ctrl+Z / Ctrl+W / Ctrl+D / Escape edit the
+  // screenshot, not the tab under it — docs/page-screenshots.md).
+  if (PhiScreenshotOwnsKeyboard()) {
+    return 0;
   }
   // Esc dismisses the Peek card floating over the focused shell (the Mac's
   // window-level Escape), swallowed so the page under it does not also see

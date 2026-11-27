@@ -43,6 +43,9 @@
 #include "client/phi_downloads_model.h"
 #include "client/phi_downloads_popover.h"
 #include "client/phi_library.h"
+#include "client/phi_page_screenshot.h"
+#include "client/phi_screenshot_area.h"
+#include "client/phi_screenshot_editor.h"
 #include "client/phi_extensions_popover.h"
 #include "client/phi_group_overview.h"
 #include "client/phi_legacy_acrylic.h"
@@ -1676,6 +1679,9 @@ PhiShellWindow::~PhiShellWindow() {
   PhiCloseCreateSpaceFlyoutIfBoundTo(this);
   PhiGroupOverview::CloseIfBoundTo(this);
   PhiLibrary::CloseIfBoundTo(this);
+  // A capture of this window, its area overlay and its screenshot editor.
+  PhiPageScreenshot::ShellGoingAway(this);
+  PhiScreenshotEditor::CloseIfBoundTo(this);
   PhiTabSwitcher::CancelIfBoundTo(this);
   PhiSearchTabsPanel::CloseIfBoundTo(this);
   // Owned components and popups go BEFORE the shell: their teardown calls
@@ -2289,6 +2295,18 @@ bool PhiShellWindow::MenuCanUndoClearTabs() const {
 bool PhiShellWindow::MenuCanRedoClearTabs() const {
   return !AgentHoldsInput() && services_.window &&
          services_.window->CanRedoClearTabs(MenuActiveBrowser());
+}
+
+bool PhiShellWindow::MenuCanCapturePage() {
+  return !AgentHoldsInput() && PhiPageScreenshot::CanCapture(this);
+}
+
+void PhiShellWindow::MenuCapturePage(bool area) {
+  if (AgentHoldsInput()) {
+    return;
+  }
+  PhiPageScreenshot::Start(this, area ? PhiPageScreenshot::Mode::kArea
+                                      : PhiPageScreenshot::Mode::kFullPage);
 }
 
 void PhiShellWindow::MenuStepTab(int direction) {
@@ -2945,6 +2963,7 @@ void PhiShellWindow::OnContentBoundsChanged(BrowserId browser_id) {
   if (browser_id == active_browser_id()) {
     native_pages_->Reposition();
     PhiLibrary::RepositionIfBoundTo(this);
+    PhiScreenshotEditor::RepositionIfBoundTo(this);
   }
 }
 
@@ -3887,6 +3906,7 @@ void PhiShellWindow::LayoutContents() {
   }
   native_pages_->Reposition();
   PhiLibrary::RepositionIfBoundTo(this);  // Covers the client area.
+  PhiScreenshotEditor::RepositionIfBoundTo(this);  // Covers the card.
   // Reader and peek panels are hosted OVER the content card, in windows the
   // coordinator owns rather than this controller — they have to follow it.
   if (services_.sidebar) {
@@ -11625,7 +11645,8 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
       // window takes the click and decides where focus goes.
       const HWND page = self ? self->browsers_->content_hwnd() : nullptr;
       if (!in_chrome && self && !PhiGroupOverview::IsOpen() &&
-          !PhiLibrary::IsOpen() &&
+          !PhiLibrary::IsOpen() && !PhiScreenshotEditor::IsBoundTo(self) &&
+          !PhiScreenshotArea::IsBoundTo(self) &&
           !self->native_pages_->ntp_mounted() && page &&
           ::IsWindow(page)) {
         ::SetFocus(page);
@@ -11704,6 +11725,13 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
             self->sidebar_->BeginKeyboardFocus()) {
           return 0;
         }
+      }
+      // The screenshot editor or Capture Area…'s overlay covers the page:
+      // the keyboard goes back to it, not to the page under it.
+      if (self && !(msg == WM_ACTIVATE && LOWORD(wparam) == WA_INACTIVE) &&
+          (PhiScreenshotArea::FocusIfBoundTo(self) ||
+           PhiScreenshotEditor::FocusIfBoundTo(self))) {
+        return 0;
       }
       // Activation/focus arriving at the shell top-level must be forwarded to
       // the child: as a WS_CHILD, Chromium's window reports IsTopLevelWindow()
@@ -11989,6 +12017,10 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
           // before the caps that round it.
           self->services_.sidebar->RaiseReaderPanels(self->slot_.value);
         }
+        // The screenshot editor covers the card like the reader; the area
+        // overlay sits over the page it selects on.
+        PhiScreenshotEditor::RaiseIfBoundTo(self);
+        PhiScreenshotArea::RaiseIfBoundTo(self);
         self->browsers_->RaiseOverlays();
         self->caption_band_->SyncIsland();  // The drawer above the page.
         // The Library covers the client area, caps included (the Mac's

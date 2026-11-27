@@ -1095,6 +1095,21 @@ constexpr PhiParamField kShortcutRebind[] = {
     {"restore", kParamBool, kOptional, "",
      "Back to the default chord instead (vk and the rest ignored)."},
 };
+constexpr PhiParamField kScreenshotCapture[] = {
+    {"windowId", kParamInt, kOptional, "", "The slot (default: focused)."},
+    {"mode", kParamString, kOptional, "full", "full or area."},
+    {"rect", kParamObject, kOptional, "",
+     "Area only: {x, y, width, height} in document CSS px; skips the "
+     "overlay."},
+};
+constexpr PhiParamField kScreenshotExport[] = {
+    {"format", kParamString, kRequired, "", "png, jpg or pdf."},
+    {"path", kParamString, kRequired, "", "Where to write (no dialog)."},
+};
+constexpr PhiParamField kScreenshotClose[] = {
+    {"discard", kParamBool, kOptional, "",
+     "Close without the unsaved-edits prompt."},
+};
 constexpr PhiParamField kFeedbackAccount[] = {
     {"userId", kParamString, kOptional, "", "A stand-in account id."},
     {"email", kParamString, kOptional, "", "Its email."},
@@ -1333,6 +1348,24 @@ base::span<const PhiVerbSpec> PhiControlDispatcher::Registry() {
        "test_rig_only invalid_payload",
        "Rebinds, unbinds or restores one row as the pane's recorder does "
        "(a chord another row holds is taken from it)."},
+      {"agentSpace.screenshot.capture", "", kScopeNone, kHost, kVerbPlain,
+       kScreenshotCapture, false, false,
+       &Call<&PhiControlDispatcher::VerbScreenshotCapture>,
+       "test_rig_only window_not_open invalid_payload",
+       "Runs Capture Full Page or Capture Area as the menu does."},
+      {"agentSpace.screenshot.state", "", kScopeNone, kHost, kVerbPlain, {},
+       false, false, &Call<&PhiControlDispatcher::VerbScreenshotState>,
+       "test_rig_only",
+       "The last capture, the area overlay, the editor and the clipboard."},
+      {"agentSpace.screenshot.export", "", kScopeNone, kHost, kVerbPlain,
+       kScreenshotExport, false, false,
+       &Call<&PhiControlDispatcher::VerbScreenshotExport>,
+       "test_rig_only invalid_payload",
+       "Exports the screenshot editor's document without the dialog."},
+      {"agentSpace.screenshot.close", "", kScopeNone, kHost, kVerbPlain,
+       kScreenshotClose, false, false,
+       &Call<&PhiControlDispatcher::VerbScreenshotClose>, "test_rig_only",
+       "Closes the screenshot editor."},
       {"agentSpace.lazyRestore.ghosts", "", kScopeNone, kHost, kVerbPlain, {},
        false, false, &Call<&PhiControlDispatcher::VerbLazyRestoreGhosts>,
        "test_rig_only no_framework",
