@@ -806,6 +806,24 @@ class PhiSidebarView {
   // Republishes the hits, so the button's name and tooltip come and go
   // with it.
   void SetClearTabsShown(bool shown);
+  // The Mac's ⌥ over a split's row (93b1d0aa): while Alt is held over a
+  // merged split row, each pane's segment ends in an arrow that takes that
+  // pane out of the split and keeps it open as a normal tab (a pair
+  // dissolves). The row's own close box stands down meanwhile. The shell
+  // sets the row (-1 for none) from its hover and the Alt key, and `pt`
+  // picks the arrow under the pointer for its hover wash. A row that cannot
+  // lift a pane — a strip tab, a split a pinned cell or a bookmark stands
+  // for (the shell decides that), a surface attached, the agent holding the
+  // Space — shows no arrows. True when what the row shows changed; the
+  // hits are republished then, so the arrows' names and tooltips follow.
+  bool SetLiftRow(int index, POINT pt);
+  // True when tab row `index` shows its lift arrows.
+  bool LiftShown(size_t index) const;
+  // Pane `pane`'s arrow on a lifting row: the trailing end of its segment,
+  // where the row's close box sits for the last pane.
+  RECT LiftBox(const TabRow& row, int pane) const;
+  // The pane whose arrow holds `pt` on lifting row `index`, or -1.
+  int LiftPaneAt(size_t index, POINT pt) const;
   void SetClearTabsPlayback(double t) { clear_tabs_t_ = t; }
   double clear_tabs_playback() const { return clear_tabs_t_; }
   // Comfortable's overflow chevron, between the last tab that fits and the
@@ -1005,6 +1023,8 @@ class PhiSidebarView {
   void DrawSurfaceTile(HDC dc, const RECT& box, SidebarSurface kind,
                        bool hovered, COLORREF ground, TabId origin_tab,
                        int tile_dip);
+  // A split pane's lift arrow, centred in `box` (SetLiftRow).
+  void DrawLiftArrow(HDC dc, const RECT& box, COLORREF ink);
   // leaving_band_ <-> the live row vectors. The Space slide paints both
   // models, so the strip exchanges them twice per frame.
   void SwapBandModel();
@@ -1160,6 +1180,12 @@ class PhiSidebarView {
   RECT tabs_separator_{};
   bool clear_tabs_shown_ = false;
   double clear_tabs_t_ = -1;
+  // SetLiftRow: the tab row under the pointer while Alt is held, and the
+  // pane whose arrow the pointer is on (-1 for none).
+  int lift_row_ = -1;
+  int lift_hot_pane_ = -1;
+  // The layout the rows were last built for: a strip tab never lifts.
+  bool rows_horizontal_ = false;
   // The Mac's FloatingNewTabView separator: a hairline on the row's edge
   // toward the tabs while rows scroll under it.
   bool new_tab_row_separator_ = false;

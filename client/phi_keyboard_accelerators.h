@@ -155,6 +155,9 @@ class PhiKeyboardAccelerators {
   // across it was Alt+Tab, whose release must not open the ⋯ menu — the
   // Tab never reached this hook, so the hold still looks solo.
   void OnAppActivationChanged() { alt_solo_ = false; }
+  // Alt is held for something of its own — the sidebar's split row shows
+  // its lift arrows under it — so its release must not open the ⋯ menu.
+  static void NoteAltChord();
 
  private:
   static LRESULT CALLBACK HookProc(int code, WPARAM wparam, LPARAM lparam);

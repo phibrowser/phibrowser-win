@@ -679,6 +679,17 @@ bool PhiSidebarView::OnContentRowClick(POINT pt) {
             row.PaneId(mute_pane).value,
             row.pane_audio[static_cast<size_t>(mute_pane)] !=
                 PhiTabAudio::kMuted);
+      } else if (const int lift_pane = LiftPaneAt(
+                     static_cast<size_t>(&row - tabs_.data()), pt);
+                 lift_pane >= 0) {
+        // Alt over a split row: the pane's arrow takes it out of the split
+        // (the Mac's removeTabFromSplit; a pair dissolves), and it stays
+        // open as a normal tab.
+        Apply(SidebarRemovePane{row.key, lift_pane});
+      } else if (LiftShown(static_cast<size_t>(&row - tabs_.data())) &&
+                 ::PtInRect(&row.close_box, pt)) {
+        // The close box stands down while the arrows show: a press between
+        // the last pane's arrow and the row's end does nothing.
       } else if (::PtInRect(&row.close_box, pt)) {
         if (!agent_holds_input_) {  // The Mac refuses ✕ under the agent.
           Apply(SidebarClose{row.key, -1});  // A merged row: both panes.
@@ -743,6 +754,7 @@ SidebarKey PhiSidebarView::TabBodyAt(POINT pt, int* pane) const {
       continue;
     }
     if (::PtInRect(&row.close_box, pt) || row.MutePaneAt(pt) >= 0 ||
+        LiftPaneAt(static_cast<size_t>(&row - tabs_.data()), pt) >= 0 ||
         (row.attached_surface != SidebarSurface::kContent &&
          ::PtInRect(&row.surface_box, pt))) {
       return {};
@@ -949,6 +961,65 @@ void PhiSidebarView::SetClearTabsShown(bool shown) {
   PublishHits(shell_->SidebarRects());
 }
 
+bool PhiSidebarView::LiftShown(size_t index) const {
+  if (static_cast<int>(index) != lift_row_ || index >= tabs_.size() ||
+      rows_horizontal_ || agent_holds_input_) {
+    return false;
+  }
+  const TabRow& row = tabs_[index];
+  return row.b_index >= 0 &&
+         row.attached_surface == SidebarSurface::kContent &&
+         row.bounds.right > row.bounds.left;
+}
+
+RECT PhiSidebarView::LiftBox(const TabRow& row, int pane) const {
+  const int panes = row.PaneCount();
+  if (pane < 0 || pane >= panes) {
+    return RECT{};
+  }
+  // The segments finish_row and the paint use; the box is the close box's
+  // own size and inset, at the segment's trailing end.
+  const int width = row.bounds.right - row.bounds.left;
+  const int right = row.bounds.left + width * (pane + 1) / panes;
+  const int box = Scaled(kCloseBoxSize);
+  const int mid = (row.bounds.top + row.bounds.bottom) / 2;
+  return {right - box - Scaled(4), mid - box / 2, right - Scaled(4),
+          mid + box / 2};
+}
+
+int PhiSidebarView::LiftPaneAt(size_t index, POINT pt) const {
+  if (!LiftShown(index)) {
+    return -1;
+  }
+  const TabRow& row = tabs_[index];
+  for (int pane = 0; pane < row.PaneCount(); ++pane) {
+    const RECT box = LiftBox(row, pane);
+    if (::PtInRect(&box, pt)) {
+      return pane;
+    }
+  }
+  return -1;
+}
+
+bool PhiSidebarView::SetLiftRow(int index, POINT pt) {
+  const int before_row = lift_row_;
+  const int before_hot = lift_hot_pane_;
+  const bool shown_before =
+      before_row >= 0 && LiftShown(static_cast<size_t>(before_row));
+  lift_row_ = index;
+  const bool shown = index >= 0 && LiftShown(static_cast<size_t>(index));
+  if (!shown) {
+    lift_row_ = -1;
+  }
+  lift_hot_pane_ =
+      shown ? LiftPaneAt(static_cast<size_t>(index), pt) : -1;
+  if (shown != shown_before || (shown && before_row != lift_row_)) {
+    PublishHits(shell_->SidebarRects());
+    return true;
+  }
+  return before_hot != lift_hot_pane_;
+}
+
 RECT PhiSidebarView::clear_tabs_button() const {
   if (!clear_tabs_shown_ || tabs_separator_.right <= tabs_separator_.left) {
     return RECT{};
@@ -1095,6 +1166,16 @@ void PhiSidebarView::PublishHits(const PhiSidebarRects& layout) {
     add(row.bounds, kTabKey + static_cast<int>(i), row.title,
         PhiHitRole::kTab, row.active);
     note_focus(row.key, before);
+    if (LiftShown(i)) {
+      // Alt over a split row: each pane's arrow in place of the close box,
+      // named so its tooltip reads what it does.
+      for (int pane = 0; pane < row.PaneCount(); ++pane) {
+        add(LiftBox(row, pane), kTabKey + static_cast<int>(i) + 0x900 + pane,
+            PhiStr("sidebar.splitTab.removePaneButtonAccessibilityLabel"),
+            PhiHitRole::kButton, false);
+      }
+      continue;
+    }
     // The close box is its own button: a screen reader has to be able to
     // close a tab without simulating a click on a coordinate.
     add(row.close_box, kTabKey + static_cast<int>(i) + 0x800,
@@ -2073,6 +2154,7 @@ void PhiSidebarView::Rebuild() {
     }
   }
   // The rows the pointer, the keyboard and a screen reader all address.
+  rows_horizontal_ = layout.horizontal_tabs;
   PublishHits(layout);
   // A drag in flight re-resolves against the rows it now sees.
   if (drag_) {
@@ -2737,6 +2819,16 @@ base::ListValue PhiSidebarView::LayoutRowsJson() const {
     extra.Set("surfaceBox", box(tab.surface_box));
     audio(tab.pane_audio.data(), tab.mute_boxes.data(),
           static_cast<size_t>(std::min(tab.PaneCount(), 4)), &extra);
+    const size_t index = static_cast<size_t>(&tab - tabs_.data());
+    if (LiftShown(index)) {
+      // Alt over a split row: each pane's lift arrow, so a probe can aim.
+      base::ListValue lift;
+      for (int pane = 0; pane < tab.PaneCount(); ++pane) {
+        lift.Append(box(LiftBox(tab, pane)));
+      }
+      extra.Set("liftBoxes", std::move(lift));
+      extra.Set("liftHotPane", lift_hot_pane_);
+    }
     emit("tabs", tab.key, tab.bounds, std::move(extra));
   }
   return rows;
@@ -3797,6 +3889,32 @@ void PhiSidebarView::PaintDropZone(HDC dc,
 }
 
 // static
+// The lift arrow (the Mac's SF Symbol arrow.down.left, the sidebar on the
+// window's left): a diagonal shaft from the top right into a square head
+// at the bottom left, drawn as three antialiased capsules in `ink`, centred
+// in `box` at about the close glyph's size.
+void PhiSidebarView::DrawLiftArrow(HDC dc, const RECT& box, COLORREF ink) {
+  const int size = Scaled(9);
+  const int stroke = std::max(2, Scaled(3) / 2);
+  const int cx = (box.left + box.right) / 2;
+  const int cy = (box.top + box.bottom) / 2;
+  const int x0 = cx - size / 2;  // The tip, bottom left.
+  const int y1 = cy + size / 2;
+  const int head = size * 3 / 5;
+  const int half = stroke / 2;
+  // The shaft: a capsule as long as the square's diagonal, turned 45° so its
+  // top end points up and right.
+  const int length = size * 141 / 100 + stroke;
+  const RECT shaft = {cx - length / 2, cy - length / 2, cx + length / 2,
+                      cy + length / 2};
+  PhiFillSlantedCapsuleAA(dc, shaft, stroke, 45.0f, ink);
+  // The head: along the bottom and up the left from the tip.
+  PhiFillCapsuleAA(dc, {x0 - half, y1 - half, x0 + head, y1 - half + stroke},
+                   ink);
+  PhiFillCapsuleAA(dc, {x0 - half, y1 - head, x0 - half + stroke, y1 + half},
+                   ink);
+}
+
 void PhiSidebarView::DrawSurfaceTile(HDC dc,
                                      const RECT& box,
                                      SidebarSurface kind,
@@ -4861,12 +4979,16 @@ void PhiSidebarView::PaintBand(HDC dc,
     // included; the title reclaims its slot the rest of the time. A row with
     // a surface attached has no close box: the indicator holds the slot.
     const bool attached = row.attached_surface != SidebarSurface::kContent;
-    const bool show_close = row_hovered && !is_dragged && !attached;
+    // Alt over a split row: every pane ends in its lift arrow and the row's
+    // close box stands down (SetLiftRow).
+    const bool lifting = row_hovered && !is_dragged && LiftShown(order_index);
+    const bool show_close = row_hovered && !is_dragged && !attached && !lifting;
     RECT surface_box = row.surface_box;
     ::OffsetRect(&surface_box, dx, dy);
-    const int trailing = show_close ? close_box.left
-                         : attached ? surface_box.left
-                                    : pill.right;
+    // A lifting row's last arrow sits in the close box's slot.
+    const int trailing = show_close || lifting ? close_box.left
+                         : attached            ? surface_box.left
+                                               : pill.right;
     if (agent_badge) {
       const int dot = Scaled(8);
       const int cx = layout.horizontal_tabs ? pill.right - Scaled(4)
@@ -4882,9 +5004,12 @@ void PhiSidebarView::PaintBand(HDC dc,
       HBRUSH sep = ::CreateSolidBrush(palette.separator);
       for (int pane = 0; pane < panes; ++pane) {
         const int left = pill.left + pill_width * pane / panes;
-        const int right = pane + 1 == panes
-                              ? trailing
-                              : pill.left + pill_width * (pane + 1) / panes;
+        int right = pane + 1 == panes
+                        ? trailing
+                        : pill.left + pill_width * (pane + 1) / panes;
+        if (lifting) {
+          right = std::min<int>(right, LiftBox(row, pane).left + dx);
+        }
         draw_pane(left, right, row, pane);
         if (pane > 0) {
           RECT divider = {left, pill.top + Scaled(6), left + 1,
@@ -4898,6 +5023,17 @@ void PhiSidebarView::PaintBand(HDC dc,
     }
     if (show_close) {
       PhiDrawGlyph(dc, close_box, L"\u00D7", row_palette.label_dim);
+    }
+    if (lifting) {
+      for (int pane = 0; pane < row.PaneCount(); ++pane) {
+        RECT box = LiftBox(row, pane);
+        ::OffsetRect(&box, dx, dy);
+        if (pane == lift_hot_pane_) {
+          // The Mac's UnifiedTabCloseButton hover fill.
+          PhiFillRoundRectAA(dc, box, Scaled(6), palette.hover_strong);
+        }
+        DrawLiftArrow(dc, box, row_palette.label_dim);
+      }
     }
     if (attached) {
       DrawSurfaceTile(dc, surface_box, row.attached_surface,

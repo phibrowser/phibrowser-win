@@ -9324,6 +9324,11 @@
    "comment": "sidebar — used at phi_shell_window.cc:5617",
    "en": "Add to Group"
   },
+  "sidebar.splitTab.removePaneButtonAccessibilityLabel": {
+   "comment": "sidebar — the arrow a split row's pane shows in place of the close box while Alt is held over the row: takes that pane out of the split and keeps it open as a normal tab (Mac 93b1d0aa). Tooltip and UI Automation name; phi_sidebar_view.cc",
+   "en": "Remove from Split",
+   "sameAs": "sidebar.tabContextMenu.removeFromSplit"
+  },
   "sidebar.tabContextMenu.closeSplit": {
    "comment": "Mac key (translations by key); contextMenu — split row: closes every pane",
    "en": "Close Split"

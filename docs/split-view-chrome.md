@@ -117,6 +117,48 @@ middle pane is square all round.
 Checked on nuc at 300 % on 2026-11-10 with a 17-case end-to-end run over
 the control pipe and real input; the suite was not kept.
 
+## Alt over a split row (2026-11-27, PHI-2254)
+
+The Mac's ⌥ over a split's sidebar row (`93b1d0aa`, 2.19.0). While Alt is
+held with the pointer on a merged split row, each pane's segment ends in an
+arrow pointing down and left (SF Symbol `arrow.down.left`; Windows has no
+right-hand sidebar, so never `arrow.down.right`), drawn by
+`PhiSidebarView::DrawLiftArrow` as three antialiased capsules. The row's
+own × stands down meanwhile: the last pane's arrow takes its slot. The
+arrow under the pointer wears the Mac close button's rounded hover wash
+(`palette.hover_strong`, radius 6). A click on an arrow applies
+`SidebarRemovePane`, which is `RemoveTabFromSplitById`: a split of three or
+four keeps its other panes, a pair dissolves (Chromium's
+`TabStripModel::RemoveTabFromSplit`), and the tab stays open as a normal
+tab. No framework or ABI change.
+
+* **Where it shows.** Sidebar layouts only (a strip tab never lifts), never
+  on a split a pinned cell or a bookmark stands for
+  (`PhiShellWindow::SplitRowIsStored`, the Mac's
+  `splitAllowsPaneRearrangement`), not while a Peek or Reader View is
+  attached to the row, and not while the agent holds the Space.
+* **Alt with the pointer at rest.** The keyboard hook posts
+  `kMsgPhiAltKey` to the focused shell on Alt down (first press) and Alt
+  up; the shell's `UpdateLiftRow` sets `PhiSidebarView::SetLiftRow` from
+  its hover and the pointer's last position (`lift_pt_`). A mouse move and
+  `ClearHover` call it too. A change republishes the hits, invalidates the
+  row and re-tips.
+* **Alt alone.** A bare Alt tap opens the ⋯ menu everywhere else. Once a
+  row shows its arrows, `PhiKeyboardAccelerators::NoteAltChord` ends the
+  solo hold, so letting go of Alt opens nothing and moves no focus.
+* **Names and tooltips.** Each arrow is published as a button named by the
+  Mac key `sidebar.splitTab.removePaneButtonAccessibilityLabel` ("Remove
+  from Split", translations borrowed from the Mac's
+  `sidebar.tabContextMenu.removeFromSplit`), which is also its tooltip.
+  `window.layout` reports `liftBoxes` and `liftHotPane` on the row.
+* **Not ported.** The Mac narrows a leaving pane out over 0.2 s
+  (`animatePaneLeaving`); here the row rebuilds at once. The Mac's
+  per-pane × without Alt is not ported either: the Windows merged row
+  keeps its single × that closes the whole split.
+
+Tests: `phibrowser-win-test` `tests/suite-splitlift.mjs` and the cu
+scenario `cu/scenarios/split-lift-arrow.md`.
+
 ## Who draws what
 
 Chromium's `MultiContentsView` still lays the panes out and paints the

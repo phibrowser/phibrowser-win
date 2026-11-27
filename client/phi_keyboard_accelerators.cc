@@ -131,6 +131,13 @@ PhiKeyboardAccelerators::~PhiKeyboardAccelerators() {
   g_accelerators = nullptr;
 }
 
+// static
+void PhiKeyboardAccelerators::NoteAltChord() {
+  if (g_accelerators) {
+    g_accelerators->alt_solo_ = false;
+  }
+}
+
 bool PhiKeyboardAccelerators::Install() {
   if (hook_) {
     return true;
@@ -281,6 +288,13 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
     // chord (Alt+Tab, Alt+Left, Alt+F4, a mnemonic) cleared alt_solo_ on
     // its key-down, so only a bare tap gets here. The key is NOT
     // swallowed: Chromium still sees the release it expects.
+    if (wparam == VK_MENU) {
+      // The sidebar drops a split row's lift arrows (PhiShellWindow::
+      // UpdateLiftRow).
+      if (HWND shell = host_.FocusedShellHwnd()) {
+        ::PostMessageW(shell, kMsgPhiAltKey, 0, 0);
+      }
+    }
     if (wparam == VK_MENU && alt_solo_) {
       alt_solo_ = false;
       if (HWND shell = host_.FocusedShellHwnd()) {
@@ -296,6 +310,13 @@ LRESULT PhiKeyboardAccelerators::OnKey(WPARAM wparam, LPARAM lparam) {
   // Track whether Alt is being held alone, for the reveal gesture above.
   alt_solo_ = AltSoloAfterKeyDown(alt_solo_, static_cast<UINT>(wparam),
                                   repeat);
+  if (wparam == VK_MENU && !repeat) {
+    // A pointer resting on a split row shows its lift arrows; the shell
+    // calls NoteAltChord then, which ends the solo hold set just above.
+    if (HWND shell = host_.FocusedShellHwnd()) {
+      ::PostMessageW(shell, kMsgPhiAltKey, 1, 0);
+    }
+  }
   const bool ctrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
   const bool shift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
   const bool alt = (lparam & 0x20000000) != 0;  // The context code bit.

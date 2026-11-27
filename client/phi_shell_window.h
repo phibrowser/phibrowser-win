@@ -754,6 +754,10 @@ enum : UINT {
   // turn, after that paint has gone to the screen (PhiSpacesStrip::
   // NoteSlideLanded).
   kMsgPhiSwapLanded,
+  // Alt went down (WPARAM 1) or up (0), from the keyboard hook: the sidebar
+  // shows or drops the split row's lift arrows under a pointer that has not
+  // moved (UpdateLiftRow).
+  kMsgPhiAltKey,
 };
 enum : WPARAM { kPhiFocusNext = 0, kPhiFocusPrevious = 1, kPhiFocusPage = 2 };
 
@@ -1854,6 +1858,14 @@ class PhiShellWindow : public PhiHitSource,
   bool surface_tile_hot_ = false;
   void OnChromeMouseMove(POINT client_pt);
   void ClearHover();
+  // The Mac's ⌥ over a split's sidebar row (93b1d0aa): the hovered merged
+  // row shows its lift arrows while `alt_down`, unless a pinned cell or a
+  // bookmark stands for the split. A row that shows them makes the held
+  // Alt a chord, so its release does not open the ⋯ menu.
+  void UpdateLiftRow(bool alt_down);
+  // The pointer's last chrome position (OnChromeMouseMove), for the arrow
+  // under it when Alt changes with the pointer at rest.
+  POINT lift_pt_{-1, -1};
   // Tooltips for the chrome's own icon buttons (the caption trio, the nav
   // and address-row buttons, the sidebar's header and bottom bar, and the
   // button hits the sidebar publishes — close boxes, the strip chevron),

@@ -48,6 +48,7 @@
 #include "client/phi_screenshot_editor.h"
 #include "client/phi_extensions_popover.h"
 #include "client/phi_group_overview.h"
+#include "client/phi_keyboard_accelerators.h"
 #include "client/phi_legacy_acrylic.h"
 #include "client/phi_library.h"
 #include "client/phi_search_tabs_panel.h"
@@ -4506,6 +4507,36 @@ void PhiShellWindow::OnChromeMouseMove(POINT client_pt) {
       ::InvalidateRect(shell_hwnd_, &row, FALSE);
     }
   }
+  lift_pt_ = client_pt;
+  UpdateLiftRow((::GetKeyState(VK_MENU) & 0x8000) != 0);
+}
+
+void PhiShellWindow::UpdateLiftRow(bool alt_down) {
+  if (!sidebar_) {
+    return;
+  }
+  const std::vector<TabRow>& rows = sidebar_->tabs();
+  int lift = -1;
+  if (alt_down && hover_kind_ == HoverKind::kTab && hover_index_ >= 0 &&
+      hover_index_ < static_cast<int>(rows.size()) &&
+      rows[static_cast<size_t>(hover_index_)].b_index >= 0 &&
+      !SplitRowIsStored(rows[static_cast<size_t>(hover_index_)].id)) {
+    lift = hover_index_;
+  }
+  const bool changed = sidebar_->SetLiftRow(lift, lift_pt_);
+  if (lift >= 0 && sidebar_->LiftShown(static_cast<size_t>(lift))) {
+    // Alt held to lift a pane is a chord, like an Alt-click: letting go
+    // must not open the ⋯ menu.
+    PhiKeyboardAccelerators::NoteAltChord();
+  }
+  if (!changed || !shell_hwnd_) {
+    return;
+  }
+  const RECT row = HoverRect(HoverKind::kTab, hover_index_);
+  if (row.right > row.left) {
+    ::InvalidateRect(shell_hwnd_, &row, FALSE);
+  }
+  RetipAtCursor();
 }
 
 bool PhiShellWindow::BandOnShell() const {
@@ -4525,6 +4556,7 @@ void PhiShellWindow::ClearHover() {
     tab_preview_->PointerExited();
   }
   SetHover(HoverKind::kNone, -1);
+  UpdateLiftRow(false);
   // The pointer left the chrome, unless it only crossed onto a child window
   // inside the sidebar (the address field): the Clear button stays then.
   bool in_sidebar = false;
@@ -12265,6 +12297,11 @@ LRESULT CALLBACK PhiShellWindow::ShellWndProc(HWND hwnd,
         }
       }
       return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+    case kMsgPhiAltKey:
+      if (self) {
+        self->UpdateLiftRow(wparam != 0);
+      }
+      return 0;
     case kMsgPhiCycleFocus:
       if (self && PhiLibrary::HwndIfBoundTo(self)) {
         PhiLibrary::Close();  // F6 leaves the Library for the chrome.

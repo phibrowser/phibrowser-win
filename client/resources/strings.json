@@ -13810,6 +13810,17 @@
    "zh-Hans": "更多",
    "zh-Hant": "更多"
   },
+  "sidebar.splitTab.removePaneButtonAccessibilityLabel": {
+   "de": "Aus Split entfernen",
+   "en": "Remove from Split",
+   "es": "Quitar de la vista dividida",
+   "fr": "Retirer du Split View",
+   "ja": "分割表示を解除",
+   "ko": "분할에서 제거",
+   "nl": "Verwijder uit split",
+   "zh-Hans": "从分屏中移除",
+   "zh-Hant": "從分割畫面移除"
+  },
   "sidebar.switchToThisSpace": {
    "de": "Zu diesem Space wechseln",
    "en": "Switch to this Space",
