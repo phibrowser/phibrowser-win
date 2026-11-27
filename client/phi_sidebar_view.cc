@@ -102,6 +102,7 @@ using sidebar_metrics::kGroupHeaderHeight;
 using sidebar_metrics::kGroupInnerInset;
 using sidebar_metrics::kGroupMemberLeadInset;
 using sidebar_metrics::kGroupMemberTrailInset;
+using sidebar_metrics::kHTabActiveMinWidth;
 using sidebar_metrics::kHTabActiveWidth;
 using sidebar_metrics::kHTabGap;
 using sidebar_metrics::kHTabHeight;
@@ -1558,8 +1559,9 @@ void PhiSidebarView::Rebuild() {
   // they fit and shrink toward the minimum as more open. Fixed widths meant
   // the tabs past the edge were simply dropped — and the ACTIVE tab was
   // among them as soon as a fourth opened, which is not a strip at all.
-  // Resting tabs give up their width first; the active one keeps its wider
-  // slot until they are all at the floor.
+  // The active tab gives up its extra room first, then all of them shrink
+  // evenly; only below the active minimum does the active tab hold its
+  // width while the others go on to the floor (the Mac's rule, PHI-2115).
   StripWidths strip_widths{Scaled(kHTabWidth), Scaled(kHTabActiveWidth)};
   // The strip's group chips (the Mac's TabGroupChipView, placed by
   // TabStripLayoutEngine.layoutNormalWithGroups): a chip stands before each
@@ -1658,7 +1660,8 @@ void PhiSidebarView::Rebuild() {
     }
     strip_widths = SolveStripWidths(
         resting, has_active, layout.tabs_limit - x - chips_room,
-        Scaled(kHTabWidth), Scaled(kHTabActiveWidth), Scaled(kHTabMinWidth));
+        Scaled(kHTabWidth), Scaled(kHTabActiveWidth),
+        Scaled(kHTabActiveMinWidth), Scaled(kHTabMinWidth));
   }
   const auto finish_row = [&](TabRow* row) {
     const int close_box = Scaled(kCloseBoxSize);
@@ -1753,9 +1756,9 @@ void PhiSidebarView::Rebuild() {
       if (node.active) {
         active_item = static_cast<int>(items.size());
       }
-      // The active tab takes the wider slot — it is the one carrying the
-      // page, and the extra room is what separates it from its neighbours
-      // now that the tabs abut instead of standing apart.
+      // The active tab takes the wider slot while there is room for it —
+      // it is the one carrying the page; under pressure it shares evenly
+      // and then holds its minimum (SolveStripWidths).
       const int extra = (StripUnits(node) - 1) * strip_widths.rest;
       items.push_back(
           {&node, 0,

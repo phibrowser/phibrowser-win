@@ -151,6 +151,9 @@ inline constexpr int kGroupMemberTrailInset = 4;
 inline constexpr int kHTabHeight = 34;   // kTitleBarHeightTabs - kHTabStripTop
 inline constexpr int kHTabWidth = 200;   // Tab.idealWidth (a resting tab)
 inline constexpr int kHTabActiveWidth = 240;  // The active tab takes more room.
+// Under pressure the active tab shrinks with the others down to this, then
+// holds it while they go on to the floor (TabStripMetrics.Tab.activeMinWidth).
+inline constexpr int kHTabActiveMinWidth = 100;
 // Favicon, a breath, and the close box.
 inline constexpr int kHTabMinWidth = 56;
 inline constexpr int kHTabGap = 0;        // Tabs abut; a hairline divides them.

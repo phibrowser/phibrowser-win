@@ -88,15 +88,35 @@ StripWidths SolveStripWidths(int resting_count,
                              int room,
                              int ideal_rest,
                              int ideal_active,
+                             int active_min,
                              int floor) {
   StripWidths w{ideal_rest, has_active ? ideal_active : 0};
-  if (resting_count * w.rest + w.active > room) {
-    if (resting_count > 0) {
-      w.rest = std::max(floor, (room - w.active) / resting_count);
+  if (resting_count * w.rest + w.active <= room) {
+    return w;  // Everything fits at its ideal width.
+  }
+  if (has_active) {
+    // 1. The active tab gives up the room it has over a resting tab first.
+    w.active = std::max(ideal_rest, room - resting_count * ideal_rest);
+    if (resting_count * w.rest + w.active <= room) {
+      return w;
     }
-    if (has_active && resting_count * w.rest + w.active > room) {
-      w.active = std::max(floor, room - resting_count * w.rest);
-    }
+  }
+  // 2. Every tab shares the room evenly (TabStripLayoutEngine's "medium
+  // pressure"), the active one included, down to the active tab's minimum.
+  const int count = resting_count + (has_active ? 1 : 0);
+  const int even = count > 0 ? room / count : ideal_rest;
+  if (!has_active || even >= active_min) {
+    w.rest = std::max(floor, even);
+    w.active = has_active ? w.rest : 0;
+    return w;
+  }
+  // 3. Tight: the active tab keeps its minimum and the resting tabs shrink
+  // toward the floor; past it the strip's window (SolveStripWindow) takes
+  // over. A strip narrower than the minimum gives the active tab what
+  // there is, never less than the floor.
+  w.active = std::max(floor, std::min(active_min, room));
+  if (resting_count > 0) {
+    w.rest = std::max(floor, (room - w.active) / resting_count);
   }
   return w;
 }

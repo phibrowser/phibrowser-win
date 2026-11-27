@@ -89,9 +89,12 @@ ListPlacement LayoutList(const std::vector<ListItem>& items,
                          const ListMetrics& m);
 
 // ---- The horizontal strip's shared width ------------------------------------
-// Chrome's rule: tabs take their ideal width while they fit and shrink toward
-// the floor as more open; resting tabs give up width first, the active one
-// keeps its wider slot until they are all at the floor.
+// The Mac's rule (TabStripLayoutEngine.layoutNormalUngrouped), which is
+// Chromium's: tabs take their ideal width while they fit; then the active
+// tab gives up its extra room over a resting tab, and all of them shrink
+// EVENLY until they reach the active tab's minimum; only then does the
+// active tab hold that minimum while the resting tabs go on shrinking to the
+// floor.
 struct StripWidths {
   int rest = 0;
   int active = 0;  // 0 when there is no active tab.
@@ -101,6 +104,7 @@ StripWidths SolveStripWidths(int resting_count,
                              int room,
                              int ideal_rest,
                              int ideal_active,
+                             int active_min,
                              int floor);
 
 // ---- The horizontal strip's window (overflow) ------------------------------
