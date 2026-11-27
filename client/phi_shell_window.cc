@@ -12636,6 +12636,10 @@ std::vector<int> PhiShellWindow::MiniPlayerVisibleTabs() const {
   return out;
 }
 
+BrowserId PhiShellWindow::MiniPlayerPresentedBrowser() const {
+  return active_browser_id();
+}
+
 std::wstring PhiShellWindow::MiniPlayerTabTitle(BrowserId browser,
                                                 int tab_id) const {
   const TabSnapshot* tab =

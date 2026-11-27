@@ -35,6 +35,9 @@ constexpr int kRevealSpan = 32;
 constexpr UINT kHoverDelayMs = 120;  // Expand / collapse after a hover.
 constexpr int kAnimMs = 200;
 constexpr UINT kTrackHoldMs = 5000;  // A previous/next waits this long.
+// A video that leaves with its Space waits this long before it may take the
+// card, so that auto-PiP can pick it up first (Mac 55d1519a).
+constexpr UINT kSpaceExitBufferMs = 250;
 constexpr int kSwipeDip = 40;        // A sideways drag this long cycles.
 
 // Segoe Fluent Icons / MDL2 code points.
@@ -180,6 +183,7 @@ PhiMiniPlayer::~PhiMiniPlayer() {
   StopTimer(&hover_timer_);
   StopTimer(&tick_timer_);
   StopTimer(&track_timer_);
+  StopTimer(&buffer_timer_);
   if (title_font_) {
     ::DeleteObject(title_font_);
   }
@@ -213,6 +217,10 @@ void PhiMiniPlayer::SetPreference(bool enabled, Mode mode) {
     retained_.reset();
     manual_tab_ = -1;
     EndTrackChange();
+    space_exit_buffers_.clear();
+    StopTimer(&buffer_timer_);
+    visible_tabs_.clear();
+    presented_ = BrowserId();
   }
   expanded_ = mode_ == Mode::kExpanded || (mode_ == Mode::kDynamic && hovering_);
   Refresh();
@@ -224,7 +232,16 @@ void PhiMiniPlayer::Refresh() {
     // Copied out at once: the document is framework scratch (api rule 5).
     sessions_ = framework ? PhiParseMediaSessions(framework->MediaSessionsJson())
                           : std::vector<PhiMediaSession>();
+    const std::vector<int> was_visible = std::move(visible_tabs_);
     visible_tabs_ = host_->MiniPlayerVisibleTabs();
+    // The Mac's presentationChanged: another Space now fills the window.
+    const BrowserId presented = host_->MiniPlayerPresentedBrowser();
+    if (presented != presented_) {
+      if (presented_.valid() && presented.valid()) {
+        BufferLeavingSpaceSources(was_visible);
+      }
+      presented_ = presented;
+    }
     for (auto it = visible_tabs_.rbegin(); it != visible_tabs_.rend(); ++it) {
       std::erase(visited_, *it);
       visited_.insert(visited_.begin(), *it);
@@ -238,6 +255,48 @@ void PhiMiniPlayer::Refresh() {
 
 bool PhiMiniPlayer::IsVisibleTab(int tab_id) const {
   return std::ranges::find(visible_tabs_, tab_id) != visible_tabs_.end();
+}
+
+// The Mac's bufferLeavingSpaceSources: Chromium hears that a Space was hidden
+// a turn later than the shell switched it, and only then does auto-PiP start.
+// Until the video has had that time, it stays off the card rather than
+// flashing a card that PiP takes straight away.
+void PhiMiniPlayer::BufferLeavingSpaceSources(
+    const std::vector<int>& was_visible) {
+  const uint64_t until = ::GetTickCount64() + kSpaceExitBufferMs;
+  bool added = false;
+  for (const PhiMediaSession& s : sessions_) {
+    if (std::ranges::find(was_visible, s.tab_id) == was_visible.end() ||
+        IsVisibleTab(s.tab_id) || !s.playing || !s.can_enter_pip || s.pip) {
+      continue;
+    }
+    // A later switch starts the wait again.
+    space_exit_buffers_[s.tab_id] = {s.source_token, until};
+    added = true;
+  }
+  if (added) {
+    ScheduleBufferRelease();
+  }
+}
+
+bool PhiMiniPlayer::IsBuffered(const PhiMediaSession& s) const {
+  auto it = space_exit_buffers_.find(s.tab_id);
+  return it != space_exit_buffers_.end() &&
+         it->second.source_token == s.source_token;
+}
+
+void PhiMiniPlayer::ScheduleBufferRelease() {
+  if (space_exit_buffers_.empty()) {
+    StopTimer(&buffer_timer_);
+    return;
+  }
+  uint64_t next = UINT64_MAX;
+  for (const auto& [tab, buffer] : space_exit_buffers_) {
+    next = std::min(next, buffer.until);
+  }
+  const uint64_t now = ::GetTickCount64();
+  StartTimer(&buffer_timer_,
+             next > now ? static_cast<UINT>(next - now) : USER_TIMER_MINIMUM);
 }
 
 // The Mac's canPresent: a silent source (element mute, silent output, tab
@@ -258,7 +317,7 @@ std::vector<const PhiMediaSession*> PhiMiniPlayer::OrderedSources() const {
   std::vector<const PhiMediaSession*> ordered;
   const auto eligible = [&](const PhiMediaSession& s) {
     if (std::ranges::find(browsers, s.window) == browsers.end() ||
-        IsVisibleTab(s.tab_id) || s.pip || !CanPresent(s)) {
+        IsVisibleTab(s.tab_id) || s.pip || IsBuffered(s) || !CanPresent(s)) {
       return false;
     }
     if (auto it = dismissed_.find(s.tab_id);
@@ -313,6 +372,14 @@ void PhiMiniPlayer::Select() {
     return !s || s->source_token != entry.second || IsVisibleTab(entry.first) ||
            s->pip ||
            (dismissed != dismissed_.end() && dismissed->second == entry.second);
+  });
+  // A buffer ends when its time is up, or once the video is back on screen,
+  // in PiP, or replaced by other media.
+  const uint64_t now = ::GetTickCount64();
+  std::erase_if(space_exit_buffers_, [&](const auto& entry) {
+    const PhiMediaSession* s = find(entry.first);
+    return !s || s->source_token != entry.second.source_token ||
+           IsVisibleTab(entry.first) || s->pip || now >= entry.second.until;
   });
   if (retained_) {
     const PhiMediaSession* s = find(retained_->tab_id);
@@ -502,6 +569,13 @@ void PhiMiniPlayer::OnTimer(UINT_PTR id) {
   } else if (id == track_timer_) {
     EndTrackChange();  // Nothing replaced it in five seconds.
     Select();
+  } else if (id == buffer_timer_) {
+    StopTimer(&buffer_timer_);
+    // Read again while the video is still held back: a PiP that started in
+    // the meantime keeps it off the card even if its event is still on the
+    // way (the Mac inspects before releasing).
+    Refresh();
+    ScheduleBufferRelease();
   }
 }
 

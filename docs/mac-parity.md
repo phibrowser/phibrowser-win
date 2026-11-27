@@ -141,9 +141,11 @@ Two standing decisions cover many rows and are not repeated in full:
 | Bookmark manager (native, per Space) | yes | yes | ✅ | |
 | Bookmarks bar (always / on new tab) | yes | yes | ✅ | |
 | Image preview window (zoom, export original — Mac `1705cb23`, 2026-10-15) | `UserInterface/ImagePreview` | none | 🔧 | Whole surface absent. New on the Mac this cycle. |
-| Picture-in-picture: auto Off / Normal / Park at edge | yes | yes | ✅ | `picture-in-picture.md`. |
+| Picture-in-picture: auto Off / Normal / Park at edge | yes | yes | ✅ | `picture-in-picture.md`. Pages without an `enterpictureinpicture` handler (YouTube) pop out too: browser-initiated auto-PiP is on in r158 (`suite-pipchapters`, PHI-2252). |
+| PiP window: YouTube chapter segments and the playing chapter's title over the progress bar (Mac 2.3.0) | fork `phi_pip_page_state` + `video_overlay_window_views`; Mirage's YouTube script reports the chapters (`phinomenonPrivate.setVideoChapters`) | the same fork code and Mirage, nothing in the client | ✅ | Triaged 2026-11-27 (PHI-2252, `pip-extras.md`): in official 0.8.0.25, which has Mirage 2.19.0; fork builds with Mirage 2.17.0 (before `6c0a5dc93051`) have the window code but no script. nuc: `suite-pipchapters` passes on 0.8.0.25, fails on fork `e837b182`. Mirage changes go to phibrowser/phi-ai. |
+| PiP window: Skip Ad button while YouTube offers a skip (Mac 2.19.0) | fork `skip_ad_label_button` + `PhiPipPageState` (one trusted click on www.youtube.com per press, ADR 0022); Mirage handles the Media Session `skipad` action | the same, nothing in the client | ✅ | As the chapters row. nuc: a real press skips the page's ad with a trusted click, from the visible tab and from a background tab after auto-PiP. |
 | Widevine DRM (Netflix, Spotify, Disney+ …) | fork only: component-updated CDM, `Phi Helper (CDM)` signed without library validation, VMP host files (`Phi Framework` + castLabs EVS `.sig`) | component-updated CDM; VMP host files `Phi.exe` + `framework\chrome.dll`, `.sig` beside each from `make-installer.sh --vmp` (EVS, after Authenticode; flag 1 on the exe, flag 0 on the DLL) | ◐ | Ported 2026-10-30 (fork `cdm_host_file_path.cc` + `media_options.gni`, ship args `enable_widevine`). No CDM helper needed (a macOS library-validation matter). Official releases VMP-sign (build repo `vmp-sign.sh`). Official 0.4.0.13 x64, installed on nuc on 2026-11-05, passes `box-tests/suite-widevine.mjs` 5/5: CDM 4.10.3112.0 fetched by the component updater, license request, Shaka Widevine playback, host verification ran, and Google's UAT license server answers `PLATFORM_SOFTWARE_VERIFIED`. Spotify plays on official 0.4.0.14 x64. On arm64, 0.4.0.14 and earlier crashed every web page (Aw, Snap, STATUS_BREAKPOINT) on GitHub's hosted Cobalt 100 VM: the Linux cross-build's snapshot toolchain built V8's builtins with pointer authentication that chrome.dll's V8 couldn't read. Fixed in 0.4.0.15 (build repo `args/PhiFxWinShipArm64.gn`), which passes the page check and the Widevine suite 6/6 on a Cobalt 100 VM (build repo `arm-smoke.yml`, CI.md). Real Arm hardware not checked. Test releases stay unsigned, so services that demand VMP refuse them a license. |
-| Sidebar Mini Player / native media controls | play/pause, seek, tracks, volume and mute, PiP, show tab, dismiss, source switching; setting Off / Auto / compact / expanded | the same card on the sidebar's bottom bar (docked and floating), same selection rules and heights; Settings ▸ Advanced ▸ Mini Player | ◐ | Ported 2026-11-13 (GitHub #12): fork `phi_framework/phi_media_controls` + ABI 6, client `phi_mini_player`; `docs/native-media-controls.md`. gmk: `suite-miniplayer` 11/11 (fails 10/11 on a build without it), scenario `mini-player` PASS. Gaps: analytics (`mini_player_action`, launch properties), keyboard/screen-reader access, trackpad swipe (a 40 dip mouse drag cycles instead), the Space-exit auto-PiP buffer (`55d1519a`). Ships only with a new framework release (ABI 6). |
+| Sidebar Mini Player / native media controls | play/pause, seek, tracks, volume and mute, PiP, show tab, dismiss, source switching; setting Off / Auto / compact / expanded | the same card on the sidebar's bottom bar (docked and floating), same selection rules and heights; Settings ▸ Advanced ▸ Mini Player | ◐ | Ported 2026-11-13 (GitHub #12): fork `phi_framework/phi_media_controls` + ABI 6, client `phi_mini_player`; `docs/native-media-controls.md`. gmk: `suite-miniplayer` 11/11 (fails 10/11 on a build without it), scenario `mini-player` PASS. Gaps: analytics (`mini_player_action`, launch properties), keyboard/screen-reader access, trackpad swipe (a 40 dip mouse drag cycles instead). The Space-exit auto-PiP wait (`55d1519a`) was ported 2026-11-27 (PHI-2252, `pip-extras.md`): nuc `suite-pipspaceexit` fails on dev 27dd678 (the card showed 54 to 371 ms after the switch) and passes with it. Ships only with a new framework release (ABI 6). |
 | Shorten links to selected text (Copy Link to Highlight) | Advanced setting | row not drawn | ⛔ | The copy callback reaches only the Mac bridge (`phi_settings_window.cc`, `analytics.md`). |
 | Apply theme to text selection on web pages | General setting | synced, nothing reads it | ⛔ | No web-selection tint on Windows (`phi_settings_window.cc`). |
 | Extension popups / side panel / dialogs | native hosts | Chromium popovers | ✅ | `chromium-popovers.md`. |
@@ -220,7 +222,7 @@ Two standing decisions cover many rows and are not repeated in full:
 
 | Status | Rows |
 |---|---|
-| ✅ ported | 71 |
+| ✅ ported | 73 |
 | ◐ partial | 32 |
 | 🔧 to implement | 25 |
 | ⛔ deliberately left | 21 |
@@ -233,7 +235,9 @@ changed on dev after 2026-11-17 (the layouts row, the Space switch rows)
 without the counts. This pass: tab audio 🔧 → ✅ (a correction), Space
 icons and Folio ✅ → ◐, edge-to-edge ⛔ → ◐, three new 🔧 rows (capture
 indicators, the background-tab toast, the unified omnibox). Since then:
-Capture Full Page 🔧 → ◐ (PHI-2251, 2026-11-27).
+Capture Full Page 🔧 → ◐ (PHI-2251, 2026-11-27); two new ✅ rows, the PiP
+window's YouTube chapters and Skip Ad, already in 0.8.0.25 through the fork
+and Mirage (PHI-2252, 2026-11-27).
 
 **The 🔧 list, roughly by user impact:** multi-selection ·
 Bitwarden Settings rows and standing grants ·
@@ -1321,7 +1325,7 @@ test account), `parked_for_scope` and the App-rule replay (host tests only).**
 | `4e6de510` | fix: preserve media controls and tab indicators when muted | done / watch | Mini Player half ported 2026-11-13 (element mute, a silenced card keeps its controls); the tab audio indicator half stays with that row (§2 🔧). |
 | `c3ffbcb9` | fix: keep Mini Player volume controls open and unmute on click | done | Ported 2026-11-13: the volume row stays open off hover; a click while muted unmutes. |
 | `83722665` | fix: preserve Mini Player visibility and theme across Space switches | done | Ported 2026-11-13: one card per shell across its Spaces, painted in the presented Space's palette. |
-| `55d1519a` | fix: reduce Mini Player flashes during Space auto-PiP transitions | watch | Not ported with the Mini Player (2026-11-13): no 250 ms buffer for a video leaving with its Space. |
+| `55d1519a` | fix: reduce Mini Player flashes during Space auto-PiP transitions | done | Not ported with the Mini Player (2026-11-13). Ported 2026-11-27 (PHI-2252): `PhiMiniPlayer` holds a playing, PiP-capable video that leaves with its Space off the card for 250 ms (`pip-extras.md`). |
 | `9ee39fa4` | fix: show webpage volume in the Mini Player slider | done | Ported 2026-11-13: the slider reads and sets the element volume. |
 | `d00df7b2` | fix: keep muted Mini Player cards available after switching sources | done | Ported 2026-11-13 (`silent_retained_`). |
 | `f6e13a27` | fix: prevent Mini Player slider drags from switching sources | done | Ported 2026-11-13: only the card's plain area starts a source swipe. |

@@ -69,6 +69,8 @@ class PhiMiniPlayerHost {
   // The tabs the presented Space shows as page content: its active tab and
   // the other panes of that tab's split. A hidden Space shows nothing.
   virtual std::vector<int> MiniPlayerVisibleTabs() const = 0;
+  // The browser of the Space this shell presents, invalid for none.
+  virtual BrowserId MiniPlayerPresentedBrowser() const = 0;
   // The tab's own title, the fallback when the session has none.
   virtual std::wstring MiniPlayerTabTitle(BrowserId browser,
                                           int tab_id) const = 0;
@@ -169,6 +171,9 @@ class PhiMiniPlayer {
   Geometry Layout(const RECT& band) const;
   Part HitTest(const Geometry& g, POINT pt) const;
   bool IsVisibleTab(int tab_id) const;
+  void BufferLeavingSpaceSources(const std::vector<int>& was_visible);
+  bool IsBuffered(const PhiMediaSession& s) const;
+  void ScheduleBufferRelease();
   bool CanPresent(const PhiMediaSession& s) const;
   std::vector<const PhiMediaSession*> OrderedSources() const;
   void Select();
@@ -204,6 +209,16 @@ class PhiMiniPlayer {
   Mode mode_ = Mode::kDynamic;
   std::vector<PhiMediaSession> sessions_;
   std::vector<int> visible_tabs_;
+  BrowserId presented_;
+  // Videos that left the screen with their Space (Mac 55d1519a): each stays
+  // off the card for a moment while Chromium's auto-PiP picks it up, so the
+  // card does not flash in and out. tab -> source token and release time
+  // (GetTickCount64()).
+  struct SpaceExitBuffer {
+    std::string source_token;
+    uint64_t until = 0;
+  };
+  std::map<int, SpaceExitBuffer> space_exit_buffers_;
   // Tabs most recently seen as page content first (the Mac's visit order).
   std::vector<int> visited_;
   std::optional<PhiMediaSession> item_;
@@ -237,6 +252,7 @@ class PhiMiniPlayer {
   bool hover_entering_ = false;
   UINT_PTR tick_timer_ = 0;
   UINT_PTR track_timer_ = 0;
+  UINT_PTR buffer_timer_ = 0;
 
   HFONT title_font_ = nullptr;
   HFONT small_font_ = nullptr;

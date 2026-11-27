@@ -1522,6 +1522,7 @@ class PhiShellWindow : public PhiHitSource,
   phi_framework::PhiFramework* MiniPlayerFramework() const override;
   std::vector<BrowserId> MiniPlayerBrowsers() const override;
   std::vector<int> MiniPlayerVisibleTabs() const override;
+  BrowserId MiniPlayerPresentedBrowser() const override;
   std::wstring MiniPlayerTabTitle(BrowserId browser,
                                   int tab_id) const override;
   UINT MiniPlayerDpi() const override;

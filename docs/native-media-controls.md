@@ -60,6 +60,10 @@ titles, relayout, repaint, capture, "show tab" through `ActivateSearchTab`).
   player's mute; a click while muted unmutes.
 - **Readout.** `agentSpace.window.layout` → `miniPlayer` (source, playback,
   part rects); `agentSpace.settings.set/get` take and report the two keys.
+- **Space exit (Mac `55d1519a`, PHI-2252).** A video that was on screen,
+  playing and able to enter PiP, and that leaves with its Space, stays off the
+  card for 250 ms while auto-PiP picks it up, so the card does not flash in
+  and out (`pip-extras.md`).
 
 ## Not ported
 
@@ -70,7 +74,5 @@ titles, relayout, repaint, capture, "show tab" through `ActivateSearchTab`).
   painted, without focusable controls), and trackpad swipes (a mouse drag of
   40 dip cycles instead).
 - The tab speaker indicator preferring MediaSession mute (Mac `4e6de510`).
-- The Mac's 250 ms buffer that keeps a video leaving with its Space off the
-  card while it enters auto-PiP (`55d1519a`).
 - The Mac doc's per-WebContents "gain" multiplier: the r156 bridge, which this
   port follows, sets the element volume instead.
