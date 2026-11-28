@@ -175,6 +175,10 @@ bool PhiKeyboardAccelerators::IsReservedCommand(UINT command) {
     case kCmdShowAppMenu:
     case kCmdNextSpace:
     case kCmdPreviousSpace:
+    // The sidebar toggle (default Ctrl+S) must work on any page: web apps
+    // such as Google Docs and Sheets take Ctrl+S for their own save, so a
+    // page-first chord never got back to Phi there (PHI-2239).
+    case kCmdToggleSidebar:
     // Chrome reserves its tab cycling from pages (Ctrl+Tab, Ctrl+PageDown);
     // the commands that took those chords over keep that, on any chord.
     case kCmdNextTab:
